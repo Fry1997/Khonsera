@@ -14,6 +14,11 @@ export default async function ForgotPasswordPage({
           Enter your email and we'll send a link to set a new password.
         </p>
       </div>
+      {sp.error ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {sp.error}
+        </div>
+      ) : null}
       {sp.sent === "1" ? (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
           Check your inbox. If an account exists for that email, you'll get a
