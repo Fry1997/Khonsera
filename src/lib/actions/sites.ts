@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
-import { dbResult, parseInput } from "./_helpers";
+import { dbResult, maybeGeocode, parseInput } from "./_helpers";
 import type { Result } from "@/lib/errors";
 
 const baseSiteSchema = z.object({
@@ -64,9 +64,10 @@ export async function createCustomerSite(
   if (!check.ok) return check;
 
   const supabase = await createClient();
+  const geocoded = await maybeGeocode(parsed.value);
   const { data, error } = await supabase
     .from("customer_sites")
-    .insert({ ...parsed.value, workspace_id: ctx.workspaceId })
+    .insert({ ...geocoded, workspace_id: ctx.workspaceId })
     .select("*")
     .single();
 
@@ -99,9 +100,10 @@ export async function updateCustomerSite(
     .maybeSingle();
 
   const { id, ...patch } = parsed.value;
+  const geocoded = await maybeGeocode(patch);
   const { data, error } = await supabase
     .from("customer_sites")
-    .update(patch)
+    .update(geocoded)
     .eq("id", id)
     .eq("workspace_id", ctx.workspaceId)
     .select("*")

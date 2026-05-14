@@ -10,6 +10,7 @@ import {
   ok,
   type Result,
 } from "@/lib/errors";
+import { geocodeAddress } from "@/lib/google/maps";
 
 export function parseInput<T extends z.ZodTypeAny>(
   schema: T,
@@ -36,4 +37,24 @@ export function dbResult<T>(
   if (error) return err(fromThrown(error, entity));
   if (data === null || data === undefined) return err(errors.notFound(entity));
   return ok(data);
+}
+
+// Geocode helper used by location + site server actions. Takes an input that
+// may include an address + lat/lng, returns the same shape with lat/lng
+// filled in when the caller didn't supply them. Silently returns the input
+// unchanged when Google Maps isn't configured or geocoding fails.
+export async function maybeGeocode<
+  T extends {
+    address?: string | null;
+    postcode?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  },
+>(input: T): Promise<T> {
+  if (input.latitude != null && input.longitude != null) return input;
+  const addressParts = [input.address, input.postcode].filter(Boolean);
+  if (addressParts.length === 0) return input;
+  const result = await geocodeAddress(addressParts.join(", "));
+  if (!result) return input;
+  return { ...input, latitude: result.lat, longitude: result.lng };
 }

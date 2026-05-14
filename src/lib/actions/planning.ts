@@ -221,8 +221,11 @@ async function runPlanningForVisit(
   // 2. Build options from whichever integrations returned data.
   const built: BuiltOption[] = [];
 
+  let drivePolyline: string | null = null;
   if (driveRoute.mode !== "unavailable") {
     const leg = driveRoute.data.legs[0];
+    drivePolyline =
+      (driveRoute.data as { overviewPolyline?: string }).overviewPolyline ?? null;
     if (leg) {
       built.push(
         buildDriveOption(planningInput, {
@@ -356,6 +359,7 @@ async function runPlanningForVisit(
         recommendation_summary: o.verdict.suggestedWording,
         risk_summary: o.verdict.reasons.map((r) => r.message).join(" "),
         currency: wsCfg.currency,
+        overview_polyline: o.mode === "drive" ? drivePolyline : null,
       })
       .select("id")
       .single();

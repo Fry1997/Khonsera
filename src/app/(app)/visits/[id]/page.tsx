@@ -8,6 +8,7 @@ import { formatTimeInTz, formatDateInTz } from "@/lib/types/time";
 import { TravelOptionsPanel } from "./travel-options-panel";
 import { VisitCalendarWidget } from "@/components/visit-calendar-widget";
 import { RePlanButton } from "./re-plan-button";
+import { StaticMap } from "@/components/static-map";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -35,8 +36,8 @@ export default async function VisitDetailPage({
       `id, title, status, proposed_start_time, meeting_duration_minutes,
        customer_id, customer_site_id, latest_return_time, notes,
        customer:customers(name),
-       customer_site:customer_sites(name, address),
-       start_location:locations!visit_plans_start_location_id_fkey(name),
+       customer_site:customer_sites(name, address, latitude, longitude),
+       start_location:locations!visit_plans_start_location_id_fkey(name, latitude, longitude),
        return_location:locations!visit_plans_return_location_id_fkey(name)`,
     )
     .eq("id", id)
@@ -56,7 +57,7 @@ export default async function VisitDetailPage({
          meeting_start_at, meeting_end_at, leave_site_at,
          arrive_return_location_at, total_duration_minutes,
          total_cost_estimate, travel_time_minutes, buffer_minutes,
-         recommendation_summary, risk_summary, currency,
+         recommendation_summary, risk_summary, currency, overview_polyline,
          journey_legs(
            id, sequence, leg_type, start_location_name, end_location_name,
            start_time, end_time, duration_minutes, distance_miles,
@@ -132,6 +133,58 @@ export default async function VisitDetailPage({
           </p>
         </div>
       </section>
+
+      {(() => {
+        const startLoc = visit.start_location as unknown as {
+          name?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+        } | null;
+        const siteLoc = visit.customer_site as unknown as {
+          latitude?: number | null;
+          longitude?: number | null;
+        } | null;
+        const startLat = startLoc?.latitude ?? null;
+        const startLng = startLoc?.longitude ?? null;
+        const siteLat = siteLoc?.latitude ?? null;
+        const siteLng = siteLoc?.longitude ?? null;
+        if (startLat == null || startLng == null || siteLat == null || siteLng == null)
+          return null;
+
+        const selectedOption =
+          latestRun?.travel_options.find(
+            (o) => o.id === savedTrip?.selected_travel_option_id,
+          ) ?? latestRun?.travel_options[0];
+        const polyline =
+          (selectedOption as { overview_polyline?: string | null } | undefined)
+            ?.overview_polyline ?? null;
+
+        return (
+          <StaticMap
+            width={1200}
+            height={360}
+            markers={[
+              { lat: startLat, lng: startLng, color: "green", label: "A" },
+              { lat: siteLat, lng: siteLng, color: "red", label: "B" },
+            ]}
+            paths={
+              polyline
+                ? [{ encoded: polyline, color: "c25c3a", weight: 4 }]
+                : [
+                    {
+                      points: [
+                        { lat: startLat, lng: startLng },
+                        { lat: siteLat, lng: siteLng },
+                      ],
+                      color: "c25c3a",
+                      weight: 3,
+                    },
+                  ]
+            }
+            alt="Visit route"
+          />
+        );
+      })()}
 
       {latestRun ? (
         <>
