@@ -72,6 +72,27 @@ Make any account `is_staff` from SQL:
 update profiles set is_staff = true where email = 'you@example.com';
 ```
 
+## Tests
+
+Two tiers:
+
+```bash
+# Unit tests — pure functions only, no DB. Fast.
+npm test
+
+# Integration tests — require a running Supabase. Skipped automatically
+# when SUPABASE_TEST_URL isn't set.
+SUPABASE_TEST_URL=http://localhost:54321 \
+SUPABASE_TEST_ANON_KEY=$(npx supabase status -o env | grep ANON_KEY | cut -d= -f2-) \
+SUPABASE_TEST_SERVICE_ROLE_KEY=$(npx supabase status -o env | grep SERVICE_ROLE_KEY | cut -d= -f2-) \
+npm run test:integration
+```
+
+Integration tests cover RLS isolation (cross-workspace deny), state-machine
+correctness (illegal transitions rejected, direct status writes blocked,
+audit rows written), and live the `tests/integration/` directory. Helpers
+under `src/lib/testing/` provision real test users via the auth-trigger.
+
 ## Build phases
 
 - **Phase 0** (this PR): bones — Next.js + Supabase + auth + RLS schema + nav + skeleton screens
