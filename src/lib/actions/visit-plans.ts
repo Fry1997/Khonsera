@@ -6,7 +6,7 @@ import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
 import { transitionVisitPlan } from "@/lib/state/transitions";
-import type { Result } from "@/lib/errors";
+import { err, errors, ok, fromThrown, type Result } from "@/lib/errors";
 import type {
   TravelModePreference,
   VisitStatus,
@@ -141,6 +141,98 @@ export async function transitionVisit(
   metadata?: Record<string, unknown>,
 ) {
   return transitionVisitPlan(visitId, toStatus, metadata);
+}
+
+// Confirm a visit: lock in the chosen travel option, transition the visit
+// to 'confirmed', create the SavedTrip and a BookingIntent ready for the
+// partner booking handoff (or "mark as booked" for drive).
+export async function confirmVisitWithTravelOption(
+  visitId: string,
+  travelOptionId: string,
+): Promise<Result<{ visitId: string; savedTripId: string; bookingIntentId: string | null }>> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // 1. Verify the travel option belongs to a planning run for this visit (RLS
+  //    also enforces workspace scope).
+  const { data: option } = await supabase
+    .from("travel_options")
+    .select(
+      "id, mode, total_cost_estimate, currency, planning_runs!inner(visit_plan_id)",
+    )
+    .eq("id", travelOptionId)
+    .maybeSingle();
+  if (!option) return err(errors.notFound("travel_option"));
+  const linkedVisit = (option.planning_runs as unknown as { visit_plan_id: string } | null)?.visit_plan_id;
+  if (linkedVisit !== visitId) {
+    return err(errors.validation("Travel option does not belong to this visit"));
+  }
+
+  // 2. Transition the visit to confirmed.
+  const transitioned = await transitionVisitPlan(visitId, "confirmed", {
+    selected_travel_option_id: travelOptionId,
+  });
+  if (!transitioned.ok) return transitioned;
+
+  // 3. Create the SavedTrip (1:1 with visit; if it already exists from a
+  //    previous confirm, update it).
+  const { data: trip, error: tripErr } = await supabase
+    .from("saved_trips")
+    .upsert(
+      {
+        visit_plan_id: visitId,
+        selected_travel_option_id: travelOptionId,
+        workspace_id: ctx.workspaceId,
+        status: "upcoming",
+      },
+      { onConflict: "visit_plan_id" },
+    )
+    .select("id")
+    .single();
+  const tripInsert = dbResult<{ id: string }>(trip, tripErr, "saved_trip");
+  if (!tripInsert.ok) return tripInsert;
+
+  // 4. For rail, queue a BookingIntent ready for the partner handoff. For
+  //    drive, no booking intent — the user can record fuel/parking expenses
+  //    later.
+  let bookingIntentId: string | null = null;
+  if (option.mode === "rail") {
+    const { data: intent, error: intentErr } = await supabase
+      .from("booking_intents")
+      .insert({
+        visit_plan_id: visitId,
+        travel_option_id: travelOptionId,
+        workspace_id: ctx.workspaceId,
+        provider: "trainline",
+        status: "not_started",
+        estimated_price: option.total_cost_estimate,
+        currency: option.currency ?? "GBP",
+        idempotency_key: crypto.randomUUID(),
+      })
+      .select("id")
+      .single();
+    if (intentErr || !intent) {
+      return err(fromThrown(intentErr ?? new Error("booking_intent insert"), "booking_intent"));
+    }
+    bookingIntentId = intent.id;
+  }
+
+  await recordAudit({
+    entityType: "visit_plan",
+    entityId: visitId,
+    action: "confirm",
+    after: {
+      travel_option_id: travelOptionId,
+      saved_trip_id: tripInsert.value.id,
+      booking_intent_id: bookingIntentId,
+    },
+  });
+
+  return ok({
+    visitId,
+    savedTripId: tripInsert.value.id,
+    bookingIntentId,
+  });
 }
 
 export async function deleteVisitPlan(id: string): Promise<Result<{ id: string }>> {

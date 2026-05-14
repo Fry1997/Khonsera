@@ -1,100 +1,97 @@
+import Link from "next/link";
 import { PageShell, ComingSoon } from "@/components/ui/page-shell";
+import { createClient } from "@/lib/supabase/server";
+import { requireUserContext } from "@/lib/auth";
+import { PlanVisitForm } from "./plan-visit-form";
 
-export default function NewVisitPage() {
+export default async function NewVisitPage() {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const [{ data: customers }, { data: sites }, { data: locations }, { data: profile }] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, name")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("name"),
+    supabase
+      .from("customer_sites")
+      .select("id, customer_id, name, address")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("name"),
+    supabase
+      .from("locations")
+      .select("id, name, type")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("type"),
+    supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle(),
+  ]);
+
+  const blockingReason: string | null =
+    !customers || customers.length === 0
+      ? "Add a customer first."
+      : !locations || locations.length === 0
+        ? "Add at least one location (home/office) first."
+        : null;
+
   return (
     <PageShell
       title="Plan new visit"
-      description="Enter the appointment details. We'll check whether it's actually feasible."
+      description="Enter the appointment, we'll check whether it's actually feasible."
     >
-      <form className="grid max-w-2xl gap-4">
-        <div className="grid gap-2">
-          <label className="text-sm font-medium">Customer</label>
-          <select className="rounded-md border border-border px-3 py-2 text-sm">
-            <option>Select a customer…</option>
-          </select>
-          <p className="text-xs text-muted-foreground">
-            Customer picker and "add new" — wired in Phase 3.
+      {blockingReason ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">
+          <p className="font-medium">{blockingReason}</p>
+          <p className="mt-1 text-muted-foreground">
+            {!customers || customers.length === 0 ? (
+              <Link href="/customers/new" className="underline">
+                Add a customer
+              </Link>
+            ) : (
+              <Link href="/locations" className="underline">
+                Add locations
+              </Link>
+            )}
           </p>
         </div>
-        <div className="grid gap-2">
-          <label className="text-sm font-medium">Site</label>
-          <select
-            className="rounded-md border border-border px-3 py-2 text-sm"
-            disabled
-          >
-            <option>Choose customer first</option>
-          </select>
+      ) : (
+        <div className="max-w-2xl">
+          <PlanVisitForm
+            customers={customers ?? []}
+            sites={sites ?? []}
+            locations={locations ?? []}
+            defaults={{
+              startLocationId:
+                profile?.default_drive_origin_location_id ??
+                profile?.default_rail_origin_location_id ??
+                null,
+              returnLocationId: profile?.default_return_location_id ?? null,
+              preferredMode:
+                (profile?.preferred_mode as
+                  | "rail"
+                  | "drive"
+                  | "compare"
+                  | "mixed") ?? "compare",
+              arrivalBuffer: profile?.default_arrival_buffer_minutes ?? 15,
+              returnBuffer: profile?.default_return_buffer_minutes ?? 15,
+            }}
+          />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Proposed start</label>
-            <input
-              type="datetime-local"
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Meeting duration (min)</label>
-            <input
-              type="number"
-              defaultValue={120}
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Start location</label>
-            <select className="rounded-md border border-border px-3 py-2 text-sm">
-              <option>Home</option>
-              <option>Office</option>
-            </select>
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Travel preference</label>
-            <select className="rounded-md border border-border px-3 py-2 text-sm">
-              <option value="compare">Compare rail and drive</option>
-              <option value="rail">Rail</option>
-              <option value="drive">Drive</option>
-            </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Arrival buffer (min)</label>
-            <input
-              type="number"
-              defaultValue={15}
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Latest return home</label>
-            <input
-              type="datetime-local"
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <input type="checkbox" id="calendar-check" defaultChecked disabled />
-          <label htmlFor="calendar-check" className="text-muted-foreground">
-            Check calendar conflicts (connect calendar in Settings)
-          </label>
-        </div>
-        <button
-          type="button"
-          disabled
-          className="w-fit rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          title="Phase 4 — feasibility engine wires up here"
-        >
-          Check feasibility
-        </button>
-      </form>
-      <ComingSoon
-        feature="Feasibility check"
-        detail="The form submits to the planning engine which produces TravelOptions. Backend is in place (src/lib/planning/feasibility.ts); the submit handler lands in Phase 4."
-      />
+      )}
+
+      {ctx.isStaff ? null : (
+        <ComingSoon
+          feature="Real routing + rail data"
+          detail="Demo mode (staff only) walks the full flow with realistic mock journeys. Real users will see live results once the routing + rail integrations land in Layer 10."
+        />
+      )}
     </PageShell>
   );
 }
