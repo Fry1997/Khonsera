@@ -164,7 +164,7 @@ export function TravelOptionsPanel({
               />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Stat label="Leave" value={fmt(o.leave_origin_at, timezone)} />
               <Stat label="Arrive" value={fmt(o.arrive_site_at, timezone)} />
               <Stat

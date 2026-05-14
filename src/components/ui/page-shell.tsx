@@ -14,13 +14,20 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-7 px-6 py-9 md:px-10 md:py-12", className)}>
+    <div
+      className={cn(
+        "flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-9 md:px-10 md:py-12 md:gap-7",
+        className,
+      )}
+    >
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-2">
-          <h1 className="h1">{title}</h1>
+          <h1 className="h1 text-3xl md:text-4xl">{title}</h1>
           {description ? <p className="body max-w-2xl">{description}</p> : null}
         </div>
-        {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex flex-wrap gap-2">{actions}</div>
+        ) : null}
       </header>
       <div className="flex flex-col gap-5">{children}</div>
     </div>

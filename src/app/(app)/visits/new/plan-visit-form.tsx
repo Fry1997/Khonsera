@@ -126,7 +126,7 @@ export function PlanVisitForm({
         <Input id="title" name="title" maxLength={200} placeholder="e.g. Site survey" />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField
           label="Proposed start"
           htmlFor="proposed_start_time"
@@ -160,7 +160,7 @@ export function PlanVisitForm({
 
       <DayPreview proposedDateTime={proposedStartTime} timezone={timezone} />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField
           label="Start location"
           htmlFor="start_location_id"
@@ -201,7 +201,7 @@ export function PlanVisitForm({
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField label="Travel preference" htmlFor="travel_mode_preference">
           <Select
             id="travel_mode_preference"
@@ -219,7 +219,7 @@ export function PlanVisitForm({
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField label="Arrival buffer (min)" htmlFor="arrival_buffer_minutes">
           <Input
             id="arrival_buffer_minutes"

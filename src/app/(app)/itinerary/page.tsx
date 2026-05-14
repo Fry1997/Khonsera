@@ -177,7 +177,7 @@ function ItineraryCard({
         </div>
       </header>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
         <Stat label="Leave" value={fmt(row.leave_origin_at, timezone)} />
         <Stat label="Arrive" value={fmt(row.arrive_site_at, timezone)} />
         <Stat label="Meeting" value={`${fmt(row.meeting_start_at, timezone)} – ${fmt(row.meeting_end_at, timezone)}`} />

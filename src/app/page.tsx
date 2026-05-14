@@ -3,10 +3,10 @@ import Link from "next/link";
 export default function LandingPage() {
   return (
     <main className="paper-tex flex min-h-screen flex-col">
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-6 py-16">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-5 py-12 sm:gap-10 sm:px-6 sm:py-16">
         <div className="brand-glyph">Journies</div>
         <div className="space-y-4">
-          <h1 className="h0">
+          <h1 className="h0 text-[36px] leading-[1.06] sm:text-[44px] md:text-[56px]">
             Know whether you can actually{" "}
             <span className="text-terra">get there</span> — before you say yes.
           </h1>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
@@ -14,6 +14,12 @@ const serif = Newsreader({
 export const metadata: Metadata = {
   title: "Journies",
   description: "Plan, confirm and execute on-site business visits.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#f4f0e7",
 };
 
 export default function RootLayout({
