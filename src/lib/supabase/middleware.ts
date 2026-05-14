@@ -8,9 +8,21 @@ const PUBLIC_PATHS = ["/login", "/signup", "/auth/callback", "/"];
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    // Surface a clear message in the response body instead of crashing the
+    // middleware. Production: set NEXT_PUBLIC_SUPABASE_URL +
+    // NEXT_PUBLIC_SUPABASE_ANON_KEY in the Vercel project settings.
+    return new NextResponse(
+      "Supabase env vars missing on this deployment (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).",
+      { status: 500 },
+    );
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
