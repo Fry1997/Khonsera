@@ -13,6 +13,7 @@ import {
 import { createAndPlanVisit } from "@/lib/actions/planning";
 import { feedbackFromError, type FormFeedback } from "@/lib/actions/_form";
 import type { LocationType, TravelModePreference } from "@/lib/types/domain";
+import { DayPreview } from "./day-preview";
 
 type Customer = { id: string; name: string };
 type Site = { id: string; customer_id: string; name: string | null; address: string | null };
@@ -23,6 +24,7 @@ export function PlanVisitForm({
   sites,
   locations,
   defaults,
+  timezone,
 }: {
   customers: Customer[];
   sites: Site[];
@@ -34,11 +36,13 @@ export function PlanVisitForm({
     arrivalBuffer: number;
     returnBuffer: number;
   };
+  timezone: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<FormFeedback | null>(null);
   const [customerId, setCustomerId] = useState<string>(customers[0]?.id ?? "");
+  const [proposedStartTime, setProposedStartTime] = useState<string>("");
 
   const filteredSites = useMemo(
     () => sites.filter((s) => s.customer_id === customerId),
@@ -133,6 +137,8 @@ export function PlanVisitForm({
             name="proposed_start_time"
             type="datetime-local"
             required
+            value={proposedStartTime}
+            onChange={(e) => setProposedStartTime(e.target.value)}
           />
         </FormField>
         <FormField
@@ -151,6 +157,8 @@ export function PlanVisitForm({
           />
         </FormField>
       </div>
+
+      <DayPreview proposedDateTime={proposedStartTime} timezone={timezone} />
 
       <div className="grid grid-cols-2 gap-3">
         <FormField

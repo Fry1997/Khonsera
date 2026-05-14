@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageShell, ComingSoon } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
+import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { PlanVisitForm } from "./plan-visit-form";
 
 export default async function NewVisitPage() {
@@ -33,6 +34,8 @@ export default async function NewVisitPage() {
       .eq("workspace_id", ctx.workspaceId)
       .maybeSingle(),
   ]);
+
+  const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
 
   const blockingReason: string | null =
     !customers || customers.length === 0
@@ -82,6 +85,7 @@ export default async function NewVisitPage() {
               arrivalBuffer: profile?.default_arrival_buffer_minutes ?? 15,
               returnBuffer: profile?.default_return_buffer_minutes ?? 15,
             }}
+            timezone={wsCfg.timezone}
           />
         </div>
       )}

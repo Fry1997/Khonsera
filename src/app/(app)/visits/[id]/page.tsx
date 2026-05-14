@@ -7,6 +7,7 @@ import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatTimeInTz, formatDateInTz } from "@/lib/types/time";
 import { TravelOptionsPanel } from "./travel-options-panel";
 import { VisitCalendarWidget } from "@/components/visit-calendar-widget";
+import { RePlanButton } from "./re-plan-button";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -87,12 +88,12 @@ export default async function VisitDetailPage({
           : "No time set"
       }`}
       actions={
-        <Link
-          href="/visits"
-          className="rounded-md border border-border px-4 py-2 text-sm"
-        >
-          Back to visits
-        </Link>
+        <>
+          <RePlanButton visitId={id} />
+          <Link href="/visits" className="btn-ghost">
+            Back to visits
+          </Link>
+        </>
       }
     >
       <section className="grid gap-4 md:grid-cols-3">
