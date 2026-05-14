@@ -11,5 +11,6 @@ dist
 .turbo
 coverage
 next-env.d.ts
+tsconfig.tsbuildinfo
 supabase/.branches
 supabase/.temp
