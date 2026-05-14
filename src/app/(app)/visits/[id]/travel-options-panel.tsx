@@ -72,8 +72,14 @@ export function TravelOptionsPanel({
   const isConfirmed = visitStatus === "confirmed" || visitStatus === "booked" ||
                       visitStatus === "in_progress" || visitStatus === "completed";
 
-  const handleConfirm = (optionId: string) => {
-    if (!window.confirm("Confirm this travel option and save the trip?")) return;
+  const handleConfirm = (optionId: string, verdict: Option["feasibility_status"]) => {
+    const warningPrefix =
+      verdict === "not_recommended"
+        ? "This option is NOT RECOMMENDED — there are major issues (calendar conflict, tight buffers, or both). Confirm anyway?"
+        : verdict === "tight"
+          ? "This is a TIGHT option — limited buffer. Confirm?"
+          : "Confirm this travel option and save the trip?";
+    if (!window.confirm(warningPrefix)) return;
     setConfirmingId(optionId);
     startTransition(async () => {
       setError(null);
@@ -202,13 +208,19 @@ export function TravelOptionsPanel({
               <div className="mt-4">
                 <button
                   type="button"
-                  onClick={() => handleConfirm(o.id)}
+                  onClick={() => handleConfirm(o.id, o.feasibility_status)}
                   disabled={pending && confirmingId === o.id}
-                  className="btn-terra"
+                  className={
+                    o.feasibility_status === "recommended"
+                      ? "btn-terra"
+                      : "btn-ghost"
+                  }
                 >
                   {pending && confirmingId === o.id
                     ? "Confirming…"
-                    : "Confirm this option"}
+                    : o.feasibility_status === "not_recommended"
+                      ? "Confirm anyway"
+                      : "Confirm this option"}
                 </button>
               </div>
             ) : null}

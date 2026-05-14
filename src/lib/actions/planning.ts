@@ -109,23 +109,41 @@ export async function createAndPlanVisit(
   const planResult = await runPlanningForVisit(visitId);
   if (!planResult.ok) return planResult;
 
-  // 5. If any option is feasible, transition to 'proposed' (offered to customer
-  //    but not yet confirmed); otherwise stay in 'checking' so the user can
-  //    iterate on the proposed time.
-  const hasFeasible = planResult.value.bestStatus === "recommended" ||
-                      planResult.value.bestStatus === "tight";
-  if (hasFeasible) {
-    const proposed = await transitionVisitPlan(visitId, "proposed");
-    if (!proposed.ok) return proposed;
-  }
+  // 5. Always transition to 'proposed' after a successful planning run, even
+  //    if every option came back not_recommended (e.g. calendar conflicts).
+  //    The verdict on the options is separate from the visit status — we let
+  //    the user decide whether to commit.
+  const proposed = await transitionVisitPlan(visitId, "proposed");
+  if (!proposed.ok) return proposed;
 
   return ok({
     visitId,
     planningRunId: planResult.value.planningRunId,
-    status: hasFeasible ? "proposed" : "checking",
+    status: "proposed",
     optionCount: planResult.value.optionCount,
     bestStatus: planResult.value.bestStatus,
   });
+}
+
+export async function rePlanVisit(visitId: string) {
+  const result = await runPlanningForVisit(visitId);
+  if (!result.ok) return result;
+
+  // If the visit was still in 'checking' (planning had failed before, or it
+  // was created pre-calendar-connection), move it forward now that a new
+  // planning run exists. Visits already in proposed/confirmed/etc just keep
+  // their current status.
+  const supabase = await createClient();
+  const { data: v } = await supabase
+    .from("visit_plans")
+    .select("status")
+    .eq("id", visitId)
+    .maybeSingle();
+  if (v?.status === "checking") {
+    const transition = await transitionVisitPlan(visitId, "proposed");
+    if (!transition.ok) return transition;
+  }
+  return result;
 }
 
 // Internal: fetch integration data + persist a PlanningRun + TravelOptions +
@@ -377,7 +395,3 @@ async function runPlanningForVisit(
   });
 }
 
-export async function rePlanVisit(visitId: string) {
-  // For now, just re-runs planning. Future: take a new proposed_start_time.
-  return runPlanningForVisit(visitId);
-}
