@@ -1,0 +1,144 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { FormError, FormField, Input, SubmitButton, Textarea } from "@/components/ui/form";
+import { createCustomerSite, deleteCustomerSite } from "@/lib/actions/sites";
+import { feedbackFromError, type FormFeedback } from "@/lib/actions/_form";
+
+type Site = {
+  id: string;
+  name: string | null;
+  address: string | null;
+  postcode: string | null;
+  parking_notes: string | null;
+  nearest_station_notes: string | null;
+};
+
+export function SitesPanel({
+  customerId,
+  sites,
+}: {
+  customerId: string;
+  sites: Site[];
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<FormFeedback | null>(null);
+  const [showForm, setShowForm] = useState(sites.length === 0);
+
+  const handleDelete = (id: string) => {
+    if (!window.confirm("Delete this site?")) return;
+    setDeletingId(id);
+    startTransition(async () => {
+      const result = await deleteCustomerSite(id);
+      setDeletingId(null);
+      if (!result.ok) {
+        setFeedback(feedbackFromError(result.error));
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <FormError message={feedback?.message} />
+      {sites.length > 0 ? (
+        <ul className="divide-y divide-border rounded-md border border-border">
+          {sites.map((s) => (
+            <li key={s.id} className="p-3 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <p className="font-medium">{s.name ?? "(unnamed site)"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[s.address, s.postcode].filter(Boolean).join(", ") || "no address"}
+                  </p>
+                  {s.parking_notes ? (
+                    <p className="mt-1 text-xs">Parking: {s.parking_notes}</p>
+                  ) : null}
+                  {s.nearest_station_notes ? (
+                    <p className="text-xs">Station: {s.nearest_station_notes}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(s.id)}
+                  disabled={pending && deletingId === s.id}
+                  className="text-xs text-destructive hover:underline disabled:opacity-50"
+                >
+                  {deletingId === s.id ? "…" : "Delete"}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">No sites yet.</p>
+      )}
+
+      {showForm ? (
+        <form
+          className="flex flex-col gap-3 rounded-md border border-dashed border-border p-3"
+          action={(formData) => {
+            startTransition(async () => {
+              setFeedback(null);
+              const result = await createCustomerSite({
+                customer_id: customerId,
+                name: String(formData.get("name") ?? "") || null,
+                address: String(formData.get("address") ?? "") || null,
+                postcode: String(formData.get("postcode") ?? "") || null,
+                parking_notes: String(formData.get("parking_notes") ?? "") || null,
+                nearest_station_notes:
+                  String(formData.get("nearest_station_notes") ?? "") || null,
+              });
+              if (!result.ok) {
+                setFeedback(feedbackFromError(result.error));
+                return;
+              }
+              setShowForm(false);
+              router.refresh();
+            });
+          }}
+        >
+          <FormField label="Site name" htmlFor="site-name" error={feedback?.fieldErrors.name}>
+            <Input id="site-name" name="name" placeholder="e.g. Belper office" />
+          </FormField>
+          <FormField label="Address" htmlFor="site-address" error={feedback?.fieldErrors.address}>
+            <Input id="site-address" name="address" />
+          </FormField>
+          <FormField label="Postcode" htmlFor="site-postcode" error={feedback?.fieldErrors.postcode}>
+            <Input id="site-postcode" name="postcode" maxLength={16} />
+          </FormField>
+          <FormField label="Parking notes" htmlFor="site-parking">
+            <Textarea id="site-parking" name="parking_notes" rows={2} />
+          </FormField>
+          <FormField label="Nearest station notes" htmlFor="site-station">
+            <Textarea id="site-station" name="nearest_station_notes" rows={2} />
+          </FormField>
+          <div className="flex gap-2">
+            <SubmitButton pending={pending}>Add site</SubmitButton>
+            {sites.length > 0 ? (
+              <button
+                type="button"
+                className="rounded-md border border-border px-3 py-1.5 text-sm"
+                onClick={() => setShowForm(false)}
+              >
+                Cancel
+              </button>
+            ) : null}
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="w-fit rounded-md border border-border px-3 py-1.5 text-sm"
+        >
+          + Add site
+        </button>
+      )}
+    </div>
+  );
+}

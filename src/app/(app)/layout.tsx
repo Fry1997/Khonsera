@@ -11,7 +11,7 @@ const NAV = [
   { href: "/locations", label: "Locations" },
   { href: "/expenses", label: "Expenses" },
   { href: "/settings", label: "Settings" },
-];
+] as const;
 
 export default async function AppLayout({
   children,
