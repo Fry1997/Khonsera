@@ -145,11 +145,13 @@ export async function transitionVisit(
 
 // Confirm a visit: lock in the chosen travel option, transition the visit
 // to 'confirmed', create the SavedTrip and a BookingIntent ready for the
-// partner booking handoff (or "mark as booked" for drive).
+// partner booking handoff (or "mark as booked" for drive). Also creates
+// calendar events (outbound travel + meeting + return travel) when the user
+// has a connected calendar.
 export async function confirmVisitWithTravelOption(
   visitId: string,
   travelOptionId: string,
-): Promise<Result<{ visitId: string; savedTripId: string; bookingIntentId: string | null }>> {
+): Promise<Result<{ visitId: string; savedTripId: string; bookingIntentId: string | null; calendarEventCount: number }>> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
@@ -158,7 +160,10 @@ export async function confirmVisitWithTravelOption(
   const { data: option } = await supabase
     .from("travel_options")
     .select(
-      "id, mode, total_cost_estimate, currency, planning_runs!inner(visit_plan_id)",
+      `id, mode, total_cost_estimate, currency,
+       leave_origin_at, arrive_site_at, meeting_start_at, meeting_end_at,
+       leave_site_at, arrive_return_location_at,
+       planning_runs!inner(visit_plan_id)`,
     )
     .eq("id", travelOptionId)
     .maybeSingle();
@@ -167,6 +172,21 @@ export async function confirmVisitWithTravelOption(
   if (linkedVisit !== visitId) {
     return err(errors.validation("Travel option does not belong to this visit"));
   }
+
+  // 1b. Pull visit metadata for the event titles.
+  const { data: visit } = await supabase
+    .from("visit_plans")
+    .select(
+      `title, customer:customers(name),
+       customer_site:customer_sites(name, address)`,
+    )
+    .eq("id", visitId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  const customer = (visit?.customer as unknown as { name?: string } | null)?.name ?? "Customer";
+  const site = visit?.customer_site as unknown as { name?: string; address?: string } | null;
+  const meetingTitle = visit?.title ?? `${customer} visit`;
+  const siteLocation = [site?.name, site?.address].filter(Boolean).join(", ") || undefined;
 
   // 2. Transition the visit to confirmed.
   const transitioned = await transitionVisitPlan(visitId, "confirmed", {
@@ -217,6 +237,24 @@ export async function confirmVisitWithTravelOption(
     bookingIntentId = intent.id;
   }
 
+  // 5. Create calendar events. createCalendarEvent gracefully degrades to
+  //    "unavailable" when no calendar is connected, so this is a no-op for
+  //    users who haven't connected Google. Failures here don't block the
+  //    confirm — we just don't store the link rows.
+  const calendarEventCount = await createCalendarEventsForVisit({
+    visitPlanId: visitId,
+    workspaceId: ctx.workspaceId,
+    customer,
+    meetingTitle,
+    siteLocation,
+    leaveOriginAt: new Date(option.leave_origin_at as unknown as string),
+    arriveSiteAt: new Date(option.arrive_site_at as unknown as string),
+    meetingStartAt: new Date(option.meeting_start_at as unknown as string),
+    meetingEndAt: new Date(option.meeting_end_at as unknown as string),
+    leaveSiteAt: new Date(option.leave_site_at as unknown as string),
+    arriveReturnLocationAt: new Date(option.arrive_return_location_at as unknown as string),
+  });
+
   await recordAudit({
     entityType: "visit_plan",
     entityId: visitId,
@@ -225,6 +263,7 @@ export async function confirmVisitWithTravelOption(
       travel_option_id: travelOptionId,
       saved_trip_id: tripInsert.value.id,
       booking_intent_id: bookingIntentId,
+      calendar_event_count: calendarEventCount,
     },
   });
 
@@ -232,7 +271,87 @@ export async function confirmVisitWithTravelOption(
     visitId,
     savedTripId: tripInsert.value.id,
     bookingIntentId,
+    calendarEventCount,
   });
+}
+
+async function createCalendarEventsForVisit(args: {
+  visitPlanId: string;
+  workspaceId: string;
+  customer: string;
+  meetingTitle: string;
+  siteLocation?: string;
+  leaveOriginAt: Date;
+  arriveSiteAt: Date;
+  meetingStartAt: Date;
+  meetingEndAt: Date;
+  leaveSiteAt: Date;
+  arriveReturnLocationAt: Date;
+}): Promise<number> {
+  const { createCalendarEvent } = await import("@/lib/integrations/calendar");
+  const supabase = await createClient();
+  const events: Array<{
+    title: string;
+    description: string;
+    start: Date;
+    end: Date;
+    location?: string;
+    colorId: string;
+    eventType: "outbound_travel" | "appointment" | "return_travel";
+  }> = [
+    {
+      title: `Travel: ${args.customer}`,
+      description: "Outbound travel to customer site (Journies).",
+      start: args.leaveOriginAt,
+      end: args.arriveSiteAt,
+      location: args.siteLocation,
+      colorId: "6", // tangerine
+      eventType: "outbound_travel",
+    },
+    {
+      title: args.meetingTitle,
+      description: "On-site visit (Journies).",
+      start: args.meetingStartAt,
+      end: args.meetingEndAt,
+      location: args.siteLocation,
+      colorId: "9", // blueberry
+      eventType: "appointment",
+    },
+    {
+      title: `Travel home from ${args.customer}`,
+      description: "Return travel (Journies).",
+      start: args.leaveSiteAt,
+      end: args.arriveReturnLocationAt,
+      colorId: "6",
+      eventType: "return_travel",
+    },
+  ];
+
+  let created = 0;
+  for (const e of events) {
+    const result = await createCalendarEvent(
+      {
+        title: e.title,
+        description: e.description,
+        start: e.start,
+        end: e.end,
+        location: e.location,
+      },
+      { colorId: e.colorId },
+    );
+    if (result.mode === "unavailable") continue;
+    await supabase.from("calendar_event_links").insert({
+      visit_plan_id: args.visitPlanId,
+      workspace_id: args.workspaceId,
+      provider: "google",
+      external_event_id: result.data.externalId,
+      event_type: e.eventType,
+      start_time: e.start.toISOString(),
+      end_time: e.end.toISOString(),
+    });
+    created++;
+  }
+  return created;
 }
 
 export async function deleteVisitPlan(id: string): Promise<Result<{ id: string }>> {

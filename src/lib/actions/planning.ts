@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit/with-audit";
 import { transitionVisitPlan } from "@/lib/state/transitions";
 import { getRoute } from "@/lib/integrations/routing";
 import { findRailJourneys } from "@/lib/integrations/rail";
+import { getFreeBusy } from "@/lib/integrations/calendar";
 import {
   buildDriveOption,
   buildRailOption,
@@ -14,6 +15,7 @@ import {
   type BuiltOption,
   type PlanningInput,
 } from "@/lib/planning/orchestrator";
+import { evaluateFeasibility } from "@/lib/planning/feasibility";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import {
   errors,
@@ -252,8 +254,46 @@ async function runPlanningForVisit(
     );
   }
 
+  // 2b. Overlay calendar conflicts. Fetch free/busy for the broadest window
+  // any built option touches, then for each option find overlapping events
+  // and re-evaluate its feasibility with those titles attached. Failure to
+  // reach the calendar provider is non-fatal — the visit just won't be
+  // conflict-aware.
+  const earliest = built.reduce(
+    (a, o) => (o.leaveOriginAt < a ? o.leaveOriginAt : a),
+    built[0].leaveOriginAt,
+  );
+  const latest = built.reduce(
+    (a, o) => (o.arriveReturnLocationAt > a ? o.arriveReturnLocationAt : a),
+    built[0].arriveReturnLocationAt,
+  );
+  const freeBusy = await getFreeBusy({ start: earliest, end: latest });
+  const busyBlocks = freeBusy.mode === "unavailable" ? [] : freeBusy.data;
+
+  const overlaid = built.map((o) => {
+    if (busyBlocks.length === 0) return o;
+    const overlapping = busyBlocks.filter(
+      (b) => b.end > o.leaveOriginAt && b.start < o.arriveReturnLocationAt,
+    );
+    if (overlapping.length === 0) return o;
+    const titles = overlapping.map((b) => b.title ?? "Existing event");
+    const verdict = evaluateFeasibility({
+      appointmentStart: o.meetingStartAt,
+      appointmentEnd: o.meetingEndAt,
+      arriveSiteAt: o.arriveSiteAt,
+      leaveSiteAt: o.leaveSiteAt,
+      arriveReturnLocationAt: o.arriveReturnLocationAt,
+      latestReturnTime: planningInput.latestReturnTime,
+      arrivalBufferMinutes: planningInput.arrivalBufferMinutes,
+      returnBufferMinutes: planningInput.returnBufferMinutes,
+      timezone: planningInput.timezone,
+      conflictTitles: titles,
+    });
+    return { ...o, feasibilityStatus: verdict.status, verdict };
+  });
+
   // 3. Rank.
-  const ranked = rankBuiltOptions(built, planningInput.preferredMode);
+  const ranked = rankBuiltOptions(overlaid, planningInput.preferredMode);
   const best = ranked[0];
 
   // 4. Insert PlanningRun + TravelOptions + JourneyLegs.

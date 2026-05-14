@@ -6,6 +6,7 @@ import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatTimeInTz, formatDateInTz } from "@/lib/types/time";
 import { TravelOptionsPanel } from "./travel-options-panel";
+import { VisitCalendarWidget } from "@/components/visit-calendar-widget";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -132,18 +133,53 @@ export default async function VisitDetailPage({
       </section>
 
       {latestRun ? (
-        <TravelOptionsPanel
-          visitId={id}
-          visitStatus={visit.status}
-          run={latestRun}
-          savedTrip={savedTrip ?? null}
-          timezone={wsCfg.timezone}
-        />
+        <>
+          {(() => {
+            const selectedOption =
+              latestRun.travel_options.find(
+                (o) => o.id === savedTrip?.selected_travel_option_id,
+              ) ?? latestRun.travel_options[0];
+            if (!selectedOption || !selectedOption.leave_origin_at) return null;
+            return (
+              <VisitCalendarWidget
+                timezone={wsCfg.timezone}
+                bands={[
+                  {
+                    start: new Date(selectedOption.leave_origin_at),
+                    end: new Date(selectedOption.arrive_site_at!),
+                    label: "Travel out",
+                    kind: "outbound_travel",
+                  },
+                  {
+                    start: new Date(selectedOption.meeting_start_at!),
+                    end: new Date(selectedOption.meeting_end_at!),
+                    label: visit.title ?? customer?.name ?? "Meeting",
+                    kind: "meeting",
+                  },
+                  {
+                    start: new Date(selectedOption.leave_site_at!),
+                    end: new Date(selectedOption.arrive_return_location_at!),
+                    label: "Travel home",
+                    kind: "return_travel",
+                  },
+                ]}
+              />
+            );
+          })()}
+
+          <TravelOptionsPanel
+            visitId={id}
+            visitStatus={visit.status}
+            run={latestRun}
+            savedTrip={savedTrip ?? null}
+            timezone={wsCfg.timezone}
+          />
+        </>
       ) : (
-        <div className="rounded-md border border-border p-6 text-sm text-muted-foreground">
+        <div className="j-card p-6 small">
           No planning run yet. This usually means the form hit a
           missing-integration state — go back and try again, or enable demo
-          mode if you're staff.
+          mode if you&apos;re staff.
         </div>
       )}
     </PageShell>

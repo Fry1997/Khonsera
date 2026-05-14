@@ -3,7 +3,7 @@
 // Flip to true as each integration lands.
 
 export const features = {
-  calendarGoogle: false,
+  calendarGoogle: true,
   calendarMicrosoft: false,
   routingLive: false,
   railTimetableLive: false,
