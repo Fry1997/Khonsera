@@ -3,7 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PATHS = ["/login", "/signup", "/auth/callback", "/"];
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  // /reset-password is intentionally NOT public — it requires the recovery
+  // session that /auth/callback installs after the magic link exchange.
+  "/auth/callback",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

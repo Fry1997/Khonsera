@@ -55,6 +55,11 @@ async function LoginInner({
         </button>
       </form>
       <p className="text-sm text-muted-foreground">
+        <a href="/forgot-password" className="underline">
+          Forgot password?
+        </a>
+      </p>
+      <p className="text-sm text-muted-foreground">
         No account?{" "}
         <a href="/signup" className="underline">
           Create one
