@@ -10,14 +10,16 @@ export async function DemoModeIndicator() {
       <input type="hidden" name="next" value={on ? "off" : "on"} />
       <button
         type="submit"
-        className={`w-full rounded-md px-2 py-1.5 text-left text-xs font-medium ${
-          on
-            ? "bg-amber-500/20 text-amber-900"
-            : "border border-dashed border-border text-muted-foreground"
-        }`}
+        className="chip"
+        style={{
+          color: on ? "var(--terra)" : "var(--ink-dim)",
+          background: on ? "var(--rust-2)" : "transparent",
+          border: on ? "1px solid var(--rust-2)" : "1px dashed var(--rule)",
+        }}
         title="Staff only. Injects realistic mock data into integration stubs."
       >
-        Demo mode: {on ? "on (staff)" : "off"}
+        <span className="dot" />
+        Demo {on ? "on" : "off"}
       </button>
     </form>
   );

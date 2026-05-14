@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { confirmVisitWithTravelOption } from "@/lib/actions/visit-plans";
 import { feedbackFromError } from "@/lib/actions/_form";
 import { FormError } from "@/components/ui/form";
+import { VerdictPill, Stat } from "@/components/ui/verdict-pill";
 import { formatTimeInTz } from "@/lib/types/time";
 
 type Leg = {
@@ -48,20 +49,6 @@ type Run = {
   status: string;
   summary: string | null;
   travel_options: Option[];
-};
-
-const VERDICT_LABEL: Record<Option["feasibility_status"], string> = {
-  recommended: "Recommended",
-  tight: "Possible but tight",
-  not_recommended: "Not recommended",
-  not_possible: "Not possible",
-};
-
-const VERDICT_CLASS: Record<Option["feasibility_status"], string> = {
-  recommended: "bg-emerald-100 text-emerald-800",
-  tight: "bg-amber-100 text-amber-800",
-  not_recommended: "bg-rose-100 text-rose-800",
-  not_possible: "bg-rose-200 text-rose-900",
 };
 
 export function TravelOptionsPanel({
@@ -109,9 +96,10 @@ export function TravelOptionsPanel({
   return (
     <section className="flex flex-col gap-4">
       <header className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Travel options</h2>
-        <span className="text-xs text-muted-foreground">
-          {run.summary} · generated {formatTimeInTz(new Date(run.generated_at), timezone)}
+        <h2 className="h3">Travel options</h2>
+        <span className="small">
+          {run.summary} · generated{" "}
+          {formatTimeInTz(new Date(run.generated_at), timezone)}
         </span>
       </header>
       <FormError message={error ?? undefined} />
@@ -127,63 +115,83 @@ export function TravelOptionsPanel({
         return (
           <div
             key={o.id}
-            className={`rounded-md border p-4 ${
-              isSelected ? "border-primary bg-primary/5" : "border-border"
-            }`}
+            className="j-card p-5"
+            style={
+              isSelected
+                ? { borderColor: "var(--terra)", background: "var(--card)" }
+                : undefined
+            }
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-1 flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold capitalize">{o.mode}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${VERDICT_CLASS[o.feasibility_status]}`}
-                  >
-                    {VERDICT_LABEL[o.feasibility_status]}
-                  </span>
+                  <span className="h3 capitalize">{o.mode}</span>
+                  <VerdictPill verdict={o.feasibility_status} />
                   {isSelected ? (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    <span
+                      className="chip"
+                      style={{
+                        background: "var(--rust-2)",
+                        color: "var(--terra-deep)",
+                      }}
+                    >
                       Selected
                     </span>
                   ) : null}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Leave {fmt(o.leave_origin_at, timezone)} · arrive{" "}
-                  {fmt(o.arrive_site_at, timezone)} · leave site{" "}
-                  {fmt(o.leave_site_at, timezone)} · home{" "}
-                  {fmt(o.arrive_return_location_at, timezone)}
-                </p>
                 {o.recommendation_summary ? (
-                  <p className="mt-2 text-sm italic text-muted-foreground">
-                    "{o.recommendation_summary}"
+                  <p className="body" style={{ fontStyle: "italic" }}>
+                    &ldquo;{o.recommendation_summary}&rdquo;
                   </p>
                 ) : null}
                 {o.risk_summary && o.feasibility_status !== "recommended" ? (
-                  <p className="text-xs text-rose-700">{o.risk_summary}</p>
+                  <p className="small" style={{ color: "var(--rust)" }}>
+                    {o.risk_summary}
+                  </p>
                 ) : null}
               </div>
-              <div className="text-right">
-                <p className="text-lg font-semibold">{cost}</p>
-                <p className="text-xs text-muted-foreground">
-                  {o.total_duration_minutes} min total
-                </p>
-              </div>
+              <Stat
+                label="Cost"
+                value={cost}
+                sub={`${o.total_duration_minutes} min total`}
+                align="right"
+              />
             </div>
 
-            <details className="mt-3">
-              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Stat label="Leave" value={fmt(o.leave_origin_at, timezone)} />
+              <Stat label="Arrive" value={fmt(o.arrive_site_at, timezone)} />
+              <Stat
+                label="Leave site"
+                value={fmt(o.leave_site_at, timezone)}
+              />
+              <Stat
+                label="Home"
+                value={fmt(o.arrive_return_location_at, timezone)}
+              />
+            </div>
+
+            <details className="mt-4">
+              <summary className="uc cursor-pointer">
                 Journey legs ({o.journey_legs.length})
               </summary>
-              <ol className="mt-2 space-y-1 text-xs text-muted-foreground">
+              <ol className="mt-3 flex flex-col gap-1.5">
                 {[...o.journey_legs]
                   .sort((a, b) => a.sequence - b.sequence)
                   .map((l) => (
-                    <li key={l.id} className="flex justify-between gap-2">
+                    <li
+                      key={l.id}
+                      className="small flex justify-between gap-2 border-l-2 pl-3"
+                      style={{ borderColor: "var(--rule)" }}
+                    >
                       <span>
-                        {l.leg_type} · {l.start_location_name} → {l.end_location_name}
+                        <span className="uc mr-2">{l.leg_type}</span>
+                        {l.start_location_name} → {l.end_location_name}
                         {l.service_number ? ` · ${l.service_number}` : ""}
                       </span>
-                      <span className="whitespace-nowrap">
-                        {fmt(l.start_time, timezone)}–{fmt(l.end_time, timezone)} ({l.duration_minutes}m)
+                      <span className="mono whitespace-nowrap">
+                        {fmt(l.start_time, timezone)}–{fmt(l.end_time, timezone)} (
+                        {l.duration_minutes}m)
                       </span>
                     </li>
                   ))}
@@ -191,14 +199,16 @@ export function TravelOptionsPanel({
             </details>
 
             {!isConfirmed && o.feasibility_status !== "not_possible" ? (
-              <div className="mt-3">
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => handleConfirm(o.id)}
                   disabled={pending && confirmingId === o.id}
-                  className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                  className="btn-terra"
                 >
-                  {pending && confirmingId === o.id ? "Confirming…" : "Confirm this option"}
+                  {pending && confirmingId === o.id
+                    ? "Confirming…"
+                    : "Confirm this option"}
                 </button>
               </div>
             ) : null}
