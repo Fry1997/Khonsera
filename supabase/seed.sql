@@ -1,0 +1,5 @@
+-- Seed file for local development.
+-- Intentionally empty: real users go through the real auth + onboarding flow.
+-- Staff users can flip demo mode at runtime to inject mock data through the
+-- integration stubs (see src/lib/integrations/), so we do not seed visit/journey
+-- data here.
