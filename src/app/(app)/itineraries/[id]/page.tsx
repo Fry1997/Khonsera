@@ -65,7 +65,7 @@ export default async function ItineraryDetailPage({
           `id, sequence, type, title, start_time, end_time, duration_minutes,
            is_time_fixed, location_id, customer_id, customer_site_id, contact_id,
            external_reference, external_url, metadata, notes,
-           location:locations(name, address, latitude, longitude),
+           location:locations(name, type, address, latitude, longitude),
            customer:customers(name),
            customer_site:customer_sites(name, address, latitude, longitude)`,
         )

@@ -14,6 +14,7 @@ import type {
   TransitionMode,
 } from "@/lib/types/domain";
 import { AddStopForm } from "./add-stop-form";
+import { AddTrainBookingForm } from "./add-train-booking-form";
 
 const STOP_ICON: Record<StopType, string> = {
   start: "📍",
@@ -64,7 +65,7 @@ type StopRow = {
   customer_site_id: string | null;
   external_reference: string | null;
   notes: string | null;
-  location: { name?: string; address?: string } | null;
+  location: { name?: string; type?: string; address?: string } | null;
   customer: { name?: string } | null;
   customer_site: { name?: string; address?: string } | null;
   metadata: Record<string, unknown> | null;
@@ -126,6 +127,10 @@ export function ItineraryEditor({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [trainBookingFor, setTrainBookingFor] = useState<{
+    stopId: string;
+    label: string;
+  } | null>(null);
 
   // Transitions keyed by from_stop_id for fast lookup.
   const transitionByFrom = useMemo(() => {
@@ -410,7 +415,26 @@ export function ItineraryEditor({
                     {stop.notes ? (
                       <p className="small mt-2 line-clamp-3">{stop.notes}</p>
                     ) : null}
-                    <footer className="mt-3 flex justify-end">
+                    <footer className="mt-3 flex flex-wrap items-center justify-end gap-3">
+                      {stop.location?.type === "station" ? (
+                        <button
+                          type="button"
+                          className="text-xs hover:underline disabled:opacity-50"
+                          style={{ color: "var(--rust)" }}
+                          onClick={() =>
+                            setTrainBookingFor({
+                              stopId: stop.id,
+                              label:
+                                stop.location?.name ??
+                                stop.title ??
+                                "this station",
+                            })
+                          }
+                          disabled={pending}
+                        >
+                          + Add booked train
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="text-xs text-rust hover:underline disabled:opacity-50"
@@ -439,6 +463,22 @@ export function ItineraryEditor({
           })}
         </ol>
       )}
+
+      {/* Booked-train modal-ish */}
+      {trainBookingFor ? (
+        <AddTrainBookingForm
+          fromStopId={trainBookingFor.stopId}
+          fromStopLabel={trainBookingFor.label}
+          customers={customers}
+          customerSites={customerSites}
+          locations={locations}
+          onCancel={() => setTrainBookingFor(null)}
+          onDone={() => {
+            setTrainBookingFor(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
 
       {/* Add stop */}
       {adding ? (
