@@ -210,6 +210,42 @@ export async function resolveItineraryTimes(
       .eq("workspace_id", ctx.workspaceId);
   }
 
+  // Refresh "leave_soon" notification rules. Strategy: replace the
+  // itinerary's auto-generated rules (payload.kind === 'auto_leave_soon')
+  // with a fresh batch — one per stop that has a computed start_time and
+  // a preceding leg to actually "leave" for.
+  await supabase
+    .from("notification_rules")
+    .delete()
+    .eq("itinerary_id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("type", "leave_soon")
+    .filter("payload->>kind", "eq", "auto_leave_soon");
+  const bufferMinutes = 5;
+  const notifications: {
+    itinerary_id: string;
+    workspace_id: string;
+    type: "leave_soon";
+    trigger_time: string;
+    payload: Record<string, unknown>;
+  }[] = [];
+  for (const s of result.stops) {
+    if (!s.start_time) continue;
+    const triggerTime = new Date(
+      new Date(s.start_time).getTime() - bufferMinutes * 60_000,
+    ).toISOString();
+    notifications.push({
+      itinerary_id: itineraryId,
+      workspace_id: ctx.workspaceId,
+      type: "leave_soon",
+      trigger_time: triggerTime,
+      payload: { kind: "auto_leave_soon", stop_id: s.id },
+    });
+  }
+  if (notifications.length > 0) {
+    await supabase.from("notification_rules").insert(notifications);
+  }
+
   return ok({
     itinerary_id: itineraryId,
     conflicts: result.conflicts.length,

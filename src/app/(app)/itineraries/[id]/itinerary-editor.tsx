@@ -568,6 +568,15 @@ function LegCard({
     <div className="my-3 ml-4 rounded-md border border-rule/60 bg-card-2/40 p-3 text-sm">
       <div className="mb-2 flex flex-wrap items-center gap-3">
         <span className="uc">via</span>
+        {transition.is_locked ? (
+          <span
+            className="uc"
+            title="Locked — driven by a booked ticket"
+            style={{ color: "var(--rust)" }}
+          >
+            🔒 booked
+          </span>
+        ) : null}
         <select
           value={transition.mode}
           disabled={pending}
