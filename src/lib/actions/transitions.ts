@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { routeForTransition, type TransitionRoute } from "@/lib/integrations/routing";
+import { resolveItineraryTimes } from "./itineraries";
 import { dbResult, parseInput } from "./_helpers";
 import { err, errors, ok, type Result } from "@/lib/errors";
 import type { TransitionMode } from "@/lib/types/domain";
@@ -136,6 +137,7 @@ export async function upsertTransition(
       action: "upsert",
       after: result.value,
     });
+    await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }
@@ -245,6 +247,7 @@ export async function setTransitionMode(
   const result = dbResult<Transition>(data, error, "transition");
   if (result.ok) {
     await writeJourneyLegs(result.value.id, ctx.workspaceId, route);
+    await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }

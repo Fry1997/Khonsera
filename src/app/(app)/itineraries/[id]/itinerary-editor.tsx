@@ -58,6 +58,7 @@ type StopRow = {
   start_time: string | null;
   end_time: string | null;
   duration_minutes: number | null;
+  is_time_fixed: boolean;
   external_reference: string | null;
   notes: string | null;
   location: { name?: string; address?: string } | null;
@@ -306,11 +307,23 @@ export function ItineraryEditor({
                       </div>
                       <div className="text-right">
                         <p className="mono">
+                          {stop.is_time_fixed ? (
+                            <span title="Time is fixed (anchor)" aria-label="anchor">
+                              📌{" "}
+                            </span>
+                          ) : null}
                           {fmtTime(stop.start_time, timezone)}
-                          {stop.end_time
+                          {stop.end_time && stop.end_time !== stop.start_time
                             ? ` – ${fmtTime(stop.end_time, timezone)}`
                             : ""}
                         </p>
+                        {i === 0 &&
+                        !stop.is_time_fixed &&
+                        stop.start_time ? (
+                          <p className="tiny" style={{ color: "var(--rust)" }}>
+                            Leave by {fmtTime(stop.start_time, timezone)}
+                          </p>
+                        ) : null}
                         {stop.duration_minutes ? (
                           <p className="tiny">{stop.duration_minutes} min</p>
                         ) : null}

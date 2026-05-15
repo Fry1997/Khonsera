@@ -6,7 +6,8 @@ import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
 import { transitionItinerary } from "@/lib/state/transitions";
-import type { Result } from "@/lib/errors";
+import { solveTimes } from "@/lib/itinerary/solver";
+import { ok, type Result } from "@/lib/errors";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
 const createSchema = z
@@ -147,4 +148,70 @@ export async function transitionItineraryStatus(
   metadata?: Record<string, unknown>,
 ) {
   return transitionItinerary(id, toStatus, metadata);
+}
+
+// Run the time solver over an itinerary and write back any newly-computed
+// start/end times on stops and transitions. Idempotent and cheap — safe to
+// call after every stop/transition mutation.
+export async function resolveItineraryTimes(
+  itineraryId: string,
+): Promise<Result<{ itinerary_id: string; conflicts: number }>> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const [{ data: stops }, { data: transitions }] = await Promise.all([
+    supabase
+      .from("stops")
+      .select(
+        "id, sequence, start_time, end_time, duration_minutes, is_time_fixed",
+      )
+      .eq("itinerary_id", itineraryId)
+      .eq("workspace_id", ctx.workspaceId)
+      .order("sequence"),
+    supabase
+      .from("transitions")
+      .select(
+        "id, from_stop_id, to_stop_id, start_time, end_time, computed_duration_minutes, is_locked",
+      )
+      .eq("itinerary_id", itineraryId)
+      .eq("workspace_id", ctx.workspaceId),
+  ]);
+
+  const result = solveTimes({
+    stops: (stops ?? []) as Parameters<typeof solveTimes>[0]["stops"],
+    transitions:
+      (transitions ?? []) as Parameters<typeof solveTimes>[0]["transitions"],
+  });
+
+  // Write only the rows whose times actually changed, to keep audit chatter
+  // and DB writes minimal. Sequential await — itineraries hold ~10s of stops.
+  const stopsById = new Map(stops?.map((s) => [s.id, s]) ?? []);
+  const transById = new Map(transitions?.map((t) => [t.id, t]) ?? []);
+  for (const s of result.stops) {
+    const orig = stopsById.get(s.id);
+    if (!orig) continue;
+    if (orig.start_time === s.start_time && orig.end_time === s.end_time)
+      continue;
+    await supabase
+      .from("stops")
+      .update({ start_time: s.start_time, end_time: s.end_time })
+      .eq("id", s.id)
+      .eq("workspace_id", ctx.workspaceId);
+  }
+  for (const t of result.transitions) {
+    const orig = transById.get(t.id);
+    if (!orig) continue;
+    if (orig.start_time === t.start_time && orig.end_time === t.end_time)
+      continue;
+    await supabase
+      .from("transitions")
+      .update({ start_time: t.start_time, end_time: t.end_time })
+      .eq("id", t.id)
+      .eq("workspace_id", ctx.workspaceId);
+  }
+
+  return ok({
+    itinerary_id: itineraryId,
+    conflicts: result.conflicts.length,
+  });
 }

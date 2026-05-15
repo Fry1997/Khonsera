@@ -6,6 +6,7 @@ import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
 import { err, errors, ok, type Result } from "@/lib/errors";
+import { resolveItineraryTimes } from "./itineraries";
 import type { StopType } from "@/lib/types/domain";
 
 const stopTypeEnum = z.enum([
@@ -126,6 +127,7 @@ export async function createStop(
       action: "create",
       after: result.value,
     });
+    await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }
@@ -164,6 +166,7 @@ export async function updateStop(
       before,
       after: result.value,
     });
+    await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }
@@ -192,6 +195,9 @@ export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
     action: "delete",
     before,
   });
+  if (before?.itinerary_id) {
+    await resolveItineraryTimes(before.itinerary_id);
+  }
   return ok({ id });
 }
 
