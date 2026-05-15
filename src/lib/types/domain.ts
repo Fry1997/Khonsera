@@ -1,10 +1,12 @@
-// Hand-written domain types that mirror the enums in supabase/migrations.
-// Once the project is wired to a Supabase instance, run `npm run db:types`
-// to generate the full database type definitions and import them alongside.
+// Hand-written domain types that mirror the enums in
+// supabase/migrations/*.sql. Once the project is wired to a Supabase instance,
+// `npm run db:types` regenerates the full database type definitions in
+// database.ts and these stay as the curated subset.
 
 export type WorkspaceType = "personal" | "organisation";
 export type MembershipRole = "owner" | "admin" | "member" | "viewer";
 export type MembershipStatus = "active" | "invited" | "suspended";
+
 export type LocationType =
   | "home"
   | "office"
@@ -13,21 +15,46 @@ export type LocationType =
   | "customer_site"
   | "parking"
   | "other";
+
 export type TravelModePreference = "rail" | "drive" | "compare" | "mixed";
-export type VisitStatus =
+
+// Itinerary-level
+export type ItineraryStatus =
   | "draft"
-  | "checking"
-  | "proposed"
-  | "confirmed"
-  | "booked"
+  | "planning"
+  | "planned"
   | "in_progress"
   | "completed"
   | "cancelled";
+
+export type StopType =
+  | "start"
+  | "end"
+  | "appointment"
+  | "accommodation"
+  | "event"
+  | "meal"
+  | "transport_booked"
+  | "transit_arrival"
+  | "other";
+
+export type TransitionMode =
+  | "walk"
+  | "drive"
+  | "taxi"
+  | "bus"
+  | "tube"
+  | "train"
+  | "flight"
+  | "mixed";
+
+// Planning-engine output verdict (per option / per transition)
 export type FeasibilityStatus =
   | "recommended"
   | "tight"
   | "not_recommended"
   | "not_possible";
+
 export type LegType =
   | "walk"
   | "drive"
@@ -37,6 +64,7 @@ export type LegType =
   | "wait"
   | "meeting"
   | "buffer";
+
 export type ExpenseType =
   | "rail_ticket"
   | "mileage"
@@ -45,9 +73,3 @@ export type ExpenseType =
   | "hotel"
   | "food"
   | "other";
-export type SavedTripStatus =
-  | "upcoming"
-  | "ready"
-  | "in_progress"
-  | "completed"
-  | "cancelled";

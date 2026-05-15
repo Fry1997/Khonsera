@@ -8,7 +8,6 @@ import { recordAudit } from "@/lib/audit/with-audit";
 import { createClient } from "@/lib/supabase/server";
 import { parseInput } from "./_helpers";
 import { err, errors, ok, type Result } from "@/lib/errors";
-import { FLIGHT_NOTE_PREFIX, FLIGHT_NOTE_RE } from "@/lib/flights/notes";
 
 const lookupSchema = z.object({
   flight_iata: z
@@ -55,8 +54,10 @@ export async function lookupFlight(
   }
 }
 
+// Attach a flight number to a transport_booked stop. Stored in the stop's
+// metadata JSONB so we don't need a column per attachable provider.
 const attachSchema = z.object({
-  visit_plan_id: z.string().uuid(),
+  stop_id: z.string().uuid(),
   flight_iata: z
     .string()
     .trim()
@@ -65,11 +66,7 @@ const attachSchema = z.object({
     .transform((s) => (s ? s.toUpperCase().replace(/\s+/g, "") : null)),
 });
 
-// Attach (or detach when null) a flight number to a visit. The note-marker
-// constants live in src/lib/flights/notes.ts so they can be imported from
-// non-server modules — server-action files can only export async functions.
-
-export async function attachFlightToVisit(
+export async function attachFlightToStop(
   input: z.input<typeof attachSchema>,
 ): Promise<Result<{ id: string; flightIata: string | null }>> {
   const parsed = parseInput(attachSchema, input);
@@ -78,36 +75,33 @@ export async function attachFlightToVisit(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  const { data: visit, error: readErr } = await supabase
-    .from("visit_plans")
-    .select("id, notes")
-    .eq("id", parsed.value.visit_plan_id)
+  const { data: stop } = await supabase
+    .from("stops")
+    .select("id, metadata")
+    .eq("id", parsed.value.stop_id)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
-  if (readErr || !visit) return err(errors.notFound("visit_plan"));
+  if (!stop) return err(errors.notFound("stop"));
 
-  const existingNotes = (visit.notes ?? "").replace(FLIGHT_NOTE_RE, "").trim();
-  const newNotes = parsed.value.flight_iata
-    ? `${FLIGHT_NOTE_PREFIX} ${parsed.value.flight_iata}\n${existingNotes}`.trim()
-    : existingNotes;
+  const existingMeta = (stop.metadata as Record<string, unknown> | null) ?? {};
+  const newMeta = parsed.value.flight_iata
+    ? { ...existingMeta, flight_iata: parsed.value.flight_iata }
+    : Object.fromEntries(
+        Object.entries(existingMeta).filter(([k]) => k !== "flight_iata"),
+      );
 
-  const { error: updateErr } = await supabase
-    .from("visit_plans")
-    .update({ notes: newNotes })
-    .eq("id", visit.id);
-  if (updateErr) {
-    return err(
-      errors.unexpected(updateErr.message ?? "Couldn't attach flight"),
-    );
-  }
+  const { error } = await supabase
+    .from("stops")
+    .update({ metadata: newMeta })
+    .eq("id", stop.id);
+  if (error) return err(errors.unexpected(error.message ?? "Couldn't attach flight"));
 
   await recordAudit({
-    entityType: "visit_plan",
-    entityId: visit.id,
+    entityType: "stop",
+    entityId: stop.id,
     action: parsed.value.flight_iata ? "attach_flight" : "detach_flight",
     after: { flight_iata: parsed.value.flight_iata },
   });
 
-  return ok({ id: visit.id, flightIata: parsed.value.flight_iata });
+  return ok({ id: stop.id, flightIata: parsed.value.flight_iata });
 }
-

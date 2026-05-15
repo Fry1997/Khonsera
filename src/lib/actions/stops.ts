@@ -1,0 +1,227 @@
+"use server";
+
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { requireUserContext } from "@/lib/auth";
+import { recordAudit } from "@/lib/audit/with-audit";
+import { dbResult, parseInput } from "./_helpers";
+import { err, errors, ok, type Result } from "@/lib/errors";
+import type { StopType } from "@/lib/types/domain";
+
+const stopTypeEnum = z.enum([
+  "start",
+  "end",
+  "appointment",
+  "accommodation",
+  "event",
+  "meal",
+  "transport_booked",
+  "transit_arrival",
+  "other",
+]);
+
+const baseStopFields = {
+  type: stopTypeEnum,
+  title: z.string().trim().max(200).nullable().optional(),
+  start_time: z.string().datetime().nullable().optional(),
+  end_time: z.string().datetime().nullable().optional(),
+  duration_minutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
+  is_time_fixed: z.boolean().optional(),
+  location_id: z.string().uuid().nullable().optional(),
+  customer_id: z.string().uuid().nullable().optional(),
+  customer_site_id: z.string().uuid().nullable().optional(),
+  contact_id: z.string().uuid().nullable().optional(),
+  external_reference: z.string().trim().max(200).nullable().optional(),
+  external_url: z.string().trim().max(2000).nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+};
+
+const createSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  sequence: z.number().int().min(0).optional(),
+  ...baseStopFields,
+});
+
+const updateSchema = z.object({
+  id: z.string().uuid(),
+  ...baseStopFields,
+});
+
+const reorderSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  stop_ids: z.array(z.string().uuid()).min(1),
+});
+
+export type Stop = {
+  id: string;
+  itinerary_id: string;
+  workspace_id: string;
+  sequence: number;
+  type: StopType;
+  title: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  duration_minutes: number | null;
+  is_time_fixed: boolean;
+  location_id: string | null;
+  customer_id: string | null;
+  customer_site_id: string | null;
+  contact_id: string | null;
+  external_reference: string | null;
+  external_url: string | null;
+  metadata: Record<string, unknown> | null;
+  notes: string | null;
+  receipt_file_path: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function createStop(
+  input: z.input<typeof createSchema>,
+): Promise<Result<Stop>> {
+  const parsed = parseInput(createSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Verify the itinerary belongs to the workspace before adding to it.
+  const { data: itin } = await supabase
+    .from("itineraries")
+    .select("id")
+    .eq("id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!itin) return err(errors.notFound("itinerary"));
+
+  // If no explicit sequence: append at the end.
+  let sequence = parsed.value.sequence;
+  if (sequence == null) {
+    const { data: existing } = await supabase
+      .from("stops")
+      .select("sequence")
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .order("sequence", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    sequence = (existing?.sequence ?? -1) + 1;
+  }
+
+  const { data, error } = await supabase
+    .from("stops")
+    .insert({
+      ...parsed.value,
+      sequence,
+      workspace_id: ctx.workspaceId,
+    })
+    .select("*")
+    .single();
+
+  const result = dbResult<Stop>(data, error, "stop");
+  if (result.ok) {
+    await recordAudit({
+      entityType: "stop",
+      entityId: result.value.id,
+      action: "create",
+      after: result.value,
+    });
+  }
+  return result;
+}
+
+export async function updateStop(
+  input: z.input<typeof updateSchema>,
+): Promise<Result<Stop>> {
+  const parsed = parseInput(updateSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: before } = await supabase
+    .from("stops")
+    .select("*")
+    .eq("id", parsed.value.id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+
+  const { id, ...patch } = parsed.value;
+  const { data, error } = await supabase
+    .from("stops")
+    .update(patch)
+    .eq("id", id)
+    .eq("workspace_id", ctx.workspaceId)
+    .select("*")
+    .single();
+
+  const result = dbResult<Stop>(data, error, "stop");
+  if (result.ok) {
+    await recordAudit({
+      entityType: "stop",
+      entityId: result.value.id,
+      action: "update",
+      before,
+      after: result.value,
+    });
+  }
+  return result;
+}
+
+export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: before } = await supabase
+    .from("stops")
+    .select("*")
+    .eq("id", id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from("stops")
+    .delete()
+    .eq("id", id)
+    .eq("workspace_id", ctx.workspaceId);
+
+  if (error) return dbResult<{ id: string }>(null, error, "stop");
+  await recordAudit({
+    entityType: "stop",
+    entityId: id,
+    action: "delete",
+    before,
+  });
+  return ok({ id });
+}
+
+export async function reorderStops(
+  input: z.input<typeof reorderSchema>,
+): Promise<Result<{ itinerary_id: string }>> {
+  const parsed = parseInput(reorderSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Update each stop's sequence number. Done in a loop because supabase-js
+  // doesn't support bulk-update-with-CASE-WHEN; fine for 10-20 stops.
+  for (const [idx, stopId] of parsed.value.stop_ids.entries()) {
+    const { error } = await supabase
+      .from("stops")
+      .update({ sequence: idx })
+      .eq("id", stopId)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("itinerary_id", parsed.value.itinerary_id);
+    if (error) return dbResult<{ itinerary_id: string }>(null, error, "stop");
+  }
+
+  await recordAudit({
+    entityType: "itinerary",
+    entityId: parsed.value.itinerary_id,
+    action: "reorder_stops",
+    after: { order: parsed.value.stop_ids },
+  });
+
+  return ok({ itinerary_id: parsed.value.itinerary_id });
+}

@@ -35,7 +35,7 @@ export function ExpensesRow({
     reimbursementStatus: string;
     notes: string | null;
     createdAt: string;
-    visit: { id: string; label: string } | null;
+    itinerary: { id: string; label: string } | null;
   };
 }) {
   const router = useRouter();
@@ -92,12 +92,12 @@ export function ExpensesRow({
           />
           <span className="small">{expense.createdAt}</span>
         </div>
-        {expense.visit ? (
+        {expense.itinerary ? (
           <Link
-            href={`/visits/${expense.visit.id}`}
+            href={`/itineraries/${expense.itinerary.id}`}
             className="small truncate hover:underline"
           >
-            {expense.visit.label}
+            {expense.itinerary.label}
           </Link>
         ) : null}
         {expense.notes ? (

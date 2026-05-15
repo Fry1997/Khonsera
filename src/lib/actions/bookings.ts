@@ -7,9 +7,11 @@ import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
 import type { Result } from "@/lib/errors";
 
+// Bookings now belong to a STOP (typically a transport_booked stop). The
+// optional itinerary back-ref keeps "all bookings for trip X" queries cheap.
 const createBookingIntentSchema = z.object({
-  visit_plan_id: z.string().uuid(),
-  travel_option_id: z.string().uuid().nullable().optional(),
+  stop_id: z.string().uuid(),
+  itinerary_id: z.string().uuid().nullable().optional(),
   provider: z.string().trim().max(80).nullable().optional(),
   outbound_summary: z.string().trim().max(1000).nullable().optional(),
   return_summary: z.string().trim().max(1000).nullable().optional(),
@@ -54,20 +56,24 @@ export async function createBookingIntent(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Verify the visit belongs to the workspace before opening a booking against it.
-  const { data: visit } = await supabase
-    .from("visit_plans")
-    .select("id")
-    .eq("id", parsed.value.visit_plan_id)
+  // Verify the stop belongs to the workspace before opening a booking.
+  const { data: stop } = await supabase
+    .from("stops")
+    .select("id, itinerary_id")
+    .eq("id", parsed.value.stop_id)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
-  if (!visit) {
-    return { ok: false, error: { kind: "not_found", entity: "visit_plan" } };
+  if (!stop) {
+    return { ok: false, error: { kind: "not_found", entity: "stop" } };
   }
 
   const { data, error } = await supabase
     .from("booking_intents")
-    .insert({ ...parsed.value, workspace_id: ctx.workspaceId })
+    .insert({
+      ...parsed.value,
+      itinerary_id: parsed.value.itinerary_id ?? stop.itinerary_id,
+      workspace_id: ctx.workspaceId,
+    })
     .select("id")
     .single();
 
@@ -129,10 +135,9 @@ export async function recordTravelBooking(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Confirm the intent belongs to the workspace.
   const { data: intent } = await supabase
     .from("booking_intents")
-    .select("id, workspace_id, visit_plan_id")
+    .select("id, workspace_id, itinerary_id, stop_id")
     .eq("id", parsed.value.booking_intent_id)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
@@ -161,20 +166,19 @@ export async function recordTravelBooking(
     });
 
     // Auto-create the rail-ticket expense if one doesn't already exist for
-    // this visit. The actual price the user just entered beats the
-    // pre-booking estimate. Idempotency: skip if a rail_ticket expense for
-    // this visit is already present.
-    if (parsed.value.actual_price != null && intent.visit_plan_id) {
+    // this itinerary. Actual price beats the pre-booking estimate.
+    if (parsed.value.actual_price != null && intent.itinerary_id) {
       const { data: existing } = await supabase
         .from("expense_records")
         .select("id")
-        .eq("visit_plan_id", intent.visit_plan_id)
+        .eq("itinerary_id", intent.itinerary_id)
         .eq("workspace_id", ctx.workspaceId)
         .eq("type", "rail_ticket")
         .maybeSingle();
       if (!existing) {
         await supabase.from("expense_records").insert({
-          visit_plan_id: intent.visit_plan_id,
+          itinerary_id: intent.itinerary_id,
+          stop_id: intent.stop_id,
           workspace_id: ctx.workspaceId,
           user_id: ctx.userId,
           type: "rail_ticket",

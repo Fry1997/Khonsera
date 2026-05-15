@@ -6,8 +6,7 @@ import { MobileNav } from "./mobile-nav";
 
 export const APP_NAV = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/visits", label: "Visits" },
-  { href: "/itinerary", label: "Itinerary" },
+  { href: "/itineraries", label: "Itineraries" },
   { href: "/flights", label: "Flights" },
   { href: "/customers", label: "Customers" },
   { href: "/locations", label: "Locations" },

@@ -19,7 +19,7 @@ const expenseTypeEnum = z.enum([
 ]);
 
 const baseExpenseSchema = z.object({
-  visit_plan_id: z.string().uuid().nullable().optional(),
+  itinerary_id: z.string().uuid().nullable().optional(),
   type: expenseTypeEnum,
   amount: z.number().nonnegative().nullable().optional(),
   currency: z.enum(["GBP", "EUR", "USD"]).default("GBP"),
@@ -43,7 +43,7 @@ const setReimbursementSchema = z.object({
 });
 
 const mileageInputSchema = z.object({
-  visit_plan_id: z.string().uuid().nullable().optional(),
+  itinerary_id: z.string().uuid().nullable().optional(),
   distance_miles: z.number().positive(),
   mileage_rate: z.number().positive(),
   notes: z.string().trim().max(2000).nullable().optional(),
@@ -53,7 +53,7 @@ export type ExpenseRecord = {
   id: string;
   workspace_id: string;
   user_id: string;
-  visit_plan_id: string | null;
+  itinerary_id: string | null;
   type: ExpenseType;
   amount: number | null;
   currency: string;
@@ -149,7 +149,7 @@ export async function recordMileageExpense(
     .insert({
       workspace_id: ctx.workspaceId,
       user_id: ctx.userId,
-      visit_plan_id: parsed.value.visit_plan_id ?? null,
+      itinerary_id: parsed.value.itinerary_id ?? null,
       type: "mileage",
       amount,
       currency: "GBP",

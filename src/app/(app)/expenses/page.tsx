@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageShell } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
@@ -14,7 +13,7 @@ type ExpenseRow = {
   reimbursement_status: string;
   notes: string | null;
   created_at: string;
-  visit_plan: { id: string; title: string | null; customer?: { name?: string } | null } | null;
+  itinerary: { id: string; title: string | null; date_start: string } | null;
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -36,7 +35,7 @@ export default async function ExpensesPage() {
     .from("expense_records")
     .select(
       `id, type, amount, currency, reimbursement_status, notes, created_at,
-       visit_plan:visit_plans(id, title, customer:customers(name))`,
+       itinerary:itineraries(id, title, date_start)`,
     )
     .eq("workspace_id", ctx.workspaceId)
     .order("created_at", { ascending: false })
@@ -105,13 +104,15 @@ export default async function ExpensesPage() {
                       reimbursementStatus: e.reimbursement_status,
                       notes: e.notes,
                       createdAt: formatDateInTz(new Date(e.created_at), wsCfg.timezone),
-                      visit: e.visit_plan
+                      itinerary: e.itinerary
                         ? {
-                            id: e.visit_plan.id,
+                            id: e.itinerary.id,
                             label:
-                              e.visit_plan.title ??
-                              e.visit_plan.customer?.name ??
-                              "Visit",
+                              e.itinerary.title ??
+                              formatDateInTz(
+                                new Date(e.itinerary.date_start),
+                                wsCfg.timezone,
+                              ),
                           }
                         : null,
                     }}

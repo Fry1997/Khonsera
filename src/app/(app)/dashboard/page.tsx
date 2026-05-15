@@ -4,22 +4,32 @@ import { PageShell } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
-import { formatDateInTz, formatTimeInTz } from "@/lib/types/time";
+import { formatDateInTz } from "@/lib/types/time";
+import type { ItineraryStatus } from "@/lib/types/domain";
+
+const STATUS_LABEL: Record<ItineraryStatus, string> = {
+  draft: "Draft",
+  planning: "Planning",
+  planned: "Planned",
+  in_progress: "In progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 export default async function DashboardPage() {
   const ctx = await requireUserContext();
   const supabase = await createClient();
   const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
 
-  const nowIso = new Date().toISOString();
+  const today = new Date().toISOString().slice(0, 10);
 
   const [
     { data: calendarConn },
-    { data: nextVisit },
+    { data: nextItinerary },
     { count: draftCount },
-    { count: proposedCount },
-    { count: confirmedCount },
-    { data: recentVisits },
+    { count: plannedCount },
+    { count: inProgressCount },
+    { data: recent },
   ] = await Promise.all([
     supabase
       .from("calendar_connections")
@@ -30,84 +40,81 @@ export default async function DashboardPage() {
       .eq("status", "active")
       .maybeSingle(),
     supabase
-      .from("visit_plans")
-      .select(
-        "id, title, status, proposed_start_time, customer:customers(name)",
-      )
+      .from("itineraries")
+      .select("id, title, status, date_start, date_end")
       .eq("workspace_id", ctx.workspaceId)
-      .in("status", ["confirmed", "booked", "in_progress"])
-      .gte("proposed_start_time", nowIso)
-      .order("proposed_start_time")
+      .in("status", ["planned", "in_progress"])
+      .gte("date_end", today)
+      .order("date_start")
       .limit(1)
       .maybeSingle(),
     supabase
-      .from("visit_plans")
+      .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
-      .in("status", ["draft", "checking"]),
+      .in("status", ["draft", "planning"]),
     supabase
-      .from("visit_plans")
+      .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
-      .eq("status", "proposed"),
+      .eq("status", "planned"),
     supabase
-      .from("visit_plans")
+      .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
-      .in("status", ["confirmed", "booked"]),
+      .eq("status", "in_progress"),
     supabase
-      .from("visit_plans")
-      .select(
-        "id, title, status, proposed_start_time, customer:customers(name)",
-      )
+      .from("itineraries")
+      .select("id, title, status, date_start, date_end")
       .eq("workspace_id", ctx.workspaceId)
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
 
-  const nextCustomer = (nextVisit?.customer as unknown as { name?: string } | null)?.name ?? null;
-
   return (
     <PageShell
       title="Dashboard"
-      description="Your next visit, drafts in progress, and quick actions."
+      description="Your day. What's next, what's still being planned, and where Journies thinks you should be."
       actions={
-        <Link href="/visits/new" className="btn-terra">
-          + Plan new visit
+        <Link href="/itineraries/new" className="btn-terra">
+          + New itinerary
         </Link>
       }
     >
-      {nextVisit ? (
-        <NextVisitHero
-          title={nextVisit.title ?? nextCustomer ?? "Upcoming visit"}
-          customer={nextCustomer}
-          start={nextVisit.proposed_start_time}
-          status={nextVisit.status as string}
+      {nextItinerary ? (
+        <NextItineraryHero
+          title={
+            nextItinerary.title ??
+            formatDateInTz(new Date(nextItinerary.date_start), wsCfg.timezone)
+          }
+          startDate={nextItinerary.date_start}
+          endDate={nextItinerary.date_end}
+          status={nextItinerary.status as ItineraryStatus}
           timezone={wsCfg.timezone}
-          id={nextVisit.id}
+          id={nextItinerary.id}
         />
       ) : (
-        <NoNextVisit />
+        <NoNext />
       )}
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashStat
-          label="Drafts in progress"
+          label="In planning"
           value={draftCount ?? 0}
-          href="/visits"
-          description="Visit plans you've started but not yet planned."
+          href="/itineraries"
+          description="Drafts being assembled."
         />
         <DashStat
-          label="Proposed"
-          value={proposedCount ?? 0}
-          href="/visits"
-          description="Planned, ready to confirm."
+          label="Planned"
+          value={plannedCount ?? 0}
+          href="/itineraries"
+          description="Ready to go."
         />
         <DashStat
-          label="Confirmed"
-          value={confirmedCount ?? 0}
-          href="/itinerary"
-          description="Committed visits — see your itinerary."
+          label="In progress"
+          value={inProgressCount ?? 0}
+          href="/itineraries"
+          description="Happening now."
         />
       </section>
 
@@ -134,7 +141,7 @@ export default async function DashboardPage() {
             <>
               <p className="small">
                 Not connected. Connect to check calendar conflicts and create
-                visit + travel blocks automatically.
+                stop + travel blocks automatically.
               </p>
               <div className="mt-3">
                 <Link href="/settings" className="btn-ghost">
@@ -146,37 +153,34 @@ export default async function DashboardPage() {
         </div>
 
         <div className="j-card p-5">
-          <h2 className="h3 mb-3">Recent visits</h2>
-          {recentVisits && recentVisits.length > 0 ? (
+          <h2 className="h3 mb-3">Recent itineraries</h2>
+          {recent && recent.length > 0 ? (
             <ul className="flex flex-col gap-2">
-              {recentVisits.map((v) => {
-                const cust = (v.customer as unknown as { name?: string } | null)?.name;
-                return (
-                  <li
-                    key={v.id}
-                    className="flex items-center justify-between text-sm"
+              {recent.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <Link
+                    href={`/itineraries/${r.id}`}
+                    className="truncate hover:underline"
                   >
-                    <Link
-                      href={`/visits/${v.id}`}
-                      className="truncate hover:underline"
-                    >
-                      {v.title ?? cust ?? "Untitled visit"}
-                      <span className="ml-2 text-xs text-ink-dim">
-                        {v.proposed_start_time
-                          ? formatDateInTz(
-                              new Date(v.proposed_start_time),
-                              wsCfg.timezone,
-                            )
-                          : ""}
-                      </span>
-                    </Link>
-                    <span className="chip">{v.status}</span>
-                  </li>
-                );
-              })}
+                    {r.title ??
+                      formatDateInTz(new Date(r.date_start), wsCfg.timezone)}
+                    <span className="ml-2 text-xs text-ink-dim">
+                      {formatDateInTz(new Date(r.date_start), wsCfg.timezone)}
+                    </span>
+                  </Link>
+                  <span className="chip">
+                    {STATUS_LABEL[r.status as ItineraryStatus]}
+                  </span>
+                </li>
+              ))}
             </ul>
           ) : (
-            <p className="small">No visits yet. Plan your first one above.</p>
+            <p className="small">
+              No itineraries yet. Start your first one above.
+            </p>
           )}
         </div>
       </section>
@@ -184,18 +188,18 @@ export default async function DashboardPage() {
   );
 }
 
-function NextVisitHero({
+function NextItineraryHero({
   title,
-  customer,
-  start,
+  startDate,
+  endDate,
   status,
   timezone,
   id,
 }: {
   title: string;
-  customer: string | null;
-  start: string | null;
-  status: string;
+  startDate: string;
+  endDate: string;
+  status: ItineraryStatus;
   timezone: string;
   id: string;
 }) {
@@ -205,42 +209,34 @@ function NextVisitHero({
         <div>
           <p className="uc mb-2">Next up</p>
           <h2 className="h2 mb-1">{title}</h2>
-          {customer && customer !== title ? (
-            <p className="small">{customer}</p>
-          ) : null}
         </div>
         <div className="text-right">
-          {start ? (
-            <>
-              <p className="mono text-2xl text-ink">
-                {formatTimeInTz(new Date(start), timezone)}
-              </p>
-              <p className="small">
-                {formatDateInTz(new Date(start), timezone)}
-              </p>
-            </>
+          <p className="mono text-2xl text-ink">
+            {formatDateInTz(new Date(startDate), timezone)}
+          </p>
+          {endDate !== startDate ? (
+            <p className="small">
+              → {formatDateInTz(new Date(endDate), timezone)}
+            </p>
           ) : null}
-          <span className="chip mt-2 inline-flex">{status}</span>
+          <span className="chip mt-2 inline-flex">{STATUS_LABEL[status]}</span>
         </div>
       </div>
       <div className="mt-4 flex gap-2">
-        <Link href={`/visits/${id}`} className="btn-primary">
-          Open visit
-        </Link>
-        <Link href={`/visits/${id}/travel-day`} className="btn-ghost">
-          Travel-day view
+        <Link href={`/itineraries/${id}`} className="btn-primary">
+          Open itinerary
         </Link>
       </div>
     </section>
   );
 }
 
-function NoNextVisit() {
+function NoNext() {
   return (
     <section className="j-card-soft p-6">
       <p className="uc mb-2">Next up</p>
       <p className="body">
-        Nothing scheduled yet. Plan your first visit to see it land here.
+        Nothing planned yet. Start an itinerary to see your day land here.
       </p>
     </section>
   );

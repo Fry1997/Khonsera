@@ -44,40 +44,33 @@ export default async function CustomersPage() {
       .select("id, customer_id")
       .eq("workspace_id", ctx.workspaceId),
     supabase
-      .from("visit_plans")
-      .select("id, customer_id, proposed_start_time, status")
+      .from("stops")
+      .select("id, customer_id, start_time, type")
       .eq("workspace_id", ctx.workspaceId)
+      .eq("type", "appointment")
       .not("customer_id", "is", null),
   ]);
 
   const cards: CustomerCardData[] = (customers ?? []).map((c) => {
-    const customerVisits = (visits ?? []).filter((v) => v.customer_id === c.id);
+    const customerAppointments = (visits ?? []).filter(
+      (v) => v.customer_id === c.id,
+    );
     const now = Date.now();
-    const past = customerVisits
-      .filter(
-        (v) =>
-          v.proposed_start_time && Date.parse(v.proposed_start_time) <= now,
-      )
-      .sort((a, b) =>
-        b.proposed_start_time!.localeCompare(a.proposed_start_time!),
-      );
-    const future = customerVisits
-      .filter(
-        (v) =>
-          v.proposed_start_time && Date.parse(v.proposed_start_time) > now,
-      )
-      .sort((a, b) =>
-        a.proposed_start_time!.localeCompare(b.proposed_start_time!),
-      );
+    const past = customerAppointments
+      .filter((v) => v.start_time && Date.parse(v.start_time) <= now)
+      .sort((a, b) => b.start_time!.localeCompare(a.start_time!));
+    const future = customerAppointments
+      .filter((v) => v.start_time && Date.parse(v.start_time) > now)
+      .sort((a, b) => a.start_time!.localeCompare(b.start_time!));
     return {
       id: c.id,
       name: c.name,
       notes: c.notes,
       sites: (sites ?? []).filter((s) => s.customer_id === c.id).length,
       contacts: (contacts ?? []).filter((co) => co.customer_id === c.id).length,
-      visits: customerVisits.length,
-      lastVisitAt: past[0]?.proposed_start_time ?? null,
-      nextVisitAt: future[0]?.proposed_start_time ?? null,
+      visits: customerAppointments.length,
+      lastVisitAt: past[0]?.start_time ?? null,
+      nextVisitAt: future[0]?.start_time ?? null,
     };
   });
 
