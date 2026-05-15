@@ -36,7 +36,7 @@ const STOP_LABEL: Record<StopType, string> = {
   meal: "Meal",
   transport_booked: "Transport",
   transit_arrival: "Arrival",
-  other: "Other",
+  other: "Point",
 };
 
 const MODE_LABEL: Record<TransitionMode, string> = {
@@ -146,7 +146,7 @@ export function ItineraryEditor({
   };
 
   const handleDelete = (stopId: string) => {
-    if (!window.confirm("Delete this stop?")) return;
+    if (!window.confirm("Delete this point?")) return;
     startTransition(async () => {
       setError(null);
       const result = await deleteStop(stopId);
@@ -222,7 +222,9 @@ export function ItineraryEditor({
       {/* Timeline */}
       {sortedStops.length === 0 ? (
         <div className="j-card-soft p-6 text-center">
-          <p className="body mb-2">No stops yet. Add the first one.</p>
+          <p className="body mb-2">
+            No points yet. Add your first point — usually home.
+          </p>
         </div>
       ) : (
         <ol className="flex flex-col">
@@ -391,7 +393,7 @@ export function ItineraryEditor({
             className="btn-terra"
             disabled={pending}
           >
-            + Add stop
+            + Add point
           </button>
         </div>
       )}

@@ -24,6 +24,39 @@ export default async function ItineraryDetailPage({
     .maybeSingle();
   if (!itinerary) notFound();
 
+  // Auto-seed the first "start" point from the user's travel profile defaults
+  // (drive origin → rail origin → return location). Only fires when the
+  // itinerary has zero stops, so it's idempotent on refresh.
+  const { count: stopCount } = await supabase
+    .from("stops")
+    .select("id", { count: "exact", head: true })
+    .eq("itinerary_id", id);
+  if (stopCount === 0) {
+    const { data: profile } = await supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    const homeId =
+      profile?.default_drive_origin_location_id ??
+      profile?.default_rail_origin_location_id ??
+      profile?.default_return_location_id ??
+      null;
+    if (homeId) {
+      await supabase.from("stops").insert({
+        itinerary_id: id,
+        workspace_id: ctx.workspaceId,
+        sequence: 0,
+        type: "start",
+        location_id: homeId,
+        is_time_fixed: false,
+      });
+    }
+  }
+
   const [{ data: stops }, { data: transitions }, { data: customers }, { data: customerSites }, { data: locations }, { data: contacts }] =
     await Promise.all([
       supabase
