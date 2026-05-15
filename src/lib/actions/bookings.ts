@@ -132,7 +132,7 @@ export async function recordTravelBooking(
   // Confirm the intent belongs to the workspace.
   const { data: intent } = await supabase
     .from("booking_intents")
-    .select("id, workspace_id")
+    .select("id, workspace_id, visit_plan_id")
     .eq("id", parsed.value.booking_intent_id)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
@@ -159,6 +159,33 @@ export async function recordTravelBooking(
       action: "create",
       after: { ...parsed.value, id: result.value.id },
     });
+
+    // Auto-create the rail-ticket expense if one doesn't already exist for
+    // this visit. The actual price the user just entered beats the
+    // pre-booking estimate. Idempotency: skip if a rail_ticket expense for
+    // this visit is already present.
+    if (parsed.value.actual_price != null && intent.visit_plan_id) {
+      const { data: existing } = await supabase
+        .from("expense_records")
+        .select("id")
+        .eq("visit_plan_id", intent.visit_plan_id)
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("type", "rail_ticket")
+        .maybeSingle();
+      if (!existing) {
+        await supabase.from("expense_records").insert({
+          visit_plan_id: intent.visit_plan_id,
+          workspace_id: ctx.workspaceId,
+          user_id: ctx.userId,
+          type: "rail_ticket",
+          amount: parsed.value.actual_price,
+          currency: parsed.value.currency ?? "GBP",
+          notes: parsed.value.booking_reference
+            ? `Booking ref: ${parsed.value.booking_reference}`
+            : "Auto-generated from rail booking.",
+        });
+      }
+    }
   }
   return result;
 }

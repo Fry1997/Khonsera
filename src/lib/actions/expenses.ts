@@ -29,6 +29,19 @@ const baseExpenseSchema = z.object({
 
 const updateExpenseSchema = baseExpenseSchema.extend({ id: z.string().uuid() });
 
+const reimbursementStatusEnum = z.enum([
+  "draft",
+  "submitted",
+  "approved",
+  "rejected",
+  "reimbursed",
+]);
+
+const setReimbursementSchema = z.object({
+  id: z.string().uuid(),
+  reimbursement_status: reimbursementStatusEnum,
+});
+
 const mileageInputSchema = z.object({
   visit_plan_id: z.string().uuid().nullable().optional(),
   distance_miles: z.number().positive(),
@@ -176,6 +189,43 @@ export async function recordMileageExpense(
   });
 
   return { ok: true, value: { expenseId: expenseResult.value.id, calculatedAmount: amount } };
+}
+
+export async function setReimbursementStatus(
+  input: z.input<typeof setReimbursementSchema>,
+): Promise<Result<ExpenseRecord>> {
+  const parsed = parseInput(setReimbursementSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: before } = await supabase
+    .from("expense_records")
+    .select("reimbursement_status")
+    .eq("id", parsed.value.id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from("expense_records")
+    .update({ reimbursement_status: parsed.value.reimbursement_status })
+    .eq("id", parsed.value.id)
+    .eq("workspace_id", ctx.workspaceId)
+    .select("*")
+    .single();
+
+  const result = dbResult<ExpenseRecord>(data, error, "expense_record");
+  if (result.ok) {
+    await recordAudit({
+      entityType: "expense_record",
+      entityId: result.value.id,
+      action: "set_reimbursement_status",
+      before,
+      after: { reimbursement_status: result.value.reimbursement_status },
+    });
+  }
+  return result;
 }
 
 export async function deleteExpense(id: string): Promise<Result<{ id: string }>> {

@@ -255,6 +255,18 @@ export async function confirmVisitWithTravelOption(
     arriveReturnLocationAt: new Date(option.arrive_return_location_at as unknown as string),
   });
 
+  // 6. Auto-create the mileage expense for drive options. Rail tickets get
+  //    a separate expense row when recordTravelBooking is called against the
+  //    booking intent — at that point we know the actual paid price.
+  if (option.mode === "drive") {
+    await createMileageExpenseIfDrive({
+      visitPlanId: visitId,
+      workspaceId: ctx.workspaceId,
+      userId: ctx.userId,
+      travelOptionId,
+    });
+  }
+
   await recordAudit({
     entityType: "visit_plan",
     entityId: visitId,
@@ -272,6 +284,72 @@ export async function confirmVisitWithTravelOption(
     savedTripId: tripInsert.value.id,
     bookingIntentId,
     calendarEventCount,
+  });
+}
+
+async function createMileageExpenseIfDrive(args: {
+  visitPlanId: string;
+  workspaceId: string;
+  userId: string;
+  travelOptionId: string;
+}): Promise<void> {
+  const supabase = await createClient();
+
+  // Don't double up: if an expense for this visit already exists with
+  // type='mileage', leave it alone (user might have edited the amount).
+  const { data: existing } = await supabase
+    .from("expense_records")
+    .select("id")
+    .eq("visit_plan_id", args.visitPlanId)
+    .eq("workspace_id", args.workspaceId)
+    .eq("type", "mileage")
+    .maybeSingle();
+  if (existing) return;
+
+  // Sum distance across the option's drive legs (round-trip if both legs
+  // exist; one-way otherwise).
+  const { data: legs } = await supabase
+    .from("journey_legs")
+    .select("distance_miles, leg_type")
+    .eq("travel_option_id", args.travelOptionId)
+    .eq("workspace_id", args.workspaceId);
+  const distance = (legs ?? [])
+    .filter((l) => l.leg_type === "drive")
+    .reduce((s, l) => s + (Number(l.distance_miles) || 0), 0);
+  if (distance <= 0) return;
+
+  const { data: profile } = await supabase
+    .from("travel_profiles")
+    .select("mileage_rate")
+    .eq("user_id", args.userId)
+    .eq("workspace_id", args.workspaceId)
+    .maybeSingle();
+  const rate = Number(profile?.mileage_rate ?? 0.45);
+  if (rate <= 0) return;
+
+  const amount = Math.round(distance * rate * 100) / 100;
+
+  const { data: expense, error: expenseErr } = await supabase
+    .from("expense_records")
+    .insert({
+      visit_plan_id: args.visitPlanId,
+      workspace_id: args.workspaceId,
+      user_id: args.userId,
+      type: "mileage",
+      amount,
+      currency: "GBP",
+      notes: "Auto-generated from confirmed drive option.",
+    })
+    .select("id")
+    .single();
+  if (expenseErr || !expense) return;
+
+  await supabase.from("mileage_expenses").insert({
+    expense_record_id: expense.id,
+    workspace_id: args.workspaceId,
+    distance_miles: distance,
+    mileage_rate: rate,
+    calculated_amount: amount,
   });
 }
 
