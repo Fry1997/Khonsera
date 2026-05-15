@@ -24,6 +24,39 @@ export default async function ItineraryDetailPage({
     .maybeSingle();
   if (!itinerary) notFound();
 
+  // Auto-seed the first "start" point from the user's travel profile defaults
+  // (drive origin → rail origin → return location). Only fires when the
+  // itinerary has zero stops, so it's idempotent on refresh.
+  const { count: stopCount } = await supabase
+    .from("stops")
+    .select("id", { count: "exact", head: true })
+    .eq("itinerary_id", id);
+  if (stopCount === 0) {
+    const { data: profile } = await supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    const homeId =
+      profile?.default_drive_origin_location_id ??
+      profile?.default_rail_origin_location_id ??
+      profile?.default_return_location_id ??
+      null;
+    if (homeId) {
+      await supabase.from("stops").insert({
+        itinerary_id: id,
+        workspace_id: ctx.workspaceId,
+        sequence: 0,
+        type: "start",
+        location_id: homeId,
+        is_time_fixed: false,
+      });
+    }
+  }
+
   const [{ data: stops }, { data: transitions }, { data: customers }, { data: customerSites }, { data: locations }, { data: contacts }] =
     await Promise.all([
       supabase
@@ -32,7 +65,7 @@ export default async function ItineraryDetailPage({
           `id, sequence, type, title, start_time, end_time, duration_minutes,
            is_time_fixed, location_id, customer_id, customer_site_id, contact_id,
            external_reference, external_url, metadata, notes,
-           location:locations(name, address, latitude, longitude),
+           location:locations(name, type, address, latitude, longitude),
            customer:customers(name),
            customer_site:customer_sites(name, address, latitude, longitude)`,
         )
@@ -65,6 +98,18 @@ export default async function ItineraryDetailPage({
         .eq("workspace_id", ctx.workspaceId),
     ]);
 
+  const transitionIds = (transitions ?? []).map((t) => t.id);
+  const { data: journeyLegs } =
+    transitionIds.length > 0
+      ? await supabase
+          .from("journey_legs")
+          .select(
+            "id, transition_id, sequence, leg_type, start_location_name, end_location_name, start_time, end_time, duration_minutes, distance_miles, service_number, instructions",
+          )
+          .in("transition_id", transitionIds)
+          .order("sequence")
+      : { data: [] as never[] };
+
   return (
     <PageShell
       title={itinerary.title ?? `Itinerary · ${itinerary.date_start}`}
@@ -90,6 +135,7 @@ export default async function ItineraryDetailPage({
         }}
         stops={(stops ?? []) as never}
         transitions={(transitions ?? []) as never}
+        journeyLegs={(journeyLegs ?? []) as never}
         customers={customers ?? []}
         customerSites={customerSites ?? []}
         locations={locations ?? []}

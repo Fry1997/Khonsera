@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   FormField,
   Input,
@@ -8,7 +9,14 @@ import {
   SubmitButton,
   Textarea,
 } from "@/components/ui/form";
-import type { LocationType, StopType } from "@/lib/types/domain";
+import {
+  PlacePicker,
+  type PlaceSelection,
+  type PlacePickerCustomer,
+  type PlacePickerCustomerSite,
+  type PlacePickerLocation,
+} from "@/components/place-picker";
+import type { StopType } from "@/lib/types/domain";
 
 type StopFormValues = {
   itinerary_id: string;
@@ -17,6 +25,7 @@ type StopFormValues = {
   start_time?: string | null;
   end_time?: string | null;
   duration_minutes?: number | null;
+  is_time_fixed?: boolean;
   location_id?: string | null;
   customer_id?: string | null;
   customer_site_id?: string | null;
@@ -29,15 +38,36 @@ type StopFormValues = {
 
 const STOP_TYPE_OPTIONS: { value: StopType; label: string }[] = [
   { value: "appointment", label: "Customer appointment" },
-  { value: "transport_booked", label: "Booked transport (train/flight/bus)" },
-  { value: "transit_arrival", label: "Arrival point (e.g. London King's Cross)" },
+  { value: "transit_arrival", label: "Arrival at station / airport" },
   { value: "accommodation", label: "Accommodation (hotel)" },
   { value: "event", label: "Event (expo / talk / training)" },
   { value: "meal", label: "Meal / reservation" },
+  { value: "transport_booked", label: "Booked transport" },
   { value: "start", label: "Start of day" },
   { value: "end", label: "End of day" },
   { value: "other", label: "Other" },
 ];
+
+// Infer a sensible default stop type from the chosen place.
+function inferStopType(sel: PlaceSelection): StopType {
+  if (sel.kind === "customer" || sel.kind === "customer_site")
+    return "appointment";
+  switch (sel.location_type) {
+    case "station":
+      return "transit_arrival";
+    case "hotel":
+      return "accommodation";
+    case "home":
+    case "office":
+      return "other";
+    case "parking":
+      return "other";
+    case "customer_site":
+      return "appointment";
+    case "other":
+      return "other";
+  }
+}
 
 export function AddStopForm({
   itineraryId,
@@ -50,30 +80,34 @@ export function AddStopForm({
   pending,
 }: {
   itineraryId: string;
-  customers: { id: string; name: string }[];
-  customerSites: { id: string; customer_id: string; name: string | null; address: string | null }[];
-  locations: { id: string; name: string; type: LocationType; address: string | null }[];
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
   contacts: { id: string; customer_id: string; name: string }[];
   onCancel: () => void;
   onSubmit: (input: StopFormValues) => void;
   pending: boolean;
 }) {
-  const [type, setType] = useState<StopType>("appointment");
-  const [customerId, setCustomerId] = useState<string>("");
+  const [place, setPlace] = useState<PlaceSelection | null>(null);
+  const [type, setType] = useState<StopType>("other");
+  const [typeTouched, setTypeTouched] = useState(false);
+  const [isAnchor, setIsAnchor] = useState(false);
 
-  const filteredSites = useMemo(
-    () => customerSites.filter((s) => s.customer_id === customerId),
-    [customerSites, customerId],
-  );
-  const filteredContacts = useMemo(
-    () => contacts.filter((c) => c.customer_id === customerId),
-    [contacts, customerId],
-  );
+  const contactsForCustomer =
+    place && (place.kind === "customer" || place.kind === "customer_site")
+      ? contacts.filter((c) => c.customer_id === place.customer_id)
+      : [];
+
+  const onPick = (sel: PlaceSelection | null) => {
+    setPlace(sel);
+    if (sel && !typeTouched) setType(inferStopType(sel));
+  };
 
   return (
     <form
       className="j-card flex flex-col gap-4 p-5"
       action={(formData) => {
+        if (!place) return;
         const values: StopFormValues = {
           itinerary_id: itineraryId,
           type,
@@ -87,15 +121,19 @@ export function AddStopForm({
           duration_minutes: formData.get("duration_minutes")
             ? Number(formData.get("duration_minutes"))
             : null,
-          location_id: (formData.get("location_id") as string) || null,
-          customer_id: (formData.get("customer_id") as string) || null,
-          customer_site_id: (formData.get("customer_site_id") as string) || null,
+          is_time_fixed: isAnchor,
+          location_id: place.kind === "location" ? place.location_id : null,
+          customer_id:
+            place.kind === "customer" || place.kind === "customer_site"
+              ? place.customer_id
+              : null,
+          customer_site_id:
+            place.kind === "customer_site" ? place.customer_site_id : null,
           contact_id: (formData.get("contact_id") as string) || null,
-          external_reference: String(formData.get("external_reference") ?? "") || null,
-          external_url: String(formData.get("external_url") ?? "") || null,
+          external_reference:
+            String(formData.get("external_reference") ?? "") || null,
           notes: String(formData.get("notes") ?? "") || null,
         };
-        // Type-specific metadata (e.g. flight number for transport_booked).
         const flightIata = String(formData.get("flight_iata") ?? "").trim();
         if (flightIata) {
           values.metadata = { flight_iata: flightIata.toUpperCase() };
@@ -103,11 +141,25 @@ export function AddStopForm({
         onSubmit(values);
       }}
     >
-      <FormField label="Type" htmlFor="type">
+      <FormField label="Where?" htmlFor="place">
+        <PlacePicker
+          customers={customers}
+          customerSites={customerSites}
+          locations={locations}
+          value={place}
+          onChange={onPick}
+          disabled={pending}
+        />
+      </FormField>
+
+      <FormField label="What kind of stop?" htmlFor="type">
         <Select
           id="type"
           value={type}
-          onChange={(e) => setType(e.target.value as StopType)}
+          onChange={(e) => {
+            setType(e.target.value as StopType);
+            setTypeTouched(true);
+          }}
         >
           {STOP_TYPE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -118,73 +170,23 @@ export function AddStopForm({
       </FormField>
 
       <FormField label="Title (optional)" htmlFor="title">
-        <Input id="title" name="title" maxLength={200} />
+        <Input
+          id="title"
+          name="title"
+          maxLength={200}
+          placeholder="Short label for this stop"
+        />
       </FormField>
 
-      {/* Type-specific fields */}
-      {type === "appointment" ? (
-        <>
-          <FormField label="Customer" htmlFor="customer_id">
-            <Select
-              id="customer_id"
-              name="customer_id"
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">— Select a customer —</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField label="Site (optional)" htmlFor="customer_site_id">
-            <Select
-              id="customer_site_id"
-              name="customer_site_id"
-              defaultValue=""
-              disabled={!customerId}
-            >
-              <option value="">— None —</option>
-              {filteredSites.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name ?? s.address ?? "Site"}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField label="Contact (optional)" htmlFor="contact_id">
-            <Select
-              id="contact_id"
-              name="contact_id"
-              defaultValue=""
-              disabled={!customerId}
-            >
-              <option value="">— None —</option>
-              {filteredContacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-        </>
-      ) : null}
-
-      {type === "accommodation" ||
-      type === "event" ||
-      type === "meal" ||
-      type === "start" ||
-      type === "end" ||
-      type === "other" ||
-      type === "transit_arrival" ? (
-        <FormField label="Location" htmlFor="location_id">
-          <Select id="location_id" name="location_id" defaultValue="">
+      {place &&
+      (place.kind === "customer" || place.kind === "customer_site") &&
+      contactsForCustomer.length > 0 ? (
+        <FormField label="Contact (optional)" htmlFor="contact_id">
+          <Select id="contact_id" name="contact_id" defaultValue="">
             <option value="">— None —</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name} ({l.type})
+            {contactsForCustomer.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </Select>
@@ -215,9 +217,24 @@ export function AddStopForm({
         </>
       ) : null}
 
-      {/* Times */}
+      <div className="rounded-md border border-rule bg-card-2/50 p-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isAnchor}
+            onChange={(e) => setIsAnchor(e.target.checked)}
+          />
+          <span>
+            This time is fixed (anchor) — e.g. a booked train, a scheduled event
+          </span>
+        </label>
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FormField label="Start time" htmlFor="start_time">
+        <FormField
+          label={isAnchor ? "Start time (fixed)" : "Start time (optional)"}
+          htmlFor="start_time"
+        >
           <Input id="start_time" name="start_time" type="datetime-local" />
         </FormField>
         <FormField label="End time (optional)" htmlFor="end_time">
@@ -225,15 +242,13 @@ export function AddStopForm({
         </FormField>
       </div>
 
-      <FormField label="Duration (minutes, optional)" htmlFor="duration_minutes">
-        <Input
-          id="duration_minutes"
-          name="duration_minutes"
-          type="number"
-          min={5}
-          max={24 * 60}
-          placeholder="If end time not set"
-        />
+      <FormField
+        label="How long here? (minutes, optional)"
+        htmlFor="duration_minutes"
+      >
+        <div className="flex flex-col gap-2">
+          <DurationField />
+        </div>
       </FormField>
 
       <FormField label="Notes (optional)" htmlFor="notes">
@@ -241,7 +256,9 @@ export function AddStopForm({
       </FormField>
 
       <div className="flex gap-2">
-        <SubmitButton pending={pending}>Add stop</SubmitButton>
+        <SubmitButton pending={pending} disabled={!place}>
+          Add point
+        </SubmitButton>
         <button
           type="button"
           onClick={onCancel}
@@ -254,3 +271,51 @@ export function AddStopForm({
     </form>
   );
 }
+
+const DURATION_PRESETS: { label: string; minutes: number }[] = [
+  { label: "30m", minutes: 30 },
+  { label: "1h", minutes: 60 },
+  { label: "2h", minutes: 120 },
+  { label: "3h", minutes: 180 },
+  { label: "Half day", minutes: 240 },
+  { label: "Full day", minutes: 480 },
+];
+
+function DurationField() {
+  const [minutes, setMinutes] = useState<number | "">("");
+  return (
+    <>
+      <div className="flex flex-wrap gap-1">
+        {DURATION_PRESETS.map((p) => (
+          <button
+            type="button"
+            key={p.label}
+            onClick={() => setMinutes(p.minutes)}
+            className={cn(
+              "rounded-full border px-2 py-0.5 text-xs",
+              minutes === p.minutes
+                ? "border-rust bg-rust-2/40 text-rust"
+                : "border-rule",
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <input
+        id="duration_minutes"
+        name="duration_minutes"
+        type="number"
+        min={5}
+        max={24 * 60}
+        placeholder="Custom — minutes"
+        value={minutes === "" ? "" : String(minutes)}
+        onChange={(e) =>
+          setMinutes(e.target.value === "" ? "" : Number(e.target.value))
+        }
+        className="input-base"
+      />
+    </>
+  );
+}
+
