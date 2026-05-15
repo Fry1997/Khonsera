@@ -98,6 +98,18 @@ export default async function ItineraryDetailPage({
         .eq("workspace_id", ctx.workspaceId),
     ]);
 
+  const transitionIds = (transitions ?? []).map((t) => t.id);
+  const { data: journeyLegs } =
+    transitionIds.length > 0
+      ? await supabase
+          .from("journey_legs")
+          .select(
+            "id, transition_id, sequence, leg_type, start_location_name, end_location_name, start_time, end_time, duration_minutes, distance_miles, service_number, instructions",
+          )
+          .in("transition_id", transitionIds)
+          .order("sequence")
+      : { data: [] as never[] };
+
   return (
     <PageShell
       title={itinerary.title ?? `Itinerary · ${itinerary.date_start}`}
@@ -123,6 +135,7 @@ export default async function ItineraryDetailPage({
         }}
         stops={(stops ?? []) as never}
         transitions={(transitions ?? []) as never}
+        journeyLegs={(journeyLegs ?? []) as never}
         customers={customers ?? []}
         customerSites={customerSites ?? []}
         locations={locations ?? []}

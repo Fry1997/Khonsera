@@ -1,7 +1,13 @@
 import { features } from "@/lib/features";
 import { isDemoModeActive } from "@/lib/demo-mode";
-import { getDirections, mapsApiKey } from "@/lib/google/maps";
+import {
+  getDirections,
+  mapsApiKey,
+  type DirectionsStep,
+  type LatLng,
+} from "@/lib/google/maps";
 import type { IntegrationResult, RouteRequest, RouteResult } from "./types";
+import type { TransitionMode, LegType } from "@/lib/types/domain";
 
 // Extra fields beyond the IntegrationResult contract that real callers
 // (planning, the map widget) want. Kept optional so the stub return path
@@ -82,6 +88,165 @@ export async function getRoute(
     mode: "unavailable",
     reason:
       "Routing provider not connected. Set GOOGLE_MAPS_API_KEY to enable live journey planning.",
+  };
+}
+
+// ---- Transition-mode routing
+// Higher-level entry point used by the itinerary editor: takes our
+// TransitionMode (walk/drive/taxi/bus/tube/train/mixed), maps to a Google
+// Directions mode, and returns enough sub-step detail to populate
+// journey_legs for the transition.
+
+export type TransitionStep = {
+  sequence: number;
+  legType: LegType;
+  startName: string;
+  endName: string;
+  startTime?: string; // ISO
+  endTime?: string;
+  durationMinutes: number;
+  distanceMiles?: number;
+  serviceNumber?: string; // e.g. "Bus 24", "Northern Line"
+  instructions?: string;
+  // For potential map rendering of just this sub-leg.
+  polyline?: string;
+};
+
+export type TransitionRoute = {
+  totalDurationMinutes: number;
+  totalDistanceMiles?: number;
+  overviewPolyline?: string;
+  steps: TransitionStep[];
+};
+
+function googleModeFor(
+  mode: TransitionMode,
+): "driving" | "walking" | "transit" | null {
+  switch (mode) {
+    case "walk":
+      return "walking";
+    case "drive":
+    case "taxi":
+      return "driving";
+    case "bus":
+    case "tube":
+    case "train":
+    case "mixed":
+      return "transit";
+    case "flight":
+      return null; // handled by booking flow, not Maps
+  }
+}
+
+function vehicleToLegType(vehicleType: string): LegType {
+  const v = vehicleType.toUpperCase();
+  if (v.includes("BUS")) return "bus";
+  if (v.includes("SUBWAY") || v.includes("METRO_RAIL") || v.includes("TRAM"))
+    return "train"; // closest enum value we have
+  if (v.includes("RAIL") || v.includes("HEAVY_RAIL") || v.includes("MONORAIL"))
+    return "train";
+  return "train";
+}
+
+function stepToTransitionStep(
+  s: DirectionsStep,
+  sequence: number,
+): TransitionStep {
+  const minutes = Math.round(s.durationSeconds / 60);
+  const miles = s.distanceMeters / 1609.344;
+  if (s.travelMode === "WALKING") {
+    return {
+      sequence,
+      legType: "walk",
+      startName: stripHtml(s.htmlInstructions ?? "") || "Walk",
+      endName: "",
+      durationMinutes: minutes,
+      distanceMiles: miles,
+      instructions: stripHtml(s.htmlInstructions ?? ""),
+      polyline: s.polyline,
+    };
+  }
+  if (s.travelMode === "TRANSIT" && s.transit) {
+    return {
+      sequence,
+      legType: vehicleToLegType(s.transit.vehicleType),
+      startName: s.transit.departureStop,
+      endName: s.transit.arrivalStop,
+      startTime: s.transit.departureTime,
+      endTime: s.transit.arrivalTime,
+      durationMinutes: minutes,
+      serviceNumber:
+        s.transit.line + (s.transit.headsign ? ` → ${s.transit.headsign}` : ""),
+      instructions: stripHtml(s.htmlInstructions ?? ""),
+      polyline: s.polyline,
+    };
+  }
+  // DRIVING / BICYCLING / fallback.
+  return {
+    sequence,
+    legType: "drive",
+    startName: stripHtml(s.htmlInstructions ?? "") || "Drive",
+    endName: "",
+    durationMinutes: minutes,
+    distanceMiles: miles,
+    instructions: stripHtml(s.htmlInstructions ?? ""),
+    polyline: s.polyline,
+  };
+}
+
+function stripHtml(s: string): string {
+  return s.replace(/<[^>]+>/g, "").trim();
+}
+
+export async function routeForTransition(args: {
+  mode: TransitionMode;
+  origin: LatLng;
+  destination: LatLng;
+  arriveBy?: Date;
+  departAt?: Date;
+}): Promise<TransitionRoute | null> {
+  if (!mapsApiKey()) return null;
+  const gmode = googleModeFor(args.mode);
+  if (!gmode) return null;
+
+  const dir = await getDirections({
+    origin: args.origin,
+    destination: args.destination,
+    mode: gmode,
+    arrivalTime: args.arriveBy,
+    departureTime: args.departAt,
+  });
+  if (!dir) return null;
+
+  const totalMinutes = Math.round(dir.durationSeconds / 60);
+  const totalMiles = dir.distanceMeters / 1609.344;
+
+  // For drive / walk Google returns a long list of turn-by-turn maneuvers
+  // which is too noisy for the timeline. Collapse them into a single step.
+  // For transit, keep each step (walk → bus → walk → train …).
+  let steps: TransitionStep[];
+  const isTransit = gmode === "transit";
+  if (isTransit) {
+    steps = dir.steps.map((s, i) => stepToTransitionStep(s, i));
+  } else {
+    steps = [
+      {
+        sequence: 0,
+        legType: gmode === "walking" ? "walk" : args.mode === "taxi" ? "taxi" : "drive",
+        startName: dir.startAddress,
+        endName: dir.endAddress,
+        durationMinutes: totalMinutes,
+        distanceMiles: totalMiles,
+        instructions: gmode === "walking" ? "Walk" : "Drive",
+      },
+    ];
+  }
+
+  return {
+    totalDurationMinutes: totalMinutes,
+    totalDistanceMiles: gmode === "walking" || isTransit ? undefined : totalMiles,
+    overviewPolyline: dir.overviewPolyline,
+    steps,
   };
 }
 

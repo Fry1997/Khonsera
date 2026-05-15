@@ -74,12 +74,27 @@ type TransitionRow = {
   computed_duration_minutes: number | null;
   distance_miles: number | null;
   is_locked: boolean;
+  overview_polyline: string | null;
+};
+
+type JourneyLegRow = {
+  id: string;
+  transition_id: string;
+  sequence: number;
+  leg_type: string; // walk | drive | train | bus | taxi | wait | meeting | buffer
+  start_location_name: string | null;
+  end_location_name: string | null;
+  duration_minutes: number | null;
+  distance_miles: number | null;
+  service_number: string | null;
+  instructions: string | null;
 };
 
 export function ItineraryEditor({
   itinerary,
   stops,
   transitions,
+  journeyLegs,
   customers,
   customerSites,
   locations,
@@ -96,6 +111,7 @@ export function ItineraryEditor({
   };
   stops: StopRow[];
   transitions: TransitionRow[];
+  journeyLegs: JourneyLegRow[];
   customers: { id: string; name: string }[];
   customerSites: { id: string; customer_id: string; name: string | null; address: string | null }[];
   locations: { id: string; name: string; type: LocationType; address: string | null }[];
@@ -113,6 +129,17 @@ export function ItineraryEditor({
     for (const t of transitions) m.set(t.from_stop_id, t);
     return m;
   }, [transitions]);
+
+  const legsByTransition = useMemo(() => {
+    const m = new Map<string, JourneyLegRow[]>();
+    for (const l of journeyLegs) {
+      const arr = m.get(l.transition_id) ?? [];
+      arr.push(l);
+      m.set(l.transition_id, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.sequence - b.sequence);
+    return m;
+  }, [journeyLegs]);
 
   const sortedStops = useMemo(
     () => [...stops].sort((a, b) => a.sequence - b.sequence),
@@ -320,51 +347,14 @@ export function ItineraryEditor({
 
                   {/* Transition card between this stop and the next */}
                   {next && transitionToNext ? (
-                    <div className="my-3 ml-4 flex items-center gap-3 text-sm">
-                      <span className="uc">via</span>
-                      <select
-                        value={transitionToNext.mode}
-                        disabled={pending}
-                        onChange={(e) =>
-                          handleSetMode(
-                            transitionToNext.id,
-                            e.target.value as TransitionMode,
-                          )
-                        }
-                        className="input-base"
-                        style={{
-                          width: "auto",
-                          padding: "4px 8px",
-                          fontSize: 12,
-                        }}
-                      >
-                        {(
-                          [
-                            "walk",
-                            "drive",
-                            "taxi",
-                            "bus",
-                            "tube",
-                            "train",
-                            "flight",
-                          ] as TransitionMode[]
-                        ).map((m) => (
-                          <option key={m} value={m}>
-                            {MODE_LABEL[m]}
-                          </option>
-                        ))}
-                      </select>
-                      {transitionToNext.computed_duration_minutes ? (
-                        <span className="mono text-ink-dim">
-                          {transitionToNext.computed_duration_minutes} min
-                        </span>
-                      ) : null}
-                      {transitionToNext.distance_miles ? (
-                        <span className="mono text-ink-dim">
-                          {Number(transitionToNext.distance_miles).toFixed(1)} mi
-                        </span>
-                      ) : null}
-                    </div>
+                    <LegCard
+                      transition={transitionToNext}
+                      legs={legsByTransition.get(transitionToNext.id) ?? []}
+                      pending={pending}
+                      onSetMode={(mode) =>
+                        handleSetMode(transitionToNext.id, mode)
+                      }
+                    />
                   ) : null}
                 </div>
               </li>
@@ -408,4 +398,131 @@ function fmtTime(iso: string | null, tz: string): string {
     minute: "2-digit",
     timeZone: tz,
   });
+}
+
+const LEG_TYPE_ICON: Record<string, string> = {
+  walk: "🚶",
+  drive: "🚗",
+  taxi: "🚕",
+  bus: "🚌",
+  train: "🚆",
+  wait: "⏱",
+  meeting: "🤝",
+  buffer: "·",
+};
+
+function LegCard({
+  transition,
+  legs,
+  pending,
+  onSetMode,
+}: {
+  transition: TransitionRow;
+  legs: JourneyLegRow[];
+  pending: boolean;
+  onSetMode: (mode: TransitionMode) => void;
+}) {
+  const mapSrc = transition.overview_polyline
+    ? buildClientStaticMapUrl({
+        width: 480,
+        height: 140,
+        paths: [
+          {
+            encoded: transition.overview_polyline,
+            color: "c25c3a",
+            weight: 4,
+          },
+        ],
+      })
+    : null;
+
+  return (
+    <div className="my-3 ml-4 rounded-md border border-rule/60 bg-card-2/40 p-3 text-sm">
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        <span className="uc">via</span>
+        <select
+          value={transition.mode}
+          disabled={pending}
+          onChange={(e) => onSetMode(e.target.value as TransitionMode)}
+          className="input-base"
+          style={{ width: "auto", padding: "4px 8px", fontSize: 12 }}
+        >
+          {(
+            [
+              "walk",
+              "drive",
+              "taxi",
+              "bus",
+              "tube",
+              "train",
+              "flight",
+            ] as TransitionMode[]
+          ).map((m) => (
+            <option key={m} value={m}>
+              {MODE_LABEL[m]}
+            </option>
+          ))}
+        </select>
+        {transition.computed_duration_minutes ? (
+          <span className="mono text-ink-dim">
+            {transition.computed_duration_minutes} min
+          </span>
+        ) : null}
+        {transition.distance_miles ? (
+          <span className="mono text-ink-dim">
+            {Number(transition.distance_miles).toFixed(1)} mi
+          </span>
+        ) : null}
+      </div>
+
+      {legs.length > 1 ? (
+        <ol className="mb-2 flex flex-col gap-1">
+          {legs.map((l) => (
+            <li
+              key={l.id}
+              className="flex items-baseline gap-2 text-xs"
+              style={{ color: "var(--ink-dim)" }}
+            >
+              <span aria-hidden>{LEG_TYPE_ICON[l.leg_type] ?? "·"}</span>
+              <span className="mono">
+                {l.duration_minutes ? `${l.duration_minutes}m` : ""}
+              </span>
+              <span className="truncate">
+                {l.service_number
+                  ? `${l.service_number}: ${l.start_location_name ?? ""} → ${l.end_location_name ?? ""}`
+                  : (l.instructions ?? l.start_location_name ?? l.leg_type)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+
+      {mapSrc ? (
+        <img
+          src={mapSrc}
+          alt="Route map"
+          className="block w-full rounded border border-rule"
+          style={{ aspectRatio: "480 / 140", objectFit: "cover" }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// Client-safe builder for /api/maps/static URLs (mirrors the server-side
+// StaticMap component but uses btoa instead of Buffer).
+function buildClientStaticMapUrl(spec: {
+  width: number;
+  height: number;
+  zoom?: number;
+  center?: { lat: number; lng: number };
+  paths?: { encoded: string; color?: string; weight?: number }[];
+}): string {
+  const json = JSON.stringify({ ...spec, markers: [] });
+  // base64url encode
+  const b64 = btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `/api/maps/static?s=${b64}`;
 }

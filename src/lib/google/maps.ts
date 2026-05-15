@@ -55,6 +55,27 @@ export async function geocodeAddress(
   }
 }
 
+export type DirectionsStep = {
+  travelMode: "WALKING" | "DRIVING" | "TRANSIT" | "BICYCLING" | string;
+  durationSeconds: number;
+  distanceMeters: number;
+  startLocation: LatLng;
+  endLocation: LatLng;
+  polyline: string;
+  htmlInstructions?: string;
+  // Present when travelMode is TRANSIT.
+  transit?: {
+    line: string; // e.g. "Bus 24" or "Northern Line"
+    vehicleType: string; // BUS, SUBWAY, RAIL, TRAM, …
+    headsign?: string;
+    departureStop: string;
+    arrivalStop: string;
+    departureTime?: string; // ISO
+    arrivalTime?: string; // ISO
+    numStops?: number;
+  };
+};
+
 export type DirectionsResult = {
   durationSeconds: number;
   distanceMeters: number;
@@ -63,6 +84,7 @@ export type DirectionsResult = {
   overviewPolyline: string;
   startAddress: string;
   endAddress: string;
+  steps: DirectionsStep[];
 };
 
 export async function getDirections(args: {
@@ -97,6 +119,24 @@ export async function getDirections(args: {
   try {
     const res = await fetch(url.toString(), { cache: "no-store" });
     if (!res.ok) return null;
+    type ApiStep = {
+      travel_mode: string;
+      duration: { value: number };
+      distance: { value: number };
+      start_location: { lat: number; lng: number };
+      end_location: { lat: number; lng: number };
+      polyline: { points: string };
+      html_instructions?: string;
+      transit_details?: {
+        line: { short_name?: string; name?: string; vehicle: { type: string; name?: string } };
+        headsign?: string;
+        departure_stop: { name: string };
+        arrival_stop: { name: string };
+        departure_time?: { value: number };
+        arrival_time?: { value: number };
+        num_stops?: number;
+      };
+    };
     const data = (await res.json()) as {
       status: string;
       routes: Array<{
@@ -105,6 +145,7 @@ export async function getDirections(args: {
           distance: { value: number };
           start_address: string;
           end_address: string;
+          steps: ApiStep[];
         }>;
         overview_polyline: { points: string };
       }>;
@@ -112,12 +153,42 @@ export async function getDirections(args: {
     if (data.status !== "OK" || data.routes.length === 0) return null;
     const route = data.routes[0];
     const leg = route.legs[0];
+    const steps: DirectionsStep[] = (leg.steps ?? []).map((s) => {
+      const out: DirectionsStep = {
+        travelMode: s.travel_mode,
+        durationSeconds: s.duration?.value ?? 0,
+        distanceMeters: s.distance?.value ?? 0,
+        startLocation: s.start_location,
+        endLocation: s.end_location,
+        polyline: s.polyline?.points ?? "",
+        htmlInstructions: s.html_instructions,
+      };
+      if (s.transit_details) {
+        const td = s.transit_details;
+        out.transit = {
+          line: td.line.short_name ?? td.line.name ?? td.line.vehicle.name ?? "",
+          vehicleType: td.line.vehicle.type,
+          headsign: td.headsign,
+          departureStop: td.departure_stop.name,
+          arrivalStop: td.arrival_stop.name,
+          departureTime: td.departure_time
+            ? new Date(td.departure_time.value * 1000).toISOString()
+            : undefined,
+          arrivalTime: td.arrival_time
+            ? new Date(td.arrival_time.value * 1000).toISOString()
+            : undefined,
+          numStops: td.num_stops,
+        };
+      }
+      return out;
+    });
     return {
       durationSeconds: leg.duration.value,
       distanceMeters: leg.distance.value,
       overviewPolyline: route.overview_polyline.points,
       startAddress: leg.start_address,
       endAddress: leg.end_address,
+      steps,
     };
   } catch (e) {
     console.error("getDirections failed", e);
