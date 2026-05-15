@@ -8,6 +8,7 @@ export const APP_NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/visits", label: "Visits" },
   { href: "/itinerary", label: "Itinerary" },
+  { href: "/flights", label: "Flights" },
   { href: "/customers", label: "Customers" },
   { href: "/locations", label: "Locations" },
   { href: "/expenses", label: "Expenses" },

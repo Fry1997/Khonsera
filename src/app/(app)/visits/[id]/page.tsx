@@ -9,6 +9,10 @@ import { TravelOptionsPanel } from "./travel-options-panel";
 import { VisitCalendarWidget } from "@/components/visit-calendar-widget";
 import { RePlanButton } from "./re-plan-button";
 import { StaticMap } from "@/components/static-map";
+import { FlightSection } from "./flight-section";
+import { extractFlightIataFromNotes } from "@/lib/flights/notes";
+import { aviationstackConfig } from "@/lib/aviationstack/config";
+import { getFlightsByNumber } from "@/lib/aviationstack/client";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -80,6 +84,16 @@ export default async function VisitDetailPage({
   const customer = visit.customer as unknown as { name: string } | null;
   const site = visit.customer_site as unknown as { name: string | null; address: string | null } | null;
 
+  // Flight context — extract the optional flight number from notes and, if
+  // configured + present, fetch the live status server-side so it's available
+  // on first paint.
+  const aviationConfigured = !!aviationstackConfig();
+  const flightIata = extractFlightIataFromNotes(visit.notes ?? null);
+  const initialFlights =
+    aviationConfigured && flightIata
+      ? (await getFlightsByNumber({ flightIata })) ?? []
+      : [];
+
   return (
     <PageShell
       title={visit.title ?? customer?.name ?? "Visit"}
@@ -97,6 +111,13 @@ export default async function VisitDetailPage({
         </>
       }
     >
+      <FlightSection
+        visitId={id}
+        flightIata={flightIata}
+        aviationConfigured={aviationConfigured}
+        initialFlights={initialFlights}
+      />
+
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-md border border-border p-4 text-sm">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
