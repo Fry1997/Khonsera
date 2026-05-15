@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
+import { WeekCalendar } from "@/components/week-calendar";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
 const STATUS_LABEL: Record<ItineraryStatus, string> = {
@@ -96,6 +97,8 @@ export default async function DashboardPage() {
       ) : (
         <NoNext />
       )}
+
+      <WeekCalendar timezone={wsCfg.timezone} />
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashStat
