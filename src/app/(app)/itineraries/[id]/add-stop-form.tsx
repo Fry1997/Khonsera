@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   FormField,
   Input,
@@ -245,14 +246,9 @@ export function AddStopForm({
         label="How long here? (minutes, optional)"
         htmlFor="duration_minutes"
       >
-        <Input
-          id="duration_minutes"
-          name="duration_minutes"
-          type="number"
-          min={5}
-          max={24 * 60}
-          placeholder="e.g. 180 for a 3-hour event"
-        />
+        <div className="flex flex-col gap-2">
+          <DurationField />
+        </div>
       </FormField>
 
       <FormField label="Notes (optional)" htmlFor="notes">
@@ -273,6 +269,53 @@ export function AddStopForm({
         </button>
       </div>
     </form>
+  );
+}
+
+const DURATION_PRESETS: { label: string; minutes: number }[] = [
+  { label: "30m", minutes: 30 },
+  { label: "1h", minutes: 60 },
+  { label: "2h", minutes: 120 },
+  { label: "3h", minutes: 180 },
+  { label: "Half day", minutes: 240 },
+  { label: "Full day", minutes: 480 },
+];
+
+function DurationField() {
+  const [minutes, setMinutes] = useState<number | "">("");
+  return (
+    <>
+      <div className="flex flex-wrap gap-1">
+        {DURATION_PRESETS.map((p) => (
+          <button
+            type="button"
+            key={p.label}
+            onClick={() => setMinutes(p.minutes)}
+            className={cn(
+              "rounded-full border px-2 py-0.5 text-xs",
+              minutes === p.minutes
+                ? "border-rust bg-rust-2/40 text-rust"
+                : "border-rule",
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <input
+        id="duration_minutes"
+        name="duration_minutes"
+        type="number"
+        min={5}
+        max={24 * 60}
+        placeholder="Custom — minutes"
+        value={minutes === "" ? "" : String(minutes)}
+        onChange={(e) =>
+          setMinutes(e.target.value === "" ? "" : Number(e.target.value))
+        }
+        className="input-base"
+      />
+    </>
   );
 }
 

@@ -59,6 +59,9 @@ type StopRow = {
   end_time: string | null;
   duration_minutes: number | null;
   is_time_fixed: boolean;
+  location_id: string | null;
+  customer_id: string | null;
+  customer_site_id: string | null;
   external_reference: string | null;
   notes: string | null;
   location: { name?: string; address?: string } | null;
@@ -147,6 +150,34 @@ export function ItineraryEditor({
     [stops],
   );
 
+  // The most recent prior place we could "return to" — i.e. the second-to-last
+  // stop's place. Lets a user quickly close a hotel → expo → hotel hop without
+  // re-typing the place.
+  const returnToTarget = useMemo(() => {
+    if (sortedStops.length < 2) return null;
+    const last = sortedStops[sortedStops.length - 1];
+    const prev = sortedStops[sortedStops.length - 2];
+    // Don't offer "return to" if the last stop is already at the prev place.
+    if (
+      prev.location_id &&
+      prev.location_id === last.location_id &&
+      prev.customer_site_id === last.customer_site_id
+    )
+      return null;
+    const label =
+      prev.customer_site?.name ??
+      prev.customer?.name ??
+      prev.location?.name ??
+      prev.title ??
+      "previous place";
+    return {
+      label,
+      location_id: prev.location_id,
+      customer_id: prev.customer_id,
+      customer_site_id: prev.customer_site_id,
+    };
+  }, [sortedStops]);
+
   const handleAdd = (input: Parameters<typeof createStop>[0]) => {
     startTransition(async () => {
       setError(null);
@@ -169,6 +200,39 @@ export function ItineraryEditor({
         });
       }
       setAdding(false);
+      router.refresh();
+    });
+  };
+
+  const handleReturnTo = (target: {
+    label: string;
+    location_id: string | null;
+    customer_id: string | null;
+    customer_site_id: string | null;
+  }) => {
+    startTransition(async () => {
+      setError(null);
+      const result = await createStop({
+        itinerary_id: itinerary.id,
+        type: "other",
+        title: `Back to ${target.label}`,
+        location_id: target.location_id,
+        customer_id: target.customer_id,
+        customer_site_id: target.customer_site_id,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      const newStop = result.value;
+      const precedingStop = sortedStops[sortedStops.length - 1];
+      if (precedingStop) {
+        await upsertTransition({
+          itinerary_id: itinerary.id,
+          from_stop_id: precedingStop.id,
+          to_stop_id: newStop.id,
+        });
+      }
       router.refresh();
     });
   };
@@ -389,7 +453,7 @@ export function ItineraryEditor({
           pending={pending}
         />
       ) : (
-        <div className="flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -398,6 +462,17 @@ export function ItineraryEditor({
           >
             + Add point
           </button>
+          {returnToTarget ? (
+            <button
+              type="button"
+              onClick={() => handleReturnTo(returnToTarget)}
+              className="btn-ghost"
+              disabled={pending}
+              title="Add a back-hop to the previous place"
+            >
+              ↩ Return to {returnToTarget.label}
+            </button>
+          ) : null}
         </div>
       )}
     </div>
