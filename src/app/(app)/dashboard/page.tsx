@@ -1,9 +1,10 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { PageShell } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
-import { formatDateInTz, formatInTz } from "@/lib/types/time";
+import { formatDateInTz } from "@/lib/types/time";
 import { WeekCalendar } from "@/components/week-calendar";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
@@ -11,18 +12,9 @@ const STATUS_LABEL: Record<ItineraryStatus, string> = {
   draft: "Draft",
   planning: "Planning",
   planned: "Planned",
-  in_progress: "Live now",
+  in_progress: "In progress",
   completed: "Completed",
   cancelled: "Cancelled",
-};
-
-const STATUS_SB: Record<ItineraryStatus, string> = {
-  draft: "sb-draft",
-  planning: "sb-planning",
-  planned: "sb-planned",
-  in_progress: "sb-progress",
-  completed: "sb-done",
-  cancelled: "sb-cancelled",
 };
 
 export default async function DashboardPage() {
@@ -80,41 +72,13 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
-  const now = new Date();
-  const eyebrowDate = formatInTz(now, wsCfg.timezone, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const greeting = greetingFor(now, wsCfg.timezone);
-  const firstName = (ctx.email.split("@")[0] || "").replace(/[._]/g, " ").trim();
-  const displayName = firstName
-    ? firstName.charAt(0).toUpperCase() + firstName.slice(1).split(" ")[0]
-    : "there";
-
-  const livePlanned = (plannedCount ?? 0) + (inProgressCount ?? 0);
-  const standfirst =
-    livePlanned > 0
-      ? `You have ${livePlanned} visit${livePlanned === 1 ? "" : "s"} on the books${
-          draftCount ? `, and ${draftCount} still in planning` : ""
-        }.`
-      : draftCount
-        ? `Nothing confirmed yet — ${draftCount} ${draftCount === 1 ? "draft is" : "drafts are"} waiting to be firmed up.`
-        : "A clean slate. Start an itinerary to see your week land here.";
-
   return (
     <PageShell
-      eyebrow={eyebrowDate}
-      eyebrowMeta="Dashboard"
-      title={
-        <>
-          {greeting}, <span className="terra-em">{displayName}</span>.
-        </>
-      }
-      description={standfirst}
+      title="Dashboard"
+      description="Your day. What's next, what's still being planned, and where Journies thinks you should be."
       actions={
         <Link href="/itineraries/new" className="btn-terra">
-          + Plan new visit
+          + New itinerary
         </Link>
       }
     >
@@ -134,37 +98,32 @@ export default async function DashboardPage() {
         <NoNext />
       )}
 
-      <section
-        className="digest"
-        style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
-      >
-        <DigestStat
-          n={draftCount ?? 0}
+      <WeekCalendar timezone={wsCfg.timezone} />
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <DashStat
           label="In planning"
-          sub="Drafts being assembled"
-          tone={draftCount ? "warn" : undefined}
+          value={draftCount ?? 0}
+          href="/itineraries"
+          description="Drafts being assembled."
         />
-        <DigestStat
-          n={plannedCount ?? 0}
+        <DashStat
           label="Planned"
-          sub="Ready to go"
-          tone={(plannedCount ?? 0) > 0 ? "ok" : undefined}
+          value={plannedCount ?? 0}
+          href="/itineraries"
+          description="Ready to go."
         />
-        <DigestStat
-          n={inProgressCount ?? 0}
+        <DashStat
           label="In progress"
-          sub="Happening now"
+          value={inProgressCount ?? 0}
+          href="/itineraries"
+          description="Happening now."
         />
       </section>
 
-      <WeekCalendar timezone={wsCfg.timezone} />
-
       <section className="grid gap-4 md:grid-cols-2">
         <div className="j-card p-5">
-          <header className="eyebrow-row mb-3">
-            <span className="uc">Calendar</span>
-            <span className="eyebrow-rule" />
-          </header>
+          <h2 className="h3 mb-3">Calendar</h2>
           {calendarConn ? (
             <>
               <p className="small">
@@ -197,32 +156,25 @@ export default async function DashboardPage() {
         </div>
 
         <div className="j-card p-5">
-          <header className="eyebrow-row mb-3">
-            <span className="uc">Recent itineraries</span>
-            <span className="eyebrow-rule" />
-          </header>
+          <h2 className="h3 mb-3">Recent itineraries</h2>
           {recent && recent.length > 0 ? (
-            <ul className="flex flex-col">
-              {recent.map((r, i) => (
+            <ul className="flex flex-col gap-2">
+              {recent.map((r) => (
                 <li
                   key={r.id}
-                  className={`flex items-center justify-between gap-3 py-2.5 text-sm ${
-                    i > 0 ? "border-t border-rule" : ""
-                  }`}
+                  className="flex items-center justify-between text-sm"
                 >
                   <Link
                     href={`/itineraries/${r.id}`}
-                    className="flex min-w-0 items-baseline gap-3 hover:text-terra"
+                    className="truncate hover:underline"
                   >
-                    <span className="truncate font-medium">
-                      {r.title ??
-                        formatDateInTz(new Date(r.date_start), wsCfg.timezone)}
-                    </span>
-                    <span className="mono shrink-0 text-[11px] uppercase tracking-wider text-ink-dim">
+                    {r.title ??
+                      formatDateInTz(new Date(r.date_start), wsCfg.timezone)}
+                    <span className="ml-2 text-xs text-ink-dim">
                       {formatDateInTz(new Date(r.date_start), wsCfg.timezone)}
                     </span>
                   </Link>
-                  <span className={`sb ${STATUS_SB[r.status as ItineraryStatus]}`}>
+                  <span className="chip">
                     {STATUS_LABEL[r.status as ItineraryStatus]}
                   </span>
                 </li>
@@ -237,21 +189,6 @@ export default async function DashboardPage() {
       </section>
     </PageShell>
   );
-}
-
-function greetingFor(now: Date, timezone: string): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      hour: "numeric",
-      hour12: false,
-      timeZone: timezone,
-    }).format(now),
-  );
-  if (hour < 5) return "Still up";
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  if (hour < 22) return "Good evening";
-  return "Good night";
 }
 
 function NextItineraryHero({
@@ -269,49 +206,29 @@ function NextItineraryHero({
   timezone: string;
   id: string;
 }) {
-  const start = new Date(startDate);
-  const dayOfWeek = formatInTz(start, timezone, { weekday: "long" });
-  const dayNum = formatInTz(start, timezone, { day: "numeric" });
-  const monthShort = formatInTz(start, timezone, { month: "short" });
-
   return (
-    <section className="j-card p-0 overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-[160px_1fr]">
-        <div
-          className="flex flex-col items-center justify-center py-6 px-4 text-center"
-          style={{ background: "var(--card-2)" }}
-        >
-          <span className="serif text-base text-ink-dim">{dayOfWeek}</span>
-          <span
-            className="font-serif italic font-medium text-terra"
-            style={{ fontSize: 64, lineHeight: 0.95, letterSpacing: "-0.04em" }}
-          >
-            {dayNum}
-          </span>
-          <span className="text-[11px] uppercase tracking-[0.18em] text-ink-2 mt-1.5">
-            {monthShort}
-          </span>
+    <section className="j-card p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="uc mb-2">Next up</p>
+          <h2 className="h2 mb-1">{title}</h2>
         </div>
-        <div className="p-6 md:p-7">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="uc">Next up</span>
-            <span className={`sb ${STATUS_SB[status]}`}>
-              {STATUS_LABEL[status]}
-            </span>
-          </div>
-          <h2 className="h2 mb-2">{title}</h2>
-          <p className="small mono uppercase tracking-wider">
-            {formatDateInTz(start, timezone)}
-            {endDate !== startDate
-              ? ` → ${formatDateInTz(new Date(endDate), timezone)}`
-              : ""}
+        <div className="text-right">
+          <p className="mono text-2xl text-ink">
+            {formatDateInTz(new Date(startDate), timezone)}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link href={`/itineraries/${id}`} className="btn-primary">
-              Open itinerary →
-            </Link>
-          </div>
+          {endDate !== startDate ? (
+            <p className="small">
+              → {formatDateInTz(new Date(endDate), timezone)}
+            </p>
+          ) : null}
+          <span className="chip mt-2 inline-flex">{STATUS_LABEL[status]}</span>
         </div>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Link href={`/itineraries/${id}`} className="btn-primary">
+          Open itinerary
+        </Link>
       </div>
     </section>
   );
@@ -328,23 +245,22 @@ function NoNext() {
   );
 }
 
-function DigestStat({
-  n,
+function DashStat({
   label,
-  sub,
-  tone,
+  value,
+  href,
+  description,
 }: {
-  n: number | string;
   label: string;
-  sub?: string;
-  tone?: "warn" | "ok";
+  value: number;
+  href: Route;
+  description: string;
 }) {
   return (
-    <div className={`digest-stat${tone ? ` tone-${tone}` : ""}`}>
-      <span className="digest-n">{n}</span>
-      <span className="digest-lbl">{label}</span>
-      {sub ? <span className="digest-sub">{sub}</span> : null}
-    </div>
+    <Link href={href} className="j-card block p-5 hover:bg-card-2">
+      <p className="uc mb-2">{label}</p>
+      <p className="mono mb-1 text-3xl font-medium text-ink">{value}</p>
+      <p className="small">{description}</p>
+    </Link>
   );
 }
-

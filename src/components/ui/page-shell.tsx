@@ -3,16 +3,12 @@ import { cn } from "@/lib/utils";
 export function PageShell({
   title,
   description,
-  eyebrow,
-  eyebrowMeta,
   actions,
   children,
   className,
 }: {
-  title: React.ReactNode;
+  title: string;
   description?: string;
-  eyebrow?: string;
-  eyebrowMeta?: string;
   actions?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
@@ -24,27 +20,14 @@ export function PageShell({
         className,
       )}
     >
-      <header className="flex flex-col gap-4">
-        {eyebrow ? (
-          <div className="eyebrow-row">
-            <span className="uc">{eyebrow}</span>
-            <span className="eyebrow-rule" />
-            {eyebrowMeta ? (
-              <span className="mono text-[11px] uppercase tracking-[0.06em] text-ink-dim">
-                {eyebrowMeta}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="h1 text-3xl md:text-4xl">{title}</h1>
-            {description ? <p className="body max-w-2xl">{description}</p> : null}
-          </div>
-          {actions ? (
-            <div className="flex flex-wrap gap-2">{actions}</div>
-          ) : null}
+      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="h1 text-3xl md:text-4xl">{title}</h1>
+          {description ? <p className="body max-w-2xl">{description}</p> : null}
         </div>
+        {actions ? (
+          <div className="flex flex-wrap gap-2">{actions}</div>
+        ) : null}
       </header>
       <div className="flex flex-col gap-5">{children}</div>
     </div>
