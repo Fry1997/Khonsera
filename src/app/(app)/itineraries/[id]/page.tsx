@@ -4,7 +4,27 @@ import { PageShell } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
+import { formatInTz } from "@/lib/types/time";
+import type { ItineraryStatus } from "@/lib/types/domain";
 import { ItineraryEditor } from "./itinerary-editor";
+
+const STATUS_LABEL: Record<ItineraryStatus, string> = {
+  draft: "Draft",
+  planning: "Planning",
+  planned: "Planned",
+  in_progress: "Live now",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const STATUS_SB: Record<ItineraryStatus, string> = {
+  draft: "sb-draft",
+  planning: "sb-planning",
+  planned: "sb-planned",
+  in_progress: "sb-progress",
+  completed: "sb-done",
+  cancelled: "sb-cancelled",
+};
 
 export default async function ItineraryDetailPage({
   params,
@@ -110,18 +130,37 @@ export default async function ItineraryDetailPage({
           .order("sequence")
       : { data: [] as never[] };
 
+  const start = new Date(itinerary.date_start);
+  const status = itinerary.status as ItineraryStatus;
+  const eyebrowDate =
+    itinerary.date_end !== itinerary.date_start
+      ? `${formatInTz(start, wsCfg.timezone, { day: "numeric", month: "short" })} → ${formatInTz(
+          new Date(itinerary.date_end),
+          wsCfg.timezone,
+          { day: "numeric", month: "short", year: "numeric" },
+        )}`
+      : formatInTz(start, wsCfg.timezone, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+
   return (
     <PageShell
-      title={itinerary.title ?? `Itinerary · ${itinerary.date_start}`}
-      description={
-        itinerary.date_end !== itinerary.date_start
-          ? `${itinerary.date_start} → ${itinerary.date_end} · ${itinerary.status}`
-          : `${itinerary.date_start} · ${itinerary.status}`
-      }
+      eyebrow="Itinerary"
+      eyebrowMeta={eyebrowDate}
+      title={itinerary.title ?? eyebrowDate}
+      description={undefined}
       actions={
-        <Link href="/itineraries" className="btn-ghost">
-          Back
-        </Link>
+        <div className="flex items-center gap-3">
+          <span className={`sb ${STATUS_SB[status]}`}>
+            {STATUS_LABEL[status]}
+          </span>
+          <Link href="/itineraries" className="btn-ghost">
+            ← All itineraries
+          </Link>
+        </div>
       }
     >
       <ItineraryEditor
