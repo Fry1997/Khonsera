@@ -1199,6 +1199,9 @@ function buildClientStaticMapUrl(spec: {
     ...spec,
     markers: spec.markers ?? [],
     paths: spec.paths ?? [],
+    // Pin the inline route maps to the Journies map style so the warm
+    // editorial palette carries into every embedded map.
+    style: "journies",
   });
   // base64url encode
   const b64 = btoa(unescape(encodeURIComponent(json)))

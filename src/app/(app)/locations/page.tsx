@@ -15,13 +15,15 @@ export default async function LocationsPage() {
     .order("type")
     .order("name");
 
+  // Each location type gets its own brand-palette pin so the saved-locations
+  // map reads as a clear key without needing a legend.
   const TYPE_COLOR: Record<string, StaticMapMarker["color"]> = {
-    home: "green",
-    office: "blue",
-    station: "purple",
-    hotel: "orange",
-    parking: "yellow",
-    other: "black",
+    home: "sage",
+    office: "ink",
+    station: "rust",
+    hotel: "terra",
+    parking: "amber",
+    other: "ink",
   };
   const markers: StaticMapMarker[] = (locations ?? [])
     .filter((l) => l.latitude != null && l.longitude != null)
@@ -37,7 +39,13 @@ export default async function LocationsPage() {
       description="Home, office, preferred stations and other starting points used when generating travel options."
     >
       {markers.length > 0 ? (
-        <StaticMap markers={markers} width={1200} height={320} alt="Saved locations" />
+        <StaticMap
+          markers={markers}
+          width={1200}
+          height={320}
+          alt="Saved locations"
+          style="journies"
+        />
       ) : null}
       <LocationsPanel locations={locations ?? []} />
     </PageShell>

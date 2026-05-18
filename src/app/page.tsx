@@ -1,29 +1,41 @@
 import Link from "next/link";
+import { FlankEyebrow, Masthead, Stat, StatGroup } from "@/components/ui/editorial";
 
 export default function LandingPage() {
   return (
     <main className="paper-tex flex min-h-screen flex-col">
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-5 py-12 sm:gap-10 sm:px-6 sm:py-16">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-5 py-12 sm:gap-12 sm:px-6 sm:py-16">
         <div className="brand-glyph">Journies</div>
-        <div className="space-y-4">
-          <h1 className="h0 text-[36px] leading-[1.06] sm:text-[44px] md:text-[56px]">
-            Know whether you can actually{" "}
-            <span className="text-terra">get there</span> — before you say yes.
-          </h1>
-          <p className="body max-w-xl text-base">
-            Plan, book, calendar and navigate on-site business visits from door
-            to door. Travel-aware feasibility, rail vs drive comparison, partner
-            rail booking and travel-day guidance.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Link href="/login" className="btn-terra">
-            Sign in
-          </Link>
-          <Link href="/signup" className="btn-ghost">
-            Create account
-          </Link>
-        </div>
+
+        <Masthead
+          eyebrow={<FlankEyebrow align="left">A travel-aware visit planner</FlankEyebrow>}
+          title="Know whether you can"
+          em="actually get there"
+          trailing={<span className="text-ink">— before you say yes.</span>}
+          standfirst={
+            <>
+              Plan, book, calendar and navigate on-site business visits door to
+              door. Travel-aware feasibility, <em>rail vs drive</em> comparison,
+              partner rail booking and travel-day guidance.
+            </>
+          }
+          actions={
+            <>
+              <Link href="/login" className="btn-terra">
+                Sign in
+              </Link>
+              <Link href="/signup" className="btn-ghost">
+                Create account
+              </Link>
+            </>
+          }
+        />
+
+        <StatGroup up={3} compact>
+          <Stat value="door → door" label="every leg planned" />
+          <Stat value="rail · drive" label="feasibility compared" />
+          <Stat value="one app" label="for the whole trip" />
+        </StatGroup>
       </div>
     </main>
   );
