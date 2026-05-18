@@ -1,11 +1,16 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { PageShell } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
 import { WeekCalendar } from "@/components/week-calendar";
+import {
+  FlankEyebrow,
+  Masthead,
+  Stat,
+  StatGroup,
+} from "@/components/ui/editorial";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
 const STATUS_LABEL: Record<ItineraryStatus, string> = {
@@ -72,16 +77,10 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
+  const totalActive = (draftCount ?? 0) + (plannedCount ?? 0) + (inProgressCount ?? 0);
+
   return (
-    <PageShell
-      title="Dashboard"
-      description="Your day. What's next, what's still being planned, and where Journies thinks you should be."
-      actions={
-        <Link href="/itineraries/new" className="btn-terra">
-          + New itinerary
-        </Link>
-      }
-    >
+    <div className="flex flex-col gap-10 px-4 py-6 sm:px-6 sm:py-9 md:px-10 md:py-12">
       {nextItinerary ? (
         <NextItineraryHero
           title={
@@ -100,25 +99,39 @@ export default async function DashboardPage() {
 
       <WeekCalendar timezone={wsCfg.timezone} />
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <DashStat
-          label="In planning"
-          value={draftCount ?? 0}
-          href="/itineraries"
-          description="Drafts being assembled."
-        />
-        <DashStat
-          label="Planned"
-          value={plannedCount ?? 0}
-          href="/itineraries"
-          description="Ready to go."
-        />
-        <DashStat
-          label="In progress"
-          value={inProgressCount ?? 0}
-          href="/itineraries"
-          description="Happening now."
-        />
+      <section className="flex flex-col gap-4">
+        <FlankEyebrow align="left">
+          On the books · {totalActive} active
+        </FlankEyebrow>
+        <StatGroup up={3} className="px-1">
+          <Link href={"/itineraries" as Route} className="group">
+            <Stat
+              value={draftCount ?? 0}
+              label="In planning · drafts assembling"
+            />
+            <span className="mt-1 block text-[11px] text-ink-faint group-hover:text-terra">
+              View →
+            </span>
+          </Link>
+          <Link href={"/itineraries" as Route} className="group">
+            <Stat
+              value={plannedCount ?? 0}
+              label="Planned · ready to go"
+            />
+            <span className="mt-1 block text-[11px] text-ink-faint group-hover:text-terra">
+              View →
+            </span>
+          </Link>
+          <Link href={"/itineraries" as Route} className="group">
+            <Stat
+              value={inProgressCount ?? 0}
+              label="In progress · happening now"
+            />
+            <span className="mt-1 block text-[11px] text-ink-faint group-hover:text-terra">
+              View →
+            </span>
+          </Link>
+        </StatGroup>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -187,8 +200,32 @@ export default async function DashboardPage() {
           )}
         </div>
       </section>
-    </PageShell>
+    </div>
   );
+}
+
+// Splits a "Visit to Pride Park" / "On site at Pride Park" title into a
+// neutral prefix + a terra-italic destination fragment, falling back to the
+// whole title if no obvious split point exists. Mirrors the deck masthead
+// treatment ("On site at *Pride Park.*").
+function splitTitleForMasthead(title: string): { head: string; em: string | null } {
+  // Prefer the last connective preposition so the destination becomes the em.
+  const connectives = [" to ", " at ", " in ", " — ", " – ", ": "];
+  for (const c of connectives) {
+    const idx = title.lastIndexOf(c);
+    if (idx > 0 && idx + c.length < title.length) {
+      return {
+        head: title.slice(0, idx + c.length).trim(),
+        em: title.slice(idx + c.length).trim(),
+      };
+    }
+  }
+  // Otherwise — em the last word so something carries colour.
+  const words = title.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return { head: words.slice(0, -1).join(" "), em: words.at(-1) ?? null };
+  }
+  return { head: title, em: null };
 }
 
 function NextItineraryHero({
@@ -206,61 +243,47 @@ function NextItineraryHero({
   timezone: string;
   id: string;
 }) {
+  const { head, em } = splitTitleForMasthead(title);
+  const startLabel = formatDateInTz(new Date(startDate), timezone);
+  const dateLine =
+    endDate !== startDate
+      ? `${startLabel} → ${formatDateInTz(new Date(endDate), timezone)}`
+      : startLabel;
+
   return (
-    <section className="j-card p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="uc mb-2">Next up</p>
-          <h2 className="h2 mb-1">{title}</h2>
-        </div>
-        <div className="text-right">
-          <p className="mono text-2xl text-ink">
-            {formatDateInTz(new Date(startDate), timezone)}
-          </p>
-          {endDate !== startDate ? (
-            <p className="small">
-              → {formatDateInTz(new Date(endDate), timezone)}
-            </p>
-          ) : null}
-          <span className="chip mt-2 inline-flex">{STATUS_LABEL[status]}</span>
-        </div>
-      </div>
-      <div className="mt-4 flex gap-2">
-        <Link href={`/itineraries/${id}`} className="btn-primary">
-          Open itinerary
-        </Link>
-      </div>
-    </section>
+    <Masthead
+      eyebrow={`Next up · ${dateLine} · ${STATUS_LABEL[status]}`}
+      chapter="01"
+      title={head}
+      em={em}
+      standfirst="Your nearest planned day, anchored on the destination Journies thinks matters most."
+      actions={
+        <>
+          <Link href={`/itineraries/${id}`} className="btn-terra">
+            Open itinerary
+          </Link>
+          <Link href={"/itineraries/new" as Route} className="btn-ghost">
+            + New
+          </Link>
+        </>
+      }
+    />
   );
 }
 
 function NoNext() {
   return (
-    <section className="j-card-soft p-6">
-      <p className="uc mb-2">Next up</p>
-      <p className="body">
-        Nothing planned yet. Start an itinerary to see your day land here.
-      </p>
-    </section>
-  );
-}
-
-function DashStat({
-  label,
-  value,
-  href,
-  description,
-}: {
-  label: string;
-  value: number;
-  href: Route;
-  description: string;
-}) {
-  return (
-    <Link href={href} className="j-card block p-5 hover:bg-card-2">
-      <p className="uc mb-2">{label}</p>
-      <p className="mono mb-1 text-3xl font-medium text-ink">{value}</p>
-      <p className="small">{description}</p>
-    </Link>
+    <Masthead
+      eyebrow="Next up · nothing on the books"
+      chapter="01"
+      title="Plan the next"
+      em="trip."
+      standfirst="No itinerary is queued. Start one to see your day land here — anchored to the appointment, with travel built backwards from it."
+      actions={
+        <Link href={"/itineraries/new" as Route} className="btn-terra">
+          + New itinerary
+        </Link>
+      }
+    />
   );
 }

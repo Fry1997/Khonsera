@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { PageShell } from "@/components/ui/page-shell";
+import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
+import { FlankEyebrow, Masthead } from "@/components/ui/editorial";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
 type Row = {
@@ -64,19 +65,23 @@ export default async function ItinerariesPage() {
   );
 
   return (
-    <PageShell
-      title="Itineraries"
-      description="Each itinerary is a day (or trip) made of ordered stops with transitions between them."
-      actions={
-        <Link href="/itineraries/new" className="btn-terra">
-          + New itinerary
-        </Link>
-      }
-    >
+    <div className="flex flex-col gap-9 px-4 py-6 sm:px-6 sm:py-9 md:px-10 md:py-12">
+      <Masthead
+        eyebrow={`Itineraries · ${rows.length} on file`}
+        title="Every trip,"
+        em="ordered."
+        standfirst="An itinerary is a day — or a multi-day run — made of stops with transitions between them. Drafts live alongside the booked ones until the day arrives."
+        actions={
+          <Link href={"/itineraries/new" as Route} className="btn-terra">
+            + New itinerary
+          </Link>
+        }
+      />
+
       {rows.length === 0 ? (
-        <div className="j-card-soft p-8 text-center">
+        <div className="j-card-soft p-10 text-center">
           <p className="body mb-3">No itineraries yet.</p>
-          <Link href="/itineraries/new" className="btn-terra">
+          <Link href={"/itineraries/new" as Route} className="btn-terra">
             Start your first one
           </Link>
         </div>
@@ -107,7 +112,7 @@ export default async function ItinerariesPage() {
           ) : null}
         </>
       )}
-    </PageShell>
+    </div>
   );
 }
 
@@ -124,10 +129,9 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <header className="flex items-baseline justify-between">
-        <h2 className="h3">{heading}</h2>
-        <span className="small">{rows.length}</span>
-      </header>
+      <FlankEyebrow>
+        {heading} · {rows.length}
+      </FlankEyebrow>
       <div className="grid gap-3 md:grid-cols-2">
         {rows.map((r) => (
           <Link

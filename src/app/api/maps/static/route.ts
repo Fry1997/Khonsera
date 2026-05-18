@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireUser } from "@/lib/auth";
 import {
   buildStaticMapUrl,
+  type MapStyle,
   type StaticMapMarker,
   type StaticMapPath,
 } from "@/lib/google/maps";
@@ -22,6 +23,7 @@ type Spec = {
   center?: { lat: number; lng: number };
   markers?: StaticMapMarker[];
   paths?: StaticMapPath[];
+  style?: MapStyle;
 };
 
 export async function GET(request: NextRequest) {

@@ -196,11 +196,48 @@ export async function getDirections(args: {
   }
 }
 
+// Named pin slots for the Journies map: each maps onto a brand hex. Use these
+// instead of Google's stock colours (which only offer red/blue/green/…) so
+// every pin sits inside the warm editorial palette.
+export type MarkerColor =
+  | "terra"
+  | "sage"
+  | "amber"
+  | "rust"
+  | "ink"
+  // legacy aliases — older code (e.g. locations page) still passes these.
+  | "red"
+  | "blue"
+  | "green"
+  | "orange"
+  | "purple"
+  | "yellow"
+  | "black";
+
+const MARKER_HEX: Record<MarkerColor, string> = {
+  // brand
+  terra: "c25c3a",
+  sage: "5f7053",
+  amber: "a07520",
+  rust: "9b3422",
+  ink: "1a1612",
+  // legacy aliases mapped onto the closest brand colour so existing
+  // call-sites stay cohesive without needing a sweep.
+  red: "c25c3a",
+  orange: "c25c3a",
+  blue: "5f7053",
+  green: "5f7053",
+  yellow: "a07520",
+  purple: "9b3422",
+  black: "1a1612",
+};
+
 export type StaticMapMarker = {
   lat: number;
   lng: number;
-  color?: "red" | "blue" | "green" | "orange" | "purple" | "yellow" | "black";
-  label?: string; // single character
+  color?: MarkerColor;
+  label?: string; // single character (A–Z, 0–9)
+  size?: "tiny" | "small" | "mid" | "normal";
 };
 
 export type StaticMapPath = {
@@ -209,6 +246,72 @@ export type StaticMapPath = {
   color?: string; // hex without "#"
   weight?: number;
 };
+
+export type MapStyle = "journies" | "minimal" | "default";
+
+// The Journies map style — a hand-tuned cohesive look that matches the
+// warm-paper editorial palette. Built around three rules:
+//   1. Hide commercial POIs entirely — the map exists to orient, not advertise.
+//   2. Roads + landscape stay in the cream/card range; the only contrast is
+//      water (sage) and the terra-tinted highway hairlines.
+//   3. Labels are stripped to administrative + locality + major roads, all
+//      in ink-dim, so the route + pins read first.
+const JOURNIES_STYLE = [
+  // Global label treatment — ink-dim text on a paper halo.
+  "feature:all|element:labels.text.fill|color:0x6e6557",
+  "feature:all|element:labels.text.stroke|color:0xfbf8f1|weight:2",
+  "feature:all|element:labels.icon|visibility:off",
+
+  // Landscape — warm paper.
+  "feature:landscape|element:geometry|color:0xf4f0e7",
+  "feature:landscape.man_made|element:geometry|color:0xede7d8",
+  "feature:landscape.natural|element:geometry|color:0xede7d8",
+
+  // POIs — hidden. We surface our own markers instead.
+  "feature:poi|element:all|visibility:off",
+  "feature:poi.park|element:geometry|color:0xe6ebdb|visibility:on",
+  "feature:poi.park|element:labels|visibility:off",
+
+  // Transit lines — off (we own the route polyline).
+  "feature:transit|element:all|visibility:off",
+  "feature:transit.station|element:labels.text|visibility:on|color:0x9c917f",
+
+  // Roads — three-tier hierarchy, all in the cream range.
+  "feature:road|element:geometry.fill|color:0xfbf8f1",
+  "feature:road|element:geometry.stroke|color:0xe4ddcd",
+  "feature:road|element:labels.icon|visibility:off",
+  "feature:road.local|element:labels|visibility:simplified",
+  "feature:road.local|element:geometry|color:0xf7f2e6",
+  "feature:road.arterial|element:geometry.fill|color:0xfbf8f1",
+  "feature:road.arterial|element:geometry.stroke|color:0xd6cdb8",
+  "feature:road.highway|element:geometry.fill|color:0xf0e6c8",
+  "feature:road.highway|element:geometry.stroke|color:0xa07520",
+  "feature:road.highway|element:labels.text.fill|color:0x8e3c20",
+
+  // Water — sage-tinted, the one cool note in the palette.
+  "feature:water|element:geometry|color:0xb8c2a8",
+  "feature:water|element:labels.text.fill|color:0x5f7053",
+
+  // Administrative — faint hairlines.
+  "feature:administrative|element:geometry.stroke|color:0xd6cdb8",
+  "feature:administrative.country|element:geometry.stroke|color:0x9c917f",
+  "feature:administrative.locality|element:labels.text.fill|color:0x3a342c",
+  "feature:administrative.neighborhood|element:labels|visibility:off",
+];
+
+// Minimal: just desaturate, no POI/transit hiding. Useful when we want a
+// map-of-record (e.g. customer site context) and don't want surprises.
+const MINIMAL_STYLE = [
+  "feature:all|element:labels.text.fill|color:0x5f5a52",
+  "feature:all|element:labels.text.stroke|color:0xfbf8f1",
+  "feature:landscape|element:geometry|color:0xf4f0e7",
+  "feature:road|element:geometry.fill|color:0xfbf8f1",
+  "feature:road|element:geometry.stroke|color:0xe4ddcd",
+  "feature:water|element:geometry|color:0xd6cdb8",
+  "feature:poi|element:geometry|color:0xede7d8",
+  "feature:poi|element:labels|visibility:simplified",
+  "feature:administrative|element:geometry.stroke|color:0xd6cdb8",
+];
 
 export function buildStaticMapUrl(args: {
   markers?: StaticMapMarker[];
@@ -219,7 +322,7 @@ export function buildStaticMapUrl(args: {
   zoom?: number;
   center?: LatLng;
   mapType?: "roadmap" | "satellite" | "hybrid" | "terrain";
-  style?: "minimal" | "default";
+  style?: MapStyle;
 }): string | null {
   const key = mapsApiKey();
   if (!key) return null;
@@ -235,25 +338,22 @@ export function buildStaticMapUrl(args: {
   if (args.zoom) url.searchParams.set("zoom", String(args.zoom));
   url.searchParams.set("maptype", args.mapType ?? "roadmap");
 
-  // Subtle desaturated style to match the warm paper palette.
-  if (args.style !== "minimal") {
-    const desat = [
-      "feature:all|element:labels.text.fill|color:0x5f5a52",
-      "feature:all|element:labels.text.stroke|color:0xfbf8f1",
-      "feature:landscape|element:geometry|color:0xf4f0e7",
-      "feature:road|element:geometry.fill|color:0xfbf8f1",
-      "feature:road|element:geometry.stroke|color:0xe4ddcd",
-      "feature:water|element:geometry|color:0xd6cdb8",
-      "feature:poi|element:geometry|color:0xede7d8",
-      "feature:poi|element:labels|visibility:simplified",
-      "feature:administrative|element:geometry.stroke|color:0xd6cdb8",
-    ];
-    for (const s of desat) url.searchParams.append("style", s);
+  const style = args.style ?? "journies";
+  const styleRules =
+    style === "journies"
+      ? JOURNIES_STYLE
+      : style === "minimal"
+        ? MINIMAL_STYLE
+        : null;
+  if (styleRules) {
+    for (const s of styleRules) url.searchParams.append("style", s);
   }
 
   for (const m of args.markers ?? []) {
+    const hex = MARKER_HEX[m.color ?? "terra"];
     const parts = [
-      `color:${m.color ?? "red"}`,
+      `color:0x${hex}`,
+      m.size && m.size !== "normal" ? `size:${m.size}` : "",
       m.label ? `label:${m.label}` : "",
       `${m.lat},${m.lng}`,
     ].filter(Boolean);

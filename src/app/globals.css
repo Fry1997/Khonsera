@@ -714,6 +714,140 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+   * Deck-style atoms — chapter numbers, ink hero pages, flanked eyebrows.
+   * Ported from the Journeys story deck so the app can speak the same
+   * editorial language as the marketing artefact.
+   * ------------------------------------------------------------------ */
+
+  /* Giant serif italic chapter numeral — used as the kickoff for a story
+     block ("01", "02", "03" in the deck). Terra so the eye finds it first. */
+  .chapter-number {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 64px;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--terra);
+    display: inline-block;
+  }
+  .chapter-number.lg {
+    font-size: 96px;
+  }
+  .chapter-number.sm {
+    font-size: 44px;
+  }
+
+  /* Eyebrow row with a hairline rule flanking the label — the
+     "01.2 · TUE 14:43 · PLAN INTENT" treatment in the deck. */
+  .flank-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .flank-eyebrow::before,
+  .flank-eyebrow::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+    min-width: 16px;
+  }
+  .flank-eyebrow.left::before {
+    display: none;
+  }
+  .flank-eyebrow.right::after {
+    display: none;
+  }
+
+  /* Grouped editorial stat layout — 2-up / 3-up / 4-up that respects the
+     stat-col atom (large serif italic value + mono label). */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 32px;
+  }
+  @media (min-width: 720px) {
+    .stat-grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .stat-grid.four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .stat-grid .stat-col .v {
+    font-size: 44px;
+  }
+  .stat-grid.compact .stat-col .v {
+    font-size: 30px;
+  }
+
+  /* Editorial dark hero — a full-bleed ink page block. The deck uses this
+     for the chapter intros ("Three trips. One app.", "Plan, do, repeat.").
+     All descendant editorial atoms invert to paper for legibility. */
+  .editorial-dark {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 6px;
+    padding: 36px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .editorial-dark::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at 80% 20%,
+      rgba(194, 92, 58, 0.18),
+      transparent 60%
+    );
+    pointer-events: none;
+  }
+  .editorial-dark > * {
+    position: relative;
+    z-index: 1;
+  }
+  .editorial-dark .masthead-title,
+  .editorial-dark .h0,
+  .editorial-dark .h1,
+  .editorial-dark .h2 {
+    color: var(--paper);
+  }
+  .editorial-dark .standfirst,
+  .editorial-dark .body {
+    color: var(--paper-2);
+  }
+  .editorial-dark .standfirst em,
+  .editorial-dark .masthead-title em,
+  .editorial-dark .masthead-title .em {
+    color: var(--terra);
+  }
+  .editorial-dark .uc,
+  .editorial-dark .stat-col .l,
+  .editorial-dark .flank-eyebrow {
+    color: var(--ink-faint);
+  }
+  .editorial-dark .flank-eyebrow::before,
+  .editorial-dark .flank-eyebrow::after {
+    background: rgba(244, 240, 231, 0.14);
+  }
+  .editorial-dark .stat-col .v {
+    color: var(--paper);
+  }
+  .editorial-dark .chapter-number {
+    color: var(--terra);
+  }
+  .editorial-dark .j-hr {
+    background: rgba(244, 240, 231, 0.14);
+  }
+
   /* Day-of-week eyebrow inside timeline */
   .day-header {
     display: flex;
