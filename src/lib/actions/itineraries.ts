@@ -115,6 +115,332 @@ export async function updateItinerary(
   return result;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// createItineraryFromBrief — the "anchor your day" intake.
+//
+// Instead of a four-field form, the user gives us:
+//   • where they need to be (anchor location)
+//   • the day  (date_start = anchor date)
+//   • the time they need to arrive (anchor start time)
+//   • optionally: a purpose chip (visit / conference / internal / personal)
+//   • optionally: a hotel + check-in date (hotel sits before the anchor)
+//   • optionally: a hotel checkout
+//
+// We then:
+//   1. Insert the itinerary (title auto-derived from the anchor's
+//      customer / customer_site / location name unless overridden).
+//   2. Insert a "start" stop pinned to the travel-profile home (or
+//      omit if the user hasn't set one — the editor will prompt).
+//   3. (Optional) Insert the hotel as an "accommodation" stop with
+//      check-in at the chosen time and check-out = anchor date end.
+//   4. Insert the anchor as an "appointment" stop, fixed at the time.
+//   5. (Optional) Insert a return-hotel stop if checkout > anchor day.
+//   6. Compute transitions between adjacent stops so the editor opens
+//      with the bones in place, not an empty timeline.
+// ─────────────────────────────────────────────────────────────────────
+
+const briefSchema = z
+  .object({
+    // Anchor — the appointment everything else routes around.
+    anchor_location_id: z.string().uuid().nullable().optional(),
+    anchor_customer_id: z.string().uuid().nullable().optional(),
+    anchor_customer_site_id: z.string().uuid().nullable().optional(),
+    // Free-text fallback when no saved place exists.
+    anchor_label: z.string().trim().max(200).nullable().optional(),
+    anchor_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    anchor_time: z.string().regex(/^\d{2}:\d{2}$/),
+    duration_minutes: z.number().int().min(0).max(24 * 60).optional(),
+
+    // Purpose chip — drives copy + title heuristics.
+    purpose: z
+      .enum(["visit", "conference", "internal", "personal", "other"])
+      .optional(),
+
+    // Optional hotel context.
+    hotel_location_id: z.string().uuid().nullable().optional(),
+    hotel_label: z.string().trim().max(200).nullable().optional(),
+    hotel_check_in_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    hotel_check_in_time: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable()
+      .optional(),
+    hotel_check_out_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+
+    // Explicit title override — when the user typed one.
+    title: z.string().trim().max(200).nullable().optional(),
+    notes: z.string().trim().max(4000).nullable().optional(),
+
+    // IANA timezone the form was filled out in; we use it to convert
+    // local clock times to UTC for stop pinning.
+    timezone: z.string().min(1).max(80),
+  })
+  .refine(
+    (v) =>
+      v.anchor_location_id != null ||
+      v.anchor_customer_site_id != null ||
+      v.anchor_customer_id != null ||
+      v.anchor_label != null,
+    {
+      message: "Pick a place for the anchor",
+      path: ["anchor_location_id"],
+    },
+  );
+
+export async function createItineraryFromBrief(
+  input: z.input<typeof briefSchema>,
+): Promise<Result<{ id: string }>> {
+  const parsed = parseInput(briefSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Resolve anchor location: prefer customer_site, then explicit location,
+  // then create a location from the free-text label.
+  let anchorLocationId = parsed.value.anchor_location_id ?? null;
+  let anchorLabel = parsed.value.anchor_label ?? null;
+  if (!anchorLocationId && parsed.value.anchor_customer_site_id) {
+    const { data: site } = await supabase
+      .from("customer_sites")
+      .select("id, name, address, latitude, longitude")
+      .eq("id", parsed.value.anchor_customer_site_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    if (site) anchorLabel = anchorLabel ?? site.name ?? site.address;
+  }
+  if (!anchorLocationId && !parsed.value.anchor_customer_site_id && anchorLabel) {
+    // Materialise the free-text label as a location so the editor has
+    // something to pin on.
+    const { data: newLoc } = await supabase
+      .from("locations")
+      .insert({
+        name: anchorLabel,
+        type: "other",
+        workspace_id: ctx.workspaceId,
+        user_id: ctx.userId,
+      })
+      .select("id, name")
+      .single();
+    if (newLoc) {
+      anchorLocationId = newLoc.id;
+      anchorLabel = newLoc.name;
+    }
+  }
+
+  // Resolve hotel location similarly.
+  let hotelLocationId = parsed.value.hotel_location_id ?? null;
+  if (!hotelLocationId && parsed.value.hotel_label) {
+    const { data: newHotel } = await supabase
+      .from("locations")
+      .insert({
+        name: parsed.value.hotel_label,
+        type: "hotel",
+        workspace_id: ctx.workspaceId,
+        user_id: ctx.userId,
+      })
+      .select("id")
+      .single();
+    if (newHotel) hotelLocationId = newHotel.id;
+  }
+
+  // Auto-title — customer name beats site name beats anchor label beats
+  // the date. The user can override at any time from the masthead.
+  let resolvedTitle = parsed.value.title ?? null;
+  if (!resolvedTitle && parsed.value.anchor_customer_id) {
+    const { data: cust } = await supabase
+      .from("customers")
+      .select("name")
+      .eq("id", parsed.value.anchor_customer_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    resolvedTitle = cust?.name ?? null;
+  }
+  if (!resolvedTitle) resolvedTitle = anchorLabel;
+
+  // Dates — date_end = anchor date unless the hotel checkout extends it.
+  const dateStart =
+    parsed.value.hotel_check_in_date ?? parsed.value.anchor_date;
+  const dateEnd =
+    parsed.value.hotel_check_out_date ?? parsed.value.anchor_date;
+
+  const { data: itinerary, error: itinErr } = await supabase
+    .from("itineraries")
+    .insert({
+      workspace_id: ctx.workspaceId,
+      user_id: ctx.userId,
+      title: resolvedTitle,
+      date_start: dateStart,
+      date_end: dateEnd,
+      notes: parsed.value.notes ?? null,
+    })
+    .select("*")
+    .single();
+  if (itinErr || !itinerary) {
+    return dbResult<{ id: string }>(null, itinErr, "itinerary");
+  }
+
+  await recordAudit({
+    entityType: "itinerary",
+    entityId: itinerary.id,
+    action: "create",
+    after: itinerary,
+  });
+
+  // Look up the user's home location for the start stop. If unset, the
+  // editor will still let them add it later.
+  const { data: profile } = await supabase
+    .from("travel_profiles")
+    .select(
+      "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+    )
+    .eq("user_id", ctx.userId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  const homeId =
+    profile?.default_drive_origin_location_id ??
+    profile?.default_rail_origin_location_id ??
+    profile?.default_return_location_id ??
+    null;
+
+  const stopsToInsert: Array<{
+    sequence: number;
+    type: "start" | "accommodation" | "appointment";
+    location_id: string | null;
+    title: string | null;
+    customer_id?: string | null;
+    customer_site_id?: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    is_time_fixed: boolean;
+    duration_minutes?: number | null;
+  }> = [];
+
+  let seq = 0;
+
+  if (homeId) {
+    stopsToInsert.push({
+      sequence: seq++,
+      type: "start",
+      location_id: homeId,
+      title: null,
+      start_time: null,
+      end_time: null,
+      is_time_fixed: false,
+    });
+  }
+
+  // Hotel (if it sits before the anchor on the anchor day or earlier).
+  if (hotelLocationId && parsed.value.hotel_check_in_date) {
+    const ci = isoFromLocal(
+      parsed.value.hotel_check_in_date,
+      parsed.value.hotel_check_in_time ?? "15:00",
+      parsed.value.timezone,
+    );
+    const co = parsed.value.hotel_check_out_date
+      ? isoFromLocal(
+          parsed.value.hotel_check_out_date,
+          "11:00",
+          parsed.value.timezone,
+        )
+      : isoFromLocal(parsed.value.anchor_date, "11:00", parsed.value.timezone);
+    stopsToInsert.push({
+      sequence: seq++,
+      type: "accommodation",
+      location_id: hotelLocationId,
+      title: parsed.value.hotel_label ?? null,
+      start_time: ci,
+      end_time: co,
+      is_time_fixed: true,
+    });
+  }
+
+  // The anchor itself.
+  const anchorStartIso = isoFromLocal(
+    parsed.value.anchor_date,
+    parsed.value.anchor_time,
+    parsed.value.timezone,
+  );
+  const dur = parsed.value.duration_minutes ?? defaultDuration(parsed.value.purpose);
+  const anchorEndIso = addMinutesIso(anchorStartIso, dur);
+  stopsToInsert.push({
+    sequence: seq++,
+    type: "appointment",
+    location_id: anchorLocationId,
+    customer_id: parsed.value.anchor_customer_id ?? null,
+    customer_site_id: parsed.value.anchor_customer_site_id ?? null,
+    title: anchorLabel,
+    start_time: anchorStartIso,
+    end_time: anchorEndIso,
+    is_time_fixed: true,
+    duration_minutes: dur,
+  });
+
+  if (stopsToInsert.length > 0) {
+    const rows = stopsToInsert.map((s) => ({
+      ...s,
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    }));
+    await supabase.from("stops").insert(rows);
+  }
+
+  return ok({ id: itinerary.id });
+}
+
+function isoFromLocal(
+  date: string,
+  time: string,
+  timezone: string,
+): string {
+  // Build an ISO timestamp from a local date + time in a named timezone.
+  // We construct an "as-if UTC" instant, then shift by the timezone offset
+  // at that moment using Intl.DateTimeFormat to read the offset back.
+  const asUtc = new Date(`${date}T${time}:00.000Z`);
+  // Format that instant in the target timezone — the difference gives us
+  // the offset to apply.
+  const tzString = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(asUtc);
+  const [tzHour, tzMin] = tzString.split(":").map((p) => parseInt(p, 10));
+  const utcHour = asUtc.getUTCHours();
+  const utcMin = asUtc.getUTCMinutes();
+  const offsetMins = (tzHour - utcHour) * 60 + (tzMin - utcMin);
+  // Normalise the offset to within ±12h (handles day-rollover).
+  const norm =
+    offsetMins > 720 ? offsetMins - 1440 : offsetMins < -720 ? offsetMins + 1440 : offsetMins;
+  return new Date(asUtc.getTime() - norm * 60_000).toISOString();
+}
+
+function addMinutesIso(iso: string, minutes: number): string {
+  return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
+}
+
+function defaultDuration(purpose?: string): number {
+  switch (purpose) {
+    case "conference":
+      return 8 * 60;
+    case "personal":
+      return 4 * 60;
+    case "internal":
+      return 60;
+    case "visit":
+    default:
+      return 90;
+  }
+}
+
 export async function deleteItinerary(id: string): Promise<Result<{ id: string }>> {
   const ctx = await requireUserContext();
   const supabase = await createClient();

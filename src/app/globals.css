@@ -1956,6 +1956,165 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+   * New-itinerary brief — guided "anchor your day" intake. Big numbered
+   * sections on the left, a live preview of the stops Khonsera will
+   * create on the right.
+   * ------------------------------------------------------------------ */
+  .brief-grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .brief-preview {
+    position: sticky;
+    top: 90px;
+  }
+  .brief-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .brief-card-hero {
+    border-color: var(--gold);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 8px 24px rgba(200, 157, 77, 0.10);
+  }
+  .brief-card-soft {
+    background: var(--card-2);
+  }
+  .brief-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: #fff;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .brief-helper {
+    margin: 0 0 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    max-width: 58ch;
+  }
+  .brief-when-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .brief-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .brief-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .brief-pill {
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    border: 1px solid transparent;
+  }
+  .brief-pill[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .brief-pill-lg {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 9px 14px;
+    gap: 2px;
+    min-width: 110px;
+  }
+  .brief-pill-lg[data-active="true"] {
+    background: var(--gold);
+    color: #fff;
+  }
+  .brief-pill-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+  }
+  .brief-context-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .brief-subcard {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .brief-details {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .brief-details[open] {
+    background: var(--card);
+  }
+  .brief-details-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .brief-details-summary::-webkit-details-marker {
+    display: none;
+  }
+  .brief-details-hint {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .brief-preview-card {
+    background: var(--card);
+  }
+  .brief-preview-empty {
+    margin-top: 10px;
+    padding: 22px;
+    border: 1px dashed var(--rule-2);
+    border-radius: 12px;
+    background: var(--card-2);
+  }
+
+  @media (max-width: 900px) {
+    .brief-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .brief-preview {
+      position: static;
+    }
+    .brief-when-row {
+      grid-template-columns: 1fr;
+    }
+    .brief-card {
+      padding: 18px;
+    }
+  }
+
   /* Paper texture — fine dot grid */
   .paper-tex {
     background-image: radial-gradient(
