@@ -20,6 +20,7 @@ import {
   type TransportBookingMode,
 } from "./add-transport-booking-form";
 import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
+import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 
 // Inline icons — line-art style matching the warm editorial design.
 const Icon = {
@@ -615,6 +616,13 @@ export function ItineraryEditor({
           ) : null}
           <span className={`sb ${STATUS_SB[itinerary.status]}`}>
             {STATUS_LABEL[itinerary.status]}
+          </span>
+          <span style={{ marginLeft: "auto" }}>
+            <DeleteItineraryButton
+              id={itinerary.id}
+              title={itinerary.title ?? "this itinerary"}
+              redirectTo="/itineraries"
+            />
           </span>
         </div>
 

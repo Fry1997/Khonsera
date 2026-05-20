@@ -5,6 +5,7 @@ import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
 import type { ItineraryStatus } from "@/lib/types/domain";
+import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 
 type Row = {
   id: string;
@@ -218,18 +219,31 @@ function ItineraryCard({
 
   const multiDay = row.date_start !== row.date_end;
   return (
-    <Link
-      href={`/itineraries/${row.id}`}
+    <div
       className="card"
       style={{
         padding: 16,
         display: "grid",
         gap: 14,
-        gridTemplateColumns: "auto 1fr",
+        gridTemplateColumns: "auto 1fr auto",
         alignItems: "center",
         opacity: muted ? 0.86 : 1,
+        position: "relative",
       }}
     >
+      <Link
+        href={`/itineraries/${row.id}`}
+        aria-label={
+          row.title ?? formatDateInTz(new Date(row.date_start), timezone)
+        }
+        // Cover the whole card so the row stays clickable, but the delete
+        // button (positioned above this overlay with z-index) still wins.
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1,
+        }}
+      />
       <div
         style={{
           width: 52,
@@ -314,7 +328,16 @@ function ItineraryCard({
           </span>
         </div>
       </div>
-    </Link>
+      <span style={{ position: "relative", zIndex: 2 }}>
+        <DeleteItineraryButton
+          id={row.id}
+          title={
+            row.title ?? formatDateInTz(new Date(row.date_start), timezone)
+          }
+          variant="row"
+        />
+      </span>
+    </div>
   );
 }
 
