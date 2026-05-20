@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
 import { createStop, deleteStop } from "@/lib/actions/stops";
 import { upsertTransition, setTransitionMode } from "@/lib/actions/transitions";
@@ -15,7 +15,11 @@ import type {
   TransitionMode,
 } from "@/lib/types/domain";
 import { AddStopForm } from "./add-stop-form";
-import { AddTrainBookingForm } from "./add-train-booking-form";
+import {
+  AddTransportBookingForm,
+  type TransportBookingMode,
+} from "./add-transport-booking-form";
+import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
 
 // Inline icons — line-art style matching the warm editorial design.
 const Icon = {
@@ -227,9 +231,15 @@ export function ItineraryEditor({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [trainBookingFor, setTrainBookingFor] = useState<{
+  const [transportBookingFor, setTransportBookingFor] = useState<{
     stopId: string;
     label: string;
+    mode: TransportBookingMode;
+  } | null>(null);
+  const [accommodationBookingFor, setAccommodationBookingFor] = useState<{
+    afterStopId?: string;
+    afterStopLabel?: string;
+    existingStopId?: string;
   } | null>(null);
 
   // Transitions keyed by from_stop_id for fast lookup.
@@ -641,8 +651,22 @@ export function ItineraryEditor({
                         timezone={timezone}
                         pending={pending}
                         onDelete={handleDelete}
-                        onAddTrain={(label) =>
-                          setTrainBookingFor({ stopId: stop.id, label })
+                        onAddTransport={(mode, label) =>
+                          setTransportBookingFor({
+                            stopId: stop.id,
+                            label,
+                            mode,
+                          })
+                        }
+                        onAddAccommodation={(label) =>
+                          setAccommodationBookingFor({
+                            afterStopId: stop.id,
+                            afterStopLabel: label,
+                            existingStopId:
+                              stop.type === "accommodation"
+                                ? stop.id
+                                : undefined,
+                          })
                         }
                       />
                       {next && transitionToNext ? (
@@ -764,20 +788,56 @@ export function ItineraryEditor({
           </aside>
         </div>
 
-        {/* Booked-train modal-ish */}
-        {trainBookingFor ? (
-          <AddTrainBookingForm
-            fromStopId={trainBookingFor.stopId}
-            fromStopLabel={trainBookingFor.label}
-            customers={customers}
-            customerSites={customerSites}
-            locations={locations}
-            onCancel={() => setTrainBookingFor(null)}
-            onDone={() => {
-              setTrainBookingFor(null);
-              router.refresh();
+        {/* Booking modal — transport */}
+        {transportBookingFor ? (
+          <div
+            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setTransportBookingFor(null);
             }}
-          />
+          >
+            <div className="my-8 w-full max-w-3xl">
+              <AddTransportBookingForm
+                fromStopId={transportBookingFor.stopId}
+                fromStopLabel={transportBookingFor.label}
+                initialMode={transportBookingFor.mode}
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                onCancel={() => setTransportBookingFor(null)}
+                onDone={() => {
+                  setTransportBookingFor(null);
+                  router.refresh();
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {/* Booking modal — accommodation */}
+        {accommodationBookingFor ? (
+          <div
+            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setAccommodationBookingFor(null);
+            }}
+          >
+            <div className="my-8 w-full max-w-3xl">
+              <AddAccommodationBookingForm
+                afterStopId={accommodationBookingFor.afterStopId}
+                afterStopLabel={accommodationBookingFor.afterStopLabel}
+                existingStopId={accommodationBookingFor.existingStopId}
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                onCancel={() => setAccommodationBookingFor(null)}
+                onDone={() => {
+                  setAccommodationBookingFor(null);
+                  router.refresh();
+                }}
+              />
+            </div>
+          </div>
         ) : null}
       </div>
     </div>
@@ -824,7 +884,8 @@ function StopRowView({
   timezone,
   pending,
   onDelete,
-  onAddTrain,
+  onAddTransport,
+  onAddAccommodation,
 }: {
   stop: StopRow;
   index: number;
@@ -833,7 +894,8 @@ function StopRowView({
   timezone: string;
   pending: boolean;
   onDelete: (id: string) => void;
-  onAddTrain: (label: string) => void;
+  onAddTransport: (mode: TransportBookingMode, label: string) => void;
+  onAddAccommodation: (label: string) => void;
 }) {
   const customerLabel = stop.customer?.name ?? null;
   const siteLabel = stop.customer_site?.name ?? null;
@@ -919,21 +981,12 @@ function StopRowView({
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
-            {stop.location?.type === "station" ? (
-              <button
-                type="button"
-                className="text-xs hover:underline disabled:opacity-50"
-                style={{ color: "var(--terra)" }}
-                onClick={() =>
-                  onAddTrain(
-                    stop.location?.name ?? stop.title ?? "this station",
-                  )
-                }
-                disabled={pending}
-              >
-                + Add booked train
-              </button>
-            ) : null}
+            <StopBookingMenu
+              stop={stop}
+              pending={pending}
+              onAddTransport={onAddTransport}
+              onAddAccommodation={onAddAccommodation}
+            />
             {!isFirst ? (
               <button
                 type="button"
@@ -948,6 +1001,121 @@ function StopRowView({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StopBookingMenu({
+  stop,
+  pending,
+  onAddTransport,
+  onAddAccommodation,
+}: {
+  stop: StopRow;
+  pending: boolean;
+  onAddTransport: (mode: TransportBookingMode, label: string) => void;
+  onAddAccommodation: (label: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const label =
+    stop.customer_site?.name ??
+    stop.customer?.name ??
+    stop.location?.name ??
+    stop.title ??
+    "this point";
+
+  const isStation = stop.location?.type === "station";
+
+  const items: { mode: TransportBookingMode; label: string }[] = [
+    { mode: "train", label: "Train" },
+    { mode: "flight", label: "Flight" },
+    { mode: "taxi", label: "Taxi" },
+    { mode: "bus", label: "Bus" },
+    { mode: "tube", label: "Tube" },
+    { mode: "drive", label: "Car hire" },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        className="text-xs hover:underline disabled:opacity-50"
+        style={{ color: "var(--gold-2)" }}
+        onClick={() => setOpen((v) => !v)}
+        disabled={pending}
+      >
+        + Add booking
+      </button>
+      {open ? (
+        <div
+          className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-md border border-rule bg-card shadow-lg"
+          role="menu"
+        >
+          {isStation ? (
+            <button
+              type="button"
+              className="block w-full px-3 py-2 text-left text-xs hover:bg-gold-soft/40"
+              style={{ background: "var(--gold-soft)" }}
+              onClick={() => {
+                setOpen(false);
+                onAddTransport("train", label);
+              }}
+            >
+              <span className="mr-2">🚆</span>
+              Train (from {stop.location?.name ?? "station"})
+            </button>
+          ) : null}
+          {items.map((it) => (
+            <button
+              key={it.mode}
+              type="button"
+              role="menuitem"
+              className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
+              onClick={() => {
+                setOpen(false);
+                onAddTransport(it.mode, label);
+              }}
+            >
+              <span className="mr-2">
+                {it.mode === "train"
+                  ? "🚆"
+                  : it.mode === "flight"
+                    ? "✈"
+                    : it.mode === "taxi"
+                      ? "🚕"
+                      : it.mode === "bus"
+                        ? "🚌"
+                        : it.mode === "tube"
+                          ? "Ⓤ"
+                          : "🚗"}
+              </span>
+              {it.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
+            onClick={() => {
+              setOpen(false);
+              onAddAccommodation(label);
+            }}
+          >
+            <span className="mr-2">🏨</span>
+            {stop.type === "accommodation" ? "Edit stay" : "Hotel / stay"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

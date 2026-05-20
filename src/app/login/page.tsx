@@ -10,8 +10,17 @@ export default async function LoginPage({
   return (
     <main className="paper-tex flex min-h-screen flex-col">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-7 px-6 py-12">
-        <Link href="/" className="brand-glyph w-fit">
-          Journies
+        <Link href="/" className="brand-lockup w-fit">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+            <path
+              d="M14.5 3.3a9 9 0 1 0 6.2 12.1A7 7 0 0 1 14.5 3.3Z"
+              fill="currentColor"
+              style={{ color: "var(--gold)" }}
+            />
+          </svg>
+          <span>
+            Khonser<span style={{ color: "var(--gold)" }}>a</span>
+          </span>
         </Link>
         <div className="flex flex-col gap-1">
           <h1 className="h1">Sign in</h1>
@@ -40,7 +49,7 @@ export default async function LoginPage({
             />
           </label>
           {sp.error ? <p className="text-sm text-rust">{sp.error}</p> : null}
-          <button type="submit" className="btn-terra">
+          <button type="submit" className="btn-gold">
             Sign in
           </button>
         </form>

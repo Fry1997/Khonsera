@@ -16,6 +16,10 @@ import {
   updateLocation,
 } from "@/lib/actions/locations";
 import { feedbackFromError, type FormFeedback } from "@/lib/actions/_form";
+import {
+  PlacePicker,
+  type PlaceSelection,
+} from "@/components/place-picker";
 import type { LocationType } from "@/lib/types/domain";
 
 type Location = {
@@ -68,9 +72,39 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
     });
   };
 
+  const [quickPicked, setQuickPicked] = useState<PlaceSelection | null>(null);
+  // Quick-add via Google Places — the PlacePicker materialises the chosen
+  // place into the locations table on the server. We just refresh once it's
+  // done.
+  const handleQuickPick = (selection: PlaceSelection | null) => {
+    setQuickPicked(selection);
+    if (selection?.kind === "location") {
+      // PlacePicker already inserted the row + geocoded; just refresh.
+      router.refresh();
+      setQuickPicked(null);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <FormError message={feedback?.message} />
+
+      <div className="k-card-soft flex flex-col gap-2 p-4">
+        <p className="uc">Quick add · search anywhere</p>
+        <PlacePicker
+          customers={[]}
+          customerSites={[]}
+          locations={[]}
+          showCustomers={false}
+          value={quickPicked}
+          onChange={handleQuickPick}
+          placeholder="Search a station, hotel, office or address…"
+        />
+        <p className="small">
+          Pick a result from Google to save it instantly, or type a new name
+          and choose "add as a new place".
+        </p>
+      </div>
 
       {locations.length > 0 ? (
         <ul className="divide-y divide-border rounded-md border border-border">

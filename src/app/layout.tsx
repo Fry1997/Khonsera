@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -10,16 +10,23 @@ const serif = Newsreader({
   weight: ["400", "500", "600"],
   variable: "--font-serif",
 });
+const display = Cormorant_Garamond({
+  subsets: ["latin"],
+  style: ["italic", "normal"],
+  weight: ["400", "500", "600"],
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
-  title: "Journies",
-  description: "Plan, confirm and execute on-site business visits.",
+  title: "Khonsera — quietly luxe travel planning",
+  description:
+    "Khonsera plans, confirms and executes your trips. Editorial, warm and quietly intelligent.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f4f0e7",
+  themeColor: "#efe6d0",
 };
 
 export default function RootLayout({
@@ -30,7 +37,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${mono.variable} ${serif.variable}`}
+      data-palette="dusk"
+      className={`${sans.variable} ${mono.variable} ${serif.variable} ${display.variable}`}
     >
       <body>{children}</body>
     </html>

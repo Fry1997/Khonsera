@@ -2,36 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Journies — warm editorial. Tokens ported verbatim from the Claude design
-   artifact so the visual language stays consistent across whatever Tailwind
-   utilities + bespoke classes call them. */
+/* Khonsera — warm editorial, quietly luxe.
+ * Tokens are organised as a multi-palette system: the default is "dusk"
+ * (sand + sanded gold + terracotta + walnut ink). Other palettes can be
+ * activated by setting data-palette on the <html> root.
+ * Every previous Journies class still resolves — terra, sage, amber, rust
+ * tokens are preserved, gold + plum are layered on top. */
 @layer base {
-  :root {
-    --paper: #f4f0e7;
-    --paper-2: #ede7d8;
-    --card: #fbf8f1;
-    --card-2: #f7f2e6;
-    --ink: #1a1612;
-    --ink-2: #3a342c;
-    --ink-dim: #6e6557;
-    --ink-faint: #9c917f;
-    --rule: #e4ddcd;
-    --rule-2: #d6cdb8;
+  :root,
+  [data-palette="dusk"] {
+    /* surface */
+    --paper: #efe6d0;
+    --paper-2: #e7dab9;
+    --card: #f7eed7;
+    --card-2: #f0e4c6;
+
+    /* ink */
+    --ink: #1e1812;
+    --ink-2: #43382c;
+    --ink-dim: #786a55;
+    --ink-faint: #ab9d7f;
+
+    /* rule */
+    --rule: #dccfa9;
+    --rule-2: #c6b88e;
+
+    /* primary accents */
+    --gold: #b8893f;
+    --gold-2: #936820;
+    --gold-soft: #efdfb1;
     --terra: #c25c3a;
     --terra-2: #a14a2c;
-    --terra-deep: #8e3c20;
-    --sage: #5f7053;
-    --sage-2: #e6ebdb;
+    --terra-deep: #7e3a1e;
+    --plum: #5c3a48;
+    --plum-soft: #e6d3d3;
+
+    /* status */
+    --sage: #687856;
+    --sage-2: #dde0c4;
     --amber: #a07520;
     --amber-2: #f0e6c8;
     --rust: #9b3422;
-    --rust-2: #f0d6cf;
-    --ink-soft: rgba(26, 22, 18, 0.06);
-    /* The fallback strings ensure the page is still readable before
-       next/font's variables resolve. */
+    --rust-2: #ecd1c8;
+
+    --ink-soft: rgba(30, 24, 18, 0.06);
+    --gold-soft-alpha: rgba(184, 137, 63, 0.10);
+
+    --display: var(--font-display), "Cormorant Garamond", "Newsreader", Georgia,
+      serif;
     --serif: var(--font-serif), "Newsreader", "Source Serif 4", Georgia, serif;
     --sans: var(--font-sans), "Geist", "Inter", -apple-system, system-ui, sans-serif;
     --mono: var(--font-mono), "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  /* Optional dark / night palette — selected via data-palette="midnight" */
+  [data-palette="midnight"] {
+    --paper: #1f1825;
+    --paper-2: #15101a;
+    --card: #2a2230;
+    --card-2: #221b29;
+    --ink: #f4e8cf;
+    --ink-2: #ddd0b6;
+    --ink-dim: #97896e;
+    --ink-faint: #6c5e47;
+    --rule: #3c3142;
+    --rule-2: #4d3f55;
+    --gold: #d4a04d;
+    --gold-2: #b07b2a;
+    --gold-soft: #3b2f1c;
+    --terra: #d77450;
+    --terra-2: #c25c3a;
+    --terra-deep: #9d4225;
+    --plum: #905d72;
+    --plum-soft: #392332;
+    --sage: #93a07a;
+    --sage-2: #2f3a2a;
+    --amber: #d6a44a;
+    --amber-2: #3a2f15;
+    --rust: #d8624d;
+    --rust-2: #3a201a;
+    --ink-soft: rgba(244, 232, 207, 0.07);
   }
 
   html,
@@ -244,6 +294,10 @@
     color: var(--rust);
     background: var(--rust-2);
   }
+  .tag-gold {
+    color: var(--gold-2);
+    background: var(--gold-soft);
+  }
   .tag-ok.solid {
     background: var(--sage);
     color: #f6f7ef;
@@ -259,17 +313,18 @@
 
   .input-base {
     width: 100%;
-    padding: 9px 12px;
+    padding: 10px 12px;
     background: var(--card);
     border: 1px solid var(--rule);
-    border-radius: 4px;
+    border-radius: 3px;
     font-size: 13.5px;
     color: var(--ink);
     outline: none;
-    transition: border-color 0.12s;
+    transition: border-color 0.12s, box-shadow 0.12s;
   }
   .input-base:focus {
-    border-color: var(--ink);
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-soft-alpha);
   }
   .input-base::placeholder {
     color: var(--ink-faint);
@@ -290,6 +345,238 @@
     color: var(--terra);
     margin-right: 6px;
     font-style: normal;
+  }
+
+  /* Khonsera brand lockup — moon + wordmark, gold "a" tail. */
+  .brand-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .brand-lockup svg {
+    color: var(--gold);
+  }
+
+  /* Gold primary CTA — the dusk palette's principal action surface. */
+  .btn-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 3px;
+    background: var(--gold);
+    color: var(--paper);
+    border: 1px solid var(--gold);
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, transform 0.08s, border-color 0.15s;
+  }
+  .btn-gold:hover:not(:disabled) {
+    background: var(--gold-2);
+    border-color: var(--gold-2);
+    transform: translateY(-1px);
+  }
+  .btn-gold:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-ink {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 3px;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform 0.08s;
+  }
+  .btn-ink:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  /* Editorial card variants — Khonsera uses tighter radius (3px) than the
+     Journies j-card (6px) so the surfaces sit closer to print stock. */
+  .k-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .k-card-soft {
+    background: var(--card-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .k-hr {
+    height: 1px;
+    background: var(--rule);
+    border: 0;
+    margin: 0;
+  }
+
+  /* Serif italic helper */
+  .serif-i {
+    font-family: var(--serif);
+    font-style: italic;
+    letter-spacing: -0.01em;
+  }
+  .display {
+    font-family: var(--display);
+    font-style: italic;
+  }
+
+  /* Wordmark sizes for hero/marketing surfaces */
+  .wordmark {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 72px;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  .wordmark .em {
+    color: var(--gold);
+    font-style: italic;
+  }
+  .wordmark.sm {
+    font-size: 28px;
+  }
+  .wordmark.md {
+    font-size: 44px;
+  }
+  .wordmark.lg {
+    font-size: 96px;
+  }
+
+  /* Luxe ornamental rule — a hairline with a gold dot in the middle, used
+     between editorial sections to break a wall of body copy. */
+  .luxe-rule {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--gold);
+  }
+  .luxe-rule::before,
+  .luxe-rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--rule-2),
+      transparent
+    );
+  }
+  .luxe-rule .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Place-picker dropdown section header */
+  .pp-section {
+    display: flex;
+    flex-direction: column;
+  }
+  .pp-section + .pp-section {
+    border-top: 1px solid var(--rule);
+  }
+  .pp-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    background: var(--card);
+  }
+
+  /* Manual booking — mode picker pill row */
+  .mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    transition: all 0.12s;
+  }
+  .mode-pill:hover {
+    border-color: var(--rule-2);
+    color: var(--ink);
+  }
+  .mode-pill[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .mode-pill:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Bookings filter row (All / Rail / Flights / Stays / Cars) */
+  .bookings-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 0 6px;
+  }
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-2);
+    transition: all 0.12s;
+  }
+  .filter-pill:hover {
+    border-color: var(--rule-2);
+    color: var(--ink);
+  }
+  .filter-pill[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .filter-pill-count {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+  }
+  .filter-pill:not([data-active="true"]) .filter-pill-count {
+    background: var(--ink-soft);
+    color: var(--ink-dim);
   }
 
   .paper-tex {
@@ -359,7 +646,7 @@
   }
   .statusflow-step[data-state="current"] {
     color: var(--paper);
-    background: var(--terra);
+    background: var(--gold);
   }
   .statusflow-step[data-state="future"] {
     color: var(--ink-faint);
@@ -374,16 +661,17 @@
   .masthead-title {
     font-family: var(--serif);
     font-weight: 500;
-    font-size: 46px;
-    line-height: 1.04;
+    font-size: 50px;
+    line-height: 1.02;
     letter-spacing: -0.025em;
     color: var(--ink);
     margin: 0;
+    text-wrap: pretty;
   }
   .masthead-title em,
   .masthead-title .em {
     font-style: italic;
-    color: var(--terra);
+    color: var(--gold);
     font-weight: 500;
   }
   @media (max-width: 700px) {
@@ -395,14 +683,15 @@
   .standfirst {
     font-family: var(--serif);
     font-style: italic;
-    font-size: 15.5px;
-    line-height: 1.55;
+    font-size: 16px;
+    line-height: 1.5;
     color: var(--ink-2);
     margin: 0;
-    max-width: 56ch;
+    max-width: 58ch;
+    text-wrap: pretty;
   }
   .standfirst em {
-    color: var(--terra);
+    color: var(--gold);
     font-weight: 500;
   }
 
@@ -456,8 +745,8 @@
     color: var(--sage);
   }
   .sb-progress {
-    background: var(--terra);
-    color: #fff8ef;
+    background: var(--gold);
+    color: var(--paper);
   }
   .sb-done {
     background: transparent;
@@ -637,19 +926,19 @@
     color: var(--ink);
   }
 
-  /* Appointment highlight (terra block) */
+  /* Appointment highlight — luxe gold block */
   .appt-block {
-    background: rgba(194, 92, 58, 0.06);
-    border: 1px solid rgba(194, 92, 58, 0.18);
+    background: var(--gold-soft);
+    border: 1px solid var(--gold);
     border-radius: 4px;
     padding: 14px 16px;
   }
   .appt-block .tl-eyebrow {
-    color: var(--terra-deep);
+    color: var(--gold-2);
   }
   .appt-block .tl-title em,
   .appt-block .tl-title .em {
-    color: var(--terra);
+    color: var(--gold-2);
   }
 
   /* Day digest panel — right sidebar */

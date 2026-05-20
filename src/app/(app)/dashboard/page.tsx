@@ -256,10 +256,10 @@ function NextItineraryHero({
       chapter="01"
       title={head}
       em={em}
-      standfirst="Your nearest planned day, anchored on the destination Journies thinks matters most."
+      standfirst="Your nearest planned day, anchored on the destination Khonsera thinks matters most."
       actions={
         <>
-          <Link href={`/itineraries/${id}`} className="btn-terra">
+          <Link href={`/itineraries/${id}`} className="btn-gold">
             Open itinerary
           </Link>
           <Link href={"/itineraries/new" as Route} className="btn-ghost">
