@@ -80,15 +80,6 @@ type Row =
       google: GoogleSuggestion;
     };
 
-const PLACE_KINDS: { value: LocationType; label: string }[] = [
-  { value: "station", label: "Station" },
-  { value: "hotel", label: "Hotel" },
-  { value: "office", label: "Office" },
-  { value: "home", label: "Home" },
-  { value: "parking", label: "Parking" },
-  { value: "other", label: "Other" },
-];
-
 // Generate a stable per-session token so Google bills autocomplete + the
 // follow-up Place Details call as one session (cheaper).
 function newSessionToken(): string {
@@ -129,17 +120,6 @@ export function PlacePicker({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
-  const [creating, setCreating] = useState<
-    | null
-    | {
-        name: string;
-        // Optional Google place to materialise into a location. When set, we
-        // use Place Details server-side; the form just confirms the type.
-        google?: GoogleSuggestion;
-      }
-  >(null);
-  const [newType, setNewType] = useState<LocationType>(defaultNewType);
-  const [newAddress, setNewAddress] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [googleSuggestions, setGoogleSuggestions] = useState<GoogleSuggestion[]>([]);
@@ -326,48 +306,8 @@ export function PlacePicker({
     }
   };
 
-  const startCreate = () => {
-    setCreating({ name: query.trim() });
-    setNewType(defaultNewType);
-    setOpen(false);
-  };
 
-  const submitCreate = async () => {
-    if (!creating) return;
-    setPending(true);
-    setError(null);
-    const result = await createInlineLocation({
-      name: creating.name,
-      type: newType,
-      address: newAddress.trim() || null,
-    });
-    setPending(false);
-    if (!result.ok) {
-      setError(feedbackFromError(result.error).message);
-      return;
-    }
-    const loc = result.value;
-    onChange({
-      kind: "location",
-      location_id: loc.id,
-      label: loc.name,
-      sublabel: loc.address ?? labelForLocationType(loc.type),
-      location_type: loc.type,
-    });
-    setCreating(null);
-    setNewAddress("");
-    setNewType(defaultNewType);
-    setQuery("");
-  };
-
-  const cancelCreate = () => {
-    setCreating(null);
-    setNewAddress("");
-    setNewType(defaultNewType);
-    setError(null);
-  };
-
-  if (value && !creating) {
+  if (value) {
     return (
       <div className="flex items-center justify-between gap-2 rounded-md border border-rule bg-card-2 px-3 py-2">
         <div className="min-w-0">
@@ -399,73 +339,44 @@ export function PlacePicker({
     );
   }
 
-  if (creating) {
-    return (
-      <div className="flex flex-col gap-2 rounded-md border border-rule bg-card-2 p-3">
-        <p className="small">
-          New place: <span className="font-medium">{creating.name}</span>
-        </p>
-        <div className="flex flex-wrap gap-1">
-          {PLACE_KINDS.map((k) => (
-            <button
-              type="button"
-              key={k.value}
-              onClick={() => setNewType(k.value)}
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-xs",
-                newType === k.value
-                  ? "border-gold bg-gold-soft text-gold-2"
-                  : "border-rule",
-              )}
-              disabled={pending}
-              style={
-                newType === k.value
-                  ? {
-                      borderColor: "var(--gold)",
-                      background: "var(--gold-soft)",
-                      color: "var(--gold-2)",
-                    }
-                  : undefined
-              }
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-        <input
-          className="input-base"
-          placeholder="Address (optional — helps Google find it)"
-          value={newAddress}
-          onChange={(e) => setNewAddress(e.target.value)}
-          disabled={pending}
-        />
-        {error ? <p className="text-xs text-rust">{error}</p> : null}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="btn-gold"
-            style={{ padding: "6px 12px", fontSize: 13 }}
-            onClick={submitCreate}
-            disabled={pending}
-          >
-            {pending ? "Saving…" : "Save place"}
-          </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            style={{ padding: "6px 12px", fontSize: 13 }}
-            onClick={cancelCreate}
-            disabled={pending}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // One-click "use as a new place" — no form, no fuss. Creates a fresh
+  // location row with the typed text, defaulted to the picker's type
+  // hint, then picks it. The user can re-classify from the anchor card.
+  const createAndPick = async (rawName: string) => {
+    const name = rawName.trim();
+    if (!name) return;
+    setPending(true);
+    setError(null);
+    const result = await createInlineLocation({
+      name,
+      type: defaultNewType,
+    });
+    setPending(false);
+    if (!result.ok) {
+      setError(feedbackFromError(result.error).message);
+      return;
+    }
+    const loc = result.value;
+    onChange({
+      kind: "location",
+      location_id: loc.id,
+      label: loc.name,
+      sublabel: loc.address ?? labelForLocationType(loc.type),
+      location_type: loc.type,
+    });
+    setQuery("");
+    setOpen(false);
+  };
 
   const trimmed = query.trim();
-  const showCreate = trimmed.length >= 2;
+  // Only offer "use as new" when (a) the user has typed and (b) there
+  // isn't already an exact-name local match.
+  const hasExactLocal = filteredLocal.some(
+    (r) =>
+      ("label" in r ? r.label : "").trim().toLowerCase() ===
+      trimmed.toLowerCase(),
+  );
+  const showCreate = trimmed.length >= 2 && !hasExactLocal;
   const totalRows = filteredLocal.length + googleRows.length;
   return (
     <div ref={wrapperRef} className="relative">
@@ -495,7 +406,7 @@ export function PlacePicker({
               if (highlight < combined.length) {
                 pick(combined[highlight]);
               } else if (showCreate) {
-                startCreate();
+                void createAndPick(trimmed);
               }
             } else if (e.key === "Escape") {
               setOpen(false);
@@ -520,46 +431,37 @@ export function PlacePicker({
         >
           {filteredLocal.length === 0 && googleRows.length === 0 && !showCreate ? (
             <p className="small p-3 text-center">
-              Start typing — your saved places, Google search and "add new"
-              all appear here.
+              Type to search — your saved places appear first, then Google.
             </p>
           ) : null}
 
-          {filteredLocal.length > 0 ? (
-            <div className="pp-section">
-              <p className="pp-section-title">Your places</p>
-              {filteredLocal.map((row, i) => (
-                <PickerRow
-                  key={row.key}
-                  row={row}
-                  active={i === highlight}
-                  onHover={() => setHighlight(i)}
-                  onClick={() => pick(row)}
-                />
-              ))}
-            </div>
-          ) : null}
+          {/* Saved + customer matches first — no section header, they just
+              sit at the top so the user feels their own places have
+              priority. Each row's icon hints at provenance. */}
+          {filteredLocal.map((row, i) => (
+            <PickerRow
+              key={row.key}
+              row={row}
+              active={i === highlight}
+              onHover={() => setHighlight(i)}
+              onClick={() => pick(row)}
+            />
+          ))}
 
-          {googleRows.length > 0 ? (
-            <div className="pp-section">
-              <p className="pp-section-title">
-                <span>From Google</span>
-                <GooglePoweredBy />
-              </p>
-              {googleRows.map((row, i) => {
-                const idx = filteredLocal.length + i;
-                return (
-                  <PickerRow
-                    key={row.key}
-                    row={row}
-                    active={idx === highlight}
-                    onHover={() => setHighlight(idx)}
-                    onClick={() => pick(row)}
-                  />
-                );
-              })}
-            </div>
-          ) : null}
+          {/* Google suggestions blend in below — the Google icon on each
+              row signals provenance without needing a divider. */}
+          {googleRows.map((row, i) => {
+            const idx = filteredLocal.length + i;
+            return (
+              <PickerRow
+                key={row.key}
+                row={row}
+                active={idx === highlight}
+                onHover={() => setHighlight(idx)}
+                onClick={() => pick(row)}
+              />
+            );
+          })}
 
           {googleConfigured === false && trimmed.length >= 2 ? (
             <p className="small px-3 py-2" style={{ color: "var(--ink-faint)" }}>
@@ -571,9 +473,9 @@ export function PlacePicker({
             <button
               type="button"
               onMouseEnter={() => setHighlight(totalRows)}
-              onClick={startCreate}
+              onClick={() => void createAndPick(trimmed)}
               className={cn(
-                "flex w-full items-center gap-2 border-t border-rule/60 px-3 py-2 text-left text-sm",
+                "flex w-full items-center gap-2 border-t border-rule/60 px-3 py-2.5 text-left text-sm",
                 highlight === totalRows ? "bg-gold-soft" : "",
               )}
               style={
@@ -581,11 +483,29 @@ export function PlacePicker({
                   ? { background: "var(--gold-soft)" }
                   : undefined
               }
+              disabled={pending}
             >
-              <span style={{ color: "var(--gold-2)" }}>+</span>
-              <span>
-                Add as a new place:{" "}
-                <span className="font-medium">{trimmed}</span>
+              <span
+                style={{
+                  color: "var(--gold-2)",
+                  fontFamily: "var(--display)",
+                  fontStyle: "italic",
+                  fontWeight: 600,
+                  fontSize: 16,
+                  lineHeight: 1,
+                }}
+              >
+                +
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                Use “<span className="font-medium">{trimmed}</span>” as a new
+                place
+              </span>
+              <span
+                className="uc"
+                style={{ color: "var(--ink-faint)", flexShrink: 0 }}
+              >
+                {pending ? "saving…" : "saves to your places"}
               </span>
             </button>
           ) : null}
@@ -683,17 +603,6 @@ function GoogleIcon() {
   );
 }
 
-function GooglePoweredBy() {
-  return (
-    <span
-      className="uc inline-flex items-center gap-1"
-      style={{ color: "var(--ink-faint)" }}
-    >
-      <GoogleIcon />
-      <span>Google</span>
-    </span>
-  );
-}
 
 function inferTypeFromGoogleTypes(types: string[]): LocationType | null {
   if (

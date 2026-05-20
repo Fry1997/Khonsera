@@ -2100,6 +2100,112 @@
     background: var(--card-2);
   }
 
+  /* Anchor kind badge + sub-role badge — the primary classification
+     surface on each anchor card. Both pop a small picker on click. */
+  .kind-badge,
+  .kind-subbadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: var(--card-2);
+    color: var(--ink-2);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .kind-badge:hover,
+  .kind-subbadge:hover {
+    border-color: var(--rule-2);
+  }
+  .kind-badge.kind-badge-stay {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    border-color: var(--gold);
+  }
+  .kind-badge.kind-badge-meal {
+    background: var(--rust-soft);
+    color: var(--rust);
+    border-color: var(--rust-soft);
+  }
+  .kind-badge.kind-badge-event {
+    background: var(--slate-soft);
+    color: var(--plum);
+    border-color: var(--slate-soft);
+  }
+  .kind-badge.kind-badge-station {
+    background: var(--slate-soft);
+    color: var(--slate-2);
+    border-color: var(--slate-soft);
+  }
+  .kind-subbadge {
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: 11px;
+    padding: 4px 9px;
+    border-style: dashed;
+  }
+  .kind-badge-flag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: currentColor;
+    opacity: 0.6;
+    margin-left: 2px;
+  }
+  .kind-pop {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 200px;
+    max-width: 280px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .kind-pop-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-2);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .kind-pop-item:hover {
+    background: var(--ink-soft);
+  }
+  .kind-pop-item[data-active="true"] {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+  }
+  .kind-pop-hint {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+  }
+
   /* Kind-override row inside an anchor card — "treating as hotel · change" */
   .kind-override {
     display: flex;

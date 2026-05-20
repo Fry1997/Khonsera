@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
 import { createItineraryFromBrief } from "@/lib/actions/itineraries";
 import { updateLocationType } from "@/lib/actions/locations";
@@ -16,30 +16,64 @@ import {
 import type { LocationType } from "@/lib/types/domain";
 
 // ─────────────────────────────────────────────────────────────────────
-// An "anchor" is one place the trip has to hit. Each anchor's "kind"
-// drives which fields render — hotels show check-in/out, stations show
-// arrive-by only, everything else gets duration chips. The kind is
-// auto-inferred from the picked place's type but the user can override.
+// Kinds + sub-roles
+//
+// Each anchor in the brief carries a kind (the primary badge) and an
+// optional role (the sub-badge). Both are inferred from the chosen
+// place's Google type but the user can override either at any time.
 // ─────────────────────────────────────────────────────────────────────
 
-type AnchorKind = "appointment" | "hotel" | "station";
+type AnchorKind = "appointment" | "stay" | "meal" | "event" | "station";
+type AnchorRole = string | null;
+
+type RoleOption = { value: string; label: string };
+
+const ROLES: Record<AnchorKind, RoleOption[]> = {
+  appointment: [],
+  stay: [
+    { value: "check_in", label: "Check in" },
+    { value: "return_to_room", label: "Return to room" },
+  ],
+  meal: [
+    { value: "breakfast", label: "Breakfast" },
+    { value: "lunch", label: "Lunch" },
+    { value: "dinner", label: "Dinner" },
+    { value: "drinks", label: "Drinks" },
+  ],
+  event: [
+    { value: "session", label: "Session" },
+    { value: "show", label: "Show" },
+    { value: "concert", label: "Concert" },
+  ],
+  station: [
+    { value: "train", label: "Train" },
+    { value: "flight", label: "Flight" },
+    { value: "bus", label: "Bus" },
+  ],
+};
+
+const KIND_OPTIONS: Array<{ value: AnchorKind; label: string }> = [
+  { value: "appointment", label: "Appointment" },
+  { value: "stay", label: "Stay" },
+  { value: "meal", label: "Meal" },
+  { value: "event", label: "Event" },
+  { value: "station", label: "Station" },
+];
 
 type Anchor = {
   uid: string;
   place: PlaceSelection | null;
-  // Explicit kind override — null means "follow the inferred place type".
   kindOverride: AnchorKind | null;
+  roleOverride: AnchorRole | null;
   date: string;
   startTime: string;
-  // appointment / station only
   durationMins: number;
-  // hotel only
+  // stay (check_in) only
   checkOutDate: string;
   checkOutTime: string;
-  notes: string;
 };
 
-const APPT_DURATIONS: Array<{ label: string; mins: number }> = [
+const APPT_DURATIONS = [
   { label: "30m", mins: 30 },
   { label: "1h", mins: 60 },
   { label: "2h", mins: 120 },
@@ -79,9 +113,10 @@ export function NewItineraryBrief({
     );
   };
 
-  const insertAnchorAt = (index: number, anchor?: Anchor) => {
-    const previous = anchors[Math.max(0, Math.min(index - 1, anchors.length - 1))];
-    const seed = anchor ?? emptyAnchor(previous?.date ?? defaultAnchorDate());
+  const insertAnchorAt = (index: number) => {
+    const previous =
+      anchors[Math.max(0, Math.min(index - 1, anchors.length - 1))];
+    const seed = emptyAnchor(previous?.date ?? defaultAnchorDate());
     setAnchors((prev) => {
       const copy = [...prev];
       copy.splice(index, 0, seed);
@@ -96,6 +131,45 @@ export function NewItineraryBrief({
     });
   };
 
+  // ── Stay-revisit detection ─────────────────────────────────────────
+  // For each anchor with a stay-typed place that ISN'T the user's own
+  // override-stay, check whether an EARLIER stay anchor in the brief has
+  // the same place and the new anchor falls within its check-in/out
+  // window. If so, default the role to "return_to_room".
+  useEffect(() => {
+    let dirty = false;
+    const next = anchors.map((a, i) => {
+      if (effectiveKind(a) !== "stay") return a;
+      // Skip if user already overrode the role.
+      if (a.roleOverride != null) return a;
+
+      const earlierStay = anchors
+        .slice(0, i)
+        .find(
+          (other) =>
+            other.place &&
+            a.place &&
+            samePlace(other.place, a.place) &&
+            effectiveKind(other) === "stay" &&
+            (other.roleOverride ?? "check_in") === "check_in" &&
+            anchorWithinStay(a, other),
+        );
+
+      const desiredRole = earlierStay ? "return_to_room" : "check_in";
+      const currentRole =
+        a.roleOverride ?? inferredRoleFor(a, anchors.slice(0, i));
+      if (currentRole !== desiredRole) {
+        dirty = true;
+        return { ...a, roleOverride: null };
+      }
+      return a;
+    });
+    if (dirty) setAnchors(next);
+    // anchors is intentionally the only dep; we want this to re-evaluate
+    // every time the user edits a place / date / time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchors]);
+
   const canSubmit = anchors.every((a) => a.place != null);
 
   const submit = () => {
@@ -103,7 +177,8 @@ export function NewItineraryBrief({
 
     if (!canSubmit) {
       setFeedback({
-        message: "Pick a place for every anchor — that's the bit Khonsera plans around.",
+        message:
+          "Pick a place for every anchor — that's the bit Khonsera plans around.",
         fieldErrors: { anchors: "required" },
       });
       return;
@@ -111,8 +186,9 @@ export function NewItineraryBrief({
 
     startTransition(async () => {
       const result = await createItineraryFromBrief({
-        anchors: anchors.map((a) => {
+        anchors: anchors.map((a, i) => {
           const kind = effectiveKind(a);
+          const role = effectiveRole(a, anchors.slice(0, i));
           const placeArgs = a.place
             ? a.place.kind === "location"
               ? { location_id: a.place.location_id, label: a.place.label }
@@ -126,12 +202,13 @@ export function NewItineraryBrief({
             : {};
           const base = {
             kind,
+            role,
             date: a.date,
             start_time: a.startTime,
             notes: null,
             ...placeArgs,
           };
-          if (kind === "hotel") {
+          if (kind === "stay" && role !== "return_to_room") {
             return {
               ...base,
               check_out_date: a.checkOutDate || a.date,
@@ -185,6 +262,7 @@ export function NewItineraryBrief({
           <div key={anchor.uid}>
             <AnchorCard
               anchor={anchor}
+              earlier={anchors.slice(0, i)}
               first={i === 0}
               canRemove={anchors.length > 1}
               customers={customers}
@@ -308,6 +386,7 @@ export function NewItineraryBrief({
 
 function AnchorCard({
   anchor,
+  earlier,
   first,
   canRemove,
   customers,
@@ -318,6 +397,7 @@ function AnchorCard({
   onRemove,
 }: {
   anchor: Anchor;
+  earlier: Anchor[];
   first: boolean;
   canRemove: boolean;
   customers: PlacePickerCustomer[];
@@ -328,29 +408,31 @@ function AnchorCard({
   onRemove: () => void;
 }) {
   const kind = effectiveKind(anchor);
+  const role = effectiveRole(anchor, earlier);
+  const isStayCheckIn = kind === "stay" && role !== "return_to_room";
+  const isStayReturn = kind === "stay" && role === "return_to_room";
 
   return (
-    <section
-      className={first ? "brief-card brief-card-hero" : "brief-card"}
-    >
+    <section className={first ? "brief-card brief-card-hero" : "brief-card"}>
       <header
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 10,
+          marginBottom: 12,
           gap: 8,
+          flexWrap: "wrap",
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 6,
+            flexWrap: "wrap",
           }}
         >
-          <KindGlyph kind={kind} />
-          <span className="uc">{kindLabel(kind)}</span>
+          <KindBadge kind={kind} role={role} anchor={anchor} earlier={earlier} onChange={onChange} />
         </div>
         {canRemove ? (
           <button
@@ -371,151 +453,229 @@ function AnchorCard({
         onChange={(place) => {
           onChange({
             place,
-            // When the user picks a fresh place, clear the manual override
-            // so the inferred type takes over.
+            // Clear both overrides so inference can re-run from the new
+            // place's type.
             kindOverride: null,
+            roleOverride: null,
           });
         }}
+        defaultNewType={
+          kind === "stay" ? "hotel" : kind === "station" ? "station" : "other"
+        }
         placeholder="Search anywhere — your places pin to the top"
       />
 
-      {anchor.place ? (
-        <KindOverrideRow
-          anchor={anchor}
-          inferred={inferredKind(anchor)}
-          onPickKind={(k) => onChange({ kindOverride: k })}
-        />
-      ) : null}
-
-      {/* Time fields — adapt to the effective kind */}
-      {kind === "hotel" ? (
+      {/* Time fields — adapt to the effective kind + role */}
+      {isStayCheckIn ? (
         <HotelTimes
           anchor={anchor}
           datePresets={datePresets}
           onChange={onChange}
         />
+      ) : isStayReturn ? (
+        <ReturnToRoom anchor={anchor} onChange={onChange} earlier={earlier} />
       ) : (
         <AppointmentTimes
           anchor={anchor}
           datePresets={datePresets}
           onChange={onChange}
-          isStation={kind === "station"}
+          kind={kind}
         />
       )}
     </section>
   );
 }
 
-function KindGlyph({ kind }: { kind: AnchorKind }) {
-  const d =
-    kind === "hotel"
-      ? "M3 18v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5M3 18h18M3 18v2M21 18v2M7 11V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3"
-      : kind === "station"
-        ? "M5 3h14v14a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z M5 11h14"
-        : "M3 10l4-4 3 3 3-3 4 4 M3 14l5 5 4-4 4 4 5-5";
+// ─────────────────────────────────────────────────────────────────────
+// KindBadge — the primary "Stay / Appointment / Meal …" badge plus its
+// sub-role badge. Both pop a small picker on click. The "overridden"
+// flag appears when the user has manually re-classified.
+// ─────────────────────────────────────────────────────────────────────
+
+function KindBadge({
+  kind,
+  role,
+  anchor,
+  earlier,
+  onChange,
+}: {
+  kind: AnchorKind;
+  role: AnchorRole;
+  anchor: Anchor;
+  earlier: Anchor[];
+  onChange: (patch: Partial<Anchor>) => void;
+}) {
+  const [openKind, setOpenKind] = useState(false);
+  const [openRole, setOpenRole] = useState(false);
+  const kindRef = useRef<HTMLDivElement>(null);
+  const roleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (openKind && !kindRef.current?.contains(e.target as Node))
+        setOpenKind(false);
+      if (openRole && !roleRef.current?.contains(e.target as Node))
+        setOpenRole(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [openKind, openRole]);
+
+  const inferredK = inferredKind(anchor);
+  const inferredR = inferredRoleFor(anchor, earlier);
+  const kindLabel = labelForKind(kind);
+  const roleLabel = role ? labelForRole(kind, role) : null;
+
+  const persistKindOverride = async (k: AnchorKind | null) => {
+    onChange({
+      kindOverride: k === inferredK ? null : k,
+      // Reset role override when kind changes — fresh role inference.
+      roleOverride: null,
+    });
+    setOpenKind(false);
+    // Persist type back to the saved location when applicable.
+    if (anchor.place?.kind === "location" && k != null) {
+      const targetType: LocationType =
+        k === "stay"
+          ? "hotel"
+          : k === "station"
+            ? "station"
+            : k === "meal"
+              ? "other"
+              : k === "event"
+                ? "other"
+                : "other";
+      if (anchor.place.location_type !== targetType) {
+        await updateLocationType({
+          id: anchor.place.location_id,
+          type: targetType,
+        });
+      }
+    }
+  };
+
+  const persistRoleOverride = (r: string | null) => {
+    onChange({ roleOverride: r === inferredR ? null : r });
+    setOpenRole(false);
+  };
+
+  const kindOverridden = anchor.kindOverride != null && anchor.kindOverride !== inferredK;
+  const roleOverridden = anchor.roleOverride != null && anchor.roleOverride !== inferredR;
+
   return (
-    <span
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: 8,
-        background:
-          kind === "hotel"
-            ? "var(--gold-tint)"
-            : kind === "station"
-              ? "var(--slate-soft)"
-              : "var(--gold-tint)",
-        color:
-          kind === "hotel"
-            ? "var(--gold-2)"
-            : kind === "station"
-              ? "var(--slate-2)"
-              : "var(--gold-2)",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d={d} />
-      </svg>
-    </span>
+    <>
+      <div ref={kindRef} style={{ position: "relative" }}>
+        <button
+          type="button"
+          className={`kind-badge kind-badge-${kind}`}
+          onClick={() => setOpenKind((v) => !v)}
+        >
+          <KindDot kind={kind} />
+          <span>{kindLabel}</span>
+          {kindOverridden ? (
+            <span className="kind-badge-flag">overridden</span>
+          ) : null}
+          <ChevDown />
+        </button>
+        {openKind ? (
+          <div className="kind-pop">
+            {KIND_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className="kind-pop-item"
+                data-active={opt.value === kind}
+                onClick={() => void persistKindOverride(opt.value)}
+              >
+                <KindDot kind={opt.value} />
+                <span>{opt.label}</span>
+                {opt.value === inferredK ? (
+                  <span className="kind-pop-hint">suggested</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {ROLES[kind].length > 0 && roleLabel ? (
+        <div ref={roleRef} style={{ position: "relative" }}>
+          <button
+            type="button"
+            className="kind-subbadge"
+            onClick={() => setOpenRole((v) => !v)}
+          >
+            <span>{roleLabel}</span>
+            {roleOverridden ? (
+              <span className="kind-badge-flag">overridden</span>
+            ) : null}
+            <ChevDown />
+          </button>
+          {openRole ? (
+            <div className="kind-pop">
+              {ROLES[kind].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className="kind-pop-item"
+                  data-active={opt.value === role}
+                  onClick={() => persistRoleOverride(opt.value)}
+                >
+                  <span>{opt.label}</span>
+                  {opt.value === inferredR ? (
+                    <span className="kind-pop-hint">suggested</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </>
   );
 }
 
-function KindOverrideRow({
-  anchor,
-  inferred,
-  onPickKind,
-}: {
-  anchor: Anchor;
-  inferred: AnchorKind;
-  onPickKind: (k: AnchorKind | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const current = effectiveKind(anchor);
-
+function KindDot({ kind }: { kind: AnchorKind }) {
+  // Each kind gets its own tint so the badge reads in a glance.
+  const tint =
+    kind === "stay"
+      ? "var(--gold)"
+      : kind === "meal"
+        ? "var(--terra)"
+        : kind === "event"
+          ? "var(--plum)"
+          : kind === "station"
+            ? "var(--slate)"
+            : "var(--ink-2)";
   return (
-    <div className="kind-override">
-      <span className="kind-override-current">
-        Treating as <strong>{kindLabel(current).toLowerCase()}</strong>
-        {anchor.kindOverride && anchor.kindOverride !== inferred ? (
-          <span className="kind-override-flag">overridden</span>
-        ) : null}
-      </span>
-      {open ? (
-        <span className="kind-override-pills">
-          {(["appointment", "hotel", "station"] as AnchorKind[]).map((k) => (
-            <button
-              key={k}
-              type="button"
-              className="pill brief-pill"
-              data-active={k === current}
-              onClick={async () => {
-                onPickKind(k === inferred ? null : k);
-                setOpen(false);
-                // If we have a saved location, persist the type so future
-                // pickers and the editor reflect it too.
-                if (anchor.place?.kind === "location") {
-                  const targetType: LocationType =
-                    k === "hotel"
-                      ? "hotel"
-                      : k === "station"
-                        ? "station"
-                        : "other";
-                  if (anchor.place.location_type !== targetType) {
-                    await updateLocationType({
-                      id: anchor.place.location_id,
-                      type: targetType,
-                    });
-                  }
-                }
-              }}
-            >
-              {kindLabel(k)}
-            </button>
-          ))}
-        </span>
-      ) : (
-        <button
-          type="button"
-          className="kind-override-toggle"
-          onClick={() => setOpen(true)}
-        >
-          Change
-        </button>
-      )}
-    </div>
+    <span
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: 999,
+        background: tint,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+function ChevDown() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{ opacity: 0.5, marginLeft: 2 }}
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 
@@ -592,17 +752,112 @@ function HotelTimes({
   );
 }
 
+function ReturnToRoom({
+  anchor,
+  earlier,
+  onChange,
+}: {
+  anchor: Anchor;
+  earlier: Anchor[];
+  onChange: (patch: Partial<Anchor>) => void;
+}) {
+  const stay = earlier.find(
+    (a) =>
+      a.place && anchor.place && samePlace(a.place, anchor.place) &&
+      effectiveKind(a) === "stay" &&
+      (a.roleOverride ?? "check_in") === "check_in",
+  );
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <div
+        className="brief-subcard"
+        style={{
+          background: "var(--gold-tint)",
+          borderColor: "var(--gold)",
+          color: "var(--ink-2)",
+        }}
+      >
+        <p
+          className="serif-i"
+          style={{
+            margin: 0,
+            fontSize: 14,
+            color: "var(--ink-2)",
+            lineHeight: 1.5,
+          }}
+        >
+          Using your existing stay — no new check-in needed. Just a short
+          stop to drop bags or freshen up
+          {stay?.checkOutDate
+            ? `, before check-out by ${stay.checkOutTime || "11:00"} on ${fmtShortDate(stay.checkOutDate, "UTC")}`
+            : ""}
+          .
+        </p>
+      </div>
+      <div className="brief-when-row">
+        <label className="brief-field">
+          <span className="uc">Date</span>
+          <input
+            type="date"
+            className="field"
+            value={anchor.date}
+            onChange={(e) => onChange({ date: e.target.value })}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Arrive by</span>
+          <input
+            type="time"
+            className="field"
+            value={anchor.startTime}
+            onChange={(e) => onChange({ startTime: e.target.value })}
+          />
+        </label>
+      </div>
+      <div>
+        <span className="uc">Duration</span>
+        <div className="brief-pill-row" style={{ marginTop: 6 }}>
+          {[
+            { label: "15m", mins: 15 },
+            { label: "30m", mins: 30 },
+            { label: "1h", mins: 60 },
+            { label: "2h", mins: 120 },
+          ].map((d) => (
+            <button
+              key={d.label}
+              type="button"
+              className="pill brief-pill"
+              data-active={d.mins === anchor.durationMins}
+              onClick={() => onChange({ durationMins: d.mins })}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppointmentTimes({
   anchor,
   datePresets,
   onChange,
-  isStation,
+  kind,
 }: {
   anchor: Anchor;
   datePresets: Array<{ label: string; value: string }>;
   onChange: (patch: Partial<Anchor>) => void;
-  isStation: boolean;
+  kind: AnchorKind;
 }) {
+  const isStation = kind === "station";
   return (
     <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="brief-when-row">
@@ -674,7 +929,7 @@ function AppointmentTimes({
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// AddBetween — the +/+ slim row between anchors (and at top/bottom).
+// AddBetween — the slim + row between anchors (and at top/bottom).
 // ─────────────────────────────────────────────────────────────────────
 function AddBetween({
   onAdd,
@@ -684,9 +939,7 @@ function AddBetween({
   between?: boolean;
 }) {
   return (
-    <div
-      className={between ? "brief-between brief-between-mid" : "brief-between"}
-    >
+    <div className={between ? "brief-between brief-between-mid" : "brief-between"}>
       <button type="button" className="brief-between-btn" onClick={onAdd}>
         <span aria-hidden>+</span>
         <span>{between ? "Add another here" : "Add an anchor"}</span>
@@ -696,8 +949,7 @@ function AddBetween({
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// BonesPreview — sticky right column. Renders home + each anchor as
-// timeline stops; hotel rows show check-in/out window.
+// BonesPreview — sticky right column.
 // ─────────────────────────────────────────────────────────────────────
 function BonesPreview({
   anchors,
@@ -723,7 +975,6 @@ function BonesPreview({
     );
   }
 
-  // Sort anchors by date+time for the preview (matches the server).
   const sorted = [...anchors]
     .filter((a) => a.place != null)
     .sort((a, b) =>
@@ -731,7 +982,7 @@ function BonesPreview({
     );
 
   const titleSource =
-    sorted.find((a) => effectiveKind(a) !== "hotel") ?? sorted[0];
+    sorted.find((a) => effectiveKind(a) !== "stay") ?? sorted[0];
   const workingTitle =
     titleOverride || titleSource?.place?.label || "Untitled trip";
 
@@ -770,19 +1021,27 @@ function BonesPreview({
           sub="From your travel profile"
           dotKind="default"
         />
-        {sorted.map((a) => {
+        {sorted.map((a, i) => {
+          const earlier = sorted.slice(0, i);
           const kind = effectiveKind(a);
-          const isLast = a === sorted[sorted.length - 1];
-          if (kind === "hotel") {
+          const role = effectiveRole(a, earlier);
+          const labelForBadge = role ? labelForRole(kind, role) : labelForKind(kind);
+          const isCheckIn = kind === "stay" && role !== "return_to_room";
+          if (isCheckIn) {
             return (
               <BonesStop
                 key={a.uid}
                 time={fmtShortDate(a.date, timezone)}
-                eyebrow="Stay"
+                eyebrow={labelForBadge}
                 title={a.place?.label ?? ""}
-                sub={`${a.startTime}${a.checkOutDate ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${a.checkOutTime || "11:00"}` : ""}`}
+                sub={`${a.startTime}${
+                  a.checkOutDate
+                    ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${
+                        a.checkOutTime || "11:00"
+                      }`
+                    : ""
+                }`}
                 dotKind="default"
-                last={isLast}
               />
             );
           }
@@ -790,11 +1049,16 @@ function BonesPreview({
             <BonesStop
               key={a.uid}
               time={a.startTime}
-              eyebrow={kind === "station" ? "Catch" : "Appointment"}
-              title={a.place?.label ?? ""}
-              sub={`${fmtShortDate(a.date, timezone)}${a.durationMins ? ` · ${fmtDur(a.durationMins)}` : ""}`}
-              dotKind="gold"
-              last={isLast}
+              eyebrow={labelForBadge}
+              title={
+                kind === "stay"
+                  ? `Back at ${a.place?.label ?? "the hotel"}`
+                  : a.place?.label ?? ""
+              }
+              sub={`${fmtShortDate(a.date, timezone)}${
+                a.durationMins ? ` · ${fmtDur(a.durationMins)}` : ""
+              }`}
+              dotKind={kind === "stay" ? "default" : "gold"}
             />
           );
         })}
@@ -809,14 +1073,12 @@ function BonesStop({
   title,
   sub,
   dotKind = "default",
-  last,
 }: {
   time: string;
   eyebrow: string;
   title: string;
   sub: string;
   dotKind?: "default" | "gold";
-  last?: boolean;
 }) {
   return (
     <>
@@ -832,18 +1094,22 @@ function BonesStop({
           {dotKind === "gold" ? <em>{title}</em> : title}
         </h3>
         <p className="tl-sub">{sub}</p>
-        {last ? null : null}
       </div>
     </>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Helpers
+// Inference / helpers
 // ─────────────────────────────────────────────────────────────────────
 
 function effectiveKind(a: Anchor): AnchorKind {
   return a.kindOverride ?? inferredKind(a);
+}
+
+function effectiveRole(a: Anchor, earlier: Anchor[]): AnchorRole {
+  if (a.roleOverride != null) return a.roleOverride;
+  return inferredRoleFor(a, earlier);
 }
 
 function inferredKind(a: Anchor): AnchorKind {
@@ -851,7 +1117,7 @@ function inferredKind(a: Anchor): AnchorKind {
   if (a.place.kind !== "location") return "appointment";
   switch (a.place.location_type) {
     case "hotel":
-      return "hotel";
+      return "stay";
     case "station":
       return "station";
     default:
@@ -859,16 +1125,74 @@ function inferredKind(a: Anchor): AnchorKind {
   }
 }
 
-function kindLabel(k: AnchorKind): string {
+function inferredRoleFor(a: Anchor, earlier: Anchor[]): AnchorRole {
+  const k = effectiveKind(a);
+  if (k === "appointment") return null;
+  if (k === "stay") {
+    const priorStay = earlier.find(
+      (other) =>
+        other.place &&
+        a.place &&
+        samePlace(other.place, a.place) &&
+        effectiveKind(other) === "stay" &&
+        (other.roleOverride ?? "check_in") === "check_in" &&
+        anchorWithinStay(a, other),
+    );
+    return priorStay ? "return_to_room" : "check_in";
+  }
+  if (k === "meal") {
+    const hour = parseInt(a.startTime.split(":")[0] ?? "12", 10);
+    if (hour < 11) return "breakfast";
+    if (hour < 16) return "lunch";
+    if (hour < 21) return "dinner";
+    return "drinks";
+  }
+  if (k === "event") return "session";
+  if (k === "station") return "train";
+  return null;
+}
+
+function samePlace(a: PlaceSelection, b: PlaceSelection): boolean {
+  if (a.kind === "location" && b.kind === "location") {
+    return a.location_id === b.location_id;
+  }
+  if (a.kind === "customer_site" && b.kind === "customer_site") {
+    return a.customer_site_id === b.customer_site_id;
+  }
+  if (a.kind === "customer" && b.kind === "customer") {
+    return a.customer_id === b.customer_id;
+  }
+  return false;
+}
+
+function anchorWithinStay(anchor: Anchor, stay: Anchor): boolean {
+  // Returns true if anchor's start is between stay's check-in (date+time)
+  // and stay's check-out (date+time, with sensible defaults).
+  const start = `${anchor.date}T${anchor.startTime}`;
+  const ci = `${stay.date}T${stay.startTime}`;
+  const coDate = stay.checkOutDate || nextDay(stay.date);
+  const coTime = stay.checkOutTime || "11:00";
+  const co = `${coDate}T${coTime}`;
+  return start >= ci && start <= co;
+}
+
+function labelForKind(k: AnchorKind): string {
   switch (k) {
-    case "hotel":
+    case "stay":
       return "Stay";
+    case "meal":
+      return "Meal";
+    case "event":
+      return "Event";
     case "station":
       return "Station";
-    case "appointment":
     default:
       return "Appointment";
   }
+}
+
+function labelForRole(kind: AnchorKind, value: string): string {
+  return ROLES[kind].find((r) => r.value === value)?.label ?? value;
 }
 
 function emptyAnchor(date: string): Anchor {
@@ -876,12 +1200,12 @@ function emptyAnchor(date: string): Anchor {
     uid: cryptoUid(),
     place: null,
     kindOverride: null,
+    roleOverride: null,
     date,
     startTime: "09:00",
     durationMins: 60,
     checkOutDate: nextDay(date),
     checkOutTime: "11:00",
-    notes: "",
   };
 }
 

@@ -135,11 +135,36 @@ export async function updateItinerary(
 // the itinerary span the full anchor range, including hotel checkouts.
 // ─────────────────────────────────────────────────────────────────────
 
-const anchorKindEnum = z.enum(["appointment", "hotel", "station"]);
+// The brief now understands five kinds, each with its own sub-roles:
+//   • appointment — meeting / site visit / generic stop (no roles)
+//   • stay        — check_in (new stay) | return_to_room (revisit)
+//   • meal        — breakfast / lunch / dinner / drinks
+//   • event       — session / show / concert
+//   • station     — train / flight / bus
+//
+// Stop-type mapping on insert:
+//   stay+check_in       → accommodation (locked check-in/out window)
+//   stay+return_to_room → appointment   (short stop at the hotel, no window)
+//   meal                → meal
+//   event               → event
+//   station             → appointment   (we don't model the catch as transit
+//                                         yet — it's an arrive-by anchor)
+//   appointment         → appointment
+//
+// Each anchor's role is persisted in stop.metadata as { role: "..." } so
+// the editor can render the sub-badge.
+const anchorKindEnum = z.enum([
+  "appointment",
+  "stay",
+  "meal",
+  "event",
+  "station",
+]);
 
 const anchorInputSchema = z
   .object({
     kind: anchorKindEnum,
+    role: z.string().trim().max(40).nullable().optional(),
 
     location_id: z.string().uuid().nullable().optional(),
     customer_id: z.string().uuid().nullable().optional(),
@@ -149,7 +174,7 @@ const anchorInputSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     start_time: z.string().regex(/^\d{2}:\d{2}$/),
 
-    // Appointment / station only.
+    // Appointment / meal / event / station / stay-return-to-room.
     duration_minutes: z
       .number()
       .int()
@@ -163,7 +188,7 @@ const anchorInputSchema = z
       .nullable()
       .optional(),
 
-    // Hotel only.
+    // Stay (check_in) only.
     check_out_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -233,7 +258,7 @@ export async function createItineraryFromBrief(
 
     if (!locationId && !a.customer_site_id && label) {
       const typeForLocation =
-        a.kind === "hotel" ? "hotel" : a.kind === "station" ? "station" : "other";
+        a.kind === "stay" ? "hotel" : a.kind === "station" ? "station" : "other";
       const { data: newLoc } = await supabase
         .from("locations")
         .insert({
@@ -277,7 +302,7 @@ export async function createItineraryFromBrief(
   let resolvedTitle = parsed.value.title ?? null;
   if (!resolvedTitle) {
     const lead =
-      resolved.find((r) => r.anchor.kind !== "hotel") ?? resolved[0];
+      resolved.find((r) => r.anchor.kind !== "stay") ?? resolved[0];
     if (lead?.customerId) {
       const { data: cust } = await supabase
         .from("customers")
@@ -328,9 +353,15 @@ export async function createItineraryFromBrief(
     profile?.default_return_location_id ??
     null;
 
+  type StopType =
+    | "start"
+    | "accommodation"
+    | "appointment"
+    | "meal"
+    | "event";
   const stopRows: Array<{
     sequence: number;
-    type: "start" | "accommodation" | "appointment";
+    type: StopType;
     location_id: string | null;
     customer_id: string | null;
     customer_site_id: string | null;
@@ -340,6 +371,7 @@ export async function createItineraryFromBrief(
     duration_minutes: number | null;
     is_time_fixed: boolean;
     notes: string | null;
+    metadata: Record<string, unknown> | null;
     itinerary_id: string;
     workspace_id: string;
   }> = [];
@@ -358,6 +390,7 @@ export async function createItineraryFromBrief(
       duration_minutes: null,
       is_time_fixed: false,
       notes: null,
+      metadata: null,
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
@@ -365,7 +398,10 @@ export async function createItineraryFromBrief(
 
   for (const r of resolved) {
     const a = r.anchor;
-    if (a.kind === "hotel") {
+    const isCheckIn = a.kind === "stay" && a.role !== "return_to_room";
+
+    if (isCheckIn) {
+      // Lock the check-in/out window.
       const ci = isoFromLocal(a.date, a.start_time, tz);
       const co = isoFromLocal(
         a.check_out_date ?? a.date,
@@ -384,34 +420,47 @@ export async function createItineraryFromBrief(
         duration_minutes: null,
         is_time_fixed: true,
         notes: a.notes ?? null,
+        metadata: { kind: "stay", role: a.role ?? "check_in" },
         itinerary_id: itinerary.id,
         workspace_id: ctx.workspaceId,
       });
-    } else {
-      const startIso = isoFromLocal(a.date, a.start_time, tz);
-      const dur =
-        a.duration_minutes ??
-        (a.end_time
-          ? minutesBetweenLocal(a.start_time, a.end_time)
-          : null) ??
-        (a.kind === "station" ? 10 : 60);
-      const endIso = addMinutesIso(startIso, dur);
-      stopRows.push({
-        sequence: seq++,
-        type: "appointment",
-        location_id: r.locationId,
-        customer_id: r.customerId,
-        customer_site_id: r.customerSiteId,
-        title: r.label,
-        start_time: startIso,
-        end_time: endIso,
-        duration_minutes: dur,
-        is_time_fixed: true,
-        notes: a.notes ?? null,
-        itinerary_id: itinerary.id,
-        workspace_id: ctx.workspaceId,
-      });
+      continue;
     }
+
+    // Everything else is a fixed-time stop with a duration.
+    const startIso = isoFromLocal(a.date, a.start_time, tz);
+    const dur =
+      a.duration_minutes ??
+      (a.end_time ? minutesBetweenLocal(a.start_time, a.end_time) : null) ??
+      defaultDurationForKind(a.kind, a.role);
+    const endIso = addMinutesIso(startIso, dur);
+
+    const stopType: StopType =
+      a.kind === "meal"
+        ? "meal"
+        : a.kind === "event"
+          ? "event"
+          : "appointment";
+
+    stopRows.push({
+      sequence: seq++,
+      type: stopType,
+      location_id: r.locationId,
+      customer_id: r.customerId,
+      customer_site_id: r.customerSiteId,
+      title:
+        a.kind === "stay" && a.role === "return_to_room"
+          ? `Back at ${r.label ?? "the hotel"}`
+          : r.label,
+      start_time: startIso,
+      end_time: endIso,
+      duration_minutes: dur,
+      is_time_fixed: true,
+      notes: a.notes ?? null,
+      metadata: { kind: a.kind, role: a.role ?? null },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
   }
 
   if (stopRows.length > 0) {
@@ -447,6 +496,27 @@ function isoFromLocal(date: string, time: string, timezone: string): string {
 
 function addMinutesIso(iso: string, minutes: number): string {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
+}
+
+function defaultDurationForKind(kind: string, role?: string | null): number {
+  if (kind === "stay" && role === "return_to_room") return 30;
+  if (kind === "station") return 10;
+  if (kind === "meal") {
+    switch (role) {
+      case "breakfast":
+        return 45;
+      case "lunch":
+        return 60;
+      case "dinner":
+        return 90;
+      case "drinks":
+        return 60;
+      default:
+        return 60;
+    }
+  }
+  if (kind === "event") return 120;
+  return 60;
 }
 
 function minutesBetweenLocal(a: string, b: string): number {
