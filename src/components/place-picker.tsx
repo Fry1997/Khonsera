@@ -105,7 +105,7 @@ export function PlacePicker({
   value,
   onChange,
   disabled,
-  placeholder = "Where? (saved place, customer, or search anywhere)",
+  placeholder = "Search anywhere — your places pin to the top",
   // When set, restrict Google autocomplete to a specific place type
   // ("train_station", "airport", "lodging", "establishment", "geocode", …).
   googleTypes,
@@ -243,7 +243,7 @@ export function PlacePicker({
       } finally {
         if (!cancelled) setGoogleLoading(false);
       }
-    }, 220);
+    }, 160);
     return () => {
       cancelled = true;
       clearTimeout(timeout);

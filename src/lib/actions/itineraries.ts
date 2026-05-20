@@ -118,82 +118,85 @@ export async function updateItinerary(
 // ─────────────────────────────────────────────────────────────────────
 // createItineraryFromBrief — the "anchor your day" intake.
 //
-// Instead of a four-field form, the user gives us:
-//   • where they need to be (anchor location)
-//   • the day  (date_start = anchor date)
-//   • the time they need to arrive (anchor start time)
-//   • optionally: a purpose chip (visit / conference / internal / personal)
-//   • optionally: a hotel + check-in date (hotel sits before the anchor)
-//   • optionally: a hotel checkout
+// The brief is a stack of anchor cards. Each anchor is a place that
+// fixes a moment in the trip: an appointment, a hotel stay, a station
+// to catch. The user adds + above or below any card; order doesn't
+// matter on input — we sort chronologically before inserting.
 //
-// We then:
-//   1. Insert the itinerary (title auto-derived from the anchor's
-//      customer / customer_site / location name unless overridden).
-//   2. Insert a "start" stop pinned to the travel-profile home (or
-//      omit if the user hasn't set one — the editor will prompt).
-//   3. (Optional) Insert the hotel as an "accommodation" stop with
-//      check-in at the chosen time and check-out = anchor date end.
-//   4. Insert the anchor as an "appointment" stop, fixed at the time.
-//   5. (Optional) Insert a return-hotel stop if checkout > anchor day.
-//   6. Compute transitions between adjacent stops so the editor opens
-//      with the bones in place, not an empty timeline.
+// Each anchor's "kind" drives which stop type it becomes and which
+// time fields it carries:
+//
+//   • hotel        → accommodation stop, check-in + check-out times
+//   • appointment  → appointment stop, start_time + duration_minutes
+//   • station      → appointment stop (short), arrive-by only
+//
+// We also seed a "start" stop from the travel-profile home (when set)
+// so the editor opens with the spine in place. date_start/date_end on
+// the itinerary span the full anchor range, including hotel checkouts.
 // ─────────────────────────────────────────────────────────────────────
 
-const briefSchema = z
+const anchorKindEnum = z.enum(["appointment", "hotel", "station"]);
+
+const anchorInputSchema = z
   .object({
-    // Anchor — the appointment everything else routes around.
-    anchor_location_id: z.string().uuid().nullable().optional(),
-    anchor_customer_id: z.string().uuid().nullable().optional(),
-    anchor_customer_site_id: z.string().uuid().nullable().optional(),
-    // Free-text fallback when no saved place exists.
-    anchor_label: z.string().trim().max(200).nullable().optional(),
-    anchor_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    anchor_time: z.string().regex(/^\d{2}:\d{2}$/),
-    duration_minutes: z.number().int().min(0).max(24 * 60).optional(),
+    kind: anchorKindEnum,
 
-    // Purpose chip — drives copy + title heuristics.
-    purpose: z
-      .enum(["visit", "conference", "internal", "personal", "other"])
-      .optional(),
+    location_id: z.string().uuid().nullable().optional(),
+    customer_id: z.string().uuid().nullable().optional(),
+    customer_site_id: z.string().uuid().nullable().optional(),
+    label: z.string().trim().max(200).nullable().optional(),
 
-    // Optional hotel context.
-    hotel_location_id: z.string().uuid().nullable().optional(),
-    hotel_label: z.string().trim().max(200).nullable().optional(),
-    hotel_check_in_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/),
+
+    // Appointment / station only.
+    duration_minutes: z
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 60)
       .nullable()
       .optional(),
-    hotel_check_in_time: z
+    end_time: z
       .string()
       .regex(/^\d{2}:\d{2}$/)
       .nullable()
       .optional(),
-    hotel_check_out_date: z
+
+    // Hotel only.
+    check_out_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable()
       .optional(),
+    check_out_time: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable()
+      .optional(),
 
-    // Explicit title override — when the user typed one.
-    title: z.string().trim().max(200).nullable().optional(),
-    notes: z.string().trim().max(4000).nullable().optional(),
-
-    // IANA timezone the form was filled out in; we use it to convert
-    // local clock times to UTC for stop pinning.
-    timezone: z.string().min(1).max(80),
+    notes: z.string().trim().max(2000).nullable().optional(),
   })
   .refine(
     (v) =>
-      v.anchor_location_id != null ||
-      v.anchor_customer_site_id != null ||
-      v.anchor_customer_id != null ||
-      v.anchor_label != null,
+      v.location_id != null ||
+      v.customer_site_id != null ||
+      v.customer_id != null ||
+      v.label != null,
     {
-      message: "Pick a place for the anchor",
-      path: ["anchor_location_id"],
+      message: "Each anchor needs a place",
+      path: ["location_id"],
     },
   );
+
+const briefSchema = z.object({
+  anchors: z.array(anchorInputSchema).min(1),
+  title: z.string().trim().max(200).nullable().optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+  timezone: z.string().min(1).max(80),
+});
+
+type AnchorInput = z.infer<typeof anchorInputSchema>;
 
 export async function createItineraryFromBrief(
   input: z.input<typeof briefSchema>,
@@ -203,74 +206,90 @@ export async function createItineraryFromBrief(
 
   const ctx = await requireUserContext();
   const supabase = await createClient();
+  const tz = parsed.value.timezone;
 
-  // Resolve anchor location: prefer customer_site, then explicit location,
-  // then create a location from the free-text label.
-  let anchorLocationId = parsed.value.anchor_location_id ?? null;
-  let anchorLabel = parsed.value.anchor_label ?? null;
-  if (!anchorLocationId && parsed.value.anchor_customer_site_id) {
-    const { data: site } = await supabase
-      .from("customer_sites")
-      .select("id, name, address, latitude, longitude")
-      .eq("id", parsed.value.anchor_customer_site_id)
-      .eq("workspace_id", ctx.workspaceId)
-      .maybeSingle();
-    if (site) anchorLabel = anchorLabel ?? site.name ?? site.address;
+  type Resolved = {
+    anchor: AnchorInput;
+    locationId: string | null;
+    customerId: string | null;
+    customerSiteId: string | null;
+    label: string | null;
+  };
+  const resolved: Resolved[] = [];
+
+  for (const a of parsed.value.anchors) {
+    let locationId = a.location_id ?? null;
+    let label = a.label ?? null;
+
+    if (!locationId && a.customer_site_id) {
+      const { data: site } = await supabase
+        .from("customer_sites")
+        .select("name, address")
+        .eq("id", a.customer_site_id)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+      if (site) label = label ?? site.name ?? site.address;
+    }
+
+    if (!locationId && !a.customer_site_id && label) {
+      const typeForLocation =
+        a.kind === "hotel" ? "hotel" : a.kind === "station" ? "station" : "other";
+      const { data: newLoc } = await supabase
+        .from("locations")
+        .insert({
+          name: label,
+          type: typeForLocation,
+          workspace_id: ctx.workspaceId,
+          user_id: ctx.userId,
+        })
+        .select("id, name")
+        .single();
+      if (newLoc) {
+        locationId = newLoc.id;
+        label = newLoc.name;
+      }
+    }
+
+    resolved.push({
+      anchor: a,
+      locationId,
+      customerId: a.customer_id ?? null,
+      customerSiteId: a.customer_site_id ?? null,
+      label,
+    });
   }
-  if (!anchorLocationId && !parsed.value.anchor_customer_site_id && anchorLabel) {
-    // Materialise the free-text label as a location so the editor has
-    // something to pin on.
-    const { data: newLoc } = await supabase
-      .from("locations")
-      .insert({
-        name: anchorLabel,
-        type: "other",
-        workspace_id: ctx.workspaceId,
-        user_id: ctx.userId,
-      })
-      .select("id, name")
-      .single();
-    if (newLoc) {
-      anchorLocationId = newLoc.id;
-      anchorLabel = newLoc.name;
+
+  resolved.sort((a, b) =>
+    `${a.anchor.date}T${a.anchor.start_time}`.localeCompare(
+      `${b.anchor.date}T${b.anchor.start_time}`,
+    ),
+  );
+
+  const allDates = new Set<string>();
+  for (const r of resolved) {
+    allDates.add(r.anchor.date);
+    if (r.anchor.check_out_date) allDates.add(r.anchor.check_out_date);
+  }
+  const sortedDates = [...allDates].sort();
+  const dateStart = sortedDates[0];
+  const dateEnd = sortedDates[sortedDates.length - 1];
+
+  let resolvedTitle = parsed.value.title ?? null;
+  if (!resolvedTitle) {
+    const lead =
+      resolved.find((r) => r.anchor.kind !== "hotel") ?? resolved[0];
+    if (lead?.customerId) {
+      const { data: cust } = await supabase
+        .from("customers")
+        .select("name")
+        .eq("id", lead.customerId)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+      resolvedTitle = cust?.name ?? lead.label;
+    } else {
+      resolvedTitle = lead?.label ?? null;
     }
   }
-
-  // Resolve hotel location similarly.
-  let hotelLocationId = parsed.value.hotel_location_id ?? null;
-  if (!hotelLocationId && parsed.value.hotel_label) {
-    const { data: newHotel } = await supabase
-      .from("locations")
-      .insert({
-        name: parsed.value.hotel_label,
-        type: "hotel",
-        workspace_id: ctx.workspaceId,
-        user_id: ctx.userId,
-      })
-      .select("id")
-      .single();
-    if (newHotel) hotelLocationId = newHotel.id;
-  }
-
-  // Auto-title — customer name beats site name beats anchor label beats
-  // the date. The user can override at any time from the masthead.
-  let resolvedTitle = parsed.value.title ?? null;
-  if (!resolvedTitle && parsed.value.anchor_customer_id) {
-    const { data: cust } = await supabase
-      .from("customers")
-      .select("name")
-      .eq("id", parsed.value.anchor_customer_id)
-      .eq("workspace_id", ctx.workspaceId)
-      .maybeSingle();
-    resolvedTitle = cust?.name ?? null;
-  }
-  if (!resolvedTitle) resolvedTitle = anchorLabel;
-
-  // Dates — date_end = anchor date unless the hotel checkout extends it.
-  const dateStart =
-    parsed.value.hotel_check_in_date ?? parsed.value.anchor_date;
-  const dateEnd =
-    parsed.value.hotel_check_out_date ?? parsed.value.anchor_date;
 
   const { data: itinerary, error: itinErr } = await supabase
     .from("itineraries")
@@ -295,8 +314,6 @@ export async function createItineraryFromBrief(
     after: itinerary,
   });
 
-  // Look up the user's home location for the start stop. If unset, the
-  // editor will still let them add it later.
   const { data: profile } = await supabase
     .from("travel_profiles")
     .select(
@@ -311,102 +328,104 @@ export async function createItineraryFromBrief(
     profile?.default_return_location_id ??
     null;
 
-  const stopsToInsert: Array<{
+  const stopRows: Array<{
     sequence: number;
     type: "start" | "accommodation" | "appointment";
     location_id: string | null;
+    customer_id: string | null;
+    customer_site_id: string | null;
     title: string | null;
-    customer_id?: string | null;
-    customer_site_id?: string | null;
     start_time: string | null;
     end_time: string | null;
+    duration_minutes: number | null;
     is_time_fixed: boolean;
-    duration_minutes?: number | null;
+    notes: string | null;
+    itinerary_id: string;
+    workspace_id: string;
   }> = [];
 
   let seq = 0;
-
   if (homeId) {
-    stopsToInsert.push({
+    stopRows.push({
       sequence: seq++,
       type: "start",
       location_id: homeId,
+      customer_id: null,
+      customer_site_id: null,
       title: null,
       start_time: null,
       end_time: null,
+      duration_minutes: null,
       is_time_fixed: false,
-    });
-  }
-
-  // Hotel (if it sits before the anchor on the anchor day or earlier).
-  if (hotelLocationId && parsed.value.hotel_check_in_date) {
-    const ci = isoFromLocal(
-      parsed.value.hotel_check_in_date,
-      parsed.value.hotel_check_in_time ?? "15:00",
-      parsed.value.timezone,
-    );
-    const co = parsed.value.hotel_check_out_date
-      ? isoFromLocal(
-          parsed.value.hotel_check_out_date,
-          "11:00",
-          parsed.value.timezone,
-        )
-      : isoFromLocal(parsed.value.anchor_date, "11:00", parsed.value.timezone);
-    stopsToInsert.push({
-      sequence: seq++,
-      type: "accommodation",
-      location_id: hotelLocationId,
-      title: parsed.value.hotel_label ?? null,
-      start_time: ci,
-      end_time: co,
-      is_time_fixed: true,
-    });
-  }
-
-  // The anchor itself.
-  const anchorStartIso = isoFromLocal(
-    parsed.value.anchor_date,
-    parsed.value.anchor_time,
-    parsed.value.timezone,
-  );
-  const dur = parsed.value.duration_minutes ?? defaultDuration(parsed.value.purpose);
-  const anchorEndIso = addMinutesIso(anchorStartIso, dur);
-  stopsToInsert.push({
-    sequence: seq++,
-    type: "appointment",
-    location_id: anchorLocationId,
-    customer_id: parsed.value.anchor_customer_id ?? null,
-    customer_site_id: parsed.value.anchor_customer_site_id ?? null,
-    title: anchorLabel,
-    start_time: anchorStartIso,
-    end_time: anchorEndIso,
-    is_time_fixed: true,
-    duration_minutes: dur,
-  });
-
-  if (stopsToInsert.length > 0) {
-    const rows = stopsToInsert.map((s) => ({
-      ...s,
+      notes: null,
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
-    }));
-    await supabase.from("stops").insert(rows);
+    });
+  }
+
+  for (const r of resolved) {
+    const a = r.anchor;
+    if (a.kind === "hotel") {
+      const ci = isoFromLocal(a.date, a.start_time, tz);
+      const co = isoFromLocal(
+        a.check_out_date ?? a.date,
+        a.check_out_time ?? "11:00",
+        tz,
+      );
+      stopRows.push({
+        sequence: seq++,
+        type: "accommodation",
+        location_id: r.locationId,
+        customer_id: r.customerId,
+        customer_site_id: r.customerSiteId,
+        title: r.label,
+        start_time: ci,
+        end_time: co,
+        duration_minutes: null,
+        is_time_fixed: true,
+        notes: a.notes ?? null,
+        itinerary_id: itinerary.id,
+        workspace_id: ctx.workspaceId,
+      });
+    } else {
+      const startIso = isoFromLocal(a.date, a.start_time, tz);
+      const dur =
+        a.duration_minutes ??
+        (a.end_time
+          ? minutesBetweenLocal(a.start_time, a.end_time)
+          : null) ??
+        (a.kind === "station" ? 10 : 60);
+      const endIso = addMinutesIso(startIso, dur);
+      stopRows.push({
+        sequence: seq++,
+        type: "appointment",
+        location_id: r.locationId,
+        customer_id: r.customerId,
+        customer_site_id: r.customerSiteId,
+        title: r.label,
+        start_time: startIso,
+        end_time: endIso,
+        duration_minutes: dur,
+        is_time_fixed: true,
+        notes: a.notes ?? null,
+        itinerary_id: itinerary.id,
+        workspace_id: ctx.workspaceId,
+      });
+    }
+  }
+
+  if (stopRows.length > 0) {
+    await supabase.from("stops").insert(stopRows);
   }
 
   return ok({ id: itinerary.id });
 }
 
-function isoFromLocal(
-  date: string,
-  time: string,
-  timezone: string,
-): string {
+function isoFromLocal(date: string, time: string, timezone: string): string {
   // Build an ISO timestamp from a local date + time in a named timezone.
-  // We construct an "as-if UTC" instant, then shift by the timezone offset
-  // at that moment using Intl.DateTimeFormat to read the offset back.
+  // We construct an "as-if UTC" instant, then derive the offset by asking
+  // Intl what clock-time that instant prints in the target zone.
   const asUtc = new Date(`${date}T${time}:00.000Z`);
-  // Format that instant in the target timezone — the difference gives us
-  // the offset to apply.
   const tzString = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     hour: "2-digit",
@@ -417,9 +436,12 @@ function isoFromLocal(
   const utcHour = asUtc.getUTCHours();
   const utcMin = asUtc.getUTCMinutes();
   const offsetMins = (tzHour - utcHour) * 60 + (tzMin - utcMin);
-  // Normalise the offset to within ±12h (handles day-rollover).
   const norm =
-    offsetMins > 720 ? offsetMins - 1440 : offsetMins < -720 ? offsetMins + 1440 : offsetMins;
+    offsetMins > 720
+      ? offsetMins - 1440
+      : offsetMins < -720
+        ? offsetMins + 1440
+        : offsetMins;
   return new Date(asUtc.getTime() - norm * 60_000).toISOString();
 }
 
@@ -427,18 +449,12 @@ function addMinutesIso(iso: string, minutes: number): string {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
 }
 
-function defaultDuration(purpose?: string): number {
-  switch (purpose) {
-    case "conference":
-      return 8 * 60;
-    case "personal":
-      return 4 * 60;
-    case "internal":
-      return 60;
-    case "visit":
-    default:
-      return 90;
-  }
+function minutesBetweenLocal(a: string, b: string): number {
+  const [ah, am] = a.split(":").map((p) => parseInt(p, 10));
+  const [bh, bm] = b.split(":").map((p) => parseInt(p, 10));
+  let mins = bh * 60 + bm - (ah * 60 + am);
+  if (mins < 0) mins += 24 * 60;
+  return mins;
 }
 
 export async function deleteItinerary(id: string): Promise<Result<{ id: string }>> {

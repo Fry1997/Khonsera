@@ -206,6 +206,42 @@ export async function createInlineLocation(
   return result;
 }
 
+// Patch just the type on a location — used when the user overrides
+// Google's inferred classification (e.g. "actually this is a hotel").
+const updateLocationTypeSchema = z.object({
+  id: z.string().uuid(),
+  type: locationTypeEnum,
+});
+
+export async function updateLocationType(
+  input: z.input<typeof updateLocationTypeSchema>,
+): Promise<Result<{ id: string; type: string }>> {
+  const parsed = parseInput(updateLocationTypeSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("locations")
+    .update({ type: parsed.value.type })
+    .eq("id", parsed.value.id)
+    .eq("workspace_id", ctx.workspaceId)
+    .select("id, type")
+    .single();
+
+  const result = dbResult<{ id: string; type: string }>(data, error, "location");
+  if (result.ok) {
+    await recordAudit({
+      entityType: "location",
+      entityId: result.value.id,
+      action: "update_type",
+      after: result.value,
+    });
+  }
+  return result;
+}
+
 export async function deleteLocation(id: string): Promise<Result<{ id: string }>> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
