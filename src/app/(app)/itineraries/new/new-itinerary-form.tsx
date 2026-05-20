@@ -60,15 +60,27 @@ const KIND_OPTIONS: Array<{ value: AnchorKind; label: string }> = [
   { value: "station", label: "Station" },
 ];
 
+// Timing mode — what's pinned on this anchor.
+//   arrive_by   — you know when you need to be there. Most common.
+//   leave_by    — you know when you need to leave (a train to catch,
+//                 a dinner to make). The arrival is derived backwards.
+//   around_then — you only know the duration; Khonsera fits the stop
+//                 between the adjacent anchors once travel is known.
+type TimingMode = "arrive_by" | "leave_by" | "around_then";
+
 type Anchor = {
   uid: string;
   place: PlaceSelection | null;
   kindOverride: AnchorKind | null;
   roleOverride: AnchorRole | null;
   date: string;
-  startTime: string;
+  // The single "when" field — its meaning depends on timingMode.
+  // For around_then it's ignored.
+  time: string;
+  timingMode: TimingMode;
+  timingModeOverride: boolean;
   durationMins: number;
-  // stay (check_in) only
+  // stay (check_in) only — always arrive_by semantically.
   checkOutDate: string;
   checkOutTime: string;
 };
@@ -200,15 +212,20 @@ export function NewItineraryBrief({
                   }
                 : { customer_id: a.place.customer_id, label: a.place.label }
             : {};
+          const isCheckIn = kind === "stay" && role !== "return_to_room";
+          const mode = effectiveTimingMode(a);
           const base = {
             kind,
             role,
             date: a.date,
-            start_time: a.startTime,
+            // Stay/check-in is always arrive_by — the "Check-in from" time.
+            timing_mode: isCheckIn ? ("arrive_by" as const) : mode,
+            time:
+              mode === "around_then" && !isCheckIn ? null : a.time,
             notes: null,
             ...placeArgs,
           };
-          if (kind === "stay" && role !== "return_to_room") {
+          if (isCheckIn) {
             return {
               ...base,
               check_out_date: a.checkOutDate || a.date,
@@ -529,8 +546,10 @@ function KindBadge({
   const persistKindOverride = async (k: AnchorKind | null) => {
     onChange({
       kindOverride: k === inferredK ? null : k,
-      // Reset role override when kind changes — fresh role inference.
+      // Reset role + timing-mode overrides when kind changes — both
+      // re-infer from the new kind.
       roleOverride: null,
+      timingModeOverride: false,
     });
     setOpenKind(false);
     // Persist type back to the saved location when applicable.
@@ -555,7 +574,12 @@ function KindBadge({
   };
 
   const persistRoleOverride = (r: string | null) => {
-    onChange({ roleOverride: r === inferredR ? null : r });
+    onChange({
+      roleOverride: r === inferredR ? null : r,
+      // Role swap (e.g. check_in → return_to_room) wants a fresh timing
+      // inference too, unless the user has explicitly set one already.
+      timingModeOverride: false,
+    });
     setOpenRole(false);
   };
 
@@ -705,8 +729,8 @@ function HotelTimes({
           <input
             type="time"
             className="field"
-            value={anchor.startTime}
-            onChange={(e) => onChange({ startTime: e.target.value })}
+            value={anchor.time}
+            onChange={(e) => onChange({ time: e.target.value })}
           />
         </label>
       </div>
@@ -767,6 +791,13 @@ function ReturnToRoom({
       effectiveKind(a) === "stay" &&
       (a.roleOverride ?? "check_in") === "check_in",
   );
+  const mode = effectiveTimingMode(anchor);
+  const setMode = (next: TimingMode) =>
+    onChange({ timingMode: next, timingModeOverride: true });
+
+  const timeLabel =
+    mode === "leave_by" ? "Leave by" : "Arrive by";
+
   return (
     <div
       style={{
@@ -793,14 +824,25 @@ function ReturnToRoom({
             lineHeight: 1.5,
           }}
         >
-          Using your existing stay — no new check-in needed. Just a short
-          stop to drop bags or freshen up
-          {stay?.checkOutDate
-            ? `, before check-out by ${stay.checkOutTime || "11:00"} on ${fmtShortDate(stay.checkOutDate, "UTC")}`
-            : ""}
-          .
+          {mode === "around_then" ? (
+            <>
+              Back at your hotel for a short while — Khonsera will fit it
+              between the stops on either side
+              {stay?.checkOutDate
+                ? `, before check-out by ${stay.checkOutTime || "11:00"} on ${fmtShortDate(stay.checkOutDate, "UTC")}`
+                : ""}
+              .
+            </>
+          ) : (
+            <>
+              Using your existing stay — no new check-in needed.
+            </>
+          )}
         </p>
       </div>
+
+      <TimingModeRow mode={mode} onChange={setMode} />
+
       <div className="brief-when-row">
         <label className="brief-field">
           <span className="uc">Date</span>
@@ -811,18 +853,31 @@ function ReturnToRoom({
             onChange={(e) => onChange({ date: e.target.value })}
           />
         </label>
-        <label className="brief-field">
-          <span className="uc">Arrive by</span>
-          <input
-            type="time"
-            className="field"
-            value={anchor.startTime}
-            onChange={(e) => onChange({ startTime: e.target.value })}
-          />
-        </label>
+        {mode !== "around_then" ? (
+          <label className="brief-field">
+            <span className="uc">{timeLabel}</span>
+            <input
+              type="time"
+              className="field"
+              value={anchor.time}
+              onChange={(e) => onChange({ time: e.target.value })}
+            />
+          </label>
+        ) : (
+          <div className="brief-field">
+            <span className="uc">When</span>
+            <div className="around-then-blurb">
+              <span aria-hidden>⌁</span>
+              <span>Khonsera fits between adjacent anchors</span>
+            </div>
+          </div>
+        )}
       </div>
+
       <div>
-        <span className="uc">Duration</span>
+        <span className="uc">
+          {mode === "around_then" ? "About" : "Duration"}
+        </span>
         <div className="brief-pill-row" style={{ marginTop: 6 }}>
           {[
             { label: "15m", mins: 15 },
@@ -857,9 +912,24 @@ function AppointmentTimes({
   onChange: (patch: Partial<Anchor>) => void;
   kind: AnchorKind;
 }) {
+  const mode = effectiveTimingMode(anchor);
   const isStation = kind === "station";
+
+  const timeLabel =
+    mode === "leave_by"
+      ? isStation
+        ? "Catch by"
+        : "Leave by"
+      : "Arrive by";
+
+  const setMode = (next: TimingMode) =>
+    onChange({ timingMode: next, timingModeOverride: true });
+
   return (
     <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Timing mode picker — three pinning options. */}
+      <TimingModeRow mode={mode} onChange={setMode} />
+
       <div className="brief-when-row">
         <label className="brief-field">
           <span className="uc">Date</span>
@@ -870,16 +940,27 @@ function AppointmentTimes({
             onChange={(e) => onChange({ date: e.target.value })}
           />
         </label>
-        <label className="brief-field">
-          <span className="uc">{isStation ? "Catch by" : "Arrive by"}</span>
-          <input
-            type="time"
-            className="field"
-            value={anchor.startTime}
-            onChange={(e) => onChange({ startTime: e.target.value })}
-          />
-        </label>
+        {mode !== "around_then" ? (
+          <label className="brief-field">
+            <span className="uc">{timeLabel}</span>
+            <input
+              type="time"
+              className="field"
+              value={anchor.time}
+              onChange={(e) => onChange({ time: e.target.value })}
+            />
+          </label>
+        ) : (
+          <div className="brief-field">
+            <span className="uc">When</span>
+            <div className="around-then-blurb">
+              <span aria-hidden>⌁</span>
+              <span>Khonsera fits between adjacent anchors</span>
+            </div>
+          </div>
+        )}
       </div>
+
       <div className="brief-pill-row">
         {datePresets.map((p) => (
           <button
@@ -893,22 +974,28 @@ function AppointmentTimes({
           </button>
         ))}
       </div>
-      <div className="brief-pill-row" style={{ marginTop: 4 }}>
-        {TIME_PRESETS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            className="pill brief-pill"
-            data-active={t === anchor.startTime}
-            onClick={() => onChange({ startTime: t })}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+
+      {mode !== "around_then" ? (
+        <div className="brief-pill-row" style={{ marginTop: 4 }}>
+          {TIME_PRESETS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className="pill brief-pill"
+              data-active={t === anchor.time}
+              onClick={() => onChange({ time: t })}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {!isStation ? (
         <div style={{ marginTop: 4 }}>
-          <span className="uc">Duration</span>
+          <span className="uc">
+            {mode === "around_then" ? "About" : "Duration"}
+          </span>
           <div className="brief-pill-row" style={{ marginTop: 6 }}>
             {APPT_DURATIONS.map((d) => (
               <button
@@ -924,6 +1011,41 @@ function AppointmentTimes({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// Timing-mode segmented control — Arrive by / Leave by / Around then.
+function TimingModeRow({
+  mode,
+  onChange,
+}: {
+  mode: TimingMode;
+  onChange: (next: TimingMode) => void;
+}) {
+  const options: Array<{
+    value: TimingMode;
+    label: string;
+    helper: string;
+  }> = [
+    { value: "arrive_by", label: "Arrive by", helper: "I know when to be there" },
+    { value: "leave_by", label: "Leave by", helper: "I know when I need to leave" },
+    { value: "around_then", label: "Around then", helper: "Fit between things" },
+  ];
+  return (
+    <div className="timing-mode-row">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className="timing-mode-btn"
+          data-active={o.value === mode}
+          onClick={() => onChange(o.value)}
+          title={o.helper}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -978,7 +1100,7 @@ function BonesPreview({
   const sorted = [...anchors]
     .filter((a) => a.place != null)
     .sort((a, b) =>
-      `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`),
+      `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`),
     );
 
   const titleSource =
@@ -1034,7 +1156,7 @@ function BonesPreview({
                 time={fmtShortDate(a.date, timezone)}
                 eyebrow={labelForBadge}
                 title={a.place?.label ?? ""}
-                sub={`${a.startTime}${
+                sub={`${a.time}${
                   a.checkOutDate
                     ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${
                         a.checkOutTime || "11:00"
@@ -1045,19 +1167,30 @@ function BonesPreview({
               />
             );
           }
+          const mode = effectiveTimingMode(a);
+          // Time slot in the preview reflects the timing mode: arrive_by
+          // shows the time, leave_by shows "by HH:MM" so the reader sees
+          // the ceiling, around_then shows a small wand glyph.
+          const timeSlot =
+            mode === "around_then"
+              ? "⌁"
+              : mode === "leave_by"
+                ? `by ${a.time}`
+                : a.time;
+          const subBit = a.durationMins
+            ? `${fmtShortDate(a.date, timezone)} · ${mode === "around_then" ? "~" : ""}${fmtDur(a.durationMins)}`
+            : fmtShortDate(a.date, timezone);
           return (
             <BonesStop
               key={a.uid}
-              time={a.startTime}
+              time={timeSlot}
               eyebrow={labelForBadge}
               title={
                 kind === "stay"
                   ? `Back at ${a.place?.label ?? "the hotel"}`
                   : a.place?.label ?? ""
               }
-              sub={`${fmtShortDate(a.date, timezone)}${
-                a.durationMins ? ` · ${fmtDur(a.durationMins)}` : ""
-              }`}
+              sub={subBit}
               dotKind={kind === "stay" ? "default" : "gold"}
             />
           );
@@ -1112,6 +1245,24 @@ function effectiveRole(a: Anchor, earlier: Anchor[]): AnchorRole {
   return inferredRoleFor(a, earlier);
 }
 
+// Timing mode the user is using right now. If they haven't explicitly
+// picked one, we infer from the kind + role:
+//   • Stay / return-to-room → around_then (they want Khonsera to fit it)
+//   • Station                → leave_by   (the "catch by" time IS departure)
+//   • Everything else        → arrive_by
+function effectiveTimingMode(a: Anchor): TimingMode {
+  if (a.timingModeOverride) return a.timingMode;
+  return inferredTimingMode(a);
+}
+
+function inferredTimingMode(a: Anchor): TimingMode {
+  const kind = effectiveKind(a);
+  const role = a.roleOverride;
+  if (kind === "stay" && role === "return_to_room") return "around_then";
+  if (kind === "station") return "leave_by";
+  return "arrive_by";
+}
+
 function inferredKind(a: Anchor): AnchorKind {
   if (!a.place) return "appointment";
   if (a.place.kind !== "location") return "appointment";
@@ -1141,7 +1292,7 @@ function inferredRoleFor(a: Anchor, earlier: Anchor[]): AnchorRole {
     return priorStay ? "return_to_room" : "check_in";
   }
   if (k === "meal") {
-    const hour = parseInt(a.startTime.split(":")[0] ?? "12", 10);
+    const hour = parseInt(a.time.split(":")[0] ?? "12", 10);
     if (hour < 11) return "breakfast";
     if (hour < 16) return "lunch";
     if (hour < 21) return "dinner";
@@ -1168,8 +1319,8 @@ function samePlace(a: PlaceSelection, b: PlaceSelection): boolean {
 function anchorWithinStay(anchor: Anchor, stay: Anchor): boolean {
   // Returns true if anchor's start is between stay's check-in (date+time)
   // and stay's check-out (date+time, with sensible defaults).
-  const start = `${anchor.date}T${anchor.startTime}`;
-  const ci = `${stay.date}T${stay.startTime}`;
+  const start = `${anchor.date}T${anchor.time}`;
+  const ci = `${stay.date}T${stay.time}`;
   const coDate = stay.checkOutDate || nextDay(stay.date);
   const coTime = stay.checkOutTime || "11:00";
   const co = `${coDate}T${coTime}`;
@@ -1202,7 +1353,9 @@ function emptyAnchor(date: string): Anchor {
     kindOverride: null,
     roleOverride: null,
     date,
-    startTime: "09:00",
+    time: "09:00",
+    timingMode: "arrive_by",
+    timingModeOverride: false,
     durationMins: 60,
     checkOutDate: nextDay(date),
     checkOutTime: "11:00",

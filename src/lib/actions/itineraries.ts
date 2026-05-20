@@ -172,9 +172,25 @@ const anchorInputSchema = z
     label: z.string().trim().max(200).nullable().optional(),
 
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    start_time: z.string().regex(/^\d{2}:\d{2}$/),
 
-    // Appointment / meal / event / station / stay-return-to-room.
+    // ── Timing model ───────────────────────────────────────────────
+    // arrive_by  — you know when to be there. start_time = time.
+    // leave_by   — you know when you need to leave (catch a train,
+    //              make the next thing). end_time = time, start_time =
+    //              time − duration.
+    // around_then — duration only, no fixed time. The editor solver
+    //              fits the stop between the adjacent fixed anchors.
+    //              start/end times are written null and is_time_fixed
+    //              is set to false.
+    timing_mode: z
+      .enum(["arrive_by", "leave_by", "around_then"])
+      .default("arrive_by"),
+    time: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable()
+      .optional(),
+
     duration_minutes: z
       .number()
       .int()
@@ -202,6 +218,13 @@ const anchorInputSchema = z
 
     notes: z.string().trim().max(2000).nullable().optional(),
   })
+  .refine(
+    (v) => v.timing_mode === "around_then" || v.time != null,
+    {
+      message: "Pinned anchors need a time",
+      path: ["time"],
+    },
+  )
   .refine(
     (v) =>
       v.location_id != null ||
@@ -284,11 +307,16 @@ export async function createItineraryFromBrief(
     });
   }
 
-  resolved.sort((a, b) =>
-    `${a.anchor.date}T${a.anchor.start_time}`.localeCompare(
-      `${b.anchor.date}T${b.anchor.start_time}`,
-    ),
-  );
+  // Sort by date + a sort key per anchor: pinned anchors use their time;
+  // around-then anchors fall to the end of the day they were assigned to
+  // (the editor solver will pull them into the right slot via duration +
+  // adjacent fixed times). For sort purposes we use "23:59" so the
+  // chronological order on input still feels right.
+  resolved.sort((a, b) => {
+    const aKey = `${a.anchor.date}T${sortKey(a.anchor)}`;
+    const bKey = `${b.anchor.date}T${sortKey(b.anchor)}`;
+    return aKey.localeCompare(bKey);
+  });
 
   const allDates = new Set<string>();
   for (const r of resolved) {
@@ -401,8 +429,12 @@ export async function createItineraryFromBrief(
     const isCheckIn = a.kind === "stay" && a.role !== "return_to_room";
 
     if (isCheckIn) {
-      // Lock the check-in/out window.
-      const ci = isoFromLocal(a.date, a.start_time, tz);
+      // Lock the check-in/out window. Hotel check-in is always arrive-by:
+      // the time the user gives IS the moment the day swings to "checked
+      // in". (Hotels don't have around_then or leave_by modes for the
+      // anchor itself — the room's available window is a window.)
+      const checkInTime = a.time ?? "15:00";
+      const ci = isoFromLocal(a.date, checkInTime, tz);
       const co = isoFromLocal(
         a.check_out_date ?? a.date,
         a.check_out_time ?? "11:00",
@@ -427,13 +459,13 @@ export async function createItineraryFromBrief(
       continue;
     }
 
-    // Everything else is a fixed-time stop with a duration.
-    const startIso = isoFromLocal(a.date, a.start_time, tz);
+    // Everything else picks a pinning side based on timing_mode.
     const dur =
       a.duration_minutes ??
-      (a.end_time ? minutesBetweenLocal(a.start_time, a.end_time) : null) ??
+      (a.time && a.end_time
+        ? minutesBetweenLocal(a.time, a.end_time)
+        : null) ??
       defaultDurationForKind(a.kind, a.role);
-    const endIso = addMinutesIso(startIso, dur);
 
     const stopType: StopType =
       a.kind === "meal"
@@ -441,6 +473,26 @@ export async function createItineraryFromBrief(
         : a.kind === "event"
           ? "event"
           : "appointment";
+
+    let startIso: string | null;
+    let endIso: string | null;
+    let isFixed = true;
+
+    if (a.timing_mode === "around_then") {
+      // Solver-resolved: no pinned times, just a duration. The editor
+      // will fit this between adjacent fixed anchors based on travel.
+      startIso = null;
+      endIso = null;
+      isFixed = false;
+    } else if (a.timing_mode === "leave_by" && a.time) {
+      // Pin at the back end — user knows when they need to leave.
+      endIso = isoFromLocal(a.date, a.time, tz);
+      startIso = addMinutesIso(endIso, -dur);
+    } else {
+      // arrive_by — the original behaviour and our default.
+      startIso = isoFromLocal(a.date, a.time ?? "09:00", tz);
+      endIso = addMinutesIso(startIso, dur);
+    }
 
     stopRows.push({
       sequence: seq++,
@@ -455,9 +507,13 @@ export async function createItineraryFromBrief(
       start_time: startIso,
       end_time: endIso,
       duration_minutes: dur,
-      is_time_fixed: true,
+      is_time_fixed: isFixed,
       notes: a.notes ?? null,
-      metadata: { kind: a.kind, role: a.role ?? null },
+      metadata: {
+        kind: a.kind,
+        role: a.role ?? null,
+        timing_mode: a.timing_mode,
+      },
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
@@ -517,6 +573,16 @@ function defaultDurationForKind(kind: string, role?: string | null): number {
   }
   if (kind === "event") return 120;
   return 60;
+}
+
+// Sort key for chronological ordering on input. Pinned anchors use their
+// declared time (arrive_by → that time; leave_by → that time so they land
+// where the user expects them to "finish"). Around-then anchors fall to
+// the end of the day they were assigned to — the editor solver will
+// re-slot them once travel is known.
+function sortKey(a: AnchorInput): string {
+  if (a.timing_mode === "around_then") return "23:59";
+  return a.time ?? "00:00";
 }
 
 function minutesBetweenLocal(a: string, b: string): number {

@@ -2100,6 +2100,58 @@
     background: var(--card-2);
   }
 
+  /* Timing-mode segmented control — Arrive by / Leave by / Around then. */
+  .timing-mode-row {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 3px;
+    background: var(--ink-soft);
+    border-radius: 999px;
+    gap: 2px;
+  }
+  .timing-mode-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border: 0;
+    transition: background 0.12s, color 0.12s;
+    cursor: pointer;
+  }
+  .timing-mode-btn:hover {
+    color: var(--ink);
+  }
+  .timing-mode-btn[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* "Around then" placeholder where the time input would otherwise sit. */
+  .around-then-blurb {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    border: 1px dashed var(--gold);
+    border-radius: 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  .around-then-blurb > span:first-child {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1;
+  }
+
   /* Anchor kind badge + sub-role badge — the primary classification
      surface on each anchor card. Both pop a small picker on click. */
   .kind-badge,
