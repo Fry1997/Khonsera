@@ -5,6 +5,7 @@ import {
   Lora,
   Playfair_Display,
 } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Canonical Khonsera type stack:
@@ -50,7 +51,10 @@ export default function RootLayout({
       data-theme="light"
       className={`${sans.variable} ${mono.variable} ${serif.variable} ${display.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
