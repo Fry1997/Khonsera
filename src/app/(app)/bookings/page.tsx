@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageShell } from "@/components/ui/page-shell";
+import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
@@ -32,11 +32,7 @@ type BookingRow = {
     id: string;
     itinerary_id: string | null;
     stop_id: string | null;
-    itinerary: {
-      id: string;
-      title: string | null;
-      date_start: string;
-    } | null;
+    itinerary: { id: string; title: string | null; date_start: string } | null;
   } | null;
   departure_location: { id: string; name: string } | null;
   arrival_location: { id: string; name: string } | null;
@@ -88,8 +84,6 @@ export default async function BookingsPage({
   const bookings = (rawBookings ?? []) as unknown as BookingRow[];
   const filtered = bookings.filter((b) => matchesBucket(b, bucket));
 
-  // Pick the most recent in-flight itinerary so the "New booking" CTA can
-  // jump straight into its editor.
   const { data: latestItinerary } = await supabase
     .from("itineraries")
     .select("id")
@@ -112,91 +106,168 @@ export default async function BookingsPage({
   const past = filtered.filter((b) => !upcoming.includes(b));
 
   return (
-    <PageShell
-      title="Bookings"
-      description="Every ticket, hotel and hire car you've recorded — kept in one place across all your itineraries."
-      actions={
-        latestItinerary ? (
-          <Link href={`/itineraries/${latestItinerary.id}`} className="btn-gold">
-            + New booking
-          </Link>
-        ) : (
-          <Link href="/itineraries/new" className="btn-gold">
-            + Start an itinerary
-          </Link>
-        )
-      }
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
+            Wallet
+          </span>
+          <h1 className="desk-h1" style={{ marginTop: 6, fontSize: "clamp(28px, 4vw, 38px)" }}>
+            Bookings.
+          </h1>
+          <p
+            className="serif-i"
+            style={{
+              fontSize: 16,
+              color: "var(--ink-dim)",
+              margin: "8px 0 0",
+              maxWidth: "60ch",
+            }}
+          >
+            Every ticket, where you left it.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {latestItinerary ? (
+            <Link
+              href={`/itineraries/${latestItinerary.id}`}
+              className="btn btn-gold"
+            >
+              <Plus /> New booking
+            </Link>
+          ) : (
+            <Link
+              href={"/itineraries/new" as Route}
+              className="btn btn-gold"
+            >
+              <Plus /> Start an itinerary
+            </Link>
+          )}
+        </div>
+      </header>
+
       <BookingsFilter active={bucket} counts={counts} labels={BUCKET_LABEL} />
 
       {filtered.length === 0 ? (
-        <div className="k-card-soft p-8 text-center">
-          <p className="body mb-1">
-            No {bucket === "all" ? "" : BUCKET_LABEL[bucket].toLowerCase() + " "}
-            bookings yet.
+        <div className="card" style={{ padding: 32, textAlign: "center" }}>
+          <p
+            className="serif-i"
+            style={{ fontSize: 17, color: "var(--ink-2)", marginBottom: 6 }}
+          >
+            {bucket === "all" ? (
+              <>No bookings yet.</>
+            ) : (
+              <>
+                No <em style={{ color: "var(--gold)" }}>{BUCKET_LABEL[bucket].toLowerCase()}</em> bookings yet.
+              </>
+            )}
           </p>
-          <p className="small">
-            Bookings appear here as you confirm tickets, hotels and hire cars
-            against an itinerary. Open an itinerary and use{" "}
-            <span className="font-medium">+ Add booking</span> on any point to
-            capture one.
+          <p className="small" style={{ maxWidth: "44ch", margin: "0 auto" }}>
+            Bookings land here as you confirm tickets, hotels and hire cars
+            against an itinerary. Open any stop and use{" "}
+            <span style={{ fontWeight: 600 }}>+ Add booking</span>.
           </p>
         </div>
       ) : (
         <>
           {upcoming.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <header className="flex items-baseline justify-between">
-                <h2 className="h3 uc" style={{ letterSpacing: "0.14em" }}>
-                  Upcoming
-                </h2>
-                <span className="small mono">{upcoming.length} ·</span>
-              </header>
-              <div className="flex flex-col gap-3">
-                {upcoming.map((b) => (
-                  <BookingCard key={b.id} booking={b} timezone={wsCfg.timezone} />
-                ))}
-              </div>
-            </section>
+            <Section title={`Upcoming · ${upcoming.length}`}>
+              {upcoming.map((b) => (
+                <BookingCard key={b.id} booking={b} timezone={wsCfg.timezone} />
+              ))}
+            </Section>
           ) : null}
 
           {past.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <header className="flex items-baseline justify-between">
-                <h2 className="h3 uc" style={{ letterSpacing: "0.14em" }}>
-                  Past
-                </h2>
-                <span className="small mono">{past.length}</span>
-              </header>
-              <div className="flex flex-col gap-3">
-                {past.map((b) => (
-                  <BookingCard
-                    key={b.id}
-                    booking={b}
-                    timezone={wsCfg.timezone}
-                    past
-                  />
-                ))}
-              </div>
-            </section>
+            <Section title={`Past · ${past.length}`} muted>
+              {past.map((b) => (
+                <BookingCard
+                  key={b.id}
+                  booking={b}
+                  timezone={wsCfg.timezone}
+                  past
+                />
+              ))}
+            </Section>
           ) : null}
         </>
       )}
-    </PageShell>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+  muted,
+}: {
+  title: string;
+  children: React.ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <section
+      style={{ display: "flex", flexDirection: "column", gap: 10 }}
+    >
+      <div className="flank left" style={{ opacity: muted ? 0.7 : 1 }}>
+        <span>{title}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {children}
+      </div>
+    </section>
   );
 }
 
 function isBucket(v?: string): v is Bucket {
-  return v === "all" || v === "rail" || v === "flights" || v === "stays" || v === "cars";
+  return (
+    v === "all" || v === "rail" || v === "flights" || v === "stays" || v === "cars"
+  );
 }
 
 function bucketForBooking(b: BookingRow): Bucket {
   const p = (b.provider ?? "").toLowerCase();
-  if (p.includes("hotel") || p.includes("booking.com") || p.includes("airbnb")) return "stays";
-  if (p.includes("trainline") || p.includes("rail") || p.includes("avanti") || p.includes("gwr") || p.includes("lner") || p.includes("tfl") || p.includes("tube")) return "rail";
-  if (p.includes("airline") || p.includes("ba") || p.includes("klm") || p.includes("flight") || p.includes("ryan") || p.includes("easy")) return "flights";
-  if (p.includes("car-hire") || p.includes("hertz") || p.includes("avis") || p.includes("enterprise") || p.includes("sixt")) return "cars";
-  // Fall back to segment heuristics — flight codes typically two letters + digits.
+  if (
+    p.includes("hotel") ||
+    p.includes("booking.com") ||
+    p.includes("airbnb")
+  )
+    return "stays";
+  if (
+    p.includes("trainline") ||
+    p.includes("rail") ||
+    p.includes("avanti") ||
+    p.includes("gwr") ||
+    p.includes("lner") ||
+    p.includes("tfl") ||
+    p.includes("tube")
+  )
+    return "rail";
+  if (
+    p.includes("airline") ||
+    p.includes("ba") ||
+    p.includes("klm") ||
+    p.includes("flight") ||
+    p.includes("ryan") ||
+    p.includes("easy")
+  )
+    return "flights";
+  if (
+    p.includes("car-hire") ||
+    p.includes("hertz") ||
+    p.includes("avis") ||
+    p.includes("enterprise") ||
+    p.includes("sixt")
+  )
+    return "cars";
   const first = b.segments?.[0];
   if (first?.train_number && /^[A-Z]{2}\d{1,5}$/i.test(first.train_number)) {
     return "flights";
@@ -209,6 +280,22 @@ function matchesBucket(b: BookingRow, bucket: Bucket): boolean {
   if (bucket === "all") return true;
   return bucketForBooking(b) === bucket;
 }
+
+const STATUS_PILL: Record<string, string> = {
+  booked: "pill-sage",
+  changed: "pill-amber",
+  cancelled: "pill-rust",
+  refunded: "pill-rust",
+  unknown: "pill-soft",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  booked: "Booked",
+  changed: "Changed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+  unknown: "Pending",
+};
 
 function BookingCard({
   booking,
@@ -233,118 +320,175 @@ function BookingCard({
     booking.arrival_location?.name ??
     "—";
 
-  const lineEyebrow = isStay
-    ? "Stay"
-    : isFlight
-      ? "Flight"
-      : isCar
-        ? "Car hire"
-        : bucket === "rail"
-          ? "Rail"
-          : "Booking";
+  const code = isStay
+    ? null
+    : `${codeFor(fromName)}→${codeFor(toName)}`;
+
+  const dateStr = booking.departure_at
+    ? fmtShortDate(booking.departure_at, timezone)
+    : booking.booked_at
+      ? fmtShortDate(booking.booked_at, timezone)
+      : "—";
+
+  const title = booking.provider
+    ? `${capitalise(booking.provider)}${
+        booking.segments?.[0]?.train_number
+          ? ` · ${booking.segments[0].train_number}`
+          : ""
+      }`
+    : booking.segments?.[0]?.train_number ?? "Booking";
+
+  const sub = booking.departure_at && booking.arrival_at
+    ? `${fmtTime(booking.departure_at, timezone)} → ${fmtTime(booking.arrival_at, timezone)}${
+        booking.segments?.length > 1
+          ? ` · change at ${booking.segments
+              .slice(0, -1)
+              .map((s) => s.to_location_name)
+              .join(", ")}`
+          : booking.seat_reservation
+            ? ` · ${booking.seat_reservation}`
+            : ""
+      }`
+    : booking.seat_reservation ?? "";
+
+  const statusKey = booking.ticket_status ?? "unknown";
 
   return (
     <article
-      className="k-card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
-      data-past={past}
-      style={past ? { opacity: 0.78 } : undefined}
+      className="card"
+      style={{
+        padding: 16,
+        opacity: past ? 0.78 : 1,
+      }}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="uc">{lineEyebrow}</span>
-          {booking.provider ? (
-            <span className="mono text-xs" style={{ color: "var(--ink-faint)" }}>
-              · {booking.provider}
-            </span>
-          ) : null}
-          <BookingStatusPill status={booking.ticket_status} />
-        </div>
-        <h3
-          className="serif-i text-[19px]"
-          style={{
-            fontFamily: "var(--serif)",
-            fontStyle: "italic",
-            color: "var(--ink)",
-          }}
-        >
-          {isStay ? (
-            <>{booking.arrival_location?.name ?? fromName}</>
-          ) : (
-            <>
-              {fromName} <span style={{ color: "var(--ink-faint)" }}>→</span>{" "}
-              {toName}
-            </>
-          )}
-        </h3>
-        <p className="small mono">
-          {booking.departure_at ? fmtDateTime(booking.departure_at, timezone) : "—"}
-          {booking.arrival_at
-            ? ` · ${
-                isStay ? "→ " : ""
-              }${fmtDateTime(booking.arrival_at, timezone)}`
-            : ""}
-        </p>
-        {booking.segments?.length > 1 ? (
-          <p className="small">
-            Via{" "}
-            {booking.segments
-              .slice(0, -1)
-              .map((s) => s.to_location_name)
-              .join(", ")}
-          </p>
-        ) : null}
-        {booking.seat_reservation ? (
-          <p className="small">
-            {isStay ? "Room: " : isCar ? "" : "Seat: "}
-            {booking.seat_reservation}
-          </p>
-        ) : null}
-        {booking.booking_intent?.itinerary ? (
-          <p className="small">
-            <Link
-              className="action-link"
-              href={`/itineraries/${booking.booking_intent.itinerary.id}`}
-              style={{ padding: 0 }}
-            >
-              {booking.booking_intent.itinerary.title ??
-                fmtDate(booking.booking_intent.itinerary.date_start, timezone)}
-            </Link>
-          </p>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 flex-row items-baseline gap-4 sm:flex-col sm:items-end sm:gap-1">
-        {booking.actual_price != null ? (
-          <span
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 10,
+        }}
+      >
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
             style={{
-              fontFamily: "var(--serif)",
-              fontStyle: "italic",
-              fontSize: 22,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
+              flexWrap: "wrap",
+            }}
+          >
+            <span className="mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+              {dateStr}
+            </span>
+            {code ? (
+              <span className="mono" style={{ fontSize: 11, color: "var(--gold-2)" }}>
+                {code}
+              </span>
+            ) : null}
+            {isStay ? (
+              <span className="mono" style={{ fontSize: 11, color: "var(--gold-2)" }}>
+                {booking.arrival_location?.name ?? fromName}
+              </span>
+            ) : null}
+            {isFlight ? <span className="pill pill-soft">Flight</span> : null}
+            {isCar ? <span className="pill pill-soft">Car hire</span> : null}
+            {isStay ? <span className="pill pill-soft">Stay</span> : null}
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--sans)",
+              fontWeight: 600,
+              fontSize: 15,
               color: "var(--ink)",
             }}
           >
-            {fmtMoney(Number(booking.actual_price), booking.currency)}
+            {title}
+          </div>
+          {sub ? (
+            <div
+              style={{
+                fontSize: 12.5,
+                color: "var(--ink-dim)",
+                marginTop: 2,
+              }}
+            >
+              {sub}
+            </div>
+          ) : null}
+          {booking.booking_reference ? (
+            <div
+              className="mono"
+              style={{
+                fontSize: 10.5,
+                color: "var(--ink-faint)",
+                marginTop: 6,
+              }}
+            >
+              Ref · {booking.booking_reference}
+            </div>
+          ) : null}
+          {booking.booking_intent?.itinerary ? (
+            <Link
+              href={`/itineraries/${booking.booking_intent.itinerary.id}`}
+              className="mono"
+              style={{
+                display: "inline-block",
+                marginTop: 6,
+                fontSize: 10.5,
+                color: "var(--gold-2)",
+                textDecoration: "none",
+              }}
+            >
+              ↳ {booking.booking_intent.itinerary.title ??
+                fmtShortDate(
+                  booking.booking_intent.itinerary.date_start,
+                  timezone,
+                )}
+            </Link>
+          ) : null}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 6,
+            flexShrink: 0,
+          }}
+        >
+          <span className={`pill ${STATUS_PILL[statusKey] ?? "pill-soft"}`}>
+            <span className="dot" />
+            {STATUS_LABEL[statusKey] ?? statusKey}
           </span>
-        ) : (
-          <span className="small">—</span>
-        )}
-        {booking.booking_reference ? (
-          <span className="mono text-[11px]" style={{ color: "var(--ink-faint)" }}>
-            Ref · {booking.booking_reference}
-          </span>
-        ) : null}
+          {booking.actual_price != null ? (
+            <span
+              style={{
+                fontFamily: "var(--display)",
+                fontStyle: "italic",
+                fontSize: 20,
+                color: "var(--ink)",
+              }}
+            >
+              {fmtMoney(Number(booking.actual_price), booking.currency)}
+            </span>
+          ) : null}
+        </div>
       </div>
     </article>
   );
 }
 
-function BookingStatusPill({ status }: { status: string }) {
-  const cls =
-    status === "booked"
-      ? "sb sb-booked"
-      : status === "cancelled" || status === "refunded"
-        ? "sb sb-cancelled"
-        : "sb sb-done";
-  return <span className={cls}>{status}</span>;
+function codeFor(name: string): string {
+  if (!name || name === "—") return "—";
+  // Take first 3 letters of the most significant word.
+  const word = name.split(/\s+/)[0];
+  return word.slice(0, 3).toUpperCase();
+}
+
+function capitalise(s: string): string {
+  return s.slice(0, 1).toUpperCase() + s.slice(1);
 }
 
 function fmtMoney(n: number, currency: string): string {
@@ -352,28 +496,44 @@ function fmtMoney(n: number, currency: string): string {
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency,
+      maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `${currency} ${n.toFixed(2)}`;
+    return `${currency} ${n.toFixed(0)}`;
   }
 }
 
-function fmtDateTime(iso: string, tz: string): string {
+function fmtShortDate(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
     day: "2-digit",
     month: "short",
+    timeZone: tz,
+  })
+    .format(new Date(iso))
+    .replace(",", "");
+}
+
+function fmtTime(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: tz,
   }).format(new Date(iso));
 }
 
-function fmtDate(iso: string, tz: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: tz,
-  }).format(new Date(iso));
+function Plus() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
 }

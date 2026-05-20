@@ -89,8 +89,32 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
     <div className="flex flex-col gap-4">
       <FormError message={feedback?.message} />
 
-      <div className="k-card-soft flex flex-col gap-2 p-4">
-        <p className="uc">Quick add · search anywhere</p>
+      <div
+        className="card-hero"
+        style={{
+          padding: 18,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span className="uc">Search anywhere</span>
+          <span
+            className="serif-i"
+            style={{ fontSize: 13.5, color: "var(--gold-2)" }}
+          >
+            powered by Google
+          </span>
+        </div>
         <PlacePicker
           customers={[]}
           customerSites={[]}
@@ -98,19 +122,32 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
           showCustomers={false}
           value={quickPicked}
           onChange={handleQuickPick}
-          placeholder="Search a station, hotel, office or address…"
+          placeholder="Station, hotel, office or address…"
         />
-        <p className="small">
-          Pick a result from Google to save it instantly, or type a new name
-          and choose "add as a new place".
+        <p
+          className="serif-i"
+          style={{ fontSize: 13.5, color: "var(--ink-dim)", margin: 0 }}
+        >
+          Pick a result to save it instantly — Khonsera stores the address,
+          postcode and coordinates. Or type a fresh name and choose{" "}
+          <em style={{ color: "var(--gold)" }}>add as a new place</em>.
         </p>
       </div>
 
       {locations.length > 0 ? (
-        <ul className="divide-y divide-border rounded-md border border-border">
-          {locations.map((l) =>
+        <div
+          className="card"
+          style={{ padding: 0, overflow: "hidden" }}
+        >
+          {locations.map((l, i) =>
             editingId === l.id ? (
-              <li key={l.id} className="p-4">
+              <div
+                key={l.id}
+                style={{
+                  padding: 16,
+                  borderTop: i === 0 ? 0 : "1px solid var(--rule)",
+                }}
+              >
                 <LocationForm
                   location={l}
                   pending={pending && busyId === l.id}
@@ -133,32 +170,81 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
                     });
                   }}
                 />
-              </li>
+              </div>
             ) : (
-              <li
+              <div
                 key={l.id}
-                className="flex items-start justify-between gap-2 p-4 text-sm"
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "14px 18px",
+                  borderTop: i === 0 ? 0 : "1px solid var(--rule)",
+                }}
               >
-                <div>
-                  <p className="font-medium">
-                    {l.name}
-                    <span className="ml-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      {TYPE_LABEL[l.type]}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "var(--sans)",
+                        fontWeight: 600,
+                        fontSize: 14.5,
+                        color: "var(--ink)",
+                      }}
+                    >
+                      {l.name}
                     </span>
+                    <span className="pill pill-soft">{TYPE_LABEL[l.type]}</span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 12.5,
+                      color: "var(--ink-dim)",
+                      marginTop: 2,
+                    }}
+                  >
+                    {[l.address, l.postcode].filter(Boolean).join(", ") ||
+                      "no address"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {[l.address, l.postcode].filter(Boolean).join(", ") || "no address"}
-                  </p>
-                  {l.notes ? <p className="mt-1 text-xs">{l.notes}</p> : null}
+                  {l.notes ? (
+                    <p
+                      style={{
+                        marginTop: 4,
+                        fontSize: 12.5,
+                        color: "var(--ink-dim)",
+                      }}
+                    >
+                      {l.notes}
+                    </p>
+                  ) : null}
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: 4,
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => {
                       setFeedback(null);
                       setEditingId(l.id);
                     }}
-                    className="text-xs hover:underline"
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      color: "var(--gold-2)",
+                    }}
                   >
                     Edit
                   </button>
@@ -166,25 +252,27 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
                     type="button"
                     onClick={() => handleDelete(l.id, l.name)}
                     disabled={pending && busyId === l.id}
-                    className="text-xs text-destructive hover:underline disabled:opacity-50"
+                    style={{
+                      fontSize: 11.5,
+                      color: "var(--rust)",
+                      opacity: pending && busyId === l.id ? 0.5 : 1,
+                    }}
                   >
                     {busyId === l.id ? "…" : "Delete"}
                   </button>
                 </div>
-              </li>
+              </div>
             ),
           )}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          No locations yet — add your home and office to get started.
-        </p>
-      )}
+        </div>
+      ) : null}
 
       {showAddForm ? (
         <LocationForm
           pending={pending && busyId === "new"}
-          onCancel={locations.length > 0 ? () => setShowAddForm(false) : undefined}
+          onCancel={
+            locations.length > 0 ? () => setShowAddForm(false) : undefined
+          }
           onSubmit={(values) => {
             setBusyId("new");
             startTransition(async () => {
@@ -204,9 +292,10 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
         <button
           type="button"
           onClick={() => setShowAddForm(true)}
-          className="w-fit rounded-md border border-border px-3 py-1.5 text-sm"
+          className="btn btn-ghost btn-sm"
+          style={{ alignSelf: "flex-start" }}
         >
-          + Add location
+          + Add manually
         </button>
       )}
     </div>
@@ -233,7 +322,13 @@ function LocationForm({
   const idSuffix = location?.id ?? "new";
   return (
     <form
-      className="grid gap-3 rounded-md border border-dashed border-border p-4 md:grid-cols-2"
+      className="card"
+      style={{
+        padding: 18,
+        display: "grid",
+        gap: 12,
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      }}
       action={(formData) => {
         onSubmit({
           name: String(formData.get("name") ?? ""),
@@ -289,12 +384,20 @@ function LocationForm({
           defaultValue={location?.notes ?? ""}
         />
       </FormField>
-      <div className="flex items-end gap-2">
-        <SubmitButton pending={pending}>{location ? "Save" : "Add location"}</SubmitButton>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 8,
+        }}
+      >
+        <SubmitButton pending={pending}>
+          {location ? "Save" : "Add location"}
+        </SubmitButton>
         {onCancel ? (
           <button
             type="button"
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
+            className="btn btn-ghost btn-sm"
             onClick={onCancel}
           >
             Cancel

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signup } from "./actions";
+import { KhonseraBrand } from "@/components/khonsera-brand";
 
 export default async function SignupPage({
   searchParams,
@@ -8,63 +9,120 @@ export default async function SignupPage({
 }) {
   const sp = await searchParams;
   return (
-    <main className="paper-tex flex min-h-screen flex-col">
-      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-7 px-6 py-12">
-        <Link href="/" className="brand-lockup w-fit">
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
-            <path
-              d="M14.5 3.3a9 9 0 1 0 6.2 12.1A7 7 0 0 1 14.5 3.3Z"
-              fill="currentColor"
-              style={{ color: "var(--gold)" }}
-            />
-          </svg>
-          <span>
-            Khonser<span style={{ color: "var(--gold)" }}>a</span>
-          </span>
-        </Link>
-        <div className="flex flex-col gap-1">
-          <h1 className="h1">Create account</h1>
-          <p className="body">
-            A personal workspace is created automatically. You can add team
-            members later.
+    <main
+      className="paper-tex"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--paper)",
+      }}
+    >
+      <div
+        style={{
+          margin: "0 auto",
+          width: "100%",
+          maxWidth: 460,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 28,
+          justifyContent: "center",
+          padding: "48px 24px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <KhonseraBrand size="md" href="/" />
+        </div>
+
+        <div style={{ textAlign: "center" }}>
+          <h1
+            className="display-i"
+            style={{
+              margin: 0,
+              fontSize: 38,
+              letterSpacing: "-0.02em",
+              color: "var(--ink)",
+            }}
+          >
+            Begin your <em style={{ color: "var(--gold)" }}>evening.</em>
+          </h1>
+          <p
+            className="serif-i"
+            style={{
+              marginTop: 6,
+              color: "var(--ink-dim)",
+              fontSize: 15,
+              maxWidth: "40ch",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            A personal workspace is created for you. Add team members later
+            from settings.
           </p>
         </div>
-        <form action={signup} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="uc">Full name</span>
-            <input name="full_name" required className="input-base" />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="uc">Email</span>
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              className="input-base"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="uc">Password</span>
-            <input
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="input-base"
-            />
-          </label>
-          {sp.error ? <p className="text-sm text-rust">{sp.error}</p> : null}
-          <button type="submit" className="btn-gold">
-            Create account
-          </button>
+
+        <form action={signup} className="card" style={{ padding: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <label
+              style={{ display: "flex", flexDirection: "column", gap: 6 }}
+            >
+              <span className="uc">Full name</span>
+              <input name="full_name" required className="field" />
+            </label>
+            <label
+              style={{ display: "flex", flexDirection: "column", gap: 6 }}
+            >
+              <span className="uc">Email</span>
+              <input
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                className="field"
+              />
+            </label>
+            <label
+              style={{ display: "flex", flexDirection: "column", gap: 6 }}
+            >
+              <span className="uc">Password</span>
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                className="field"
+              />
+            </label>
+            {sp.error ? (
+              <p style={{ fontSize: 13, color: "var(--rust)" }}>{sp.error}</p>
+            ) : null}
+            <button
+              type="submit"
+              className="btn btn-gold btn-full btn-lg"
+              style={{ marginTop: 4 }}
+            >
+              Create account
+            </button>
+          </div>
         </form>
-        <p className="text-sm text-ink-dim">
+
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--ink-dim)",
+            textAlign: "center",
+          }}
+        >
           Already have an account?{" "}
-          <a href="/login" className="underline">
+          <Link
+            href="/login"
+            style={{ color: "var(--gold-2)", fontWeight: 600 }}
+          >
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </main>

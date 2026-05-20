@@ -522,8 +522,8 @@ export function ItineraryEditor({
   });
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-9 md:px-10 md:py-10">
-      <div className="mx-auto flex max-w-[1240px] flex-col gap-7">
+    <div>
+      <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-7">
         <FormError message={error ?? undefined} />
 
         {/* ── Eyebrow: back link + status flow ───────────────────────── */}

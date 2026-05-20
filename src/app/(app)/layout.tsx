@@ -1,5 +1,8 @@
 import { requireUserContext } from "@/lib/auth";
-import { BrandHeader } from "@/components/brand-header";
+import { AppSidebar } from "@/components/app-sidebar";
+import { MobileTopbar } from "@/components/mobile-topbar";
+import { MobileTabbar } from "@/components/mobile-tabbar";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
   children,
@@ -7,11 +10,40 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("name")
+    .eq("id", ctx.workspaceId)
+    .maybeSingle();
 
   return (
-    <div className="min-h-screen bg-paper paper-tex">
-      <BrandHeader email={ctx.email} isStaff={ctx.isStaff} />
-      <main className="mx-auto max-w-[1240px]">{children}</main>
+    <div
+      className="khonsera-app"
+      style={{ minHeight: "100vh", background: "var(--paper)" }}
+    >
+      {/* Mobile / tablet — top bar + bottom tab bar. */}
+      <div className="lg:hidden flex min-h-screen flex-col">
+        <MobileTopbar email={ctx.email} isStaff={ctx.isStaff} />
+        <main
+          className="flex-1 paper-tex"
+          style={{ padding: "20px 18px 24px" }}
+        >
+          {children}
+        </main>
+        <MobileTabbar />
+      </div>
+
+      {/* Desktop — sidebar shell. */}
+      <div className="hidden lg:grid desk-shell">
+        <AppSidebar
+          email={ctx.email}
+          workspaceName={workspace?.name ?? "Personal"}
+        />
+        <div className="desk-main">
+          <main className="desk-content">{children}</main>
+        </div>
+      </div>
     </div>
   );
 }

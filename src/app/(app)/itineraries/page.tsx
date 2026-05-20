@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
-import { FlankEyebrow, Masthead } from "@/components/ui/editorial";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
 type Row = {
@@ -19,18 +18,18 @@ const STATUS_LABEL: Record<ItineraryStatus, string> = {
   draft: "Draft",
   planning: "Planning",
   planned: "Planned",
-  in_progress: "In progress",
+  in_progress: "Live now",
   completed: "Completed",
   cancelled: "Cancelled",
 };
 
-const STATUS_TAG: Record<ItineraryStatus, string> = {
-  draft: "tag-tight",
-  planning: "tag-tight",
-  planned: "tag-ok",
-  in_progress: "tag-ok solid",
-  completed: "tag-ok",
-  cancelled: "tag-no",
+const STATUS_PILL: Record<ItineraryStatus, string> = {
+  draft: "pill-soft",
+  planning: "pill-amber",
+  planned: "pill-sage",
+  in_progress: "pill-gold",
+  completed: "pill-soft",
+  cancelled: "pill-rust",
 };
 
 export default async function ItinerariesPage() {
@@ -55,7 +54,9 @@ export default async function ItinerariesPage() {
       r.date_end >= today,
   );
   const drafts = rows.filter(
-    (r) => r.status === "draft" || r.status === "planning",
+    (r) =>
+      (r.status === "draft" || r.status === "planning") &&
+      !upcoming.includes(r),
   );
   const past = rows.filter(
     (r) =>
@@ -65,23 +66,61 @@ export default async function ItinerariesPage() {
   );
 
   return (
-    <div className="flex flex-col gap-9 px-4 py-6 sm:px-6 sm:py-9 md:px-10 md:py-12">
-      <Masthead
-        eyebrow={`Itineraries · ${rows.length} on file`}
-        title="Every trip,"
-        em="ordered."
-        standfirst="An itinerary is a day — or a multi-day run — made of stops with transitions between them. Drafts live alongside the booked ones until the day arrives."
-        actions={
-          <Link href={"/itineraries/new" as Route} className="btn-terra">
-            + New itinerary
-          </Link>
-        }
-      />
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
+            Trips · {rows.length} on file
+          </span>
+          <h1
+            className="desk-h1"
+            style={{ marginTop: 6, fontSize: "clamp(28px, 4vw, 38px)" }}
+          >
+            Every <em>trip,</em> ordered.
+          </h1>
+          <p
+            className="serif-i"
+            style={{
+              fontSize: 16,
+              color: "var(--ink-dim)",
+              margin: "8px 0 0",
+              maxWidth: "60ch",
+            }}
+          >
+            A day — or a multi-day run — built of stops and the transitions
+            between them. Drafts live alongside the booked ones until the day
+            arrives.
+          </p>
+        </div>
+        <Link href={"/itineraries/new" as Route} className="btn btn-gold">
+          <Plus /> New itinerary
+        </Link>
+      </header>
 
       {rows.length === 0 ? (
-        <div className="j-card-soft p-10 text-center">
-          <p className="body mb-3">No itineraries yet.</p>
-          <Link href={"/itineraries/new" as Route} className="btn-terra">
+        <div className="card" style={{ padding: 36, textAlign: "center" }}>
+          <p
+            className="serif-i"
+            style={{
+              fontSize: 17,
+              color: "var(--ink-2)",
+              marginBottom: 14,
+            }}
+          >
+            No itineraries yet.
+          </p>
+          <Link
+            href={"/itineraries/new" as Route}
+            className="btn btn-gold btn-lg"
+          >
             Start your first one
           </Link>
         </div>
@@ -94,20 +133,20 @@ export default async function ItinerariesPage() {
               timezone={wsCfg.timezone}
             />
           ) : null}
-          {drafts.length > 0 && drafts.some((d) => !upcoming.includes(d)) ? (
+          {drafts.length > 0 ? (
             <Section
               heading="In planning"
-              rows={drafts.filter((d) => !upcoming.includes(d))}
+              rows={drafts}
               timezone={wsCfg.timezone}
-              subtle
+              muted
             />
           ) : null}
           {past.length > 0 ? (
             <Section
-              heading="Past & completed"
-              rows={past}
+              heading="Past · completed"
+              rows={past.slice(0, 30)}
               timezone={wsCfg.timezone}
-              subtle
+              muted
             />
           ) : null}
         </>
@@ -120,46 +159,178 @@ function Section({
   heading,
   rows,
   timezone,
-  subtle,
+  muted,
 }: {
   heading: string;
   rows: Row[];
   timezone: string;
-  subtle?: boolean;
+  muted?: boolean;
 }) {
   return (
-    <section className="flex flex-col gap-3">
-      <FlankEyebrow>
-        {heading} · {rows.length}
-      </FlankEyebrow>
-      <div className="grid gap-3 md:grid-cols-2">
+    <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="flank left" style={{ opacity: muted ? 0.7 : 1 }}>
+        <span>
+          {heading} · {rows.length}
+        </span>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gap: 10,
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+        }}
+      >
         {rows.map((r) => (
-          <Link
+          <ItineraryCard
             key={r.id}
-            href={`/itineraries/${r.id}`}
-            className={`group flex flex-col gap-3 p-5 transition hover:border-rule-2 ${
-              subtle ? "j-card-soft" : "j-card"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="h3 truncate group-hover:text-terra">
-                {r.title ?? formatDateInTz(new Date(r.date_start), timezone)}
-              </h3>
-              <span
-                className={`${STATUS_TAG[r.status]} mono rounded-sm px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-wider`}
-              >
-                {STATUS_LABEL[r.status]}
-              </span>
-            </div>
-            <p className="small mono">
-              {formatDateInTz(new Date(r.date_start), timezone)}
-              {r.date_end !== r.date_start
-                ? ` – ${formatDateInTz(new Date(r.date_end), timezone)}`
-                : ""}
-            </p>
-          </Link>
+            row={r}
+            timezone={timezone}
+            muted={muted}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+function ItineraryCard({
+  row,
+  timezone,
+  muted,
+}: {
+  row: Row;
+  timezone: string;
+  muted?: boolean;
+}) {
+  const start = new Date(row.date_start);
+  const dayShort = new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    timeZone: timezone,
+  }).format(start);
+  const monthShort = new Intl.DateTimeFormat("en-GB", {
+    month: "short",
+    timeZone: timezone,
+  }).format(start);
+  const dayNumber = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    timeZone: timezone,
+  }).format(start);
+
+  const multiDay = row.date_start !== row.date_end;
+  return (
+    <Link
+      href={`/itineraries/${row.id}`}
+      className="card"
+      style={{
+        padding: 16,
+        display: "grid",
+        gap: 14,
+        gridTemplateColumns: "auto 1fr",
+        alignItems: "center",
+        opacity: muted ? 0.86 : 1,
+      }}
+    >
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 12,
+          background: "var(--paper-2)",
+          color: "var(--ink-2)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "1px solid var(--rule)",
+        }}
+      >
+        <span
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: 0.4,
+            color: "var(--ink-dim)",
+            textTransform: "uppercase",
+          }}
+        >
+          {dayShort} {monthShort}
+        </span>
+        <span
+          className="display-i"
+          style={{
+            fontSize: 20,
+            fontWeight: 500,
+            color: "var(--ink)",
+            lineHeight: 1,
+          }}
+        >
+          {dayNumber}
+        </span>
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <h3
+            style={{
+              fontFamily: "var(--sans)",
+              fontWeight: 600,
+              fontSize: 15,
+              color: "var(--ink)",
+              margin: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {row.title ??
+              formatDateInTz(new Date(row.date_start), timezone)}
+          </h3>
+          {multiDay ? <span className="pill pill-soft">multi-day</span> : null}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 8,
+            marginTop: 6,
+            flexWrap: "wrap",
+          }}
+        >
+          <span className={`pill ${STATUS_PILL[row.status]}`}>
+            <span className="dot" />
+            {STATUS_LABEL[row.status]}
+          </span>
+          <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+            {formatDateInTz(new Date(row.date_start), timezone)}
+            {multiDay
+              ? ` → ${formatDateInTz(new Date(row.date_end), timezone)}`
+              : ""}
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function Plus() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
   );
 }
