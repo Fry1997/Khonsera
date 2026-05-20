@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, useEffect, useRef } from "react";
+import { Fragment, useMemo, useState, useTransition, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
 import { createItineraryFromBrief } from "@/lib/actions/itineraries";
 import { updateLocationType } from "@/lib/actions/locations";
@@ -85,6 +85,73 @@ type Anchor = {
   checkOutTime: string;
 };
 
+// ─────────────────────────────────────────────────────────────────────
+// Transitions
+//
+// Each pair of adjacent anchors can carry an intended travel mode and
+// optionally a pre-booked ticket. "auto" means "let the editor pick";
+// any other mode locks the editor onto that. Booking, when present,
+// also locks start/end times.
+// ─────────────────────────────────────────────────────────────────────
+
+type TransitionMode =
+  | "auto"
+  | "walk"
+  | "drive"
+  | "taxi"
+  | "bus"
+  | "tube"
+  | "train"
+  | "flight"
+  | "mixed";
+
+type BriefBooking = {
+  provider: string;
+  reference: string;
+  serviceNumber: string;
+  departTime: string;
+  arriveTime: string;
+  seat: string;
+  price: string;
+};
+
+type BriefTransition = {
+  mode: TransitionMode;
+  booked: boolean;
+  booking: BriefBooking;
+};
+
+function emptyTransition(): BriefTransition {
+  return {
+    mode: "auto",
+    booked: false,
+    booking: {
+      provider: "",
+      reference: "",
+      serviceNumber: "",
+      departTime: "",
+      arriveTime: "",
+      seat: "",
+      price: "",
+    },
+  };
+}
+
+const TRANSITION_OPTIONS: Array<{
+  value: TransitionMode;
+  label: string;
+  glyph: string;
+}> = [
+  { value: "auto", label: "Auto", glyph: "⌁" },
+  { value: "walk", label: "Walk", glyph: "🚶" },
+  { value: "drive", label: "Drive", glyph: "🚗" },
+  { value: "train", label: "Train", glyph: "🚆" },
+  { value: "tube", label: "Tube", glyph: "Ⓤ" },
+  { value: "bus", label: "Bus", glyph: "🚌" },
+  { value: "taxi", label: "Taxi", glyph: "🚕" },
+  { value: "flight", label: "Flight", glyph: "✈" },
+];
+
 const APPT_DURATIONS = [
   { label: "30m", mins: 30 },
   { label: "1h", mins: 60 },
@@ -113,9 +180,34 @@ export function NewItineraryBrief({
   const [anchors, setAnchors] = useState<Anchor[]>([
     emptyAnchor(defaultAnchorDate()),
   ]);
+  // Transitions keyed by "fromUid::toUid" — survives anchor inserts as
+  // long as that pair stays adjacent. Map keeps render simple via lookup.
+  const [transitions, setTransitions] = useState<
+    Map<string, BriefTransition>
+  >(new Map());
   const [titleOverride, setTitleOverride] = useState("");
   const [notes, setNotes] = useState("");
   const [notesOn, setNotesOn] = useState(false);
+
+  const transitionKey = (fromUid: string, toUid: string) =>
+    `${fromUid}::${toUid}`;
+
+  const getTransition = (fromUid: string, toUid: string): BriefTransition =>
+    transitions.get(transitionKey(fromUid, toUid)) ?? emptyTransition();
+
+  const setTransition = (
+    fromUid: string,
+    toUid: string,
+    patch: Partial<BriefTransition>,
+  ) => {
+    setTransitions((prev) => {
+      const next = new Map(prev);
+      const k = transitionKey(fromUid, toUid);
+      const existing = next.get(k) ?? emptyTransition();
+      next.set(k, { ...existing, ...patch });
+      return next;
+    });
+  };
 
   const datePresets = useMemo(() => buildDatePresets(timezone), [timezone]);
 
@@ -215,6 +307,7 @@ export function NewItineraryBrief({
           const isCheckIn = kind === "stay" && role !== "return_to_room";
           const mode = effectiveTimingMode(a);
           const base = {
+            client_id: a.uid,
             kind,
             role,
             date: a.date,
@@ -237,6 +330,42 @@ export function NewItineraryBrief({
             duration_minutes: a.durationMins,
           };
         }),
+        // Only send transitions the user actually touched — pairs left
+        // on the default "auto, no booking" silently skip the server's
+        // transitions block and let the editor solver compute them.
+        transitions: anchors
+          .slice(0, -1)
+          .map((a, i) => {
+            const next = anchors[i + 1];
+            if (!next) return null;
+            const t = getTransition(a.uid, next.uid);
+            const meaningful = t.mode !== "auto" || t.booked;
+            if (!meaningful) return null;
+            const booking =
+              t.booked &&
+              t.booking.departTime &&
+              t.booking.arriveTime
+                ? {
+                    provider: t.booking.provider || null,
+                    reference: t.booking.reference || null,
+                    service_number: t.booking.serviceNumber || null,
+                    depart_time: t.booking.departTime,
+                    arrive_time: t.booking.arriveTime,
+                    seat: t.booking.seat || null,
+                    price: t.booking.price
+                      ? Number(t.booking.price)
+                      : null,
+                    currency: "GBP" as const,
+                  }
+                : null;
+            return {
+              from_client_id: a.uid,
+              to_client_id: next.uid,
+              mode: t.mode,
+              booking,
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x != null),
         title: titleOverride.trim() || null,
         notes: notesOn ? notes.trim() || null : null,
         timezone,
@@ -275,26 +404,39 @@ export function NewItineraryBrief({
 
         <AddBetween onAdd={() => insertAnchorAt(0)} />
 
-        {anchors.map((anchor, i) => (
-          <div key={anchor.uid}>
-            <AnchorCard
-              anchor={anchor}
-              earlier={anchors.slice(0, i)}
-              first={i === 0}
-              canRemove={anchors.length > 1}
-              customers={customers}
-              customerSites={customerSites}
-              locations={locations}
-              datePresets={datePresets}
-              onChange={(patch) => updateAnchor(anchor.uid, patch)}
-              onRemove={() => removeAnchor(anchor.uid)}
-            />
-            <AddBetween
-              onAdd={() => insertAnchorAt(i + 1)}
-              between={i < anchors.length - 1}
-            />
-          </div>
-        ))}
+        {anchors.map((anchor, i) => {
+          const next = anchors[i + 1];
+          return (
+            <div key={anchor.uid}>
+              <AnchorCard
+                anchor={anchor}
+                earlier={anchors.slice(0, i)}
+                first={i === 0}
+                canRemove={anchors.length > 1}
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                datePresets={datePresets}
+                onChange={(patch) => updateAnchor(anchor.uid, patch)}
+                onRemove={() => removeAnchor(anchor.uid)}
+              />
+              {next ? (
+                <TransitionRow
+                  from={anchor}
+                  to={next}
+                  transition={getTransition(anchor.uid, next.uid)}
+                  onChange={(patch) =>
+                    setTransition(anchor.uid, next.uid, patch)
+                  }
+                />
+              ) : null}
+              <AddBetween
+                onAdd={() => insertAnchorAt(i + 1)}
+                between={i < anchors.length - 1}
+              />
+            </div>
+          );
+        })}
 
         {/* Notes + title — collapsed, low-priority */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -389,6 +531,7 @@ export function NewItineraryBrief({
         </div>
         <BonesPreview
           anchors={anchors}
+          transitions={transitions}
           titleOverride={titleOverride}
           timezone={timezone}
         />
@@ -1051,6 +1194,246 @@ function TimingModeRow({
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// TransitionRow — the slim "via X" element between two anchors. Click
+// the mode chip to switch mode; "Pre-booked" toggle expands a small
+// one-segment ticket form.
+// ─────────────────────────────────────────────────────────────────────
+function TransitionRow({
+  from,
+  to,
+  transition,
+  onChange,
+}: {
+  from: Anchor;
+  to: Anchor;
+  transition: BriefTransition;
+  onChange: (patch: Partial<BriefTransition>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
+  const isAuto = transition.mode === "auto" && !transition.booked;
+
+  return (
+    <div ref={ref} className="transition-row">
+      <div className="transition-line" aria-hidden />
+      <button
+        type="button"
+        className={
+          isAuto ? "transition-chip transition-chip-auto" : "transition-chip"
+        }
+        onClick={() => setOpen((v) => !v)}
+        data-active={open}
+        title="Set the travel mode or add a booked ticket"
+      >
+        <span aria-hidden>{opt?.glyph ?? "⌁"}</span>
+        <span>
+          {transition.booked
+            ? `${opt?.label ?? "Booked"} · ${
+                transition.booking.serviceNumber || "ticket"
+              }`
+            : isAuto
+              ? "Khonsera picks the mode"
+              : `via ${opt?.label}`}
+        </span>
+        {transition.booked ? (
+          <span className="pill pill-gold transition-booked-badge">
+            <span className="dot" />
+            booked
+          </span>
+        ) : null}
+      </button>
+      <div className="transition-line" aria-hidden />
+
+      {open ? (
+        <div className="transition-pop">
+          <div className="transition-pop-section">
+            <span className="uc">Mode</span>
+            <div
+              className="brief-pill-row"
+              style={{ marginTop: 6, marginBottom: 4 }}
+            >
+              {TRANSITION_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  className="pill brief-pill"
+                  data-active={o.value === transition.mode}
+                  onClick={() => onChange({ mode: o.value })}
+                  title={
+                    o.value === "auto"
+                      ? "Let Khonsera pick once it knows distance"
+                      : `Travel by ${o.label.toLowerCase()}`
+                  }
+                >
+                  <span aria-hidden style={{ marginRight: 4 }}>
+                    {o.glyph}
+                  </span>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="transition-booked-toggle">
+            <input
+              type="checkbox"
+              checked={transition.booked}
+              onChange={(e) =>
+                onChange({
+                  booked: e.target.checked,
+                  // Default ticket mode to non-auto when toggling on.
+                  ...(e.target.checked && transition.mode === "auto"
+                    ? { mode: "train" as TransitionMode }
+                    : {}),
+                })
+              }
+            />
+            <span>This is already booked</span>
+            <span className="brief-helper" style={{ margin: 0, fontSize: 12 }}>
+              Adds the ticket to Bookings and locks the editor onto these times.
+            </span>
+          </label>
+
+          {transition.booked ? (
+            <BookedFields
+              fromAnchor={from}
+              toAnchor={to}
+              booking={transition.booking}
+              onChange={(patch) =>
+                onChange({
+                  booking: { ...transition.booking, ...patch },
+                })
+              }
+            />
+          ) : null}
+
+          <div className="transition-pop-foot">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setOpen(false)}
+            >
+              Done
+            </button>
+            {transition.mode !== "auto" || transition.booked ? (
+              <button
+                type="button"
+                className="transition-pop-clear"
+                onClick={() => {
+                  onChange({ mode: "auto", booked: false });
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BookedFields({
+  fromAnchor,
+  toAnchor,
+  booking,
+  onChange,
+}: {
+  fromAnchor: Anchor;
+  toAnchor: Anchor;
+  booking: BriefBooking;
+  onChange: (patch: Partial<BriefBooking>) => void;
+}) {
+  // Sensible defaults so the user only types what they actually know.
+  const departDefault =
+    fromAnchor.timingMode === "leave_by" ? fromAnchor.time : "";
+  const arriveDefault =
+    toAnchor.timingMode === "arrive_by" ? toAnchor.time : "";
+
+  return (
+    <div className="transition-booked-fields">
+      <div className="brief-when-row">
+        <label className="brief-field">
+          <span className="uc">Depart</span>
+          <input
+            type="time"
+            className="field"
+            value={booking.departTime || departDefault}
+            onChange={(e) => onChange({ departTime: e.target.value })}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Arrive</span>
+          <input
+            type="time"
+            className="field"
+            value={booking.arriveTime || arriveDefault}
+            onChange={(e) => onChange({ arriveTime: e.target.value })}
+          />
+        </label>
+      </div>
+      <div className="brief-when-row">
+        <label className="brief-field">
+          <span className="uc">Service no.</span>
+          <input
+            type="text"
+            className="field"
+            placeholder="9M14 / BA245 / Bus 24"
+            value={booking.serviceNumber}
+            onChange={(e) => onChange({ serviceNumber: e.target.value })}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Booking ref.</span>
+          <input
+            type="text"
+            className="field"
+            placeholder="ABC123"
+            value={booking.reference}
+            onChange={(e) => onChange({ reference: e.target.value })}
+          />
+        </label>
+      </div>
+      <div className="brief-when-row">
+        <label className="brief-field">
+          <span className="uc">Seat / row</span>
+          <input
+            type="text"
+            className="field"
+            placeholder="Coach E, Seat 32"
+            value={booking.seat}
+            onChange={(e) => onChange({ seat: e.target.value })}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Price (£)</span>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            className="field"
+            placeholder="148.50"
+            value={booking.price}
+            onChange={(e) => onChange({ price: e.target.value })}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // AddBetween — the slim + row between anchors (and at top/bottom).
 // ─────────────────────────────────────────────────────────────────────
 function AddBetween({
@@ -1075,10 +1458,12 @@ function AddBetween({
 // ─────────────────────────────────────────────────────────────────────
 function BonesPreview({
   anchors,
+  transitions,
   titleOverride,
   timezone,
 }: {
   anchors: Anchor[];
+  transitions: Map<string, BriefTransition>;
   titleOverride: string;
   timezone: string;
 }) {
@@ -1145,26 +1530,40 @@ function BonesPreview({
         />
         {sorted.map((a, i) => {
           const earlier = sorted.slice(0, i);
+          const prev = sorted[i - 1];
+          // Surface a "via …" row when the user has expressed travel
+          // intent for the prev→this adjacent pair (in entry order it
+          // doesn't matter — the transitions Map is keyed by uid pair).
+          const via = prev
+            ? transitions.get(`${prev.uid}::${a.uid}`)
+            : undefined;
+          const viaRow =
+            via && (via.mode !== "auto" || via.booked) ? (
+              <BonesVia key={`via-${prev?.uid}-${a.uid}`} transition={via} />
+            ) : null;
+
           const kind = effectiveKind(a);
           const role = effectiveRole(a, earlier);
           const labelForBadge = role ? labelForRole(kind, role) : labelForKind(kind);
           const isCheckIn = kind === "stay" && role !== "return_to_room";
           if (isCheckIn) {
             return (
-              <BonesStop
-                key={a.uid}
-                time={fmtShortDate(a.date, timezone)}
-                eyebrow={labelForBadge}
-                title={a.place?.label ?? ""}
-                sub={`${a.time}${
-                  a.checkOutDate
-                    ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${
-                        a.checkOutTime || "11:00"
-                      }`
-                    : ""
-                }`}
-                dotKind="default"
-              />
+              <Fragment key={a.uid}>
+                {viaRow}
+                <BonesStop
+                  time={fmtShortDate(a.date, timezone)}
+                  eyebrow={labelForBadge}
+                  title={a.place?.label ?? ""}
+                  sub={`${a.time}${
+                    a.checkOutDate
+                      ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${
+                          a.checkOutTime || "11:00"
+                        }`
+                      : ""
+                  }`}
+                  dotKind="default"
+                />
+              </Fragment>
             );
           }
           const mode = effectiveTimingMode(a);
@@ -1181,22 +1580,55 @@ function BonesPreview({
             ? `${fmtShortDate(a.date, timezone)} · ${mode === "around_then" ? "~" : ""}${fmtDur(a.durationMins)}`
             : fmtShortDate(a.date, timezone);
           return (
-            <BonesStop
-              key={a.uid}
-              time={timeSlot}
-              eyebrow={labelForBadge}
-              title={
-                kind === "stay"
-                  ? `Back at ${a.place?.label ?? "the hotel"}`
-                  : a.place?.label ?? ""
-              }
-              sub={subBit}
-              dotKind={kind === "stay" ? "default" : "gold"}
-            />
+            <Fragment key={a.uid}>
+              {viaRow}
+              <BonesStop
+                time={timeSlot}
+                eyebrow={labelForBadge}
+                title={
+                  kind === "stay"
+                    ? `Back at ${a.place?.label ?? "the hotel"}`
+                    : a.place?.label ?? ""
+                }
+                sub={subBit}
+                dotKind={kind === "stay" ? "default" : "gold"}
+              />
+            </Fragment>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function BonesVia({ transition }: { transition: BriefTransition }) {
+  const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
+  const label = opt?.label ?? "via";
+  const sub = transition.booked
+    ? `${transition.booking.serviceNumber || "ticket"}${
+        transition.booking.departTime && transition.booking.arriveTime
+          ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
+          : ""
+      }`
+    : "intent — Khonsera fills in distance + time";
+  return (
+    <>
+      <div className="tl-time" />
+      <div className="tl-rail">
+        <div className="bones-via-tick" aria-hidden>
+          {opt?.glyph ?? "⌁"}
+        </div>
+      </div>
+      <div className="tl-content" style={{ padding: "2px 0 8px" }}>
+        <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
+          via {label}
+          {transition.booked ? " · booked" : ""}
+        </p>
+        <p className="tl-sub" style={{ marginTop: 0 }}>
+          {sub}
+        </p>
+      </div>
+    </>
   );
 }
 

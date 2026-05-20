@@ -2100,6 +2100,141 @@
     background: var(--card-2);
   }
 
+  /* Tiny mode glyph that sits on the timeline rail between stops in the
+     brief's "What we'll build" preview — signals there's intent or a
+     booking on that leg without taking a stop slot. */
+  .bones-via-tick {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--gold-tint);
+    border: 1px solid var(--gold);
+    color: var(--gold-2);
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  /* Transition row — the slim "via X" element between two anchor cards.
+     Centred mode chip with hairline rules either side; clicking opens
+     a popover with mode pills + an optional booked-ticket form. */
+  .transition-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .transition-line {
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  .transition-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--rule-2);
+    color: var(--ink-2);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+  }
+  .transition-chip:hover {
+    border-color: var(--gold);
+    color: var(--gold-2);
+  }
+  .transition-chip[data-active="true"] {
+    border-color: var(--gold);
+    color: var(--gold-2);
+    background: var(--gold-tint);
+  }
+  .transition-chip-auto {
+    border-style: dashed;
+    color: var(--ink-faint);
+    background: transparent;
+  }
+  .transition-chip > span:first-child {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .transition-booked-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+  }
+
+  .transition-pop {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    width: min(520px, calc(100% - 16px));
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 14px 14px 10px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .transition-pop-section {
+    display: flex;
+    flex-direction: column;
+  }
+  .transition-booked-toggle {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 10px;
+    align-items: baseline;
+    padding: 8px 12px;
+    background: var(--ink-soft);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .transition-booked-toggle input {
+    grid-row: span 2;
+    align-self: center;
+  }
+  .transition-booked-toggle > span:nth-child(2) {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .transition-booked-toggle > span:nth-child(3) {
+    grid-column: 2;
+    color: var(--ink-dim);
+  }
+  .transition-booked-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 4px;
+  }
+  .transition-pop-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .transition-pop-clear {
+    font-size: 11.5px;
+    color: var(--rust);
+  }
+
   /* Timing-mode segmented control — Arrive by / Leave by / Around then. */
   .timing-mode-row {
     display: inline-flex;

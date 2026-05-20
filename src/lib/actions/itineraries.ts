@@ -163,6 +163,10 @@ const anchorKindEnum = z.enum([
 
 const anchorInputSchema = z
   .object({
+    // Stable identifier the client uses so transitions can refer to a
+    // specific pair of anchors by uid even after server-side sorting.
+    client_id: z.string().min(1).max(80).optional(),
+
     kind: anchorKindEnum,
     role: z.string().trim().max(40).nullable().optional(),
 
@@ -237,12 +241,59 @@ const anchorInputSchema = z
     },
   );
 
+// ─────────────────────────────────────────────────────────────────────
+// Transition input
+//
+// The brief can now optionally specify, for any adjacent pair of
+// anchors (by client_id), the user's intended travel mode + an
+// optional pre-booked ticket. The editor's transition table is
+// populated up-front so it opens with intent, not a blank canvas.
+// ─────────────────────────────────────────────────────────────────────
+
+const transitionModeEnum = z.enum([
+  "auto",
+  "walk",
+  "drive",
+  "taxi",
+  "bus",
+  "tube",
+  "train",
+  "flight",
+  "mixed",
+]);
+
+const briefBookingSchema = z.object({
+  provider: z.string().trim().max(80).nullable().optional(),
+  reference: z.string().trim().max(120).nullable().optional(),
+  service_number: z.string().trim().max(40).nullable().optional(),
+  depart_time: z.string().regex(/^\d{2}:\d{2}$/),
+  arrive_time: z.string().regex(/^\d{2}:\d{2}$/),
+  // depart_date / arrive_date default to the from / to anchor's date.
+  depart_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  arrive_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  seat: z.string().trim().max(120).nullable().optional(),
+  price: z.number().nonnegative().nullable().optional(),
+  currency: z.enum(["GBP", "EUR", "USD"]).optional(),
+});
+
+const briefTransitionSchema = z.object({
+  from_client_id: z.string().min(1).max(80),
+  to_client_id: z.string().min(1).max(80),
+  mode: transitionModeEnum,
+  // Pre-booked ticket — when present we'll also write a booking_intent +
+  // travel_booking and lock the transition's start/end to the ticket.
+  booking: briefBookingSchema.nullable().optional(),
+});
+
 const briefSchema = z.object({
   anchors: z.array(anchorInputSchema).min(1),
+  transitions: z.array(briefTransitionSchema).optional().default([]),
   title: z.string().trim().max(200).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
   timezone: z.string().min(1).max(80),
 });
+
+type BriefTransitionInput = z.infer<typeof briefTransitionSchema>;
 
 type AnchorInput = z.infer<typeof anchorInputSchema>;
 
@@ -404,6 +455,10 @@ export async function createItineraryFromBrief(
     workspace_id: string;
   }> = [];
 
+  // Per-stop client_id sidecar — used to map back to anchor uids after
+  // the insert so we can wire transitions onto the right stop ids.
+  const clientIdBySeq = new Map<number, string>();
+
   let seq = 0;
   if (homeId) {
     stopRows.push({
@@ -440,6 +495,7 @@ export async function createItineraryFromBrief(
         a.check_out_time ?? "11:00",
         tz,
       );
+      if (a.client_id) clientIdBySeq.set(seq, a.client_id);
       stopRows.push({
         sequence: seq++,
         type: "accommodation",
@@ -494,6 +550,7 @@ export async function createItineraryFromBrief(
       endIso = addMinutesIso(startIso, dur);
     }
 
+    if (a.client_id) clientIdBySeq.set(seq, a.client_id);
     stopRows.push({
       sequence: seq++,
       type: stopType,
@@ -523,7 +580,166 @@ export async function createItineraryFromBrief(
     await supabase.from("stops").insert(stopRows);
   }
 
+  // ── Transitions + pre-booked tickets ────────────────────────────
+  // The brief can tell us, for any adjacent pair of anchors (by their
+  // client_ids), what travel mode the user intends and — optionally —
+  // the details of a ticket they've already got. We process this once
+  // the stops exist so we can map client_ids → stop_ids.
+  if (parsed.value.transitions.length > 0) {
+    // Pull the freshly-inserted stop rows back so we can resolve
+    // client_id → stop_id via sequence number.
+    const { data: insertedStops } = await supabase
+      .from("stops")
+      .select("id, sequence, location_id")
+      .eq("itinerary_id", itinerary.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .order("sequence");
+    const stopByClientId = new Map<
+      string,
+      { id: string; sequence: number; locationId: string | null }
+    >();
+    for (const s of insertedStops ?? []) {
+      const cid = clientIdBySeq.get(s.sequence);
+      if (cid)
+        stopByClientId.set(cid, {
+          id: s.id as string,
+          sequence: s.sequence as number,
+          locationId: (s.location_id as string | null) ?? null,
+        });
+    }
+
+    for (const t of parsed.value.transitions) {
+      const from = stopByClientId.get(t.from_client_id);
+      const to = stopByClientId.get(t.to_client_id);
+      // The brief might send a transition whose anchors no longer sit
+      // adjacent after sorting — drop those silently rather than
+      // producing a nonsensical row.
+      if (!from || !to || from.sequence + 1 !== to.sequence) continue;
+
+      const isBooked = t.booking != null;
+      const mode = t.mode === "auto" ? null : t.mode;
+
+      // When the user has nothing to say (mode=auto, no booking), skip
+      // — the editor's solver will compute the transition itself.
+      if (!mode && !isBooked) continue;
+
+      const fromAnchor = parsed.value.anchors.find(
+        (a) => a.client_id === t.from_client_id,
+      );
+      const toAnchor = parsed.value.anchors.find(
+        (a) => a.client_id === t.to_client_id,
+      );
+
+      let startIso: string | null = null;
+      let endIso: string | null = null;
+      let durationMins: number | null = null;
+      if (isBooked && t.booking && fromAnchor && toAnchor) {
+        const dDate = t.booking.depart_date ?? fromAnchor.date;
+        const aDate = t.booking.arrive_date ?? toAnchor.date;
+        startIso = isoFromLocal(dDate, t.booking.depart_time, tz);
+        endIso = isoFromLocal(aDate, t.booking.arrive_time, tz);
+        durationMins = Math.round(
+          (new Date(endIso).getTime() - new Date(startIso).getTime()) /
+            60_000,
+        );
+      }
+
+      // Upsert the transition row (locked when booked, mode-only when not).
+      const { data: transRow } = await supabase
+        .from("transitions")
+        .upsert(
+          {
+            itinerary_id: itinerary.id,
+            workspace_id: ctx.workspaceId,
+            from_stop_id: from.id,
+            to_stop_id: to.id,
+            mode: mode ?? "mixed",
+            is_locked: isBooked,
+            start_time: startIso,
+            end_time: endIso,
+            computed_duration_minutes: durationMins,
+          },
+          { onConflict: "from_stop_id,to_stop_id" },
+        )
+        .select("id")
+        .single();
+
+      if (!isBooked || !t.booking || !transRow) continue;
+
+      // Pre-booked: write the booking_intent + travel_booking + one
+      // segment so the wallet (Bookings tab) reflects it immediately.
+      const { data: intent } = await supabase
+        .from("booking_intents")
+        .insert({
+          stop_id: from.id,
+          itinerary_id: itinerary.id,
+          workspace_id: ctx.workspaceId,
+          provider: t.booking.provider ?? providerForMode(mode),
+          status: "booked",
+          currency: t.booking.currency ?? "GBP",
+        })
+        .select("id")
+        .single();
+
+      if (!intent) continue;
+
+      const { data: bookingRow } = await supabase
+        .from("travel_bookings")
+        .insert({
+          booking_intent_id: intent.id,
+          workspace_id: ctx.workspaceId,
+          provider: t.booking.provider ?? providerForMode(mode),
+          booking_reference: t.booking.reference ?? null,
+          ticket_status: "booked",
+          actual_price: t.booking.price ?? null,
+          currency: t.booking.currency ?? "GBP",
+          booked_at: new Date().toISOString(),
+          departure_location_id: from.locationId,
+          arrival_location_id: to.locationId,
+          departure_at: startIso,
+          arrival_at: endIso,
+          seat_reservation: t.booking.seat ?? null,
+        })
+        .select("id")
+        .single();
+
+      if (bookingRow) {
+        await supabase.from("travel_booking_segments").insert({
+          travel_booking_id: bookingRow.id,
+          workspace_id: ctx.workspaceId,
+          sequence: 0,
+          from_location_name:
+            (fromAnchor && (fromAnchor.label ?? "")) || "Origin",
+          to_location_name:
+            (toAnchor && (toAnchor.label ?? "")) || "Destination",
+          departure_at: startIso!,
+          arrival_at: endIso!,
+          train_number: t.booking.service_number ?? null,
+        });
+      }
+    }
+  }
+
   return ok({ id: itinerary.id });
+}
+
+function providerForMode(mode: string | null): string {
+  switch (mode) {
+    case "train":
+      return "trainline";
+    case "flight":
+      return "airline";
+    case "taxi":
+      return "taxi";
+    case "bus":
+      return "bus";
+    case "tube":
+      return "tfl";
+    case "drive":
+      return "car-hire";
+    default:
+      return "manual";
+  }
 }
 
 function isoFromLocal(date: string, time: string, timezone: string): string {
