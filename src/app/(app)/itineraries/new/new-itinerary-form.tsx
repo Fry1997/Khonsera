@@ -14,6 +14,7 @@ import {
   type PlacePickerLocation,
 } from "@/components/place-picker";
 import type { LocationType } from "@/lib/types/domain";
+import { TransportIcon, type TransportName } from "@/components/icons";
 
 // ─────────────────────────────────────────────────────────────────────
 // Kinds + sub-roles
@@ -115,8 +116,14 @@ type BriefBooking = {
   price: string;
 };
 
+type LocalMode = "auto" | "walk" | "drive" | "taxi";
+
 type BriefTransition = {
   mode: TransitionMode;
+  // For station-based modes (train/tube/bus/flight), how the user
+  // expects to reach the departure terminal and depart from the
+  // arrival terminal. Ignored otherwise.
+  localMode: LocalMode;
   booked: boolean;
   booking: BriefBooking;
 };
@@ -124,6 +131,7 @@ type BriefTransition = {
 function emptyTransition(): BriefTransition {
   return {
     mode: "auto",
+    localMode: "auto",
     booked: false,
     booking: {
       provider: "",
@@ -140,16 +148,34 @@ function emptyTransition(): BriefTransition {
 const TRANSITION_OPTIONS: Array<{
   value: TransitionMode;
   label: string;
-  glyph: string;
+  icon: TransportName;
+  // True when the mode is fundamentally station-/airport-based — the
+  // user has to get to and from a terminal at each end, so we ask for
+  // the local connection mode.
+  stationBased?: boolean;
 }> = [
-  { value: "auto", label: "Auto", glyph: "⌁" },
-  { value: "walk", label: "Walk", glyph: "🚶" },
-  { value: "drive", label: "Drive", glyph: "🚗" },
-  { value: "train", label: "Train", glyph: "🚆" },
-  { value: "tube", label: "Tube", glyph: "Ⓤ" },
-  { value: "bus", label: "Bus", glyph: "🚌" },
-  { value: "taxi", label: "Taxi", glyph: "🚕" },
-  { value: "flight", label: "Flight", glyph: "✈" },
+  { value: "auto", label: "Auto", icon: "auto" },
+  { value: "walk", label: "Walk", icon: "walk" },
+  { value: "drive", label: "Drive", icon: "drive" },
+  { value: "train", label: "Train", icon: "train", stationBased: true },
+  { value: "tube", label: "Tube", icon: "tube", stationBased: true },
+  { value: "bus", label: "Bus", icon: "bus", stationBased: true },
+  { value: "taxi", label: "Taxi", icon: "taxi" },
+  { value: "flight", label: "Flight", icon: "flight", stationBased: true },
+];
+
+// Local connection modes — the legs at each end of a station-based
+// trip ("to the station" / "from the station"). Keep "auto" so the
+// user can defer to Khonsera.
+const LOCAL_MODES: Array<{
+  value: "auto" | "walk" | "drive" | "taxi";
+  label: string;
+  icon: TransportName;
+}> = [
+  { value: "auto", label: "Auto", icon: "auto" },
+  { value: "walk", label: "Walk", icon: "walk" },
+  { value: "drive", label: "Drive", icon: "drive" },
+  { value: "taxi", label: "Taxi", icon: "taxi" },
 ];
 
 const APPT_DURATIONS = [
@@ -162,16 +188,24 @@ const APPT_DURATIONS = [
 
 const TIME_PRESETS = ["09:00", "10:00", "13:00", "18:00", "19:30"];
 
+// Sentinel client_id for the implicit "home" anchor. The server doesn't
+// see this as an anchor — it's already auto-seeded from the travel
+// profile — but we use it client-side to key the transition between
+// home and the first user-entered anchor.
+const HOME_UID = "__khonsera_home__";
+
 export function NewItineraryBrief({
   customers,
   customerSites,
   locations,
   timezone,
+  homeLabel,
 }: {
   customers: PlacePickerCustomer[];
   customerSites: PlacePickerCustomerSite[];
   locations: PlacePickerLocation[];
   timezone: string;
+  homeLabel: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -333,14 +367,37 @@ export function NewItineraryBrief({
         // Only send transitions the user actually touched — pairs left
         // on the default "auto, no booking" silently skip the server's
         // transitions block and let the editor solver compute them.
-        transitions: anchors
-          .slice(0, -1)
-          .map((a, i) => {
-            const next = anchors[i + 1];
-            if (!next) return null;
-            const t = getTransition(a.uid, next.uid);
+        transitions: (() => {
+          // Build the transition payload as: optional home → anchors[0],
+          // then each (anchors[i] → anchors[i+1]) pair. Pairs left on
+          // "auto, no booking" are dropped — the editor solver computes
+          // those from scratch.
+          const out: Array<{
+            from_client_id: string;
+            to_client_id: string;
+            mode: TransitionMode;
+            local_mode?: LocalMode | null;
+            booking:
+              | {
+                  provider: string | null;
+                  reference: string | null;
+                  service_number: string | null;
+                  depart_time: string;
+                  arrive_time: string;
+                  seat: string | null;
+                  price: number | null;
+                  currency: "GBP";
+                }
+              | null;
+          }> = [];
+
+          const serialize = (
+            fromUid: string,
+            toUid: string,
+            t: BriefTransition,
+          ) => {
             const meaningful = t.mode !== "auto" || t.booked;
-            if (!meaningful) return null;
+            if (!meaningful) return;
             const booking =
               t.booked &&
               t.booking.departTime &&
@@ -352,20 +409,32 @@ export function NewItineraryBrief({
                     depart_time: t.booking.departTime,
                     arrive_time: t.booking.arriveTime,
                     seat: t.booking.seat || null,
-                    price: t.booking.price
-                      ? Number(t.booking.price)
-                      : null,
+                    price: t.booking.price ? Number(t.booking.price) : null,
                     currency: "GBP" as const,
                   }
                 : null;
-            return {
-              from_client_id: a.uid,
-              to_client_id: next.uid,
+            out.push({
+              from_client_id: fromUid,
+              to_client_id: toUid,
               mode: t.mode,
+              local_mode: t.localMode,
               booking,
-            };
-          })
-          .filter((x): x is NonNullable<typeof x> => x != null),
+            });
+          };
+
+          // Implicit home leg first.
+          if (anchors[0]) {
+            const homeT = getTransition(HOME_UID, anchors[0].uid);
+            serialize(HOME_UID, anchors[0].uid, homeT);
+          }
+          // Then each adjacent pair.
+          for (let i = 0; i < anchors.length - 1; i++) {
+            const a = anchors[i];
+            const next = anchors[i + 1];
+            serialize(a.uid, next.uid, getTransition(a.uid, next.uid));
+          }
+          return out;
+        })(),
         title: titleOverride.trim() || null,
         notes: notesOn ? notes.trim() || null : null,
         timezone,
@@ -406,8 +475,24 @@ export function NewItineraryBrief({
 
         {anchors.map((anchor, i) => {
           const next = anchors[i + 1];
+          // For the first anchor with a place picked, surface the
+          // implicit "from home" transition above the card so the user
+          // can pick a mode (or add a booked ticket) for the leg
+          // before the brief even starts.
+          const showHomeVia = i === 0 && anchor.place != null;
           return (
             <div key={anchor.uid}>
+              {showHomeVia ? (
+                <TransitionRow
+                  from={null}
+                  to={anchor}
+                  transition={getTransition(HOME_UID, anchor.uid)}
+                  onChange={(patch) =>
+                    setTransition(HOME_UID, anchor.uid, patch)
+                  }
+                  fromVirtualLabel={homeLabel ?? "Home"}
+                />
+              ) : null}
               <AnchorCard
                 anchor={anchor}
                 earlier={anchors.slice(0, i)}
@@ -1010,7 +1095,12 @@ function ReturnToRoom({
           <div className="brief-field">
             <span className="uc">When</span>
             <div className="around-then-blurb">
-              <span aria-hidden>⌁</span>
+              <span
+                aria-hidden
+                style={{ display: "inline-flex", color: "var(--gold-2)" }}
+              >
+                <TransportIcon.auto size={16} />
+              </span>
               <span>Khonsera fits between adjacent anchors</span>
             </div>
           </div>
@@ -1097,7 +1187,12 @@ function AppointmentTimes({
           <div className="brief-field">
             <span className="uc">When</span>
             <div className="around-then-blurb">
-              <span aria-hidden>⌁</span>
+              <span
+                aria-hidden
+                style={{ display: "inline-flex", color: "var(--gold-2)" }}
+              >
+                <TransportIcon.auto size={16} />
+              </span>
               <span>Khonsera fits between adjacent anchors</span>
             </div>
           </div>
@@ -1203,11 +1298,15 @@ function TransitionRow({
   to,
   transition,
   onChange,
+  // Optional label for the from-anchor when it isn't a real anchor —
+  // e.g. the implicit "home" leg before the first anchor.
+  fromVirtualLabel,
 }: {
-  from: Anchor;
+  from: Anchor | null;
   to: Anchor;
   transition: BriefTransition;
   onChange: (patch: Partial<BriefTransition>) => void;
+  fromVirtualLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -1222,7 +1321,13 @@ function TransitionRow({
   }, [open]);
 
   const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
+  const Icon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
   const isAuto = transition.mode === "auto" && !transition.booked;
+  const stationBased = opt?.stationBased ?? false;
+  const localOpt = LOCAL_MODES.find((m) => m.value === transition.localMode);
+  const LocalIcon = localOpt
+    ? TransportIcon[localOpt.icon]
+    : TransportIcon.auto;
 
   return (
     <div ref={ref} className="transition-row">
@@ -1234,9 +1339,13 @@ function TransitionRow({
         }
         onClick={() => setOpen((v) => !v)}
         data-active={open}
-        title="Set the travel mode or add a booked ticket"
+        title={
+          fromVirtualLabel
+            ? `Travel from ${fromVirtualLabel}`
+            : "Set the travel mode or add a booked ticket"
+        }
       >
-        <span aria-hidden>{opt?.glyph ?? "⌁"}</span>
+        <Icon size={14} />
         <span>
           {transition.booked
             ? `${opt?.label ?? "Booked"} · ${
@@ -1246,6 +1355,12 @@ function TransitionRow({
               ? "Khonsera picks the mode"
               : `via ${opt?.label}`}
         </span>
+        {stationBased && !isAuto && transition.localMode !== "auto" ? (
+          <span className="transition-local-hint">
+            <LocalIcon size={11} />
+            {localOpt?.label.toLowerCase()}
+          </span>
+        ) : null}
         {transition.booked ? (
           <span className="pill pill-gold transition-booked-badge">
             <span className="dot" />
@@ -1257,33 +1372,79 @@ function TransitionRow({
 
       {open ? (
         <div className="transition-pop">
+          {fromVirtualLabel ? (
+            <p
+              className="serif-i"
+              style={{
+                margin: 0,
+                fontSize: 13.5,
+                color: "var(--ink-dim)",
+                lineHeight: 1.4,
+              }}
+            >
+              From <em style={{ color: "var(--gold-2)" }}>{fromVirtualLabel}</em>{" "}
+              to the first anchor.
+            </p>
+          ) : null}
+
           <div className="transition-pop-section">
             <span className="uc">Mode</span>
             <div
               className="brief-pill-row"
               style={{ marginTop: 6, marginBottom: 4 }}
             >
-              {TRANSITION_OPTIONS.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  className="pill brief-pill"
-                  data-active={o.value === transition.mode}
-                  onClick={() => onChange({ mode: o.value })}
-                  title={
-                    o.value === "auto"
-                      ? "Let Khonsera pick once it knows distance"
-                      : `Travel by ${o.label.toLowerCase()}`
-                  }
-                >
-                  <span aria-hidden style={{ marginRight: 4 }}>
-                    {o.glyph}
-                  </span>
-                  {o.label}
-                </button>
-              ))}
+              {TRANSITION_OPTIONS.map((o) => {
+                const OIcon = TransportIcon[o.icon];
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    className="pill brief-pill"
+                    data-active={o.value === transition.mode}
+                    onClick={() => onChange({ mode: o.value })}
+                    title={
+                      o.value === "auto"
+                        ? "Let Khonsera pick once it knows distance"
+                        : `Travel by ${o.label.toLowerCase()}`
+                    }
+                  >
+                    <OIcon size={13} />
+                    {o.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {stationBased ? (
+            <div className="transition-pop-section">
+              <span className="uc">Local connection</span>
+              <p
+                className="brief-helper"
+                style={{ margin: "4px 0 6px", fontSize: 12 }}
+              >
+                How you'll reach the {opt?.label.toLowerCase()} and how you'll
+                get from it to {to.place?.label ?? "the next stop"}.
+              </p>
+              <div className="brief-pill-row">
+                {LOCAL_MODES.map((m) => {
+                  const MIcon = TransportIcon[m.icon];
+                  return (
+                    <button
+                      key={m.value}
+                      type="button"
+                      className="pill brief-pill"
+                      data-active={m.value === transition.localMode}
+                      onClick={() => onChange({ localMode: m.value })}
+                    >
+                      <MIcon size={13} />
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <label className="transition-booked-toggle">
             <input
@@ -1331,7 +1492,11 @@ function TransitionRow({
                 type="button"
                 className="transition-pop-clear"
                 onClick={() => {
-                  onChange({ mode: "auto", booked: false });
+                  onChange({
+                    mode: "auto",
+                    localMode: "auto",
+                    booked: false,
+                  });
                 }}
               >
                 Clear
@@ -1350,14 +1515,16 @@ function BookedFields({
   booking,
   onChange,
 }: {
-  fromAnchor: Anchor;
+  fromAnchor: Anchor | null;
   toAnchor: Anchor;
   booking: BriefBooking;
   onChange: (patch: Partial<BriefBooking>) => void;
 }) {
   // Sensible defaults so the user only types what they actually know.
   const departDefault =
-    fromAnchor.timingMode === "leave_by" ? fromAnchor.time : "";
+    fromAnchor && fromAnchor.timingMode === "leave_by"
+      ? fromAnchor.time
+      : "";
   const arriveDefault =
     toAnchor.timingMode === "arrive_by" ? toAnchor.time : "";
 
@@ -1569,10 +1736,11 @@ function BonesPreview({
           const mode = effectiveTimingMode(a);
           // Time slot in the preview reflects the timing mode: arrive_by
           // shows the time, leave_by shows "by HH:MM" so the reader sees
-          // the ceiling, around_then shows a small wand glyph.
+          // the ceiling, around_then shows an em-dash (unknown — the
+          // editor solver will fill it in from adjacent anchors).
           const timeSlot =
             mode === "around_then"
-              ? "⌁"
+              ? "—"
               : mode === "leave_by"
                 ? `by ${a.time}`
                 : a.time;
@@ -1603,6 +1771,7 @@ function BonesPreview({
 
 function BonesVia({ transition }: { transition: BriefTransition }) {
   const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
+  const Icon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
   const label = opt?.label ?? "via";
   const sub = transition.booked
     ? `${transition.booking.serviceNumber || "ticket"}${
@@ -1616,7 +1785,7 @@ function BonesVia({ transition }: { transition: BriefTransition }) {
       <div className="tl-time" />
       <div className="tl-rail">
         <div className="bones-via-tick" aria-hidden>
-          {opt?.glyph ?? "⌁"}
+          <Icon size={11} />
         </div>
       </div>
       <div className="tl-content" style={{ padding: "2px 0 8px" }}>

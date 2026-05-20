@@ -276,10 +276,16 @@ const briefBookingSchema = z.object({
   currency: z.enum(["GBP", "EUR", "USD"]).optional(),
 });
 
+// Local-connection mode for station-/airport-based primary modes —
+// how the user reaches the terminal at either end. The brief stores
+// this so the editor can stitch journey_legs (walk → train → walk).
+const localModeEnum = z.enum(["auto", "walk", "drive", "taxi"]);
+
 const briefTransitionSchema = z.object({
   from_client_id: z.string().min(1).max(80),
   to_client_id: z.string().min(1).max(80),
   mode: transitionModeEnum,
+  local_mode: localModeEnum.nullable().optional(),
   // Pre-booked ticket — when present we'll also write a booking_intent +
   // travel_booking and lock the transition's start/end to the ticket.
   booking: briefBookingSchema.nullable().optional(),
@@ -459,8 +465,14 @@ export async function createItineraryFromBrief(
   // the insert so we can wire transitions onto the right stop ids.
   const clientIdBySeq = new Map<number, string>();
 
+  // Sentinel client_id the brief uses for transitions that originate
+  // at the implicit home stop. Kept in lockstep with HOME_UID on the
+  // client.
+  const HOME_CLIENT_ID = "__khonsera_home__";
+
   let seq = 0;
   if (homeId) {
+    clientIdBySeq.set(seq, HOME_CLIENT_ID);
     stopRows.push({
       sequence: seq++,
       type: "start",
@@ -644,6 +656,22 @@ export async function createItineraryFromBrief(
         );
       }
 
+      // For station-based modes we record the user's local-connection
+      // preference so the editor can stitch journey_legs (walk → train
+      // → walk, etc.) without re-asking. The note is structured:
+      // "khonsera:local=walk" — easy for the editor to parse, harmless
+      // to a human reader.
+      const stationBased =
+        mode === "train" ||
+        mode === "tube" ||
+        mode === "bus" ||
+        mode === "flight";
+      const localMode = t.local_mode ?? "auto";
+      const transitionNote =
+        stationBased && localMode !== "auto"
+          ? `khonsera:local=${localMode}`
+          : null;
+
       // Upsert the transition row (locked when booked, mode-only when not).
       const { data: transRow } = await supabase
         .from("transitions")
@@ -658,6 +686,7 @@ export async function createItineraryFromBrief(
             start_time: startIso,
             end_time: endIso,
             computed_duration_minutes: durationMins,
+            notes: transitionNote,
           },
           { onConflict: "from_stop_id,to_stop_id" },
         )

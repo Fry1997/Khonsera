@@ -8,24 +8,48 @@ export default async function NewItineraryPage() {
   const supabase = await createClient();
   const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
 
-  const [{ data: customers }, { data: customerSites }, { data: locations }] =
-    await Promise.all([
-      supabase
-        .from("customers")
-        .select("id, name")
-        .eq("workspace_id", ctx.workspaceId)
-        .order("name"),
-      supabase
-        .from("customer_sites")
-        .select("id, customer_id, name, address")
-        .eq("workspace_id", ctx.workspaceId),
-      supabase
-        .from("locations")
-        .select("id, name, type, address")
-        .eq("workspace_id", ctx.workspaceId)
-        .order("type")
-        .order("name"),
-    ]);
+  const [
+    { data: customers },
+    { data: customerSites },
+    { data: locations },
+    { data: profile },
+  ] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, name")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("name"),
+    supabase
+      .from("customer_sites")
+      .select("id, customer_id, name, address")
+      .eq("workspace_id", ctx.workspaceId),
+    supabase
+      .from("locations")
+      .select("id, name, type, address")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("type")
+      .order("name"),
+    supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle(),
+  ]);
+
+  // Resolve the home label so the brief can show "from Home" (or the
+  // actual name) on the implicit first transition.
+  const homeId =
+    profile?.default_drive_origin_location_id ??
+    profile?.default_rail_origin_location_id ??
+    profile?.default_return_location_id ??
+    null;
+  const home =
+    homeId != null
+      ? (locations ?? []).find((l) => l.id === homeId) ?? null
+      : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -60,6 +84,7 @@ export default async function NewItineraryPage() {
         customerSites={customerSites ?? []}
         locations={locations ?? []}
         timezone={wsCfg.timezone}
+        homeLabel={home?.name ?? null}
       />
     </div>
   );

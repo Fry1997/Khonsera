@@ -2172,6 +2172,21 @@
     font-size: 9px;
     padding: 2px 7px;
   }
+  /* "+ walk" hint on the closed chip when a station-based mode also
+     has a non-auto local-connection picked. */
+  .transition-local-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--ink-soft);
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+  }
 
   .transition-pop {
     position: absolute;

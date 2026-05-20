@@ -21,6 +21,7 @@ import {
 } from "./add-transport-booking-form";
 import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
+import { TransportIcon, StopIcon } from "@/components/icons";
 
 // Inline icons — line-art style matching the warm editorial design.
 const Icon = {
@@ -1079,37 +1080,46 @@ function StopBookingMenu({
                 onAddTransport("train", label);
               }}
             >
-              <span className="mr-2">🚆</span>
+              <span className="mr-2 inline-flex align-middle" style={{ color: "var(--gold-2)" }}>
+                <TransportIcon.train size={13} />
+              </span>
               Train (from {stop.location?.name ?? "station"})
             </button>
           ) : null}
-          {items.map((it) => (
-            <button
-              key={it.mode}
-              type="button"
-              role="menuitem"
-              className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
-              onClick={() => {
-                setOpen(false);
-                onAddTransport(it.mode, label);
-              }}
-            >
-              <span className="mr-2">
-                {it.mode === "train"
-                  ? "🚆"
-                  : it.mode === "flight"
-                    ? "✈"
-                    : it.mode === "taxi"
-                      ? "🚕"
-                      : it.mode === "bus"
-                        ? "🚌"
-                        : it.mode === "tube"
-                          ? "Ⓤ"
-                          : "🚗"}
-              </span>
-              {it.label}
-            </button>
-          ))}
+          {items.map((it) => {
+            const ItemIcon =
+              it.mode === "train"
+                ? TransportIcon.train
+                : it.mode === "flight"
+                  ? TransportIcon.flight
+                  : it.mode === "taxi"
+                    ? TransportIcon.taxi
+                    : it.mode === "bus"
+                      ? TransportIcon.bus
+                      : it.mode === "tube"
+                        ? TransportIcon.tube
+                        : TransportIcon.drive;
+            return (
+              <button
+                key={it.mode}
+                type="button"
+                role="menuitem"
+                className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
+                onClick={() => {
+                  setOpen(false);
+                  onAddTransport(it.mode, label);
+                }}
+              >
+                <span
+                  className="mr-2 inline-flex align-middle"
+                  style={{ color: "var(--ink-dim)" }}
+                >
+                  <ItemIcon size={13} />
+                </span>
+                {it.label}
+              </button>
+            );
+          })}
           <button
             type="button"
             role="menuitem"
@@ -1119,7 +1129,12 @@ function StopBookingMenu({
               onAddAccommodation(label);
             }}
           >
-            <span className="mr-2">🏨</span>
+            <span
+              className="mr-2 inline-flex align-middle"
+              style={{ color: "var(--ink-dim)" }}
+            >
+              <StopIcon.stay size={13} />
+            </span>
             {stop.type === "accommodation" ? "Edit stay" : "Hotel / stay"}
           </button>
         </div>
@@ -1243,16 +1258,29 @@ function fmtTime(iso: string | null, tz: string): string {
   });
 }
 
-const LEG_TYPE_ICON: Record<string, string> = {
-  walk: "🚶",
-  drive: "🚗",
-  taxi: "🚕",
-  bus: "🚌",
-  train: "🚆",
-  wait: "⏱",
-  meeting: "🤝",
-  buffer: "·",
-};
+// Inline icon component for journey-leg sub-rows. Hands back a tiny
+// SVG (or a · for "buffer") so we never render an emoji into the UI.
+function LegTypeIcon({ leg }: { leg: string }) {
+  const props = { size: 12 } as const;
+  switch (leg) {
+    case "walk":
+      return <TransportIcon.walk {...props} />;
+    case "drive":
+      return <TransportIcon.drive {...props} />;
+    case "taxi":
+      return <TransportIcon.taxi {...props} />;
+    case "bus":
+      return <TransportIcon.bus {...props} />;
+    case "train":
+      return <TransportIcon.train {...props} />;
+    case "wait":
+      return <StopIcon.wait {...props} />;
+    case "meeting":
+      return <StopIcon.appointment {...props} />;
+    default:
+      return <span aria-hidden>·</span>;
+  }
+}
 
 function LegCard({
   transition,
@@ -1335,7 +1363,9 @@ function LegCard({
               className="flex items-baseline gap-2 text-xs"
               style={{ color: "var(--ink-dim)" }}
             >
-              <span aria-hidden>{LEG_TYPE_ICON[l.leg_type] ?? "·"}</span>
+              <span aria-hidden style={{ display: "inline-flex", color: "var(--ink-dim)" }}>
+                <LegTypeIcon leg={l.leg_type} />
+              </span>
               <span className="mono">
                 {l.duration_minutes ? `${l.duration_minutes}m` : ""}
               </span>

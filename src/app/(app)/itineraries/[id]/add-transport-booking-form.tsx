@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { TransportIcon } from "@/components/icons";
 import {
   FormField,
   Input,
@@ -34,14 +35,23 @@ const MODE_LABELS: Record<TransportBookingMode, string> = {
   drive: "Car hire",
 };
 
-const MODE_ICONS: Record<TransportBookingMode, string> = {
-  train: "🚆",
-  flight: "✈",
-  taxi: "🚕",
-  bus: "🚌",
-  tube: "Ⓤ",
-  drive: "🚗",
-};
+function ModeIcon({ mode }: { mode: TransportBookingMode }) {
+  const props = { size: 14 } as const;
+  switch (mode) {
+    case "train":
+      return <TransportIcon.train {...props} />;
+    case "flight":
+      return <TransportIcon.flight {...props} />;
+    case "taxi":
+      return <TransportIcon.taxi {...props} />;
+    case "bus":
+      return <TransportIcon.bus {...props} />;
+    case "tube":
+      return <TransportIcon.tube {...props} />;
+    case "drive":
+      return <TransportIcon.drive {...props} />;
+  }
+}
 
 const COPY: Record<
   TransportBookingMode,
@@ -298,7 +308,9 @@ export function AddTransportBookingForm({
             data-active={mode === m}
             disabled={pending}
           >
-            <span aria-hidden>{MODE_ICONS[m]}</span>
+            <span aria-hidden style={{ display: "inline-flex" }}>
+              <ModeIcon mode={m} />
+            </span>
             <span>{MODE_LABELS[m]}</span>
           </button>
         ))}
