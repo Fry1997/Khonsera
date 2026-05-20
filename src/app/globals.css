@@ -1767,6 +1767,195 @@
     color: var(--paper);
   }
 
+  /* ------------------------------------------------------------------
+   * Itineraries — editorial trip feed. A single chronological list of
+   * meaty rows: big italic date column, italic title with gold "em",
+   * status pill + meta line, optional notes, delete + chevron on the
+   * right. Live rows pick up a gold border treatment.
+   * ------------------------------------------------------------------ */
+  .trip-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .trip-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(110px, 130px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 22px;
+    padding: 18px 22px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    transition: border-color 0.14s, background 0.14s, box-shadow 0.14s,
+      transform 0.08s;
+  }
+  .trip-row:hover {
+    border-color: var(--gold);
+    background: var(--card);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 6px 20px rgba(200, 157, 77, 0.08);
+  }
+  .trip-row[data-past="true"] {
+    opacity: 0.78;
+  }
+  .trip-row[data-past="true"]:hover {
+    opacity: 1;
+  }
+  .trip-row-live {
+    border-color: var(--gold);
+    background: var(--card);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 8px 24px rgba(200, 157, 77, 0.12);
+  }
+  .trip-row-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+  }
+
+  /* Date column — magazine-style, day-of-week + big italic number + year */
+  .trip-row-date {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2px 0;
+    border-right: 1px solid var(--rule);
+    padding-right: 22px;
+    min-height: 64px;
+    justify-content: center;
+  }
+  .trip-row-day-of-week {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    color: var(--ink-dim);
+  }
+  .trip-row-day {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 44px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.025em;
+    margin-top: 2px;
+  }
+  .trip-row-live .trip-row-day {
+    color: var(--gold);
+  }
+  .trip-row-year {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  /* Content column */
+  .trip-row-content {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .trip-row-title {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .trip-row-title em {
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .trip-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .trip-row-meta-item {
+    font-size: 11.5px;
+    color: var(--ink-dim);
+  }
+  .trip-row-notes {
+    margin: 4px 0 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Right actions */
+  .trip-row-actions {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .trip-row-chev {
+    color: var(--ink-faint);
+    transition: color 0.14s, transform 0.14s;
+  }
+  .trip-row:hover .trip-row-chev {
+    color: var(--gold);
+    transform: translateX(2px);
+  }
+
+  @media (max-width: 720px) {
+    .trip-row {
+      grid-template-columns: minmax(70px, 84px) minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+    }
+    .trip-row-date {
+      padding-right: 14px;
+      min-height: 56px;
+    }
+    .trip-row-day {
+      font-size: 32px;
+    }
+    .trip-row-title {
+      font-size: 20px;
+      -webkit-line-clamp: 3;
+    }
+    /* Stack actions under content on phones — delete + chevron flow into
+       a third grid cell that spans both columns. */
+    .trip-row-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--rule);
+    }
+  }
+
   /* Paper texture — fine dot grid */
   .paper-tex {
     background-image: radial-gradient(
