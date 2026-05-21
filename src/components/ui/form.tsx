@@ -71,17 +71,23 @@ export function SubmitButton({
   pending,
   children,
   className,
-  variant = "primary",
+  variant = "gold",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   pending?: boolean;
-  variant?: "primary" | "terra";
+  variant?: "primary" | "terra" | "gold" | "ink";
 }) {
+  const cls =
+    variant === "ink"
+      ? "btn btn-ink"
+      : variant === "primary" || variant === "terra"
+        ? "btn btn-gold"
+        : "btn btn-gold";
   return (
     <button
       type="submit"
       disabled={pending || props.disabled}
-      className={cn(variant === "terra" ? "btn-terra" : "btn-primary", className)}
+      className={cn(cls, className)}
       {...props}
     >
       {pending ? "…" : children}

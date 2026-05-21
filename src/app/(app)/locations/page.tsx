@@ -1,4 +1,3 @@
-import { PageShell } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { LocationsPanel } from "./locations-panel";
@@ -15,8 +14,6 @@ export default async function LocationsPage() {
     .order("type")
     .order("name");
 
-  // Each location type gets its own brand-palette pin so the saved-locations
-  // map reads as a clear key without needing a legend.
   const TYPE_COLOR: Record<string, StaticMapMarker["color"]> = {
     home: "sage",
     office: "ink",
@@ -30,24 +27,46 @@ export default async function LocationsPage() {
     .map((l) => ({
       lat: l.latitude as number,
       lng: l.longitude as number,
-      color: TYPE_COLOR[l.type] ?? "red",
+      color: TYPE_COLOR[l.type] ?? "ink",
     }));
 
   return (
-    <PageShell
-      title="Locations"
-      description="Home, office, preferred stations and other starting points used when generating travel options."
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <header>
+        <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
+          Places · {locations?.length ?? 0}
+        </span>
+        <h1
+          className="desk-h1"
+          style={{ marginTop: 6, fontSize: "clamp(28px, 4vw, 38px)" }}
+        >
+          Locations.
+        </h1>
+        <p
+          className="serif-i"
+          style={{
+            fontSize: 16,
+            color: "var(--ink-dim)",
+            margin: "8px 0 0",
+            maxWidth: "60ch",
+          }}
+        >
+          Home, office, preferred stations and other anchors — used when
+          Khonsera plans your travel options.
+        </p>
+      </header>
+
       {markers.length > 0 ? (
         <StaticMap
           markers={markers}
           width={1200}
-          height={320}
+          height={300}
           alt="Saved locations"
           style="journies"
         />
       ) : null}
+
       <LocationsPanel locations={locations ?? []} />
-    </PageShell>
+    </div>
   );
 }

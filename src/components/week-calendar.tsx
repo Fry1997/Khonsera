@@ -12,6 +12,7 @@ import { requireUserContext } from "@/lib/auth";
 import { listEvents } from "@/lib/integrations/calendar";
 import { formatTimeInTz } from "@/lib/types/time";
 import type { StopType } from "@/lib/types/domain";
+import { StopIcon } from "@/components/icons";
 
 type Row =
   | {
@@ -30,17 +31,29 @@ type Row =
       itineraryId: string;
     };
 
-const STOP_ICON: Record<StopType, string> = {
-  start: "📍",
-  end: "🏁",
-  appointment: "🤝",
-  accommodation: "🏨",
-  event: "🎫",
-  meal: "🍽️",
-  transport_booked: "🎟️",
-  transit_arrival: "🛬",
-  other: "·",
-};
+function StopTypeIcon({ type }: { type: StopType }) {
+  const props = { size: 11 } as const;
+  switch (type) {
+    case "start":
+      return <StopIcon.pin {...props} />;
+    case "end":
+      return <StopIcon.flag {...props} />;
+    case "appointment":
+      return <StopIcon.appointment {...props} />;
+    case "accommodation":
+      return <StopIcon.stay {...props} />;
+    case "event":
+      return <StopIcon.event {...props} />;
+    case "meal":
+      return <StopIcon.meal {...props} />;
+    case "transport_booked":
+      return <StopIcon.ticket {...props} />;
+    case "transit_arrival":
+      return <StopIcon.station {...props} />;
+    default:
+      return <span aria-hidden>·</span>;
+  }
+}
 
 export async function WeekCalendar({
   timezone,
@@ -190,7 +203,12 @@ export async function WeekCalendar({
                         className="truncate text-terra-deep hover:underline"
                         title={r.title}
                       >
-                        <span className="mr-1">{STOP_ICON[r.stopType]}</span>
+                        <span
+                          className="mr-1 inline-flex align-middle"
+                          style={{ color: "var(--gold-2)" }}
+                        >
+                          <StopTypeIcon type={r.stopType} />
+                        </span>
                         {r.title}
                       </Link>
                     ) : (

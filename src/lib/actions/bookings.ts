@@ -384,6 +384,586 @@ export async function attachTrainBookingToStop(
   });
 }
 
+// ----------------------------------------------------------------------
+// attachTransportBookingToStop
+//
+// Generic manual-booking flow for any non-rail mode (flight, taxi/cab,
+// bus, tube, hire car). Mirrors the train booking flow but parameterised on
+// the transport mode so the editor can capture every kind of ticket.
+//
+// Semantics by mode:
+//   • flight  — service_number = flight code (e.g. "BA245"),
+//               platform_dep   = departure terminal / gate,
+//               platform_arr   = arrival terminal,
+//               arrival stop placed at the destination airport.
+//   • taxi    — service_number = booking ref, single segment.
+//   • bus / tube — service_number = route name (e.g. "Bus 24").
+//   • drive (rental) — service_number = hire ref, platform_dep/arr unused.
+// ----------------------------------------------------------------------
+
+const transportModeEnum = z.enum([
+  "train",
+  "flight",
+  "taxi",
+  "bus",
+  "tube",
+  "drive",
+]);
+
+const transportSegmentSchema = z.object({
+  from_location_name: z.string().trim().min(1).max(200),
+  to_location_name: z.string().trim().min(1).max(200),
+  departure_at: z.string().datetime(),
+  arrival_at: z.string().datetime(),
+  service_number: z.string().trim().max(40).nullable().optional(),
+  platform_dep: z.string().trim().max(40).nullable().optional(),
+  platform_arr: z.string().trim().max(40).nullable().optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+});
+
+const attachTransportBookingSchema = z
+  .object({
+    from_stop_id: z.string().uuid(),
+    mode: transportModeEnum,
+    provider: z.string().trim().max(80).nullable().optional(),
+    arrival_location_id: z.string().uuid().nullable().optional(),
+    arrival_location_name: z.string().trim().max(200).nullable().optional(),
+    arrival_location_type: z
+      .enum(["station", "hotel", "office", "home", "parking", "other"])
+      .optional(),
+    booking_reference: z.string().trim().max(120).nullable().optional(),
+    actual_price: z.number().nonnegative().nullable().optional(),
+    currency: z.enum(["GBP", "EUR", "USD"]).optional(),
+    seat_reservation: z.string().trim().max(120).nullable().optional(),
+    segments: z.array(transportSegmentSchema).min(1),
+  })
+  .refine(
+    (v) => v.arrival_location_id != null || v.arrival_location_name != null,
+    {
+      message: "Provide arrival_location_id or arrival_location_name",
+      path: ["arrival_location_id"],
+    },
+  );
+
+function legTypeForMode(mode: z.infer<typeof transportModeEnum>):
+  | "walk"
+  | "drive"
+  | "train"
+  | "bus"
+  | "taxi" {
+  switch (mode) {
+    case "train":
+    case "tube":
+      return "train";
+    case "flight":
+      // No "flight" leg type in our enum — fall back to "bus" semantically
+      // (transit-with-service-number) which the UI labels via mode anyway.
+      return "bus";
+    case "bus":
+      return "bus";
+    case "taxi":
+      return "taxi";
+    case "drive":
+      return "drive";
+  }
+}
+
+function expenseTypeForMode(mode: z.infer<typeof transportModeEnum>):
+  | "rail_ticket"
+  | "taxi"
+  | "other" {
+  switch (mode) {
+    case "train":
+    case "tube":
+      return "rail_ticket";
+    case "taxi":
+      return "taxi";
+    default:
+      return "other";
+  }
+}
+
+export async function attachTransportBookingToStop(
+  input: z.input<typeof attachTransportBookingSchema>,
+): Promise<Result<{ arrival_stop_id: string; travel_booking_id: string }>> {
+  const parsed = parseInput(attachTransportBookingSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // 1. Verify origin stop ownership and pull its details.
+  const { data: fromStop } = await supabase
+    .from("stops")
+    .select("id, itinerary_id, sequence, location_id")
+    .eq("id", parsed.value.from_stop_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!fromStop) return err(errors.notFound("stop"));
+
+  // 2. Resolve / create arrival location.
+  let arrivalLocationId = parsed.value.arrival_location_id ?? null;
+  if (!arrivalLocationId && parsed.value.arrival_location_name) {
+    const { data: newLoc, error: locErr } = await supabase
+      .from("locations")
+      .insert({
+        name: parsed.value.arrival_location_name,
+        type: parsed.value.arrival_location_type ?? "other",
+        workspace_id: ctx.workspaceId,
+        user_id: ctx.userId,
+      })
+      .select("id")
+      .single();
+    if (locErr || !newLoc) return err(errors.notFound("location"));
+    arrivalLocationId = newLoc.id;
+  }
+
+  // 3. Shift later stops to make room.
+  const newSeq = fromStop.sequence + 1;
+  const { data: laterStops } = await supabase
+    .from("stops")
+    .select("id, sequence")
+    .eq("itinerary_id", fromStop.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .gte("sequence", newSeq)
+    .order("sequence", { ascending: false });
+  for (const s of laterStops ?? []) {
+    await supabase
+      .from("stops")
+      .update({ sequence: s.sequence + 1 })
+      .eq("id", s.id)
+      .eq("workspace_id", ctx.workspaceId);
+  }
+
+  const first = parsed.value.segments[0];
+  const last = parsed.value.segments[parsed.value.segments.length - 1];
+
+  // 4. Create the arrival stop pinned to the arrival time.
+  const { data: arrivalStop, error: arrivalErr } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id: fromStop.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: newSeq,
+      type: "transit_arrival",
+      location_id: arrivalLocationId,
+      start_time: last.arrival_at,
+      end_time: last.arrival_at,
+      is_time_fixed: true,
+      metadata:
+        parsed.value.mode === "flight"
+          ? {
+              flight_iata: first.service_number ?? null,
+              mode: "flight",
+            }
+          : { mode: parsed.value.mode },
+    })
+    .select("id")
+    .single();
+  if (arrivalErr || !arrivalStop) return err(errors.notFound("stop"));
+
+  // 5. booking_intent + travel_booking.
+  const provider = parsed.value.provider ?? providerFromMode(parsed.value.mode);
+  const { data: intent, error: intentErr } = await supabase
+    .from("booking_intents")
+    .insert({
+      stop_id: parsed.value.from_stop_id,
+      itinerary_id: fromStop.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      provider,
+      status: "booked",
+      currency: parsed.value.currency ?? "GBP",
+    })
+    .select("id")
+    .single();
+  if (intentErr || !intent) return err(errors.notFound("booking_intent"));
+
+  const { data: booking, error: bookingErr } = await supabase
+    .from("travel_bookings")
+    .insert({
+      booking_intent_id: intent.id,
+      workspace_id: ctx.workspaceId,
+      provider,
+      booking_reference: parsed.value.booking_reference ?? null,
+      ticket_status: "booked",
+      actual_price: parsed.value.actual_price ?? null,
+      currency: parsed.value.currency ?? "GBP",
+      booked_at: new Date().toISOString(),
+      departure_location_id: fromStop.location_id,
+      arrival_location_id: arrivalLocationId,
+      departure_at: first.departure_at,
+      arrival_at: last.arrival_at,
+      seat_reservation: parsed.value.seat_reservation ?? null,
+    })
+    .select("id")
+    .single();
+  if (bookingErr || !booking) return err(errors.notFound("travel_booking"));
+
+  // 6. Persist segments (reuses the train segments table — train_number
+  // doubles as the generic service identifier).
+  const segmentRows = parsed.value.segments.map((s, i) => ({
+    travel_booking_id: booking.id,
+    workspace_id: ctx.workspaceId,
+    sequence: i,
+    from_location_name: s.from_location_name,
+    to_location_name: s.to_location_name,
+    departure_at: s.departure_at,
+    arrival_at: s.arrival_at,
+    train_number: s.service_number ?? null,
+    platform_dep: s.platform_dep ?? null,
+    platform_arr: s.platform_arr ?? null,
+    notes: s.notes ?? null,
+  }));
+  await supabase.from("travel_booking_segments").insert(segmentRows);
+
+  // 7. Locked transition.
+  const totalMinutes = Math.round(
+    (new Date(last.arrival_at).getTime() -
+      new Date(first.departure_at).getTime()) /
+      60_000,
+  );
+  const transitionMode: import("@/lib/types/domain").TransitionMode =
+    parsed.value.mode;
+  const { data: transition } = await supabase
+    .from("transitions")
+    .upsert(
+      {
+        itinerary_id: fromStop.itinerary_id,
+        workspace_id: ctx.workspaceId,
+        from_stop_id: parsed.value.from_stop_id,
+        to_stop_id: arrivalStop.id,
+        mode: transitionMode,
+        is_locked: true,
+        start_time: first.departure_at,
+        end_time: last.arrival_at,
+        computed_duration_minutes: totalMinutes,
+      },
+      { onConflict: "from_stop_id,to_stop_id" },
+    )
+    .select("id")
+    .single();
+
+  // 7b. Mirror each segment as a journey_leg.
+  if (transition?.id) {
+    await supabase
+      .from("journey_legs")
+      .delete()
+      .eq("transition_id", transition.id)
+      .eq("workspace_id", ctx.workspaceId);
+    const legType = legTypeForMode(parsed.value.mode);
+    const legRows = parsed.value.segments.map((s, i) => {
+      const segMinutes = Math.round(
+        (new Date(s.arrival_at).getTime() -
+          new Date(s.departure_at).getTime()) /
+          60_000,
+      );
+      const platformBits = [
+        s.platform_dep ? platformLabel(parsed.value.mode, s.platform_dep, "dep") : null,
+        s.platform_arr ? platformLabel(parsed.value.mode, s.platform_arr, "arr") : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return {
+        transition_id: transition.id,
+        workspace_id: ctx.workspaceId,
+        sequence: i,
+        leg_type: legType,
+        start_location_name: s.from_location_name,
+        end_location_name: s.to_location_name,
+        start_time: s.departure_at,
+        end_time: s.arrival_at,
+        duration_minutes: segMinutes,
+        service_number: s.service_number ?? null,
+        platform: s.platform_dep ?? null,
+        instructions: platformBits || s.notes || null,
+        booking_required: true,
+      };
+    });
+    await supabase.from("journey_legs").insert(legRows);
+  }
+
+  await recordAudit({
+    entityType: "travel_booking",
+    entityId: booking.id,
+    action: "create_transport_booking",
+    after: {
+      booking_id: booking.id,
+      mode: parsed.value.mode,
+      arrival_stop_id: arrivalStop.id,
+      segments: parsed.value.segments.length,
+    },
+  });
+
+  // Auto-create expense
+  if (parsed.value.actual_price != null) {
+    const { data: existing } = await supabase
+      .from("expense_records")
+      .select("id")
+      .eq("itinerary_id", fromStop.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("stop_id", parsed.value.from_stop_id)
+      .eq("type", expenseTypeForMode(parsed.value.mode))
+      .maybeSingle();
+    if (!existing) {
+      await supabase.from("expense_records").insert({
+        itinerary_id: fromStop.itinerary_id,
+        stop_id: parsed.value.from_stop_id,
+        workspace_id: ctx.workspaceId,
+        user_id: ctx.userId,
+        type: expenseTypeForMode(parsed.value.mode),
+        amount: parsed.value.actual_price,
+        currency: parsed.value.currency ?? "GBP",
+        notes: parsed.value.booking_reference
+          ? `${labelMode(parsed.value.mode)} · ref ${parsed.value.booking_reference}`
+          : `${labelMode(parsed.value.mode)} booking`,
+      });
+    }
+  }
+
+  await resolveItineraryTimes(fromStop.itinerary_id);
+
+  return ok({
+    arrival_stop_id: arrivalStop.id,
+    travel_booking_id: booking.id,
+  });
+}
+
+function providerFromMode(mode: z.infer<typeof transportModeEnum>): string {
+  switch (mode) {
+    case "train":
+      return "trainline";
+    case "flight":
+      return "airline";
+    case "taxi":
+      return "taxi";
+    case "bus":
+      return "bus";
+    case "tube":
+      return "tfl";
+    case "drive":
+      return "car-hire";
+  }
+}
+
+function labelMode(mode: z.infer<typeof transportModeEnum>): string {
+  switch (mode) {
+    case "train":
+      return "Train";
+    case "flight":
+      return "Flight";
+    case "taxi":
+      return "Taxi";
+    case "bus":
+      return "Bus";
+    case "tube":
+      return "Tube";
+    case "drive":
+      return "Car hire";
+  }
+}
+
+function platformLabel(
+  mode: z.infer<typeof transportModeEnum>,
+  value: string,
+  side: "dep" | "arr",
+): string {
+  switch (mode) {
+    case "flight":
+      return side === "dep" ? `Dep T${value}` : `Arr T${value}`;
+    case "train":
+    case "tube":
+      return side === "dep" ? `Plat ${value}` : `→ Plat ${value}`;
+    case "bus":
+      return side === "dep" ? `Stop ${value}` : `→ Stop ${value}`;
+    default:
+      return side === "dep" ? `From ${value}` : `→ ${value}`;
+  }
+}
+
+// ----------------------------------------------------------------------
+// attachAccommodationBooking
+//
+// Books a hotel/stay onto an existing accommodation stop (or creates one
+// after the current stop). Unlike transport, this doesn't create a
+// transition — it just enriches a stop with a booking_intent + travel_booking
+// record carrying provider/ref/price/check-in window and an expense entry.
+// ----------------------------------------------------------------------
+
+const attachAccommodationSchema = z.object({
+  // Either attach to an existing accommodation stop…
+  stop_id: z.string().uuid().nullable().optional(),
+  // …or create one after the given stop.
+  after_stop_id: z.string().uuid().nullable().optional(),
+  hotel_location_id: z.string().uuid().nullable().optional(),
+  hotel_name: z.string().trim().max(200).nullable().optional(),
+  check_in: z.string().datetime(),
+  check_out: z.string().datetime(),
+  provider: z.string().trim().max(80).nullable().optional(),
+  booking_reference: z.string().trim().max(120).nullable().optional(),
+  actual_price: z.number().nonnegative().nullable().optional(),
+  currency: z.enum(["GBP", "EUR", "USD"]).optional(),
+  room_details: z.string().trim().max(200).nullable().optional(),
+});
+
+export async function attachAccommodationBooking(
+  input: z.input<typeof attachAccommodationSchema>,
+): Promise<Result<{ stop_id: string; travel_booking_id: string }>> {
+  const parsed = parseInput(attachAccommodationSchema, input);
+  if (!parsed.ok) return parsed;
+  if (!parsed.value.stop_id && !parsed.value.after_stop_id) {
+    return err(
+      errors.validation("Provide either stop_id or after_stop_id", {
+        stop_id: ["required"],
+      }),
+    );
+  }
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Resolve the target accommodation stop.
+  let stopId: string;
+  let itineraryId: string;
+  if (parsed.value.stop_id) {
+    const { data: stop } = await supabase
+      .from("stops")
+      .select("id, itinerary_id")
+      .eq("id", parsed.value.stop_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    if (!stop) return err(errors.notFound("stop"));
+    stopId = stop.id;
+    itineraryId = stop.itinerary_id;
+
+    // Update times + location on the existing stop.
+    await supabase
+      .from("stops")
+      .update({
+        type: "accommodation",
+        start_time: parsed.value.check_in,
+        end_time: parsed.value.check_out,
+        is_time_fixed: true,
+        title: parsed.value.hotel_name ?? null,
+        location_id:
+          parsed.value.hotel_location_id ?? undefined,
+      })
+      .eq("id", stopId)
+      .eq("workspace_id", ctx.workspaceId);
+  } else {
+    const { data: afterStop } = await supabase
+      .from("stops")
+      .select("id, itinerary_id, sequence")
+      .eq("id", parsed.value.after_stop_id!)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    if (!afterStop) return err(errors.notFound("stop"));
+    itineraryId = afterStop.itinerary_id;
+    const newSeq = afterStop.sequence + 1;
+    const { data: laterStops } = await supabase
+      .from("stops")
+      .select("id, sequence")
+      .eq("itinerary_id", afterStop.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .gte("sequence", newSeq)
+      .order("sequence", { ascending: false });
+    for (const s of laterStops ?? []) {
+      await supabase
+        .from("stops")
+        .update({ sequence: s.sequence + 1 })
+        .eq("id", s.id)
+        .eq("workspace_id", ctx.workspaceId);
+    }
+    const { data: created, error: createErr } = await supabase
+      .from("stops")
+      .insert({
+        itinerary_id: afterStop.itinerary_id,
+        workspace_id: ctx.workspaceId,
+        sequence: newSeq,
+        type: "accommodation",
+        title: parsed.value.hotel_name ?? null,
+        location_id: parsed.value.hotel_location_id ?? null,
+        start_time: parsed.value.check_in,
+        end_time: parsed.value.check_out,
+        is_time_fixed: true,
+      })
+      .select("id")
+      .single();
+    if (createErr || !created) return err(errors.notFound("stop"));
+    stopId = created.id;
+  }
+
+  // booking_intent + travel_booking
+  const provider = parsed.value.provider ?? "hotel";
+  const { data: intent, error: intentErr } = await supabase
+    .from("booking_intents")
+    .insert({
+      stop_id: stopId,
+      itinerary_id: itineraryId,
+      workspace_id: ctx.workspaceId,
+      provider,
+      status: "booked",
+      currency: parsed.value.currency ?? "GBP",
+    })
+    .select("id")
+    .single();
+  if (intentErr || !intent) return err(errors.notFound("booking_intent"));
+
+  const { data: booking, error: bookingErr } = await supabase
+    .from("travel_bookings")
+    .insert({
+      booking_intent_id: intent.id,
+      workspace_id: ctx.workspaceId,
+      provider,
+      booking_reference: parsed.value.booking_reference ?? null,
+      ticket_status: "booked",
+      actual_price: parsed.value.actual_price ?? null,
+      currency: parsed.value.currency ?? "GBP",
+      booked_at: new Date().toISOString(),
+      departure_at: parsed.value.check_in,
+      arrival_at: parsed.value.check_out,
+      seat_reservation: parsed.value.room_details ?? null,
+    })
+    .select("id")
+    .single();
+  if (bookingErr || !booking) return err(errors.notFound("travel_booking"));
+
+  if (parsed.value.actual_price != null) {
+    const { data: existing } = await supabase
+      .from("expense_records")
+      .select("id")
+      .eq("itinerary_id", itineraryId)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("stop_id", stopId)
+      .eq("type", "hotel")
+      .maybeSingle();
+    if (!existing) {
+      await supabase.from("expense_records").insert({
+        itinerary_id: itineraryId,
+        stop_id: stopId,
+        workspace_id: ctx.workspaceId,
+        user_id: ctx.userId,
+        type: "hotel",
+        amount: parsed.value.actual_price,
+        currency: parsed.value.currency ?? "GBP",
+        notes: parsed.value.booking_reference
+          ? `Hotel · ref ${parsed.value.booking_reference}`
+          : "Hotel booking",
+      });
+    }
+  }
+
+  await recordAudit({
+    entityType: "travel_booking",
+    entityId: booking.id,
+    action: "create_accommodation_booking",
+    after: { booking_id: booking.id, stop_id: stopId },
+  });
+
+  await resolveItineraryTimes(itineraryId);
+
+  return ok({ stop_id: stopId, travel_booking_id: booking.id });
+}
+
 export async function recordTravelBooking(
   input: z.input<typeof recordTravelBookingSchema>,
 ): Promise<Result<{ id: string }>> {

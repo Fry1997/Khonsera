@@ -6,6 +6,10 @@ import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, maybeGeocode, parseInput } from "./_helpers";
 import { geocodeAddress } from "@/lib/google/maps";
+import {
+  getPlaceDetails,
+  locationTypeFromGoogleTypes,
+} from "@/lib/google/places";
 import type { Result } from "@/lib/errors";
 import type { LocationType } from "@/lib/types/domain";
 
@@ -124,6 +128,10 @@ const inlineLocationSchema = z.object({
   name: z.string().trim().min(1).max(200),
   type: locationTypeEnum.optional(),
   address: z.string().trim().max(500).nullable().optional(),
+  // Optional Google place identifier — when present we resolve coords +
+  // address from Places Details (more accurate than free-text geocoding).
+  google_place_id: z.string().trim().max(200).nullable().optional(),
+  google_session_token: z.string().trim().max(80).nullable().optional(),
 });
 
 export async function createInlineLocation(
@@ -138,22 +146,46 @@ export async function createInlineLocation(
   let address = parsed.value.address ?? null;
   let latitude: number | null = null;
   let longitude: number | null = null;
+  let postcode: string | null = null;
+  let resolvedType: LocationType = parsed.value.type ?? "other";
 
-  // Geocode by best query: address if given, otherwise the name itself.
-  const query = address ?? parsed.value.name;
-  const geo = await geocodeAddress(query);
-  if (geo) {
-    latitude = geo.lat;
-    longitude = geo.lng;
-    if (!address) address = geo.formattedAddress;
+  // Path A — caller selected a Google place. Use Place Details for the most
+  // accurate values and override "other" type when Google tells us this is a
+  // station / airport / hotel etc.
+  if (parsed.value.google_place_id) {
+    const details = await getPlaceDetails({
+      placeId: parsed.value.google_place_id,
+      sessionToken: parsed.value.google_session_token ?? undefined,
+    });
+    if (details) {
+      latitude = details.latitude;
+      longitude = details.longitude;
+      address = address ?? details.formatted_address;
+      postcode = details.postcode;
+      if (!parsed.value.type || parsed.value.type === "other") {
+        resolvedType = locationTypeFromGoogleTypes(details.types);
+      }
+    }
+  }
+
+  // Path B — fall back to geocoding by the address or name.
+  if (latitude == null || longitude == null) {
+    const query = address ?? parsed.value.name;
+    const geo = await geocodeAddress(query);
+    if (geo) {
+      latitude = geo.lat;
+      longitude = geo.lng;
+      if (!address) address = geo.formattedAddress;
+    }
   }
 
   const { data, error } = await supabase
     .from("locations")
     .insert({
       name: parsed.value.name,
-      type: parsed.value.type ?? "other",
+      type: resolvedType,
       address,
+      postcode,
       latitude,
       longitude,
       workspace_id: ctx.workspaceId,
@@ -168,6 +200,42 @@ export async function createInlineLocation(
       entityType: "location",
       entityId: result.value.id,
       action: "create",
+      after: result.value,
+    });
+  }
+  return result;
+}
+
+// Patch just the type on a location — used when the user overrides
+// Google's inferred classification (e.g. "actually this is a hotel").
+const updateLocationTypeSchema = z.object({
+  id: z.string().uuid(),
+  type: locationTypeEnum,
+});
+
+export async function updateLocationType(
+  input: z.input<typeof updateLocationTypeSchema>,
+): Promise<Result<{ id: string; type: string }>> {
+  const parsed = parseInput(updateLocationTypeSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("locations")
+    .update({ type: parsed.value.type })
+    .eq("id", parsed.value.id)
+    .eq("workspace_id", ctx.workspaceId)
+    .select("id, type")
+    .single();
+
+  const result = dbResult<{ id: string; type: string }>(data, error, "location");
+  if (result.ok) {
+    await recordAudit({
+      entityType: "location",
+      entityId: result.value.id,
+      action: "update_type",
       after: result.value,
     });
   }

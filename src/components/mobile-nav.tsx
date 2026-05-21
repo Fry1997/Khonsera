@@ -66,7 +66,18 @@ export function MobileNav({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-rule px-4 py-3">
-              <span className="brand-glyph">Journies</span>
+              <span className="brand-lockup" style={{ fontSize: 18 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+                  <path
+                    d="M14.5 3.3a9 9 0 1 0 6.2 12.1A7 7 0 0 1 14.5 3.3Z"
+                    fill="currentColor"
+                    style={{ color: "var(--gold)" }}
+                  />
+                </svg>
+                <span>
+                  Khonser<span style={{ color: "var(--gold)" }}>a</span>
+                </span>
+              </span>
               <button
                 type="button"
                 aria-label="Close menu"

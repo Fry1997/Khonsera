@@ -1,8 +1,12 @@
-# Journies
+# Khonsera
 
-Travel-aware business visit planner. Plan, confirm and execute on-site customer
-visits with rail vs drive comparison, partner rail booking, calendar blocks,
-expenses and day-of navigation.
+Quietly luxe travel planning. Plan, confirm and execute trips with rail vs
+drive comparison, manual booking for every transport mode, Google Places
+search built in, calendar blocks, expenses and on-the-day navigation.
+
+Named after **Khonsu** — the Egyptian moon god, lord of time and guardian of
+travellers — and **sera**, Italian for evening. The brand voice is warm,
+editorial, restrained.
 
 ## Stack
 

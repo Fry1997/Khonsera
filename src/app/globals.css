@@ -2,36 +2,133 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Journies — warm editorial. Tokens ported verbatim from the Claude design
-   artifact so the visual language stays consistent across whatever Tailwind
-   utilities + bespoke classes call them. */
+/* Khonsera — design tokens & atoms, exact match to the reference identity
+ * sheet. The canonical five-colour palette is:
+ *
+ *   #1C1C1C  ink            primary text, brand black
+ *   #C89D4D  gold           the moon, the accent, the lead
+ *   #E9DFC6  sand           secondary surface, dividers
+ *   #F6F1E6  paper          primary app ground
+ *   #475569  slate          cool foil for chips / links
+ *
+ * Themes: [data-theme="light"] (default) | [data-theme="dark"]
+ * The legacy --terra / --rule-2 / --plum tokens stay so existing screens
+ * keep resolving; they alias onto the canonical palette where it makes
+ * sense (terra → gold for hot accents, plum → slate for cool ones). */
 @layer base {
-  :root {
-    --paper: #f4f0e7;
-    --paper-2: #ede7d8;
-    --card: #fbf8f1;
-    --card-2: #f7f2e6;
-    --ink: #1a1612;
-    --ink-2: #3a342c;
+  :root,
+  [data-theme="light"] {
+    /* canonical paper + ink */
+    --paper: #f6f1e6;
+    --paper-2: #ece4d2;
+    --sand: #e9dfc6;
+    --sand-2: #d9cdb1;
+    --card: #fbf7ec;
+    --card-2: #f2ead6;
+
+    --ink: #1c1c1c;
+    --ink-2: #2a2620;
     --ink-dim: #6e6557;
-    --ink-faint: #9c917f;
-    --rule: #e4ddcd;
-    --rule-2: #d6cdb8;
-    --terra: #c25c3a;
-    --terra-2: #a14a2c;
-    --terra-deep: #8e3c20;
-    --sage: #5f7053;
-    --sage-2: #e6ebdb;
-    --amber: #a07520;
-    --amber-2: #f0e6c8;
+    --ink-faint: #a39681;
+
+    --rule: #decfab;
+    --rule-2: #c9b989;
+
+    /* gold — the moon */
+    --gold: #c89d4d;
+    --gold-2: #a77e2f;
+    --gold-soft: #f0e1b7;
+    --gold-tint: rgba(200, 157, 77, 0.10);
+
+    /* cool foil — slate (kept for non-warm accents like links/chips) */
+    --slate: #475569;
+    --slate-2: #334155;
+    --slate-soft: #dde3ea;
+
+    /* status families */
+    --sage: #6b7a4e;
+    --sage-2: #dce2c8;
+    --sage-soft: #dce2c8;
+    --amber: #a87526;
+    --amber-2: #f0e0b5;
+    --amber-soft: #f0e0b5;
     --rust: #9b3422;
     --rust-2: #f0d6cf;
-    --ink-soft: rgba(26, 22, 18, 0.06);
-    /* The fallback strings ensure the page is still readable before
-       next/font's variables resolve. */
-    --serif: var(--font-serif), "Newsreader", "Source Serif 4", Georgia, serif;
-    --sans: var(--font-sans), "Geist", "Inter", -apple-system, system-ui, sans-serif;
-    --mono: var(--font-mono), "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+    --rust-soft: #f0d6cf;
+
+    /* legacy aliases — old code referred to these; route them onto the
+       canonical palette so the visual language stays unified. */
+    --terra: var(--gold);
+    --terra-2: var(--gold-2);
+    --terra-deep: var(--gold-2);
+    --plum: var(--slate);
+    --plum-soft: var(--slate-soft);
+
+    --ink-soft: rgba(28, 28, 28, 0.06);
+    --gold-soft-alpha: rgba(200, 157, 77, 0.16);
+    --shadow-sm: 0 1px 3px rgba(28, 28, 28, 0.06);
+    --shadow: 0 4px 16px rgba(28, 28, 28, 0.08);
+    --shadow-lg: 0 16px 40px rgba(28, 28, 28, 0.12);
+
+    --display: var(--font-display), "Playfair Display", "Lora", Georgia, serif;
+    --serif: var(--font-serif), "Lora", Georgia, serif;
+    --sans: var(--font-sans), "Inter", -apple-system, system-ui, sans-serif;
+    --mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  /* Night theme — kept for the profile-page palette toggle. Same gold +
+     slate, deep walnut paper, paper-as-ink. */
+  [data-theme="dark"] {
+    --paper: #14110d;
+    --paper-2: #0c0a07;
+    --sand: #1f1a12;
+    --sand-2: #2a2318;
+    --card: #1b170f;
+    --card-2: #221c13;
+
+    --ink: #f5eedc;
+    --ink-2: #e2d6bb;
+    --ink-dim: #98876a;
+    --ink-faint: #5d5340;
+
+    --rule: #2e2618;
+    --rule-2: #3e331f;
+
+    --gold: #d9b065;
+    --gold-2: #bd9748;
+    --gold-soft: #2d2418;
+    --gold-tint: rgba(217, 176, 101, 0.10);
+
+    --slate: #8b9bb0;
+    --slate-2: #6f7e92;
+    --slate-soft: #2a3140;
+
+    --sage: #a7b385;
+    --sage-2: #28301b;
+    --sage-soft: #28301b;
+    --amber: #d9a85a;
+    --amber-2: #3a2f15;
+    --amber-soft: #3a2f15;
+    --rust: #d86950;
+    --rust-2: #3a1f18;
+    --rust-soft: #3a1f18;
+
+    --terra: var(--gold);
+    --terra-2: var(--gold-2);
+    --terra-deep: var(--gold-2);
+    --plum: var(--slate);
+    --plum-soft: var(--slate-soft);
+
+    --ink-soft: rgba(245, 238, 220, 0.06);
+    --gold-soft-alpha: rgba(217, 176, 101, 0.18);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.65);
+  }
+
+  /* Back-compat — older code reads data-palette="dusk"; route onto light. */
+  [data-palette="dusk"] {
+    color-scheme: light;
   }
 
   html,
@@ -244,6 +341,10 @@
     color: var(--rust);
     background: var(--rust-2);
   }
+  .tag-gold {
+    color: var(--gold-2);
+    background: var(--gold-soft);
+  }
   .tag-ok.solid {
     background: var(--sage);
     color: #f6f7ef;
@@ -259,17 +360,18 @@
 
   .input-base {
     width: 100%;
-    padding: 9px 12px;
+    padding: 10px 12px;
     background: var(--card);
     border: 1px solid var(--rule);
-    border-radius: 4px;
+    border-radius: 3px;
     font-size: 13.5px;
     color: var(--ink);
     outline: none;
-    transition: border-color 0.12s;
+    transition: border-color 0.12s, box-shadow 0.12s;
   }
   .input-base:focus {
-    border-color: var(--ink);
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-soft-alpha);
   }
   .input-base::placeholder {
     color: var(--ink-faint);
@@ -292,9 +394,236 @@
     font-style: normal;
   }
 
-  .paper-tex {
-    background-image: radial-gradient(rgba(26, 22, 18, 0.025) 1px, transparent 1px);
-    background-size: 18px 18px;
+  /* Khonsera brand lockup — moon + wordmark, gold "a" tail. */
+  .brand-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .brand-lockup svg {
+    color: var(--gold);
+  }
+
+  /* Gold primary CTA — the dusk palette's principal action surface. */
+  .btn-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 3px;
+    background: var(--gold);
+    color: var(--paper);
+    border: 1px solid var(--gold);
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, transform 0.08s, border-color 0.15s;
+  }
+  .btn-gold:hover:not(:disabled) {
+    background: var(--gold-2);
+    border-color: var(--gold-2);
+    transform: translateY(-1px);
+  }
+  .btn-gold:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-ink {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 3px;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform 0.08s;
+  }
+  .btn-ink:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  /* Editorial card variants — Khonsera uses tighter radius (3px) than the
+     Journies j-card (6px) so the surfaces sit closer to print stock. */
+  .k-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .k-card-soft {
+    background: var(--card-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .k-hr {
+    height: 1px;
+    background: var(--rule);
+    border: 0;
+    margin: 0;
+  }
+
+  /* Serif italic helper */
+  .serif-i {
+    font-family: var(--serif);
+    font-style: italic;
+    letter-spacing: -0.01em;
+  }
+  .display {
+    font-family: var(--display);
+    font-style: italic;
+  }
+
+  /* Wordmark sizes for hero/marketing surfaces */
+  .wordmark {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 72px;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  .wordmark .em {
+    color: var(--gold);
+    font-style: italic;
+  }
+  .wordmark.sm {
+    font-size: 28px;
+  }
+  .wordmark.md {
+    font-size: 44px;
+  }
+  .wordmark.lg {
+    font-size: 96px;
+  }
+
+  /* Luxe ornamental rule — a hairline with a gold dot in the middle, used
+     between editorial sections to break a wall of body copy. */
+  .luxe-rule {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--gold);
+  }
+  .luxe-rule::before,
+  .luxe-rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--rule-2),
+      transparent
+    );
+  }
+  .luxe-rule .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Place-picker dropdown section header */
+  .pp-section {
+    display: flex;
+    flex-direction: column;
+  }
+  .pp-section + .pp-section {
+    border-top: 1px solid var(--rule);
+  }
+  .pp-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    background: var(--card);
+  }
+
+  /* Manual booking — mode picker pill row */
+  .mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    transition: all 0.12s;
+  }
+  .mode-pill:hover {
+    border-color: var(--rule-2);
+    color: var(--ink);
+  }
+  .mode-pill[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .mode-pill:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Bookings filter row (All / Rail / Flights / Stays / Cars) */
+  .bookings-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 0 6px;
+  }
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-2);
+    transition: all 0.12s;
+  }
+  .filter-pill:hover {
+    border-color: var(--rule-2);
+    color: var(--ink);
+  }
+  .filter-pill[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .filter-pill-count {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+  }
+  .filter-pill:not([data-active="true"]) .filter-pill-count {
+    background: var(--ink-soft);
+    color: var(--ink-dim);
   }
 
   .nav-tab {
@@ -359,7 +688,7 @@
   }
   .statusflow-step[data-state="current"] {
     color: var(--paper);
-    background: var(--terra);
+    background: var(--gold);
   }
   .statusflow-step[data-state="future"] {
     color: var(--ink-faint);
@@ -374,16 +703,17 @@
   .masthead-title {
     font-family: var(--serif);
     font-weight: 500;
-    font-size: 46px;
-    line-height: 1.04;
+    font-size: 50px;
+    line-height: 1.02;
     letter-spacing: -0.025em;
     color: var(--ink);
     margin: 0;
+    text-wrap: pretty;
   }
   .masthead-title em,
   .masthead-title .em {
     font-style: italic;
-    color: var(--terra);
+    color: var(--gold);
     font-weight: 500;
   }
   @media (max-width: 700px) {
@@ -395,14 +725,15 @@
   .standfirst {
     font-family: var(--serif);
     font-style: italic;
-    font-size: 15.5px;
-    line-height: 1.55;
+    font-size: 16px;
+    line-height: 1.5;
     color: var(--ink-2);
     margin: 0;
-    max-width: 56ch;
+    max-width: 58ch;
+    text-wrap: pretty;
   }
   .standfirst em {
-    color: var(--terra);
+    color: var(--gold);
     font-weight: 500;
   }
 
@@ -456,8 +787,8 @@
     color: var(--sage);
   }
   .sb-progress {
-    background: var(--terra);
-    color: #fff8ef;
+    background: var(--gold);
+    color: var(--paper);
   }
   .sb-done {
     background: transparent;
@@ -637,19 +968,19 @@
     color: var(--ink);
   }
 
-  /* Appointment highlight (terra block) */
+  /* Appointment highlight — luxe gold block */
   .appt-block {
-    background: rgba(194, 92, 58, 0.06);
-    border: 1px solid rgba(194, 92, 58, 0.18);
+    background: var(--gold-soft);
+    border: 1px solid var(--gold);
     border-radius: 4px;
     padding: 14px 16px;
   }
   .appt-block .tl-eyebrow {
-    color: var(--terra-deep);
+    color: var(--gold-2);
   }
   .appt-block .tl-title em,
   .appt-block .tl-title .em {
-    color: var(--terra);
+    color: var(--gold-2);
   }
 
   /* Day digest panel — right sidebar */
@@ -880,4 +1211,1460 @@
     letter-spacing: 0.06em;
     color: var(--ink-dim);
   }
+
+  /* ------------------------------------------------------------------
+   * Khonsera design pack — ported from khonsera.css verbatim so the live
+   * app speaks the exact same visual language as the reference deck.
+   * ------------------------------------------------------------------ */
+
+  /* Display + serif italic helpers */
+  .display-i {
+    font-family: var(--display);
+    font-style: italic;
+  }
+  .display-n {
+    font-family: var(--display);
+  }
+
+  /* The canonical .card — rounded 18px, sand-on-paper. Coexists with
+     the legacy .j-card / .k-card from earlier phases. */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+  }
+  .card-soft {
+    background: var(--card-2);
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+  }
+  .card-hero {
+    background: var(--card);
+    border: 1px solid var(--gold);
+    border-radius: 18px;
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 8px 30px rgba(200, 157, 77, 0.10);
+  }
+  .card-ink {
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    border-radius: 18px;
+  }
+
+  /* Khonsera button family — pill-soft radii, Inter 600, 14px padding.
+     btn-gold is the lead; btn-ink is the dark variant; btn-ghost is the
+     hairline. These coexist with the older btn-terra etc. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    transition: transform 0.08s, background 0.15s, border-color 0.15s;
+    border: 1px solid transparent;
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn-sm {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+  .btn-lg {
+    padding: 16px 22px;
+    font-size: 16px;
+    border-radius: 16px;
+  }
+  .btn-full {
+    width: 100%;
+  }
+
+  /* Override the earlier btn-gold to match the Khonsera shape. */
+  .btn-gold {
+    background: var(--gold);
+    color: #fff;
+    border: 1px solid var(--gold);
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s, transform 0.08s;
+  }
+  .btn-gold:hover:not(:disabled) {
+    background: var(--gold-2);
+    border-color: var(--gold-2);
+  }
+  .btn-ink {
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--rule-2);
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.12s;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--ink-soft);
+  }
+
+  /* Pills — quieter by default. Use the saturated variants sparingly. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: var(--card-2);
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .pill .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .pill-gold {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+  }
+  .pill-sage {
+    background: var(--sage-soft);
+    color: var(--sage);
+  }
+  .pill-amber {
+    background: var(--amber-soft);
+    color: var(--amber);
+  }
+  .pill-rust {
+    background: var(--rust-soft);
+    color: var(--rust);
+  }
+  .pill-slate {
+    background: var(--slate-soft);
+    color: var(--slate-2);
+  }
+  .pill-soft {
+    background: var(--ink-soft);
+    color: var(--ink-2);
+  }
+  .pill-ink {
+    background: var(--ink);
+    color: var(--gold);
+  }
+  .pill-anchor {
+    background: var(--ink);
+    color: var(--gold);
+    padding: 4px 9px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 9.5px;
+  }
+
+  /* Field — Khonsera input radius (12px). Coexists with input-base. */
+  .field {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .field:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-soft-alpha);
+  }
+  .field::placeholder {
+    color: var(--ink-faint);
+  }
+
+  /* Eyebrow — a tighter uppercase mono, used for screen sub-titles. */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  /* Section flank — hairline-flanked label used to split a screen. */
+  .flank {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .flank::before,
+  .flank::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  .flank.left::before {
+    display: none;
+  }
+  .flank.right::after {
+    display: none;
+  }
+
+  /* Divider hairline used inside cards */
+  .divider {
+    height: 1px;
+    background: var(--rule);
+    border: 0;
+    margin: 0;
+  }
+
+  /* ------------------------------------------------------------------
+   * Desktop shell — sidebar + topbar + content. Used by AppLayout on
+   * lg+ viewports.
+   * ------------------------------------------------------------------ */
+  .desk-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .desk-sidebar {
+    background: var(--paper-2);
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    padding: 22px 14px 18px;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .desk-sidebar .brand {
+    padding: 4px 8px 22px;
+  }
+  .desk-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .desk-nav-section {
+    padding: 12px 10px 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .desk-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-dim);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .desk-nav-item:hover {
+    color: var(--ink);
+    background: var(--ink-soft);
+  }
+  .desk-nav-item[data-active="true"] {
+    color: var(--ink);
+    background: var(--card);
+    border-color: var(--rule);
+  }
+  .desk-nav-item .count {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+  }
+  .desk-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .desk-topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .desk-topbar .crumb {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .desk-topbar .crumb .now {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--gold-2);
+    letter-spacing: 0;
+  }
+  .desk-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 36px 36px;
+  }
+
+  /* Display heads inside the desktop shell */
+  .desk-h1 {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 42px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .desk-h1 em {
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .desk-h2 {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .desk-h2 em {
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .desk-flank {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .desk-flank::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* The big "anchor" stat used in trip-summary cards */
+  .anchor-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .anchor-stat .v {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 36px;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  .anchor-stat .v em {
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .anchor-stat .l {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  /* KPI tile — gentler than anchor-stat */
+  .kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+  }
+  .kpi .v {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .kpi .l {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  /* ------------------------------------------------------------------
+   * Mobile tab bar (5 tabs, gold accent on active). Renders below lg.
+   * ------------------------------------------------------------------ */
+  .tabbar {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 8px 4px max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--rule);
+    background: var(--paper);
+    z-index: 20;
+  }
+  .tabbar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 0;
+    color: var(--ink-faint);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: color 0.12s;
+  }
+  .tabbar-item[data-active="true"] {
+    color: var(--gold);
+  }
+  .tabbar-item .tabbar-bar {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 2px;
+    background: var(--gold);
+    border-radius: 2px;
+  }
+
+  /* Mobile large-title app header (Plan / Bookings / Updates etc.) */
+  .app-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px 12px;
+  }
+  .app-header .title {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .app-header .title em {
+    color: var(--gold);
+  }
+  .app-header .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14.5px;
+    color: var(--gold-2);
+    margin: 6px 0 0;
+  }
+
+  /* Round icon-button used in headers (avatar / filter / add). */
+  .icon-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: var(--ink-soft);
+    color: var(--ink-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+  }
+  .icon-button:hover {
+    background: var(--card-2);
+  }
+  .icon-button.gold {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+  }
+  .icon-button.ink {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* ------------------------------------------------------------------
+   * Itineraries — editorial trip feed. A single chronological list of
+   * meaty rows: big italic date column, italic title with gold "em",
+   * status pill + meta line, optional notes, delete + chevron on the
+   * right. Live rows pick up a gold border treatment.
+   * ------------------------------------------------------------------ */
+  .trip-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .trip-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(110px, 130px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 22px;
+    padding: 18px 22px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    transition: border-color 0.14s, background 0.14s, box-shadow 0.14s,
+      transform 0.08s;
+  }
+  .trip-row:hover {
+    border-color: var(--gold);
+    background: var(--card);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 6px 20px rgba(200, 157, 77, 0.08);
+  }
+  .trip-row[data-past="true"] {
+    opacity: 0.78;
+  }
+  .trip-row[data-past="true"]:hover {
+    opacity: 1;
+  }
+  .trip-row-live {
+    border-color: var(--gold);
+    background: var(--card);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 8px 24px rgba(200, 157, 77, 0.12);
+  }
+  .trip-row-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+  }
+
+  /* Date column — magazine-style, day-of-week + big italic number + year */
+  .trip-row-date {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2px 0;
+    border-right: 1px solid var(--rule);
+    padding-right: 22px;
+    min-height: 64px;
+    justify-content: center;
+  }
+  .trip-row-day-of-week {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    color: var(--ink-dim);
+  }
+  .trip-row-day {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 44px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.025em;
+    margin-top: 2px;
+  }
+  .trip-row-live .trip-row-day {
+    color: var(--gold);
+  }
+  .trip-row-year {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  /* Content column */
+  .trip-row-content {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .trip-row-title {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .trip-row-title em {
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .trip-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .trip-row-meta-item {
+    font-size: 11.5px;
+    color: var(--ink-dim);
+  }
+  .trip-row-notes {
+    margin: 4px 0 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Right actions */
+  .trip-row-actions {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .trip-row-chev {
+    color: var(--ink-faint);
+    transition: color 0.14s, transform 0.14s;
+  }
+  .trip-row:hover .trip-row-chev {
+    color: var(--gold);
+    transform: translateX(2px);
+  }
+
+  @media (max-width: 720px) {
+    .trip-row {
+      grid-template-columns: minmax(70px, 84px) minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+    }
+    .trip-row-date {
+      padding-right: 14px;
+      min-height: 56px;
+    }
+    .trip-row-day {
+      font-size: 32px;
+    }
+    .trip-row-title {
+      font-size: 20px;
+      -webkit-line-clamp: 3;
+    }
+    /* Stack actions under content on phones — delete + chevron flow into
+       a third grid cell that spans both columns. */
+    .trip-row-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--rule);
+    }
+  }
+
+  /* ------------------------------------------------------------------
+   * New-itinerary brief — guided "anchor your day" intake. Big numbered
+   * sections on the left, a live preview of the stops Khonsera will
+   * create on the right.
+   * ------------------------------------------------------------------ */
+  .brief-grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .brief-preview {
+    position: sticky;
+    top: 90px;
+  }
+  .brief-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .brief-card-hero {
+    border-color: var(--gold);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 8px 24px rgba(200, 157, 77, 0.10);
+  }
+  .brief-card-soft {
+    background: var(--card-2);
+  }
+  .brief-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: #fff;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .brief-helper {
+    margin: 0 0 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    max-width: 58ch;
+  }
+  .brief-when-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .brief-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .brief-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .brief-pill {
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    border: 1px solid transparent;
+  }
+  .brief-pill[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .brief-pill-lg {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 9px 14px;
+    gap: 2px;
+    min-width: 110px;
+  }
+  .brief-pill-lg[data-active="true"] {
+    background: var(--gold);
+    color: #fff;
+  }
+  .brief-pill-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+  }
+  .brief-context-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .brief-subcard {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .brief-details {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .brief-details[open] {
+    background: var(--card);
+  }
+  .brief-details-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .brief-details-summary::-webkit-details-marker {
+    display: none;
+  }
+  .brief-details-hint {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .brief-preview-card {
+    background: var(--card);
+  }
+  .brief-preview-empty {
+    margin-top: 10px;
+    padding: 22px;
+    border: 1px dashed var(--rule-2);
+    border-radius: 12px;
+    background: var(--card-2);
+  }
+
+  /* Tiny mode glyph that sits on the timeline rail between stops in the
+     brief's "What we'll build" preview — signals there's intent or a
+     booking on that leg without taking a stop slot. */
+  .bones-via-tick {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--gold-tint);
+    border: 1px solid var(--gold);
+    color: var(--gold-2);
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  /* Transition row — the slim "via X" element between two anchor cards.
+     Centred mode chip with hairline rules either side; clicking opens
+     a popover with mode pills + an optional booked-ticket form. */
+  .transition-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .transition-line {
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  .transition-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--rule-2);
+    color: var(--ink-2);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+  }
+  .transition-chip:hover {
+    border-color: var(--gold);
+    color: var(--gold-2);
+  }
+  .transition-chip[data-active="true"] {
+    border-color: var(--gold);
+    color: var(--gold-2);
+    background: var(--gold-tint);
+  }
+  .transition-chip-auto {
+    border-style: dashed;
+    color: var(--ink-faint);
+    background: transparent;
+  }
+  .transition-chip > span:first-child {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .transition-booked-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+  }
+  /* "+ walk" hint on the closed chip when a station-based mode also
+     has a non-auto local-connection picked. */
+  .transition-local-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--ink-soft);
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+  }
+
+  .transition-pop {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    width: min(520px, calc(100% - 16px));
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 14px 14px 10px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .transition-pop-section {
+    display: flex;
+    flex-direction: column;
+  }
+  .transition-booked-toggle {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 10px;
+    align-items: baseline;
+    padding: 8px 12px;
+    background: var(--ink-soft);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .transition-booked-toggle input {
+    grid-row: span 2;
+    align-self: center;
+  }
+  .transition-booked-toggle > span:nth-child(2) {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .transition-booked-toggle > span:nth-child(3) {
+    grid-column: 2;
+    color: var(--ink-dim);
+  }
+  .transition-booked-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 4px;
+  }
+  .transition-pop-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .transition-pop-clear {
+    font-size: 11.5px;
+    color: var(--rust);
+  }
+
+  /* Custom-duration input — sits at the end of a duration pill row so
+     the user can type any number of minutes when no preset fits.
+     Highlights when the current value doesn't match any preset. */
+  .duration-custom {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 999px;
+    border: 1px dashed var(--rule-2);
+    background: transparent;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    flex: 0 0 auto;
+  }
+  .duration-custom[data-active="true"] {
+    border-color: var(--gold);
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    border-style: solid;
+  }
+  .duration-custom input {
+    width: 48px;
+    padding: 2px 4px;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: right;
+    -moz-appearance: textfield;
+  }
+  .duration-custom input:focus {
+    outline: 0;
+  }
+  .duration-custom input::-webkit-outer-spin-button,
+  .duration-custom input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Two-side local-connection picker — used inside the transition pop
+     when the user picks a station-/airport-based mode. Stacks on narrow
+     screens; runs side-by-side with a hairline divider on wider ones. */
+  .local-leg-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    padding-top: 6px;
+  }
+  @media (max-width: 640px) {
+    .local-leg-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .local-leg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 12px;
+    border-left: 1px solid var(--rule);
+  }
+  .local-leg:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+  @media (max-width: 640px) {
+    .local-leg {
+      padding-left: 0;
+      border-left: 0;
+      padding-top: 8px;
+      border-top: 1px dashed var(--rule);
+    }
+    .local-leg:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
+  .local-leg-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 4px;
+  }
+  .local-leg-helper {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  /* Timing-mode segmented control — Arrive by / Leave by / Around then. */
+  .timing-mode-row {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 3px;
+    background: var(--ink-soft);
+    border-radius: 999px;
+    gap: 2px;
+  }
+  .timing-mode-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border: 0;
+    transition: background 0.12s, color 0.12s;
+    cursor: pointer;
+  }
+  .timing-mode-btn:hover {
+    color: var(--ink);
+  }
+  .timing-mode-btn[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* "Around then" placeholder where the time input would otherwise sit. */
+  .around-then-blurb {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    border: 1px dashed var(--gold);
+    border-radius: 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  .around-then-blurb > span:first-child {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* Anchor kind badge + sub-role badge — the primary classification
+     surface on each anchor card. Both pop a small picker on click. */
+  .kind-badge,
+  .kind-subbadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: var(--card-2);
+    color: var(--ink-2);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .kind-badge:hover,
+  .kind-subbadge:hover {
+    border-color: var(--rule-2);
+  }
+  .kind-badge.kind-badge-stay {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    border-color: var(--gold);
+  }
+  .kind-badge.kind-badge-meal {
+    background: var(--rust-soft);
+    color: var(--rust);
+    border-color: var(--rust-soft);
+  }
+  .kind-badge.kind-badge-event {
+    background: var(--slate-soft);
+    color: var(--plum);
+    border-color: var(--slate-soft);
+  }
+  .kind-badge.kind-badge-station {
+    background: var(--slate-soft);
+    color: var(--slate-2);
+    border-color: var(--slate-soft);
+  }
+  .kind-subbadge {
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: 11px;
+    padding: 4px 9px;
+    border-style: dashed;
+  }
+  .kind-badge-flag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: currentColor;
+    opacity: 0.6;
+    margin-left: 2px;
+  }
+  .kind-pop {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 200px;
+    max-width: 280px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .kind-pop-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-2);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .kind-pop-item:hover {
+    background: var(--ink-soft);
+  }
+  .kind-pop-item[data-active="true"] {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+  }
+  .kind-pop-hint {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+  }
+
+  /* Kind-override row inside an anchor card — "treating as hotel · change" */
+  .kind-override {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: var(--ink-soft);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    flex-wrap: wrap;
+  }
+  .kind-override-current strong {
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .kind-override-flag {
+    margin-left: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold-2);
+  }
+  .kind-override-toggle {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gold-2);
+  }
+  .kind-override-toggle:hover {
+    color: var(--gold);
+  }
+  .kind-override-pills {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  /* Between-anchors + buttons — slim hairline-flanked add row */
+  .brief-between {
+    display: flex;
+    justify-content: center;
+    padding: 0;
+  }
+  .brief-between-mid {
+    padding: 2px 0;
+  }
+  .brief-between-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px dashed var(--rule-2);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+  }
+  .brief-between-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold-2);
+    background: var(--gold-tint);
+  }
+  .brief-between-btn span:first-child {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 600;
+    color: var(--gold-2);
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  @media (max-width: 900px) {
+    .brief-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .brief-preview {
+      position: static;
+    }
+    .brief-when-row {
+      grid-template-columns: 1fr;
+    }
+    .brief-card {
+      padding: 18px;
+    }
+  }
+
+  /* Phone — make all the pill rows in the brief scroll horizontally on
+     overflow rather than wrap, keep the popover hugging the viewport,
+     and reduce padding so nothing slips off the edge of the screen. */
+  @media (max-width: 640px) {
+    .brief-pill-row {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+      margin-left: -2px;
+      margin-right: -2px;
+      padding-left: 2px;
+      padding-right: 2px;
+    }
+    .brief-pill-row::-webkit-scrollbar {
+      display: none;
+    }
+    .brief-pill-row > .pill,
+    .brief-pill-row > .brief-pill {
+      flex: 0 0 auto;
+    }
+    .transition-pop {
+      width: calc(100vw - 24px);
+      max-width: calc(100vw - 24px);
+      left: 12px;
+      transform: none;
+    }
+    .transition-row {
+      flex-wrap: wrap;
+      justify-content: center;
+      row-gap: 4px;
+    }
+    .brief-card {
+      padding: 14px;
+    }
+    .kind-pop {
+      max-width: calc(100vw - 32px);
+    }
+  }
+
+  /* Paper texture — fine dot grid */
+  .paper-tex {
+    background-image: radial-gradient(
+      rgba(28, 28, 28, 0.025) 1px,
+      transparent 1px
+    );
+    background-size: 16px 16px;
+  }
+
+  /* Responsive collapses for the dashboard grids */
+  @media (max-width: 900px) {
+    .khonsera-two-up {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .khonsera-chain {
+      border-left: 0 !important;
+      padding-left: 0 !important;
+      border-top: 1px solid var(--rule);
+      padding-top: 18px;
+      margin-top: 8px;
+    }
+    .card-hero {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .khonsera-anchor-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+
+  /* Tighten the desktop content padding on mobile where the sidebar
+     isn't visible — desk-content is hidden in that layout, but in case
+     other surfaces use it we leave it untouched. The mobile main area
+     uses ordinary padding from the page itself. */
 }
