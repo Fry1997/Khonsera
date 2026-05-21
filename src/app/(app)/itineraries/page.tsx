@@ -16,8 +16,10 @@ type Row = {
   status: ItineraryStatus;
 };
 
+// 'draft' is retired in migration 0013; legacy rows fall through as
+// 'Planning' so nothing reads as having gone backwards.
 const STATUS_LABEL: Record<ItineraryStatus, string> = {
-  draft: "Draft",
+  draft: "Planning",
   planning: "Planning",
   planned: "Planned",
   in_progress: "Live now",
@@ -26,7 +28,7 @@ const STATUS_LABEL: Record<ItineraryStatus, string> = {
 };
 
 const STATUS_PILL: Record<ItineraryStatus, string> = {
-  draft: "pill-soft",
+  draft: "pill-amber",
   planning: "pill-amber",
   planned: "pill-sage",
   in_progress: "pill-gold",

@@ -127,8 +127,12 @@ const STATUS_SB: Record<ItineraryStatus, string> = {
   cancelled: "sb-cancelled",
 };
 
+// 'draft' is retired in migration 0013 — kept in the type union for
+// legacy rows, but the flow / labels no longer surface it. Anything
+// still holding 'draft' will fall through STATUS_LABEL's lookup and
+// display as the type's string itself; advance-status won't offer it
+// as a next step either.
 const STATUS_FLOW: ItineraryStatus[] = [
-  "draft",
   "planning",
   "planned",
   "in_progress",
@@ -136,7 +140,7 @@ const STATUS_FLOW: ItineraryStatus[] = [
 ];
 
 const STATUS_LABEL: Record<ItineraryStatus, string> = {
-  draft: "Draft",
+  draft: "Planning",
   planning: "Planning",
   planned: "Planned",
   in_progress: "Live now",
@@ -384,6 +388,8 @@ export function ItineraryEditor({
 
   const handleAdvanceStatus = () => {
     const next: ItineraryStatus | null =
+      // Legacy draft rows fold straight into planning, same as any
+      // brief submit would today.
       itinerary.status === "draft"
         ? "planning"
         : itinerary.status === "planning"

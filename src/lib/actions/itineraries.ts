@@ -431,6 +431,11 @@ export async function createItineraryFromBrief(
       date_start: dateStart,
       date_end: dateEnd,
       notes: parsed.value.notes ?? null,
+      // Brief submit lands in 'planning' — the brief IS the draft.
+      // Migration 0013 also set this as the column default, but we
+      // pass it explicitly so the intent stays visible at the call
+      // site and doesn't depend on the column default being correct.
+      status: "planning",
     })
     .select("*")
     .single();
