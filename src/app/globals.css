@@ -2484,14 +2484,28 @@
   }
 
   /* Inline-adds container under each anchor row — sits between the
-     transition's meta line and the next anchor card. Stacks the
-     anchor + stopover add affordances cleanly. */
+     transition's meta line and the next anchor card. Two add
+     affordances ('+ Add another here' and '+ Add a stop between
+     these') share a single horizontal row so they read as one
+     "add something to this gap" control rather than two stacked
+     options. Wraps on narrow viewports if both don't fit. */
   .anchor-inline-adds {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
     margin: 4px 0;
+  }
+  /* Reset AddBetween's standalone top margin when it's sitting
+     inside the row alongside the stopover trigger — keeps the two
+     vertically aligned. */
+  .anchor-inline-adds .brief-between {
+    margin-top: 0;
+  }
+  .anchor-inline-adds .brief-add-stop-trigger {
+    margin: 0;
   }
 
   /* Explicit mode picker — flat three-pill row that replaces the
