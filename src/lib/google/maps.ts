@@ -1,13 +1,17 @@
-// Google Maps Platform server helpers. Three APIs used:
+// Google Maps Platform server helpers.
 //   - Geocoding API:    address string -> { lat, lng }
-//   - Directions API:   origin + destination -> route summary + polyline
+//   - Routes API:       origin + destination -> route summary + polyline
+//                       (migrated from legacy Directions API in 2026 — the
+//                       legacy endpoint is no longer enabled on new GCP
+//                       projects)
 //   - Static Maps API:  signed URL that the /api/maps/static proxy fetches
 //
 // All called with the GOOGLE_MAPS_API_KEY env var. The key never leaves
 // the server — the browser fetches images through /api/maps/static.
 
 const GEOCODE_ENDPOINT = "https://maps.googleapis.com/maps/api/geocode/json";
-const DIRECTIONS_ENDPOINT = "https://maps.googleapis.com/maps/api/directions/json";
+const ROUTES_ENDPOINT =
+  "https://routes.googleapis.com/directions/v2:computeRoutes";
 const STATIC_MAP_ENDPOINT = "https://maps.googleapis.com/maps/api/staticmap";
 
 export function mapsApiKey(): string | null {
@@ -34,15 +38,37 @@ export async function geocodeAddress(
 
   try {
     const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.warn(
+        "geocodeAddress HTTP error:",
+        res.status,
+        body.slice(0, 200),
+        "address:",
+        address,
+      );
+      return null;
+    }
     const data = (await res.json()) as {
       status: string;
+      error_message?: string;
       results: Array<{
         formatted_address: string;
         geometry: { location: { lat: number; lng: number } };
       }>;
     };
-    if (data.status !== "OK" || data.results.length === 0) return null;
+    if (data.status !== "OK" || data.results.length === 0) {
+      if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+        console.warn(
+          "geocodeAddress failed:",
+          data.status,
+          data.error_message ?? "(no error_message)",
+          "address:",
+          address,
+        );
+      }
+      return null;
+    }
     const first = data.results[0];
     return {
       lat: first.geometry.location.lat,
@@ -87,6 +113,32 @@ export type DirectionsResult = {
   steps: DirectionsStep[];
 };
 
+// Map our internal mode strings to Routes API travelMode enum values.
+function toRoutesTravelMode(
+  mode: "driving" | "walking" | "transit" | "bicycling" | undefined,
+): "DRIVE" | "WALK" | "TRANSIT" | "BICYCLE" {
+  switch (mode) {
+    case "walking":
+      return "WALK";
+    case "transit":
+      return "TRANSIT";
+    case "bicycling":
+      return "BICYCLE";
+    case "driving":
+    default:
+      return "DRIVE";
+  }
+}
+
+// Routes API durations come back as RFC3339-style strings ("1234s" or
+// "1234.5s"). Pull the seconds out tolerantly.
+function parseRoutesDuration(d: string | number | undefined): number {
+  if (typeof d === "number") return Math.round(d);
+  if (!d) return 0;
+  const m = /^(-?\d+(?:\.\d+)?)s?$/.exec(d.trim());
+  return m ? Math.round(parseFloat(m[1])) : 0;
+}
+
 export async function getDirections(args: {
   origin: string | LatLng;
   destination: string | LatLng;
@@ -97,103 +149,170 @@ export async function getDirections(args: {
   const key = mapsApiKey();
   if (!key) return null;
 
-  const url = new URL(DIRECTIONS_ENDPOINT);
-  url.searchParams.set("origin", stringifyLatLng(args.origin));
-  url.searchParams.set("destination", stringifyLatLng(args.destination));
-  url.searchParams.set("mode", args.mode ?? "driving");
-  url.searchParams.set("key", key);
-  // Directions only honours one of departure_time / arrival_time. arrival_time
-  // takes precedence for the user's "I need to be there by 09:45" framing.
-  if (args.arrivalTime) {
-    url.searchParams.set(
-      "arrival_time",
-      String(Math.floor(args.arrivalTime.getTime() / 1000)),
-    );
+  const travelMode = toRoutesTravelMode(args.mode);
+  // arrivalTime is only valid on TRANSIT in Routes API; for DRIVE/WALK/BICYCLE
+  // we fall back to departureTime (or "leave now" if neither given).
+  const body: Record<string, unknown> = {
+    origin: latLngOrAddressToRoutes(args.origin),
+    destination: latLngOrAddressToRoutes(args.destination),
+    travelMode,
+    languageCode: "en-GB",
+    units: "METRIC",
+  };
+  if (travelMode === "TRANSIT" && args.arrivalTime) {
+    body.arrivalTime = args.arrivalTime.toISOString();
   } else if (args.departureTime) {
-    url.searchParams.set(
-      "departure_time",
-      String(Math.floor(args.departureTime.getTime() / 1000)),
-    );
+    body.departureTime = args.departureTime.toISOString();
+  }
+  if (travelMode === "DRIVE") {
+    body.routingPreference = "TRAFFIC_AWARE";
   }
 
+  // Field mask must list every leaf field we read below, otherwise Routes
+  // API returns them empty.
+  const fieldMask = [
+    "routes.duration",
+    "routes.distanceMeters",
+    "routes.polyline.encodedPolyline",
+    "routes.legs.startLocation.latLng",
+    "routes.legs.endLocation.latLng",
+    "routes.legs.steps.travelMode",
+    "routes.legs.steps.staticDuration",
+    "routes.legs.steps.distanceMeters",
+    "routes.legs.steps.polyline.encodedPolyline",
+    "routes.legs.steps.startLocation.latLng",
+    "routes.legs.steps.endLocation.latLng",
+    "routes.legs.steps.navigationInstruction",
+    "routes.legs.steps.transitDetails",
+    "geocodingResults.origin.formattedAddress",
+    "geocodingResults.destination.formattedAddress",
+  ].join(",");
+
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) return null;
-    type ApiStep = {
-      travel_mode: string;
-      duration: { value: number };
-      distance: { value: number };
-      start_location: { lat: number; lng: number };
-      end_location: { lat: number; lng: number };
-      polyline: { points: string };
-      html_instructions?: string;
-      transit_details?: {
-        line: { short_name?: string; name?: string; vehicle: { type: string; name?: string } };
+    const res = await fetch(ROUTES_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": fieldMask,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as {
+        error?: { status?: string; message?: string };
+      } | null;
+      console.warn(
+        "Routes API failed:",
+        err?.error?.status ?? `HTTP_${res.status}`,
+        err?.error?.message ?? "(no message)",
+      );
+      return null;
+    }
+    type RoutesStep = {
+      travelMode?: string;
+      staticDuration?: string;
+      distanceMeters?: number;
+      polyline?: { encodedPolyline?: string };
+      startLocation?: { latLng?: { latitude: number; longitude: number } };
+      endLocation?: { latLng?: { latitude: number; longitude: number } };
+      navigationInstruction?: { instructions?: string };
+      transitDetails?: {
+        stopDetails?: {
+          arrivalStop?: { name?: string };
+          departureStop?: { name?: string };
+          arrivalTime?: string;
+          departureTime?: string;
+        };
         headsign?: string;
-        departure_stop: { name: string };
-        arrival_stop: { name: string };
-        departure_time?: { value: number };
-        arrival_time?: { value: number };
-        num_stops?: number;
+        transitLine?: {
+          name?: string;
+          nameShort?: string;
+          vehicle?: { type?: string; name?: { text?: string } };
+        };
+        stopCount?: number;
       };
     };
     const data = (await res.json()) as {
-      status: string;
-      routes: Array<{
-        legs: Array<{
-          duration: { value: number };
-          distance: { value: number };
-          start_address: string;
-          end_address: string;
-          steps: ApiStep[];
+      routes?: Array<{
+        duration?: string;
+        distanceMeters?: number;
+        polyline?: { encodedPolyline?: string };
+        legs?: Array<{
+          startLocation?: { latLng?: { latitude: number; longitude: number } };
+          endLocation?: { latLng?: { latitude: number; longitude: number } };
+          steps?: RoutesStep[];
         }>;
-        overview_polyline: { points: string };
       }>;
-    };
-    if (data.status !== "OK" || data.routes.length === 0) return null;
-    const route = data.routes[0];
-    const leg = route.legs[0];
-    const steps: DirectionsStep[] = (leg.steps ?? []).map((s) => {
-      const out: DirectionsStep = {
-        travelMode: s.travel_mode,
-        durationSeconds: s.duration?.value ?? 0,
-        distanceMeters: s.distance?.value ?? 0,
-        startLocation: s.start_location,
-        endLocation: s.end_location,
-        polyline: s.polyline?.points ?? "",
-        htmlInstructions: s.html_instructions,
+      geocodingResults?: {
+        origin?: { formattedAddress?: string };
+        destination?: { formattedAddress?: string };
       };
-      if (s.transit_details) {
-        const td = s.transit_details;
+    };
+    const route = data.routes?.[0];
+    if (!route) return null;
+    const leg = route.legs?.[0];
+    const steps: DirectionsStep[] = (leg?.steps ?? []).map((s) => {
+      const startLatLng = s.startLocation?.latLng;
+      const endLatLng = s.endLocation?.latLng;
+      const out: DirectionsStep = {
+        travelMode: s.travelMode ?? "DRIVE",
+        durationSeconds: parseRoutesDuration(s.staticDuration),
+        distanceMeters: s.distanceMeters ?? 0,
+        startLocation: startLatLng
+          ? { lat: startLatLng.latitude, lng: startLatLng.longitude }
+          : { lat: 0, lng: 0 },
+        endLocation: endLatLng
+          ? { lat: endLatLng.latitude, lng: endLatLng.longitude }
+          : { lat: 0, lng: 0 },
+        polyline: s.polyline?.encodedPolyline ?? "",
+        htmlInstructions: s.navigationInstruction?.instructions,
+      };
+      const td = s.transitDetails;
+      if (td) {
         out.transit = {
-          line: td.line.short_name ?? td.line.name ?? td.line.vehicle.name ?? "",
-          vehicleType: td.line.vehicle.type,
+          line:
+            td.transitLine?.nameShort ??
+            td.transitLine?.name ??
+            td.transitLine?.vehicle?.name?.text ??
+            "",
+          vehicleType: td.transitLine?.vehicle?.type ?? "",
           headsign: td.headsign,
-          departureStop: td.departure_stop.name,
-          arrivalStop: td.arrival_stop.name,
-          departureTime: td.departure_time
-            ? new Date(td.departure_time.value * 1000).toISOString()
-            : undefined,
-          arrivalTime: td.arrival_time
-            ? new Date(td.arrival_time.value * 1000).toISOString()
-            : undefined,
-          numStops: td.num_stops,
+          departureStop: td.stopDetails?.departureStop?.name ?? "",
+          arrivalStop: td.stopDetails?.arrivalStop?.name ?? "",
+          departureTime: td.stopDetails?.departureTime,
+          arrivalTime: td.stopDetails?.arrivalTime,
+          numStops: td.stopCount,
         };
       }
       return out;
     });
+    const geo = data.geocodingResults;
     return {
-      durationSeconds: leg.duration.value,
-      distanceMeters: leg.distance.value,
-      overviewPolyline: route.overview_polyline.points,
-      startAddress: leg.start_address,
-      endAddress: leg.end_address,
+      durationSeconds: parseRoutesDuration(route.duration),
+      distanceMeters: route.distanceMeters ?? 0,
+      overviewPolyline: route.polyline?.encodedPolyline ?? "",
+      startAddress:
+        geo?.origin?.formattedAddress ??
+        (typeof args.origin === "string" ? args.origin : ""),
+      endAddress:
+        geo?.destination?.formattedAddress ??
+        (typeof args.destination === "string" ? args.destination : ""),
       steps,
     };
   } catch (e) {
     console.error("getDirections failed", e);
     return null;
   }
+}
+
+// Routes API accepts either { address } or { location: { latLng: ... } }.
+function latLngOrAddressToRoutes(
+  p: string | LatLng,
+): { address: string } | { location: { latLng: { latitude: number; longitude: number } } } {
+  if (typeof p === "string") return { address: p };
+  return { location: { latLng: { latitude: p.lat, longitude: p.lng } } };
 }
 
 // Named pin slots for the Journies map: each maps onto a brand hex. Use these
@@ -383,7 +502,3 @@ export function buildStaticMapUrl(args: {
   return url.toString();
 }
 
-function stringifyLatLng(p: string | LatLng): string {
-  if (typeof p === "string") return p;
-  return `${p.lat},${p.lng}`;
-}
