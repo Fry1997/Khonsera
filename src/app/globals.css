@@ -2410,6 +2410,14 @@
     font-size: 12px;
     color: var(--ink-faint);
   }
+  /* Inside a local-leg the popover only gives each column ~half its
+     width, so the default single-line scrolling pill row gets clipped.
+     There are only 4 modes total — let them wrap instead. */
+  .local-leg .brief-pill-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 6px;
+  }
 
   /* Timing-mode segmented control — Arrive by / Leave by / Around then. */
   .timing-mode-row {
