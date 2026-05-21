@@ -169,8 +169,11 @@ export async function getDirections(args: {
   }
 
   // Field mask must list every leaf field we read below, otherwise Routes
-  // API returns them empty.
-  const fieldMask = [
+  // API returns them empty. The mask is mode-aware: Routes API rejects
+  // paths that don't apply to the requested travelMode (e.g. asking for
+  // transitDetails on a DRIVE call returns INVALID_ARGUMENT). Keep the
+  // universal paths up front; only add transit-specific ones for TRANSIT.
+  const baseFieldMask = [
     "routes.duration",
     "routes.distanceMeters",
     "routes.polyline.encodedPolyline",
@@ -183,10 +186,13 @@ export async function getDirections(args: {
     "routes.legs.steps.startLocation.latLng",
     "routes.legs.steps.endLocation.latLng",
     "routes.legs.steps.navigationInstruction",
-    "routes.legs.steps.transitDetails",
     "geocodingResults.origin.formattedAddress",
     "geocodingResults.destination.formattedAddress",
-  ].join(",");
+  ];
+  const transitOnly = ["routes.legs.steps.transitDetails"];
+  const fieldMask = (
+    travelMode === "TRANSIT" ? [...baseFieldMask, ...transitOnly] : baseFieldMask
+  ).join(",");
 
   try {
     const res = await fetch(ROUTES_ENDPOINT, {
