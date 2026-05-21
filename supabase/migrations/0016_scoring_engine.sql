@@ -13,14 +13,22 @@
 -- can't drop one cleanly without recreating the type) but become
 -- unreachable via the data migration below.
 --
--- MCP is offline so this file is queued — apply via the Supabase
--- dashboard SQL runner or `supabase db push`.
+-- IMPORTANT: Postgres requires `alter type ... add value` to be
+-- committed before the new value can be used in any subsequent
+-- statement. The Supabase dashboard SQL editor (and `supabase db
+-- push`) wraps the whole file in a single transaction, which means
+-- the `update ... set preferred_mode = 'no_preference'` below would
+-- fail with `unsafe use of new value`. The `commit` after the enum
+-- extensions forces a transaction boundary so the rest of the file
+-- sees the new value.
 -- ============================================================================
 
 -- 1. Extend the travel_mode_preference enum.
 alter type travel_mode_preference add value if not exists 'walk';
 alter type travel_mode_preference add value if not exists 'taxi';
 alter type travel_mode_preference add value if not exists 'no_preference';
+
+commit;
 
 -- 2. Migrate existing rows. 'rail'/'compare'/'mixed' become
 --    'no_preference'; 'drive' stays.
