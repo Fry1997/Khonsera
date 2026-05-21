@@ -600,7 +600,10 @@ export async function lockTransitionOverride(
 const insertTransitLegSchema = z.object({
   itinerary_id: z.string().uuid(),
   before_stop_id: z.string().uuid(),
-  after_stop_id: z.string().uuid(),
+  // Null = append at the end of the itinerary. Used when the user
+  // wants to add a train/flight after their last anchor (e.g. flight
+  // home from a trip).
+  after_stop_id: z.string().uuid().nullable().optional(),
   mode: z.enum(["train", "flight"]),
   depart_hub_id: z.string().uuid(),
   depart_label: z.string().trim().max(200),
@@ -619,33 +622,49 @@ export async function insertTransitLeg(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Find the target slot. We insert at the after_stop's current
-  // sequence — both new transit stops will sit before it.
-  const { data: afterStop } = await supabase
-    .from("stops")
-    .select("sequence")
-    .eq("id", parsed.value.after_stop_id)
-    .eq("workspace_id", ctx.workspaceId)
-    .maybeSingle();
-  if (!afterStop) return err(errors.notFound("stop"));
-  const targetSeq = afterStop.sequence as number;
-
-  // Bump every later stop's sequence by +2 (we're inserting two
-  // stops at this position). Iterate desc so updates don't collide
-  // on any in-flight sequence-uniqueness assumptions.
-  const { data: shiftRows } = await supabase
-    .from("stops")
-    .select("id, sequence")
-    .eq("itinerary_id", parsed.value.itinerary_id)
-    .eq("workspace_id", ctx.workspaceId)
-    .gte("sequence", targetSeq)
-    .order("sequence", { ascending: false });
-  for (const r of shiftRows ?? []) {
-    await supabase
+  // Resolve insertion slot. When after_stop_id is provided we slot
+  // immediately before it (bumping its sequence and everything later
+  // by +2). When it's null we append at the end (max sequence + 1,
+  // no shift needed).
+  let targetSeq: number;
+  let needsShift = false;
+  if (parsed.value.after_stop_id) {
+    const { data: afterStop } = await supabase
       .from("stops")
-      .update({ sequence: (r.sequence as number) + 2 })
-      .eq("id", r.id as string)
-      .eq("workspace_id", ctx.workspaceId);
+      .select("sequence")
+      .eq("id", parsed.value.after_stop_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    if (!afterStop) return err(errors.notFound("stop"));
+    targetSeq = afterStop.sequence as number;
+    needsShift = true;
+  } else {
+    const { data: maxRow } = await supabase
+      .from("stops")
+      .select("sequence")
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .order("sequence", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    targetSeq = ((maxRow?.sequence as number | undefined) ?? -1) + 1;
+  }
+
+  if (needsShift) {
+    const { data: shiftRows } = await supabase
+      .from("stops")
+      .select("id, sequence")
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .gte("sequence", targetSeq)
+      .order("sequence", { ascending: false });
+    for (const r of shiftRows ?? []) {
+      await supabase
+        .from("stops")
+        .update({ sequence: (r.sequence as number) + 2 })
+        .eq("id", r.id as string)
+        .eq("workspace_id", ctx.workspaceId);
+    }
   }
 
   // Insert the two transit stops.
@@ -710,14 +729,17 @@ export async function insertTransitLeg(
   // The pre-existing transition from before_stop → after_stop is
   // now spurious (the route goes through the stations). Drop it so
   // the editor doesn't draw a phantom direct leg through the
-  // station chain.
-  await supabase
-    .from("transitions")
-    .delete()
-    .eq("itinerary_id", parsed.value.itinerary_id)
-    .eq("workspace_id", ctx.workspaceId)
-    .eq("from_stop_id", parsed.value.before_stop_id)
-    .eq("to_stop_id", parsed.value.after_stop_id);
+  // station chain. Only meaningful when there's a real
+  // after_stop_id (append-at-end mode has no pre-existing leg).
+  if (parsed.value.after_stop_id) {
+    await supabase
+      .from("transitions")
+      .delete()
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("from_stop_id", parsed.value.before_stop_id)
+      .eq("to_stop_id", parsed.value.after_stop_id);
+  }
 
   await resolveItineraryTimes(parsed.value.itinerary_id);
 

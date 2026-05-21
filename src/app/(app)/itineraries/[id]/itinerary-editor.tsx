@@ -435,13 +435,15 @@ export function ItineraryEditor({
   // of the usual inline-add row. Cleared on submit or cancel.
   const [transitFormFor, setTransitFormFor] = useState<{
     beforeStopId: string;
-    afterStopId: string;
+    // null = append at the end (used by the bottom + Train / + Flight).
+    afterStopId: string | null;
     mode: "train" | "flight";
   } | null>(null);
 
   const handleInsertTransitLeg = (input: {
     beforeStopId: string;
-    afterStopId: string;
+    // null = append at the end of the itinerary (no after anchor).
+    afterStopId: string | null;
     mode: "train" | "flight";
     departHubId: string;
     departLabel: string;
@@ -1245,6 +1247,45 @@ export function ItineraryEditor({
                       fromVirtualLabel={label}
                     />
                   ) : null}
+                  {/* Inline adds between Home and the first
+                      anchor. Lets the user insert a train (e.g.
+                      Wellingborough → Liverpool) right at the start
+                      of the trip instead of having to add it
+                      between the first two real anchors. */}
+                  {first ? (
+                    <InlineAddsRow
+                      beforeStopId={startStop.id}
+                      afterStopId={first.stop.id}
+                      insertAtSequence={first.stop.sequence}
+                      showStopoverTrigger={first.kind === "anchor"}
+                      beforeLabel={label}
+                      afterLabel={
+                        first.kind === "anchor"
+                          ? first.anchor.place?.label ?? "first stop"
+                          : first.stop.title ?? "first stop"
+                      }
+                      transitFormFor={transitFormFor}
+                      setTransitFormFor={setTransitFormFor}
+                      pending={pending}
+                      onInsertAnchor={(seq) =>
+                        handleInsertAnchorAt(seq ?? 0)
+                      }
+                      onInsertStopover={() =>
+                        handleInsertStopoverBetween(
+                          startStop.id,
+                          first.stop.id,
+                        )
+                      }
+                      onInsertTransitLeg={(form) =>
+                        handleInsertTransitLeg({
+                          beforeStopId: startStop.id,
+                          afterStopId: first.stop.id,
+                          mode: transitFormFor!.mode,
+                          ...form,
+                        })
+                      }
+                    />
+                  ) : null}
                 </>
               );
             })()}
@@ -1682,19 +1723,56 @@ export function ItineraryEditor({
               </ol>
             )}
 
-            {/* Bottom-of-timeline add affordance. Mirrors the brief
-                pattern: a dashed pill that creates a placeholder
-                anchor and auto-expands it for editing. The 'Return
-                to' button is gone — it surfaced suggestions even
-                when they didn't make sense (back-hopping to a
-                restaurant after dinner). User can just add a fresh
-                anchor and pick the same place. */}
-            <AddBetween
-              onAdd={() => {
-                const last = sortedStops[sortedStops.length - 1];
-                handleInsertAnchorAt((last?.sequence ?? -1) + 1);
-              }}
-            />
+            {/* Bottom-of-timeline add affordances. + Train and +
+                Flight here append a transit chain at the end (no
+                surrounding anchor to slot before) — handy for
+                booking the journey home from a multi-day trip. */}
+            {(() => {
+              const last = sortedStops[sortedStops.length - 1];
+              if (!last) {
+                return (
+                  <AddBetween
+                    onAdd={() => handleInsertAnchorAt(0)}
+                  />
+                );
+              }
+              return (
+                <InlineAddsRow
+                  beforeStopId={last.id}
+                  afterStopId={null}
+                  insertAtSequence={(last.sequence ?? -1) + 1}
+                  // Stopovers conceptually need a surrounding pair;
+                  // at the very end of the timeline there's no
+                  // 'next anchor' to fit between, so we hide the
+                  // stopover button here.
+                  showStopoverTrigger={false}
+                  beforeLabel={
+                    last.title ??
+                    last.location?.name ??
+                    "the last stop"
+                  }
+                  afterLabel="end of trip"
+                  transitFormFor={transitFormFor}
+                  setTransitFormFor={setTransitFormFor}
+                  pending={pending}
+                  onInsertAnchor={(seq) =>
+                    handleInsertAnchorAt(seq ?? (last.sequence ?? -1) + 1)
+                  }
+                  onInsertStopover={() => {
+                    // Unreachable — showStopoverTrigger is false at
+                    // the bottom-of-timeline position.
+                  }}
+                  onInsertTransitLeg={(form) =>
+                    handleInsertTransitLeg({
+                      beforeStopId: last.id,
+                      afterStopId: null,
+                      mode: transitFormFor!.mode,
+                      ...form,
+                    })
+                  }
+                />
+              );
+            })()}
           </div>
 
           {/* Right: map + day digest */}
@@ -1986,6 +2064,118 @@ function StopBookingMenu({
 // a small Remove button. Less affordance than an AnchorCard because
 // these stops are facts of a booked train/flight, not free-form
 // anchors the user fills in.
+// InlineAddsRow — the row of dashed pills between two anchors that
+// lets the user insert a new anchor, stopover, train leg or flight
+// leg. Reused for: between anchor pairs, between home and the first
+// anchor, and after the last anchor (where afterStopId is null and
+// the inserts append at the end). When the user clicks + Train / +
+// Flight, transitFormFor is set to the matching pair and the form
+// renders in place of the pill row.
+function InlineAddsRow({
+  beforeStopId,
+  afterStopId,
+  insertAtSequence,
+  showStopoverTrigger,
+  beforeLabel,
+  afterLabel,
+  transitFormFor,
+  setTransitFormFor,
+  pending,
+  onInsertAnchor,
+  onInsertStopover,
+  onInsertTransitLeg,
+}: {
+  beforeStopId: string;
+  // null = append at end (no after-anchor to slot before).
+  afterStopId: string | null;
+  // Sequence to insert at when the user clicks + Add another. null
+  // means append (max sequence + 1, handled inside the handler).
+  insertAtSequence: number | null;
+  showStopoverTrigger: boolean;
+  beforeLabel: string;
+  afterLabel: string;
+  transitFormFor: {
+    beforeStopId: string;
+    afterStopId: string | null;
+    mode: "train" | "flight";
+  } | null;
+  setTransitFormFor: (
+    next:
+      | {
+          beforeStopId: string;
+          afterStopId: string | null;
+          mode: "train" | "flight";
+        }
+      | null,
+  ) => void;
+  pending: boolean;
+  onInsertAnchor: (sequence: number | null) => void;
+  onInsertStopover: () => void;
+  onInsertTransitLeg: (form: {
+    departHubId: string;
+    departLabel: string;
+    departTime: string;
+    arriveHubId: string;
+    arriveLabel: string;
+    arriveTime: string;
+    serviceNumber?: string;
+  }) => void;
+}) {
+  const formActive =
+    !!transitFormFor &&
+    transitFormFor.beforeStopId === beforeStopId &&
+    transitFormFor.afterStopId === afterStopId;
+
+  if (formActive && transitFormFor) {
+    return (
+      <TransitLegForm
+        mode={transitFormFor.mode}
+        beforeLabel={beforeLabel}
+        afterLabel={afterLabel}
+        pending={pending}
+        onCancel={() => setTransitFormFor(null)}
+        onSubmit={onInsertTransitLeg}
+      />
+    );
+  }
+
+  return (
+    <div className="anchor-inline-adds">
+      <AddBetween between onAdd={() => onInsertAnchor(insertAtSequence)} />
+      {showStopoverTrigger ? (
+        <button
+          type="button"
+          className="brief-add-stop-trigger"
+          onClick={onInsertStopover}
+          title="Drop in somewhere between these two anchors"
+        >
+          + Add a stop between these
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className="brief-add-stop-trigger"
+        onClick={() =>
+          setTransitFormFor({ beforeStopId, afterStopId, mode: "train" })
+        }
+        title="Add a train journey here"
+      >
+        + Train
+      </button>
+      <button
+        type="button"
+        className="brief-add-stop-trigger"
+        onClick={() =>
+          setTransitFormFor({ beforeStopId, afterStopId, mode: "flight" })
+        }
+        title="Add a flight here"
+      >
+        + Flight
+      </button>
+    </div>
+  );
+}
+
 function TransitStopCard({
   stop,
   direction,
