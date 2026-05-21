@@ -176,6 +176,68 @@ export async function updateStop(
   return result;
 }
 
+// insertStopAt — bumps every later stop's sequence by +1 to open a
+// slot at `sequence`, then inserts a new stop there. Used by the
+// editor's inline AddBetween triggers for both new anchors and new
+// stopovers. Returns the newly-inserted stop's id so the caller can
+// e.g. auto-expand it in the UI.
+const insertStopAtSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  sequence: z.number().int().min(0),
+  ...baseStopFields,
+});
+
+export async function insertStopAt(
+  input: z.input<typeof insertStopAtSchema>,
+): Promise<Result<Stop>> {
+  const parsed = parseInput(insertStopAtSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Bump every stop at sequence >= target by +1 to make room. Order
+  // by sequence desc so the writes don't collide with each other on
+  // any in-flight uniqueness assumptions.
+  const { data: shiftRows } = await supabase
+    .from("stops")
+    .select("id, sequence")
+    .eq("itinerary_id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .gte("sequence", parsed.value.sequence)
+    .order("sequence", { ascending: false });
+  for (const r of shiftRows ?? []) {
+    await supabase
+      .from("stops")
+      .update({ sequence: (r.sequence as number) + 1 })
+      .eq("id", r.id as string)
+      .eq("workspace_id", ctx.workspaceId);
+  }
+
+  const { itinerary_id, sequence, ...fields } = parsed.value;
+  const { data, error } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence,
+      ...fields,
+    })
+    .select("*")
+    .single();
+  const result = dbResult<Stop>(data, error, "stop");
+  if (result.ok) {
+    await recordAudit({
+      entityType: "stop",
+      entityId: result.value.id,
+      action: "create",
+      after: result.value,
+    });
+    await resolveItineraryTimes(result.value.itinerary_id);
+  }
+  return result;
+}
+
 export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
   const ctx = await requireUserContext();
   const supabase = await createClient();

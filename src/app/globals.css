@@ -2483,6 +2483,17 @@
     color: var(--rust);
   }
 
+  /* Inline-adds container under each anchor row — sits between the
+     transition's meta line and the next anchor card. Stacks the
+     anchor + stopover add affordances cleanly. */
+  .anchor-inline-adds {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+  }
+
   /* Explicit mode picker — flat three-pill row that replaces the
      auto-resolved chip in the editor. Walk · Drive · Taxi each
      visible with their times, user picks one. Pills are sized to
@@ -2524,6 +2535,13 @@
     background: var(--gold);
     border-color: var(--gold);
     color: var(--paper);
+    font-weight: 700;
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 2px 8px rgba(200, 157, 77, 0.25);
+  }
+  .mode-pill[data-state="selected"] .mode-pill-meta {
+    color: var(--paper);
+    opacity: 1;
   }
   .mode-pill[data-state="selected"]:hover {
     background: var(--gold);

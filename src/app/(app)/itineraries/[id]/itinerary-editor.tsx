@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
-import { createStop, deleteStop, updateStop } from "@/lib/actions/stops";
+import {
+  createStop,
+  deleteStop,
+  insertStopAt,
+  updateStop,
+} from "@/lib/actions/stops";
 import {
   upsertTransition,
   setTransitionMode,
@@ -33,6 +38,7 @@ import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 import { TransportIcon, StopIcon } from "@/components/icons";
 import {
+  AddBetween,
   AnchorCard,
   StopoverCard,
   TRANSITION_OPTIONS,
@@ -370,6 +376,68 @@ export function ItineraryEditor({
     };
     return resolveLeg(fromStop, toStop, lookup, ctx);
   };
+  // Track the most recently created stop so we can auto-expand it
+  // in the picker on the next render after router.refresh resolves.
+  const [pendingExpandUid, setPendingExpandUid] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingExpandUid) return;
+    // Reference the raw `stops` prop rather than sortedStops, which
+    // is declared further down (hoisting issue). Either contains the
+    // newly-created stop after router.refresh.
+    if (stops.find((s) => s.id === pendingExpandUid)) {
+      setExpandedUids((prev) => new Set(prev).add(pendingExpandUid));
+      setPendingExpandUid(null);
+    }
+  }, [pendingExpandUid, stops]);
+
+  // Insert a new appointment anchor at the given sequence. AddBetween
+  // wraps this via the brief's UI pattern: a small dashed pill
+  // between cards.
+  const handleInsertAnchorAt = (sequence: number) => {
+    startTransition(async () => {
+      setError(null);
+      const result = await insertStopAt({
+        itinerary_id: itinerary.id,
+        sequence,
+        type: "appointment",
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      setPendingExpandUid(result.value.id);
+      router.refresh();
+    });
+  };
+
+  // Insert a new stopover between two existing anchor stops.
+  // 'stopover' stops are intent rows (no fixed time); the user picks
+  // a place + ideal duration via the StopoverCard expanded mode.
+  const handleInsertStopoverBetween = (
+    fromStopId: string,
+    toStopId: string,
+  ) => {
+    const toStop = sortedStops.find((s) => s.id === toStopId);
+    if (!toStop) return;
+    startTransition(async () => {
+      setError(null);
+      const result = await insertStopAt({
+        itinerary_id: itinerary.id,
+        sequence: toStop.sequence,
+        type: "stopover",
+        duration_minutes: 30,
+        is_time_fixed: false,
+        metadata: { kind: "stopover" },
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      setPendingExpandUid(result.value.id);
+      router.refresh();
+    });
+  };
+
   const handleSetOverride = (
     fromStopId: string,
     toStopId: string,
@@ -1469,51 +1537,55 @@ export function ItineraryEditor({
                           )}
                         />
                       ) : null}
+                      {/* Inline add affordances between anchor pairs
+                          — adds a new anchor at this slot OR adds a
+                          stopover between this anchor and the next
+                          (only when no stopover already exists for
+                          the pair). Mirrors the brief's UI. */}
+                      {nextItem && item.kind === "anchor" ? (
+                        <div className="anchor-inline-adds">
+                          <AddBetween
+                            between
+                            onAdd={() =>
+                              handleInsertAnchorAt(nextItem.stop.sequence)
+                            }
+                          />
+                          {nextItem.kind === "anchor" ? (
+                            <button
+                              type="button"
+                              className="brief-add-stop-trigger"
+                              onClick={() =>
+                                handleInsertStopoverBetween(
+                                  stop.id,
+                                  nextItem.stop.id,
+                                )
+                              }
+                              title="Drop in somewhere between these two anchors"
+                            >
+                              + Add a stop between these
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </li>
                   );
                 })}
               </ol>
             )}
 
-            {/* Footer actions */}
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-rule pt-5">
-              {adding ? (
-                <AddStopForm
-                  itineraryId={itinerary.id}
-                  customers={customers}
-                  customerSites={customerSites}
-                  locations={locations}
-                  contacts={contacts}
-                  onCancel={() => setAdding(false)}
-                  onSubmit={handleAdd}
-                  pending={pending}
-                />
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setAdding(true)}
-                    className="btn-terra"
-                    disabled={pending}
-                  >
-                    {Icon.plus}
-                    Add point
-                  </button>
-                  {returnToTarget ? (
-                    <button
-                      type="button"
-                      onClick={() => handleReturnTo(returnToTarget)}
-                      className="btn-ghost"
-                      disabled={pending}
-                      title="Add a back-hop to the previous place"
-                    >
-                      {Icon.back}
-                      Return to {returnToTarget.label}
-                    </button>
-                  ) : null}
-                </>
-              )}
-            </div>
+            {/* Bottom-of-timeline add affordance. Mirrors the brief
+                pattern: a dashed pill that creates a placeholder
+                anchor and auto-expands it for editing. The 'Return
+                to' button is gone — it surfaced suggestions even
+                when they didn't make sense (back-hopping to a
+                restaurant after dinner). User can just add a fresh
+                anchor and pick the same place. */}
+            <AddBetween
+              onAdd={() => {
+                const last = sortedStops[sortedStops.length - 1];
+                handleInsertAnchorAt((last?.sequence ?? -1) + 1);
+              }}
+            />
           </div>
 
           {/* Right: map + day digest */}
