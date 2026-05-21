@@ -10,6 +10,30 @@ import { DurationRow } from "./duration-row";
 import { STOPOVER_DURATIONS, fmtDur } from "./helpers";
 import type { Anchor, Stopover } from "./types";
 
+// Back-calc summary for a stopover, derived from the surrounding
+// anchors' fixed times and the leg transitions' computed durations.
+// Editor surfaces this on the summary card so a planning user can
+// see "if you leave the previous anchor at its endTime you'll be
+// here by X; the next anchor starts at Y so you need to leave by Z".
+//
+// `status` reflects whether the user's ideal duration fits inside
+// the derived window:
+//   * 'fits'        — ideal duration <= available window, slack > 10m
+//   * 'tight'       — slack is < 10m
+//   * 'infeasible'  — window is too small for the ideal duration
+//   * 'unknown'     — we don't have enough data to compute (e.g. a
+//                     non-fixed neighbour or a missing travel time)
+export type StopoverBackCalc = {
+  earliestArrive?: string; // HH:MM in workspace tz
+  latestLeave?: string; // HH:MM in workspace tz
+  availableMinutes?: number;
+  status: "fits" | "tight" | "infeasible" | "unknown";
+  // Optional one-line override message when status is tight /
+  // infeasible — used to spell out exactly which constraint is
+  // breaking ("needs 30m, only 18m available").
+  message?: string;
+};
+
 // StopoverCard — an *intent* card for a place you want to fit between
 // two anchors. Visually indented + dashed border so it reads as a
 // secondary item that depends on its neighbours, not a hard-pinned
@@ -31,6 +55,9 @@ export function StopoverCard({
   onRemove,
   mode = "expanded",
   onModeChange,
+  // Optional back-calc; editor computes this from neighbour anchors +
+  // leg transitions and passes it in. Brief leaves it undefined.
+  backCalc,
 }: {
   stopover: Stopover;
   fromAnchor: Anchor;
@@ -42,6 +69,7 @@ export function StopoverCard({
   onRemove: () => void;
   mode?: "expanded" | "summary";
   onModeChange?: (next: "expanded" | "summary") => void;
+  backCalc?: StopoverBackCalc;
 }) {
   const fromLabel = fromAnchor.place?.label ?? "the previous stop";
   const toLabel = toAnchor.place?.label ?? "the next anchor";
@@ -77,6 +105,7 @@ export function StopoverCard({
             </button>
           </div>
         </header>
+        {backCalc ? <BackCalcLine backCalc={backCalc} /> : null}
       </div>
     );
   }
@@ -127,11 +156,41 @@ export function StopoverCard({
         onChange={(mins) => onChange({ durationMins: mins })}
       />
 
-      <p className="stopover-followup">
-        Khonsera will work out the latest you can leave {fromLabel} and
-        leave here so you still hit {toLabel} on time — travel-time math
-        coming next.
-      </p>
+      {backCalc ? (
+        <BackCalcLine backCalc={backCalc} />
+      ) : (
+        <p className="stopover-followup">
+          Khonsera will work out the latest you can leave {fromLabel}{" "}
+          and leave here so you still hit {toLabel} on time.
+        </p>
+      )}
     </div>
+  );
+}
+
+// Inline back-calc display — same in summary and expanded modes.
+function BackCalcLine({ backCalc }: { backCalc: StopoverBackCalc }) {
+  if (backCalc.status === "unknown") return null;
+  const positive =
+    backCalc.status === "fits" || backCalc.status === "tight"
+      ? "stopover-backcalc-line"
+      : "stopover-backcalc-line stopover-backcalc-bad";
+  if (backCalc.message) {
+    return <p className={positive}>{backCalc.message}</p>;
+  }
+  const slack =
+    backCalc.availableMinutes != null
+      ? `${backCalc.availableMinutes}m available`
+      : null;
+  const arrive = backCalc.earliestArrive
+    ? `arrive ~${backCalc.earliestArrive}`
+    : null;
+  const leave = backCalc.latestLeave
+    ? `leave by ${backCalc.latestLeave}`
+    : null;
+  return (
+    <p className={positive}>
+      {[arrive, leave, slack].filter(Boolean).join(" · ")}
+    </p>
   );
 }

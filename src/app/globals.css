@@ -2335,6 +2335,22 @@
     color: var(--ink-faint);
     line-height: 1.45;
   }
+  /* Back-calc line inside a stopover card — surfaces "arrive ~13:42 ·
+     leave by 14:12 · 18m available" once the editor has travel times
+     for both legs. Stays at the bottom of the card; switches to rust
+     when the ideal duration won't fit. */
+  .stopover-backcalc-line {
+    margin: 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.4;
+  }
+  .stopover-backcalc-bad {
+    color: var(--rust);
+  }
+
   /* Feasibility flags — soft inline badges under a transition row
      when the planned travel time eats too much of the window between
      two fixed-time anchors. "tight" is amber/gold (warning), "bad"

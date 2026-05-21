@@ -41,6 +41,7 @@ import {
   type DbStop,
   type EditorTimelineItem,
   type ModePreviewMap,
+  type StopoverBackCalc,
 } from "@/components/itinerary";
 
 // Inline icons — line-art style matching the warm editorial design.
@@ -292,6 +293,52 @@ export function ItineraryEditor({
       routePreviews.fetchPreview(fromStopId, toStopId, opt.value);
     }
   };
+
+  // Background prefetch: any stopover whose surrounding legs don't
+  // already have a computed_duration_minutes gets a quiet 'drive'
+  // estimate so the back-calc line on its summary card has
+  // something to show. Without this the card stays mute until the
+  // user touches the mode picker on both legs.
+  useEffect(() => {
+    for (let i = 0; i < planningTimeline.length; i++) {
+      const item = planningTimeline[i];
+      if (item.kind !== "stopover") continue;
+      const prevStop = (() => {
+        for (let j = i - 1; j >= 0; j--) {
+          const it = planningTimeline[j];
+          if (it.kind === "anchor") return it.stop;
+        }
+        return undefined;
+      })();
+      const nextStop = (() => {
+        for (let j = i + 1; j < planningTimeline.length; j++) {
+          const it = planningTimeline[j];
+          if (it.kind === "anchor") return it.stop;
+        }
+        return undefined;
+      })();
+      const legIn = prevStop
+        ? transitions.find(
+            (t) =>
+              t.from_stop_id === prevStop.id && t.to_stop_id === item.stop.id,
+          )
+        : null;
+      const legOut = nextStop
+        ? transitions.find(
+            (t) =>
+              t.from_stop_id === item.stop.id && t.to_stop_id === nextStop.id,
+          )
+        : null;
+      if (prevStop && legIn?.computed_duration_minutes == null) {
+        routePreviews.fetchPreview(prevStop.id, item.stop.id, "drive");
+      }
+      if (nextStop && legOut?.computed_duration_minutes == null) {
+        routePreviews.fetchPreview(item.stop.id, nextStop.id, "drive");
+      }
+    }
+    // routePreviews.fetchPreview is stable (memoised inside the hook).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planningTimeline, transitions]);
   // editedAnchors holds the per-anchor in-flight patch while a card
   // is in expanded mode. We seed each entry from the DB anchor on
   // first expand; onChange writes here; clicking Done flushes the
@@ -827,6 +874,68 @@ export function ItineraryEditor({
                       }
                       return null;
                     })();
+                    // Back-calc: needs the previous/next *anchor stop
+                    // rows* (with start/end times) plus the two leg
+                    // transitions in/out of this stopover.
+                    const prevAnchorStop = (() => {
+                      for (let j = i - 1; j >= 0; j--) {
+                        const it = planningTimeline[j];
+                        if (it.kind === "anchor") return it.stop;
+                      }
+                      return undefined;
+                    })();
+                    const nextAnchorStop = (() => {
+                      for (let j = i + 1; j < planningTimeline.length; j++) {
+                        const it = planningTimeline[j];
+                        if (it.kind === "anchor") return it.stop;
+                      }
+                      return undefined;
+                    })();
+                    const legIn = prevAnchorStop
+                      ? transitions.find(
+                          (t) =>
+                            t.from_stop_id === prevAnchorStop.id &&
+                            t.to_stop_id === stop.id,
+                        )
+                      : null;
+                    const legOut = nextAnchorStop
+                      ? transitions.find(
+                          (t) =>
+                            t.from_stop_id === stop.id &&
+                            t.to_stop_id === nextAnchorStop.id,
+                        )
+                      : null;
+                    // Fall back to the drive preview when a leg's
+                    // transition has no computed duration stored
+                    // (because the user hasn't picked a mode yet).
+                    const legInPreview = prevAnchorStop
+                      ? routePreviews.get(
+                          prevAnchorStop.id,
+                          item.stop.id,
+                          "drive",
+                        )
+                      : null;
+                    const legOutPreview = nextAnchorStop
+                      ? routePreviews.get(
+                          item.stop.id,
+                          nextAnchorStop.id,
+                          "drive",
+                        )
+                      : null;
+                    const backCalc = computeStopoverBackCalc(
+                      prevAnchorStop,
+                      nextAnchorStop,
+                      legIn,
+                      legOut,
+                      item.stopover.durationMins,
+                      timezone,
+                      legInPreview && legInPreview !== "pending"
+                        ? legInPreview.durationMinutes
+                        : null,
+                      legOutPreview && legOutPreview !== "pending"
+                        ? legOutPreview.durationMinutes
+                        : null,
+                    );
                     const isExpanded = expandedUids.has(item.stopover.uid);
                     return (
                       <li key={stop.id} className="flex flex-col">
@@ -849,6 +958,7 @@ export function ItineraryEditor({
                           customers={customers}
                           customerSites={customerSites}
                           locations={locations}
+                          backCalc={backCalc}
                           mode={isExpanded ? "expanded" : "summary"}
                           onModeChange={(next) => {
                             if (next === "expanded") {
@@ -1445,6 +1555,83 @@ type FeasibilityStop = {
   start_time: string | null;
   end_time: string | null;
 };
+
+// Stopover back-calc: given the anchors on either side and the
+// transitions in/out, derive when the user can actually arrive at the
+// stopover and how long they have. Two travel durations + two pinned
+// times collapse to a window; the ideal duration on the stopover
+// itself decides whether it fits.
+function computeStopoverBackCalc(
+  prevStop: FeasibilityStop | undefined,
+  nextStop: FeasibilityStop | undefined,
+  legIn: TransitionRow | null | undefined,
+  legOut: TransitionRow | null | undefined,
+  idealDurationMinutes: number,
+  timezone: string,
+  // Optional fallback durations from the route preview cache —
+  // useful when the user hasn't yet picked a mode for either leg
+  // (so transitions.computed_duration_minutes is null) but we have
+  // a 'drive' preview cached on the client. Without this fallback
+  // the card stays mute until the user touches both legs, which
+  // misses most of the back-calc's value.
+  legInFallbackMinutes?: number | null,
+  legOutFallbackMinutes?: number | null,
+): StopoverBackCalc {
+  const inMins =
+    legIn?.computed_duration_minutes ?? legInFallbackMinutes ?? null;
+  const outMins =
+    legOut?.computed_duration_minutes ?? legOutFallbackMinutes ?? null;
+  if (
+    !prevStop?.is_time_fixed ||
+    !nextStop?.is_time_fixed ||
+    !prevStop.end_time ||
+    !nextStop.start_time ||
+    inMins == null ||
+    outMins == null
+  ) {
+    return { status: "unknown" };
+  }
+  const fromEnd = new Date(prevStop.end_time);
+  const toStart = new Date(nextStop.start_time);
+  const earliest = new Date(fromEnd.getTime() + inMins * 60_000);
+  const latest = new Date(toStart.getTime() - outMins * 60_000);
+  const availableMins = Math.round(
+    (latest.getTime() - earliest.getTime()) / 60_000,
+  );
+  const tz = timezone;
+  const fmt = (d: Date) =>
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: tz,
+    }).format(d);
+
+  if (availableMins < 0) {
+    return {
+      status: "infeasible",
+      message: `Won't fit: travel alone is ${inMins + outMins}m, gap is ${Math.round(
+        (toStart.getTime() - fromEnd.getTime()) / 60_000,
+      )}m`,
+    };
+  }
+  if (availableMins < idealDurationMinutes) {
+    return {
+      status: "infeasible",
+      availableMinutes: availableMins,
+      earliestArrive: fmt(earliest),
+      latestLeave: fmt(latest),
+      message: `Aim is ${idealDurationMinutes}m but only ${availableMins}m available between ${fmt(earliest)} and ${fmt(latest)}`,
+    };
+  }
+  const slack = availableMins - idealDurationMinutes;
+  return {
+    status: slack < 10 ? "tight" : "fits",
+    availableMinutes: availableMins,
+    earliestArrive: fmt(earliest),
+    latestLeave: fmt(latest),
+  };
+}
 
 function computeFeasibility(
   fromStop: FeasibilityStop | undefined,

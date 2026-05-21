@@ -16,7 +16,7 @@ export {
   useRoutePreviews,
   type RoutePreview,
 } from "./use-route-preview";
-export { StopoverCard } from "./stopover-card";
+export { StopoverCard, type StopoverBackCalc } from "./stopover-card";
 export { JourneySpine } from "./journey-spine";
 export {
   anchorFromStop,
