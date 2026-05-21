@@ -285,7 +285,11 @@ const briefTransitionSchema = z.object({
   from_client_id: z.string().min(1).max(80),
   to_client_id: z.string().min(1).max(80),
   mode: transitionModeEnum,
-  local_mode: localModeEnum.nullable().optional(),
+  // Two-sided local connection for station-/airport-based modes:
+  //   local_before — origin → departure terminal
+  //   local_after  — arrival terminal → destination
+  local_before: localModeEnum.nullable().optional(),
+  local_after: localModeEnum.nullable().optional(),
   // Pre-booked ticket — when present we'll also write a booking_intent +
   // travel_booking and lock the transition's start/end to the ticket.
   booking: briefBookingSchema.nullable().optional(),
@@ -657,20 +661,26 @@ export async function createItineraryFromBrief(
       }
 
       // For station-based modes we record the user's local-connection
-      // preference so the editor can stitch journey_legs (walk → train
-      // → walk, etc.) without re-asking. The note is structured:
-      // "khonsera:local=walk" — easy for the editor to parse, harmless
-      // to a human reader.
+      // preferences (one per side) so the editor can stitch journey_legs
+      // (e.g. drive → train → walk) without re-asking. Encoded as a
+      // structured marker in transitions.notes — easy for the editor to
+      // parse, harmless to a human reader.
       const stationBased =
         mode === "train" ||
         mode === "tube" ||
         mode === "bus" ||
         mode === "flight";
-      const localMode = t.local_mode ?? "auto";
+      const localBefore = t.local_before ?? "auto";
+      const localAfter = t.local_after ?? "auto";
+      const noteParts: string[] = [];
+      if (stationBased && localBefore !== "auto") {
+        noteParts.push(`local_before=${localBefore}`);
+      }
+      if (stationBased && localAfter !== "auto") {
+        noteParts.push(`local_after=${localAfter}`);
+      }
       const transitionNote =
-        stationBased && localMode !== "auto"
-          ? `khonsera:local=${localMode}`
-          : null;
+        noteParts.length > 0 ? `khonsera:${noteParts.join(";")}` : null;
 
       // Upsert the transition row (locked when booked, mode-only when not).
       const { data: transRow } = await supabase

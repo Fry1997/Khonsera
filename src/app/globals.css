@@ -2250,6 +2250,97 @@
     color: var(--rust);
   }
 
+  /* Custom-duration input — sits at the end of a duration pill row so
+     the user can type any number of minutes when no preset fits.
+     Highlights when the current value doesn't match any preset. */
+  .duration-custom {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 999px;
+    border: 1px dashed var(--rule-2);
+    background: transparent;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    flex: 0 0 auto;
+  }
+  .duration-custom[data-active="true"] {
+    border-color: var(--gold);
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    border-style: solid;
+  }
+  .duration-custom input {
+    width: 48px;
+    padding: 2px 4px;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: right;
+    -moz-appearance: textfield;
+  }
+  .duration-custom input:focus {
+    outline: 0;
+  }
+  .duration-custom input::-webkit-outer-spin-button,
+  .duration-custom input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Two-side local-connection picker — used inside the transition pop
+     when the user picks a station-/airport-based mode. Stacks on narrow
+     screens; runs side-by-side with a hairline divider on wider ones. */
+  .local-leg-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    padding-top: 6px;
+  }
+  @media (max-width: 640px) {
+    .local-leg-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .local-leg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 12px;
+    border-left: 1px solid var(--rule);
+  }
+  .local-leg:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+  @media (max-width: 640px) {
+    .local-leg {
+      padding-left: 0;
+      border-left: 0;
+      padding-top: 8px;
+      border-top: 1px dashed var(--rule);
+    }
+    .local-leg:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
+  .local-leg-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 4px;
+  }
+  .local-leg-helper {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
   /* Timing-mode segmented control — Arrive by / Leave by / Around then. */
   .timing-mode-row {
     display: inline-flex;
@@ -2499,6 +2590,47 @@
     }
     .brief-card {
       padding: 18px;
+    }
+  }
+
+  /* Phone — make all the pill rows in the brief scroll horizontally on
+     overflow rather than wrap, keep the popover hugging the viewport,
+     and reduce padding so nothing slips off the edge of the screen. */
+  @media (max-width: 640px) {
+    .brief-pill-row {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+      margin-left: -2px;
+      margin-right: -2px;
+      padding-left: 2px;
+      padding-right: 2px;
+    }
+    .brief-pill-row::-webkit-scrollbar {
+      display: none;
+    }
+    .brief-pill-row > .pill,
+    .brief-pill-row > .brief-pill {
+      flex: 0 0 auto;
+    }
+    .transition-pop {
+      width: calc(100vw - 24px);
+      max-width: calc(100vw - 24px);
+      left: 12px;
+      transform: none;
+    }
+    .transition-row {
+      flex-wrap: wrap;
+      justify-content: center;
+      row-gap: 4px;
+    }
+    .brief-card {
+      padding: 14px;
+    }
+    .kind-pop {
+      max-width: calc(100vw - 32px);
     }
   }
 

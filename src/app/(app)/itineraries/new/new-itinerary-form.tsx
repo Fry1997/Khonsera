@@ -120,10 +120,14 @@ type LocalMode = "auto" | "walk" | "drive" | "taxi";
 
 type BriefTransition = {
   mode: TransitionMode;
-  // For station-based modes (train/tube/bus/flight), how the user
-  // expects to reach the departure terminal and depart from the
-  // arrival terminal. Ignored otherwise.
-  localMode: LocalMode;
+  // For station-/airport-based modes, the user's intent for the legs
+  // at each end of the main service:
+  //   localBefore — origin → departure terminal
+  //   localAfter  — arrival terminal → destination
+  // The two can differ (drive to your local station, walk from Euston
+  // to the hotel) — that's the point of having two.
+  localBefore: LocalMode;
+  localAfter: LocalMode;
   booked: boolean;
   booking: BriefBooking;
 };
@@ -131,7 +135,8 @@ type BriefTransition = {
 function emptyTransition(): BriefTransition {
   return {
     mode: "auto",
-    localMode: "auto",
+    localBefore: "auto",
+    localAfter: "auto",
     booked: false,
     booking: {
       provider: "",
@@ -376,7 +381,8 @@ export function NewItineraryBrief({
             from_client_id: string;
             to_client_id: string;
             mode: TransitionMode;
-            local_mode?: LocalMode | null;
+            local_before?: LocalMode | null;
+            local_after?: LocalMode | null;
             booking:
               | {
                   provider: string | null;
@@ -417,7 +423,8 @@ export function NewItineraryBrief({
               from_client_id: fromUid,
               to_client_id: toUid,
               mode: t.mode,
-              local_mode: t.localMode,
+              local_before: t.localBefore,
+              local_after: t.localAfter,
               booking,
             });
           };
@@ -1107,29 +1114,17 @@ function ReturnToRoom({
         )}
       </div>
 
-      <div>
-        <span className="uc">
-          {mode === "around_then" ? "About" : "Duration"}
-        </span>
-        <div className="brief-pill-row" style={{ marginTop: 6 }}>
-          {[
-            { label: "15m", mins: 15 },
-            { label: "30m", mins: 30 },
-            { label: "1h", mins: 60 },
-            { label: "2h", mins: 120 },
-          ].map((d) => (
-            <button
-              key={d.label}
-              type="button"
-              className="pill brief-pill"
-              data-active={d.mins === anchor.durationMins}
-              onClick={() => onChange({ durationMins: d.mins })}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DurationRow
+        label={mode === "around_then" ? "About" : "Duration"}
+        presets={[
+          { label: "15m", mins: 15 },
+          { label: "30m", mins: 30 },
+          { label: "1h", mins: 60 },
+          { label: "2h", mins: 120 },
+        ]}
+        value={anchor.durationMins}
+        onChange={(m) => onChange({ durationMins: m })}
+      />
     </div>
   );
 }
@@ -1231,24 +1226,70 @@ function AppointmentTimes({
 
       {!isStation ? (
         <div style={{ marginTop: 4 }}>
-          <span className="uc">
-            {mode === "around_then" ? "About" : "Duration"}
-          </span>
-          <div className="brief-pill-row" style={{ marginTop: 6 }}>
-            {APPT_DURATIONS.map((d) => (
-              <button
-                key={d.label}
-                type="button"
-                className="pill brief-pill"
-                data-active={d.mins === anchor.durationMins}
-                onClick={() => onChange({ durationMins: d.mins })}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
+          <DurationRow
+            label={mode === "around_then" ? "About" : "Duration"}
+            presets={APPT_DURATIONS}
+            value={anchor.durationMins}
+            onChange={(m) => onChange({ durationMins: m })}
+          />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// DurationRow — chips + an explicit "mins" input so the user can drop a
+// custom value when none of the presets fit. The input always shows the
+// current value; typing replaces it. Reused by appointment + return-to-
+// room blocks.
+function DurationRow({
+  presets,
+  value,
+  onChange,
+  label = "Duration",
+}: {
+  presets: Array<{ label: string; mins: number }>;
+  value: number;
+  onChange: (mins: number) => void;
+  label?: string;
+}) {
+  const matched = presets.some((p) => p.mins === value);
+  return (
+    <div>
+      <span className="uc">{label}</span>
+      <div className="brief-pill-row" style={{ marginTop: 6 }}>
+        {presets.map((d) => (
+          <button
+            key={d.label}
+            type="button"
+            className="pill brief-pill"
+            data-active={d.mins === value}
+            onClick={() => onChange(d.mins)}
+          >
+            {d.label}
+          </button>
+        ))}
+        <span
+          className="duration-custom"
+          data-active={!matched}
+          title="Type any number of minutes"
+        >
+          <input
+            type="number"
+            min={5}
+            max={24 * 60}
+            step={5}
+            inputMode="numeric"
+            value={value}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (!Number.isNaN(v) && v >= 0) onChange(v);
+            }}
+            aria-label="Custom duration in minutes"
+          />
+          <span aria-hidden>min</span>
+        </span>
+      </div>
     </div>
   );
 }
@@ -1324,10 +1365,23 @@ function TransitionRow({
   const Icon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
   const isAuto = transition.mode === "auto" && !transition.booked;
   const stationBased = opt?.stationBased ?? false;
-  const localOpt = LOCAL_MODES.find((m) => m.value === transition.localMode);
-  const LocalIcon = localOpt
-    ? TransportIcon[localOpt.icon]
+  const beforeOpt = LOCAL_MODES.find(
+    (m) => m.value === transition.localBefore,
+  );
+  const afterOpt = LOCAL_MODES.find(
+    (m) => m.value === transition.localAfter,
+  );
+  const BeforeIcon = beforeOpt
+    ? TransportIcon[beforeOpt.icon]
     : TransportIcon.auto;
+  const AfterIcon = afterOpt
+    ? TransportIcon[afterOpt.icon]
+    : TransportIcon.auto;
+  const symmetric = transition.localBefore === transition.localAfter;
+  const showLocalHint =
+    stationBased &&
+    !isAuto &&
+    (transition.localBefore !== "auto" || transition.localAfter !== "auto");
 
   return (
     <div ref={ref} className="transition-row">
@@ -1355,10 +1409,17 @@ function TransitionRow({
               ? "Khonsera picks the mode"
               : `via ${opt?.label}`}
         </span>
-        {stationBased && !isAuto && transition.localMode !== "auto" ? (
+        {showLocalHint ? (
           <span className="transition-local-hint">
-            <LocalIcon size={11} />
-            {localOpt?.label.toLowerCase()}
+            <BeforeIcon size={11} />
+            {symmetric ? (
+              <span>{beforeOpt?.label.toLowerCase()}</span>
+            ) : (
+              <>
+                <span aria-hidden style={{ opacity: 0.55 }}>›</span>
+                <AfterIcon size={11} />
+              </>
+            )}
           </span>
         ) : null}
         {transition.booked ? (
@@ -1418,31 +1479,55 @@ function TransitionRow({
 
           {stationBased ? (
             <div className="transition-pop-section">
-              <span className="uc">Local connection</span>
+              <span className="uc">Local connections</span>
               <p
                 className="brief-helper"
-                style={{ margin: "4px 0 6px", fontSize: 12 }}
+                style={{ margin: "4px 0 8px", fontSize: 12 }}
               >
-                How you'll reach the {opt?.label.toLowerCase()} and how you'll
-                get from it to {to.place?.label ?? "the next stop"}.
+                Two legs — to the {opt?.label.toLowerCase()} and from it.
+                Pick them separately if you'll drive to your local station
+                but walk from the other end.
               </p>
-              <div className="brief-pill-row">
-                {LOCAL_MODES.map((m) => {
-                  const MIcon = TransportIcon[m.icon];
-                  return (
-                    <button
-                      key={m.value}
-                      type="button"
-                      className="pill brief-pill"
-                      data-active={m.value === transition.localMode}
-                      onClick={() => onChange({ localMode: m.value })}
-                    >
-                      <MIcon size={13} />
-                      {m.label}
-                    </button>
-                  );
-                })}
+
+              <div className="local-leg-grid">
+                <LocalLegPicker
+                  label={`To the ${opt?.label.toLowerCase() ?? "station"}`}
+                  helper={
+                    fromVirtualLabel
+                      ? `From ${fromVirtualLabel}`
+                      : from?.place?.label
+                        ? `From ${from.place.label}`
+                        : "From the previous stop"
+                  }
+                  value={transition.localBefore}
+                  onPick={(v) => onChange({ localBefore: v })}
+                />
+                <LocalLegPicker
+                  label={`From the ${opt?.label.toLowerCase() ?? "station"}`}
+                  helper={
+                    to.place?.label
+                      ? `To ${to.place.label}`
+                      : "To the next stop"
+                  }
+                  value={transition.localAfter}
+                  onPick={(v) => onChange({ localAfter: v })}
+                />
               </div>
+
+              {transition.localBefore !== transition.localAfter &&
+              (transition.localBefore !== "auto" ||
+                transition.localAfter !== "auto") ? (
+                <p
+                  className="brief-helper"
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: 11.5,
+                    color: "var(--gold-2)",
+                  }}
+                >
+                  Asymmetric — Khonsera will plan each leg independently.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -1494,7 +1579,8 @@ function TransitionRow({
                 onClick={() => {
                   onChange({
                     mode: "auto",
-                    localMode: "auto",
+                    localBefore: "auto",
+                    localAfter: "auto",
                     booked: false,
                   });
                 }}
@@ -1505,6 +1591,44 @@ function TransitionRow({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function LocalLegPicker({
+  label,
+  helper,
+  value,
+  onPick,
+}: {
+  label: string;
+  helper: string;
+  value: LocalMode;
+  onPick: (v: LocalMode) => void;
+}) {
+  return (
+    <div className="local-leg">
+      <div className="local-leg-head">
+        <span className="uc">{label}</span>
+        <span className="local-leg-helper">{helper}</span>
+      </div>
+      <div className="brief-pill-row">
+        {LOCAL_MODES.map((m) => {
+          const MIcon = TransportIcon[m.icon];
+          return (
+            <button
+              key={m.value}
+              type="button"
+              className="pill brief-pill"
+              data-active={m.value === value}
+              onClick={() => onPick(m.value)}
+            >
+              <MIcon size={12} />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
