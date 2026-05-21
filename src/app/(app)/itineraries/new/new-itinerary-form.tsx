@@ -48,12 +48,21 @@ export function NewItineraryBrief({
   locations,
   timezone,
   homeLabel,
+  railHubLabel,
+  flightHubLabel,
 }: {
   customers: PlacePickerCustomer[];
   customerSites: PlacePickerCustomerSite[];
   locations: PlacePickerLocation[];
   timezone: string;
   homeLabel: string | null;
+  // Labels for the user's default rail station / airport. The spine
+  // surfaces them inside train / tube / flight via rows so a planning
+  // user sees "via Wellingborough (WLB)" without having to manually
+  // add a station stop. Either can be null when the user hasn't set
+  // a default in settings.
+  railHubLabel?: string | null;
+  flightHubLabel?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -686,6 +695,8 @@ export function NewItineraryBrief({
           stopovers={stopovers}
           titleOverride={titleOverride}
           timezone={timezone}
+          railHubLabel={railHubLabel ?? null}
+          flightHubLabel={flightHubLabel ?? null}
         />
       </aside>
     </div>

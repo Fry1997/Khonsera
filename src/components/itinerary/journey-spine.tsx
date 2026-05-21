@@ -25,12 +25,20 @@ export function JourneySpine({
   stopovers,
   titleOverride,
   timezone,
+  // Labels for the user's default rail station / airport. When the
+  // leg is by train / tube / flight we tag the via row with
+  // "via {hub}" so the spine shows the station even before a real
+  // transit_departure stop has been inserted into the itinerary.
+  railHubLabel,
+  flightHubLabel,
 }: {
   anchors: Anchor[];
   transitions: Map<string, BriefTransition>;
   stopovers: Map<string, Stopover>;
   titleOverride: string;
   timezone: string;
+  railHubLabel?: string | null;
+  flightHubLabel?: string | null;
 }) {
   const haveAny = anchors.some((a) => a.place != null);
   if (!haveAny) {
@@ -112,7 +120,13 @@ export function JourneySpine({
             const legOut = transitions.get(transitionKey(svUid, a.uid));
             viaRow = (
               <Fragment key={`sv-spine-${prev.uid}-${a.uid}`}>
-                {showVia(legIn) ? <SpineVia transition={legIn!} /> : null}
+                {showVia(legIn) ? (
+                  <SpineVia
+                    transition={legIn!}
+                    railHubLabel={railHubLabel}
+                    flightHubLabel={flightHubLabel}
+                  />
+                ) : null}
                 <SpineStop
                   time="—"
                   eyebrow="Stopover"
@@ -120,13 +134,24 @@ export function JourneySpine({
                   sub={`drop-in · ${fmtDur(sv.durationMins)}`}
                   dotKind="default"
                 />
-                {showVia(legOut) ? <SpineVia transition={legOut!} /> : null}
+                {showVia(legOut) ? (
+                  <SpineVia
+                    transition={legOut!}
+                    railHubLabel={railHubLabel}
+                    flightHubLabel={flightHubLabel}
+                  />
+                ) : null}
               </Fragment>
             );
           } else if (prev) {
             const via = transitions.get(transitionKey(prev.uid, a.uid));
             viaRow = showVia(via) ? (
-              <SpineVia key={`via-${prev.uid}-${a.uid}`} transition={via!} />
+              <SpineVia
+                key={`via-${prev.uid}-${a.uid}`}
+                transition={via!}
+                railHubLabel={railHubLabel}
+                flightHubLabel={flightHubLabel}
+              />
             ) : null;
           }
 
@@ -194,17 +219,38 @@ export function JourneySpine({
   );
 }
 
-function SpineVia({ transition }: { transition: BriefTransition }) {
+function SpineVia({
+  transition,
+  railHubLabel,
+  flightHubLabel,
+}: {
+  transition: BriefTransition;
+  railHubLabel?: string | null;
+  flightHubLabel?: string | null;
+}) {
   const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
   const Icon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
   const label = opt?.label ?? "via";
+  // Hub hint — rail-stationy modes use the rail hub, flight uses the
+  // flight hub. Tube intentionally falls through to the rail hint
+  // (default station is usually the user's local rail/tube hub).
+  const hubLabel =
+    transition.mode === "flight"
+      ? flightHubLabel
+      : transition.mode === "train" ||
+          transition.mode === "tube" ||
+          transition.mode === "bus"
+        ? railHubLabel
+        : null;
   const sub = transition.booked
     ? `${transition.booking.serviceNumber || "ticket"}${
         transition.booking.departTime && transition.booking.arriveTime
           ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
           : ""
       }`
-    : "intent — Khonsera fills in distance + time";
+    : hubLabel
+      ? `from ${hubLabel}`
+      : "intent — Khonsera fills in distance + time";
   return (
     <>
       <div className="tl-time" />

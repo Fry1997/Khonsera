@@ -32,7 +32,7 @@ export default async function NewItineraryPage() {
     supabase
       .from("travel_profiles")
       .select(
-        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id",
       )
       .eq("user_id", ctx.userId)
       .eq("workspace_id", ctx.workspaceId)
@@ -50,6 +50,40 @@ export default async function NewItineraryPage() {
     homeId != null
       ? (locations ?? []).find((l) => l.id === homeId) ?? null
       : null;
+
+  // Surface the user's default rail station / airport so the brief
+  // can render a "via {station}" hint inside train / tube / flight
+  // transitions. Full station-stop auto-insertion is a follow-up;
+  // this is the smaller visual half of Slice E.
+  const hubIds = [
+    profile?.default_rail_origin_transport_hub_id,
+    profile?.default_flight_origin_transport_hub_id,
+  ].filter(Boolean) as string[];
+  const { data: hubs } =
+    hubIds.length > 0
+      ? await supabase
+          .from("transport_hubs")
+          .select("id, name, code, kind")
+          .in("id", hubIds)
+      : { data: [] as Array<{ id: string; name: string; code: string | null; kind: string }> };
+  const railHub =
+    hubs?.find(
+      (h) => h.id === profile?.default_rail_origin_transport_hub_id,
+    ) ?? null;
+  const flightHub =
+    hubs?.find(
+      (h) => h.id === profile?.default_flight_origin_transport_hub_id,
+    ) ?? null;
+  const railHubLabel = railHub
+    ? railHub.code
+      ? `${railHub.name} (${railHub.code})`
+      : railHub.name
+    : null;
+  const flightHubLabel = flightHub
+    ? flightHub.code
+      ? `${flightHub.name} (${flightHub.code})`
+      : flightHub.name
+    : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -85,6 +119,8 @@ export default async function NewItineraryPage() {
         locations={locations ?? []}
         timezone={wsCfg.timezone}
         homeLabel={home?.name ?? null}
+        railHubLabel={railHubLabel}
+        flightHubLabel={flightHubLabel}
       />
     </div>
   );

@@ -12,24 +12,50 @@ import {
 import { updateTravelProfile } from "@/lib/actions/travel-profile";
 import { feedbackFromError, type FormFeedback } from "@/lib/actions/_form";
 import type { LocationType, TravelModePreference } from "@/lib/types/domain";
+import { TransportHubPicker } from "@/components/transport-hub-picker";
 
 type LocationOption = { id: string; name: string; type: LocationType };
 
 export function TravelProfileForm({
   initial,
   locations,
+  defaultRailHub,
+  defaultFlightHub,
 }: {
   initial: {
     default_drive_origin_location_id: string | null;
     default_rail_origin_location_id: string | null;
     default_return_location_id: string | null;
+    default_rail_origin_transport_hub_id: string | null;
+    default_flight_origin_transport_hub_id: string | null;
     preferred_mode: TravelModePreference;
     default_arrival_buffer_minutes: number;
     default_return_buffer_minutes: number;
     mileage_rate: number;
   };
   locations: LocationOption[];
+  // Pre-resolved labels for the two hub defaults so the picker
+  // shows a friendly name (not a uuid) on first paint without a
+  // round-trip.
+  defaultRailHub: { id: string; label: string } | null;
+  defaultFlightHub: { id: string; label: string } | null;
 }) {
+  const [railHub, setRailHub] = useState<{
+    id: string | null;
+    label: string | null;
+  }>(
+    defaultRailHub
+      ? { id: defaultRailHub.id, label: defaultRailHub.label }
+      : { id: initial.default_rail_origin_transport_hub_id, label: null },
+  );
+  const [flightHub, setFlightHub] = useState<{
+    id: string | null;
+    label: string | null;
+  }>(
+    defaultFlightHub
+      ? { id: defaultFlightHub.id, label: defaultFlightHub.label }
+      : { id: initial.default_flight_origin_transport_hub_id, label: null },
+  );
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<FormFeedback | null>(null);
@@ -73,6 +99,8 @@ export function TravelProfileForm({
               (formData.get("rail_origin") as string) || null,
             default_return_location_id:
               (formData.get("return_location") as string) || null,
+            default_rail_origin_transport_hub_id: railHub.id,
+            default_flight_origin_transport_hub_id: flightHub.id,
             preferred_mode: formData.get("preferred_mode") as TravelModePreference,
             default_arrival_buffer_minutes: Number(formData.get("arrival_buffer") ?? 15),
             default_return_buffer_minutes: Number(formData.get("return_buffer") ?? 15),
@@ -149,6 +177,34 @@ export function TravelProfileForm({
         >
           {locationOptions()}
         </Select>
+      </FormField>
+
+      <FormField
+        label="Default rail station"
+        htmlFor="rail_hub"
+        hint="The station Khonsera assumes when a leg is by train or tube. Brief auto-inserts a transit_departure stop here."
+      >
+        <TransportHubPicker
+          kind="rail_station"
+          name="rail_hub"
+          value={railHub}
+          onChange={setRailHub}
+          placeholder="Search a rail station…"
+        />
+      </FormField>
+
+      <FormField
+        label="Default airport"
+        htmlFor="flight_hub"
+        hint="Used the same way for flight legs."
+      >
+        <TransportHubPicker
+          kind="airport"
+          name="flight_hub"
+          value={flightHub}
+          onChange={setFlightHub}
+          placeholder="Search an airport…"
+        />
       </FormField>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

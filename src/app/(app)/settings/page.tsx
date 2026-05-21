@@ -19,7 +19,7 @@ export default async function SettingsPage({
       supabase
         .from("travel_profiles")
         .select(
-          "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate",
+          "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate",
         )
         .eq("user_id", ctx.userId)
         .eq("workspace_id", ctx.workspaceId)
@@ -39,6 +39,32 @@ export default async function SettingsPage({
         .eq("status", "active")
         .maybeSingle(),
     ]);
+
+  // Resolve the two hub defaults to their friendly labels so the
+  // picker shows "Wellingborough (WLB)" on first paint rather than
+  // a raw uuid. Two extra small queries — fine here, this page only
+  // renders on demand.
+  const hubIds = [
+    profile?.default_rail_origin_transport_hub_id,
+    profile?.default_flight_origin_transport_hub_id,
+  ].filter(Boolean) as string[];
+  const { data: hubRows } =
+    hubIds.length > 0
+      ? await supabase
+          .from("transport_hubs")
+          .select("id, name, code")
+          .in("id", hubIds)
+      : { data: [] as Array<{ id: string; name: string; code: string | null }> };
+  const labelFor = (id: string | null | undefined) => {
+    if (!id) return null;
+    const h = hubRows?.find((r) => r.id === id);
+    if (!h) return null;
+    return { id: h.id, label: h.code ? `${h.name} (${h.code})` : h.name };
+  };
+  const defaultRailHub = labelFor(profile?.default_rail_origin_transport_hub_id);
+  const defaultFlightHub = labelFor(
+    profile?.default_flight_origin_transport_hub_id,
+  );
 
   return (
     <PageShell
@@ -92,6 +118,10 @@ export default async function SettingsPage({
               default_rail_origin_location_id:
                 profile?.default_rail_origin_location_id ?? null,
               default_return_location_id: profile?.default_return_location_id ?? null,
+              default_rail_origin_transport_hub_id:
+                profile?.default_rail_origin_transport_hub_id ?? null,
+              default_flight_origin_transport_hub_id:
+                profile?.default_flight_origin_transport_hub_id ?? null,
               preferred_mode: (profile?.preferred_mode ?? "compare") as
                 | "rail"
                 | "drive"
@@ -104,6 +134,8 @@ export default async function SettingsPage({
               mileage_rate: Number(profile?.mileage_rate ?? 0.45),
             }}
             locations={locations ?? []}
+            defaultRailHub={defaultRailHub}
+            defaultFlightHub={defaultFlightHub}
           />
         </div>
       </section>
