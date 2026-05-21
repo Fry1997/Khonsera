@@ -62,6 +62,52 @@ export function useRoutePreviews() {
     [],
   );
 
+  // Batched variant — fires N previews and only triggers one
+  // re-render when they're all settled. Useful for the editor's
+  // on-mount prefetch loop, which would otherwise cascade N
+  // re-renders as each leg resolved in sequence.
+  const fetchPreviewsBatch = useCallback(
+    async (
+      triples: Array<{
+        fromStopId: string;
+        toStopId: string;
+        mode: TransitionMode;
+      }>,
+    ) => {
+      const fresh = triples.filter(
+        (t) => !cacheRef.current.has(cacheKey(t.fromStopId, t.toStopId, t.mode)),
+      );
+      if (fresh.length === 0) return;
+      for (const t of fresh) {
+        cacheRef.current.set(
+          cacheKey(t.fromStopId, t.toStopId, t.mode),
+          "pending",
+        );
+      }
+      const results = await Promise.allSettled(
+        fresh.map((t) =>
+          previewRoute({
+            from_stop_id: t.fromStopId,
+            to_stop_id: t.toStopId,
+            mode: t.mode,
+          }),
+        ),
+      );
+      for (let i = 0; i < fresh.length; i++) {
+        const t = fresh[i];
+        const k = cacheKey(t.fromStopId, t.toStopId, t.mode);
+        const r = results[i];
+        if (r.status === "fulfilled" && r.value.ok) {
+          cacheRef.current.set(k, r.value.value);
+        } else {
+          cacheRef.current.delete(k);
+        }
+      }
+      force((n) => n + 1);
+    },
+    [],
+  );
+
   const get = useCallback(
     (
       fromStopId: string,
@@ -74,7 +120,7 @@ export function useRoutePreviews() {
     [],
   );
 
-  return { fetchPreview, get };
+  return { fetchPreview, fetchPreviewsBatch, get };
 }
 
 // useRoutePreviewsForPlaces — sibling hook for the brief, which has

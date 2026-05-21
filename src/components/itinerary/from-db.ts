@@ -196,6 +196,21 @@ export function anchorFromStop(stop: DbStop, timezone: string): Anchor {
   };
 }
 
+// Stop types we treat as part of the planning surface. Anything
+// outside this list (start, end, transit_departure, transit_arrival,
+// stopover) is filtered out — start/end are surfaced separately as a
+// home header / journey-end, transit_* belong to the legacy booking-
+// modal flow and shouldn't render as planning cards, and stopovers
+// are surfaced by timelineFromStops below.
+const PLANNING_ANCHOR_TYPES = new Set([
+  "appointment",
+  "accommodation",
+  "event",
+  "meal",
+  "transport_booked",
+  "other",
+]);
+
 // Build the editor's anchor list from the loaded stop rows. Filters
 // out the implicit "home" start stop AND stopover stops — stopovers
 // are surfaced separately via `timelineFromStops`, so the editor can
@@ -205,7 +220,7 @@ export function anchorsFromStops(
   timezone: string,
 ): Anchor[] {
   return stops
-    .filter((s) => s.type !== "start" && s.type !== "stopover")
+    .filter((s) => PLANNING_ANCHOR_TYPES.has(s.type))
     .sort((a, b) => a.sequence - b.sequence)
     .map((s) => anchorFromStop(s, timezone));
 }
@@ -222,7 +237,9 @@ export function timelineFromStops(
   timezone: string,
 ): EditorTimelineItem[] {
   return stops
-    .filter((s) => s.type !== "start")
+    .filter(
+      (s) => PLANNING_ANCHOR_TYPES.has(s.type) || s.type === "stopover",
+    )
     .sort((a, b) => a.sequence - b.sequence)
     .map<EditorTimelineItem>((s) => {
       if (s.type === "stopover") {

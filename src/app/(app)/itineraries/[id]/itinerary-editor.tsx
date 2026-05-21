@@ -300,51 +300,48 @@ export function ItineraryEditor({
     }
   };
 
-  // Background prefetch: any stopover whose surrounding legs don't
+  // Background prefetch: every adjacent leg in the planning timeline
+  // (anchor↔anchor, anchor↔stopover, home↔anchor) that doesn't
   // already have a computed_duration_minutes gets a quiet 'drive'
-  // estimate so the back-calc line on its summary card has
-  // something to show. Without this the card stays mute until the
-  // user touches the mode picker on both legs.
+  // estimate. Single batched call → one re-render when they all
+  // settle, instead of N cascading re-renders as each resolves.
   useEffect(() => {
-    for (let i = 0; i < planningTimeline.length; i++) {
-      const item = planningTimeline[i];
-      if (item.kind !== "stopover") continue;
-      const prevStop = (() => {
-        for (let j = i - 1; j >= 0; j--) {
-          const it = planningTimeline[j];
-          if (it.kind === "anchor") return it.stop;
-        }
-        return undefined;
-      })();
-      const nextStop = (() => {
-        for (let j = i + 1; j < planningTimeline.length; j++) {
-          const it = planningTimeline[j];
-          if (it.kind === "anchor") return it.stop;
-        }
-        return undefined;
-      })();
-      const legIn = prevStop
-        ? transitions.find(
-            (t) =>
-              t.from_stop_id === prevStop.id && t.to_stop_id === item.stop.id,
-          )
-        : null;
-      const legOut = nextStop
-        ? transitions.find(
-            (t) =>
-              t.from_stop_id === item.stop.id && t.to_stop_id === nextStop.id,
-          )
-        : null;
-      if (prevStop && legIn?.computed_duration_minutes == null) {
-        routePreviews.fetchPreview(prevStop.id, item.stop.id, "drive");
-      }
-      if (nextStop && legOut?.computed_duration_minutes == null) {
-        routePreviews.fetchPreview(item.stop.id, nextStop.id, "drive");
-      }
+    // Find the start stop directly from the raw stops prop — `sortedStops`
+    // is declared further down and would create a hoisting issue.
+    const startStop = stops.find((s) => s.type === "start");
+    const triples: Array<{
+      fromStopId: string;
+      toStopId: string;
+      mode: "drive";
+    }> = [];
+    const pairs: Array<{ from: { id: string }; to: { id: string } }> = [];
+    if (startStop && planningTimeline[0]) {
+      pairs.push({ from: startStop, to: planningTimeline[0].stop });
     }
-    // routePreviews.fetchPreview is stable (memoised inside the hook).
+    for (let i = 0; i < planningTimeline.length - 1; i++) {
+      pairs.push({
+        from: planningTimeline[i].stop,
+        to: planningTimeline[i + 1].stop,
+      });
+    }
+    for (const pair of pairs) {
+      const existing = transitions.find(
+        (t) =>
+          t.from_stop_id === pair.from.id && t.to_stop_id === pair.to.id,
+      );
+      if (existing?.computed_duration_minutes != null) continue;
+      triples.push({
+        fromStopId: pair.from.id,
+        toStopId: pair.to.id,
+        mode: "drive",
+      });
+    }
+    if (triples.length > 0) {
+      routePreviews.fetchPreviewsBatch(triples);
+    }
+    // routePreviews.fetchPreviewsBatch is stable (memoised inside).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planningTimeline, transitions]);
+  }, [planningTimeline, transitions, stops]);
   // editedAnchors holds the per-anchor in-flight patch while a card
   // is in expanded mode. We seed each entry from the DB anchor on
   // first expand; onChange writes here; clicking Done flushes the
@@ -619,11 +616,13 @@ export function ItineraryEditor({
     });
   };
 
-  // Transition patches: the planning view sends a full BriefTransition
-  // patch (mode, localBefore, localAfter, booked). Today we only wire
-  // mode + booked through to the DB via setTransitionMode + an
-  // upsertTransition update — local-leg preferences and booking
-  // details are deferred to the next slice.
+  // Transition patches: route through the existing server actions.
+  // When the leg has no transition row yet — which is the common case
+  // for itineraries built via the brief, since the brief only writes
+  // 'meaningful' transitions and skips anything left on auto — we
+  // upsert one so the user's choice actually persists. Auto / mixed
+  // are sentinels with no DB mode, so they fall through to a clear-
+  // out via deleteTransition when an existing row needs unsetting.
   const handleTransitionPatch = (
     fromStopId: string,
     toStopId: string,
@@ -632,12 +631,43 @@ export function ItineraryEditor({
     const existing = transitions.find(
       (t) => t.from_stop_id === fromStopId && t.to_stop_id === toStopId,
     );
-    // 'auto' is the brief's "let Khonsera decide" sentinel — the DB
-    // schema has no such mode, so we just skip the patch. The server
-    // will fall back to its own solver in the absence of a locked mode.
-    if (patch.mode !== undefined && patch.mode !== "auto" && existing) {
-      handleSetMode(existing.id, patch.mode);
+    if (patch.mode === undefined) {
+      // Booked toggle / booking detail changes — out of scope for the
+      // mode picker fast-path; the TransitionRow's full booking UI is
+      // a follow-up (see the booking-modal direction question).
+      return;
     }
+    if (patch.mode === "auto" || patch.mode === "mixed") {
+      // User cleared the mode. If a transition row exists we can
+      // either leave it as 'mixed' (the schema's catch-all) or no-op.
+      // Pragmatic call: leave it untouched — clearing is rare and
+      // the existing row is harmless.
+      return;
+    }
+    if (existing) {
+      handleSetMode(existing.id, patch.mode);
+      return;
+    }
+    // No row yet — upsert one. The server's upsertTransition also
+    // fires routeForTransition + resolveItineraryTimes, so the
+    // computed_duration_minutes shows up on the next refresh.
+    // Re-narrow mode for the server schema, which doesn't accept the
+    // brief's 'auto' sentinel (already filtered above).
+    const newMode = patch.mode as TransitionMode;
+    startTransition(async () => {
+      setError(null);
+      const result = await upsertTransition({
+        itinerary_id: itinerary.id,
+        from_stop_id: fromStopId,
+        to_stop_id: toStopId,
+        mode: newMode,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      router.refresh();
+    });
   };
 
   const handleAdvanceStatus = () => {
@@ -901,21 +931,74 @@ export function ItineraryEditor({
                 from the travel profile and filtered out of the
                 editable timeline; we still surface it here so the
                 trip reads as a journey, not an isolated list of
-                appointments. */}
+                appointments. The TransitionRow below it gives the
+                user somewhere to set the home → first-anchor
+                travel mode. */}
             {(() => {
               const startStop = sortedStops.find((s) => s.type === "start");
               if (!startStop) return null;
               const label =
                 startStop.location?.name ?? startStop.title ?? "Home";
+              const first = planningTimeline[0];
               return (
-                <div className="home-header">
-                  <div className="home-header-badge">
-                    <span className="home-header-dot" aria-hidden />
-                    <span className="uc">Start</span>
+                <>
+                  <div className="home-header">
+                    <div className="home-header-badge">
+                      <span className="home-header-dot" aria-hidden />
+                      <span className="uc">Start</span>
+                    </div>
+                    <h3 className="home-header-title">{label}</h3>
+                    <p className="home-header-meta">From your travel profile</p>
                   </div>
-                  <h3 className="home-header-title">{label}</h3>
-                  <p className="home-header-meta">From your travel profile</p>
-                </div>
+                  {first ? (
+                    <PlanningTransitionRow
+                      from={null}
+                      to={
+                        first.kind === "anchor"
+                          ? first.anchor
+                          : stopoverAsAnchor(
+                              first.stopover,
+                              first.stopover.uid,
+                            )
+                      }
+                      transition={
+                        planningTransitions.get(
+                          transitionKey(
+                            startStop.id,
+                            first.kind === "anchor"
+                              ? first.anchor.uid
+                              : first.stopover.uid,
+                          ),
+                        ) ?? emptyTransition()
+                      }
+                      modePreviews={previewsForPair(
+                        startStop.id,
+                        first.kind === "anchor"
+                          ? first.anchor.uid
+                          : first.stopover.uid,
+                      )}
+                      onOpenChange={(open) => {
+                        if (open)
+                          prefetchPair(
+                            startStop.id,
+                            first.kind === "anchor"
+                              ? first.anchor.uid
+                              : first.stopover.uid,
+                          );
+                      }}
+                      onChange={(patch) =>
+                        handleTransitionPatch(
+                          startStop.id,
+                          first.kind === "anchor"
+                            ? first.anchor.uid
+                            : first.stopover.uid,
+                          patch,
+                        )
+                      }
+                      fromVirtualLabel={label}
+                    />
+                  ) : null}
+                </>
               );
             })()}
 
@@ -1135,10 +1218,6 @@ export function ItineraryEditor({
                   const isExpanded = expandedUids.has(anchor.uid);
                   const liveAnchor =
                     editedAnchors.get(anchor.uid) ?? anchor;
-                  // StopBookingMenu wants the editor's richer StopRow
-                  // shape (with external_reference etc) — look it up
-                  // by id from the page-level stops query.
-                  const stopRow = sortedStops.find((s) => s.id === anchor.uid);
                   return (
                     <li key={anchor.uid} className="flex flex-col">
                       <AnchorCard
@@ -1167,29 +1246,6 @@ export function ItineraryEditor({
                         }
                         onRemove={() => handleDelete(anchor.uid)}
                       />
-                      {stopRow ? (
-                      <StopBookingMenu
-                        stop={stopRow}
-                        pending={pending}
-                        onAddTransport={(mode, label) =>
-                          setTransportBookingFor({
-                            stopId: stop.id,
-                            label,
-                            mode,
-                          })
-                        }
-                        onAddAccommodation={(label) =>
-                          setAccommodationBookingFor({
-                            afterStopId: stop.id,
-                            afterStopLabel: label,
-                            existingStopId:
-                              stop.type === "accommodation"
-                                ? stop.id
-                                : undefined,
-                          })
-                        }
-                      />
-                      ) : null}
                       {nextItem ? (
                         <PlanningTransitionRow
                           from={anchor}
