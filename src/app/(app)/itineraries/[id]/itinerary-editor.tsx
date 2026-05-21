@@ -399,7 +399,7 @@ export function ItineraryEditor({
     const triples: Array<{
       fromStopId: string;
       toStopId: string;
-      mode: "drive";
+      mode: "walk" | "drive" | "taxi";
     }> = [];
     const pairs: Array<{ from: { id: string }; to: { id: string } }> = [];
     if (startStop && planningTimeline[0]) {
@@ -411,17 +411,20 @@ export function ItineraryEditor({
         to: planningTimeline[i + 1].stop,
       });
     }
+    // Fan out to all three scoreable modes per pair — the engine
+    // returns 'resolving' if any candidate is still pending, so a
+    // drive-only prefetch keeps the chip stuck on the spinner until
+    // the user opens the popover (which triggers the per-pair
+    // prefetch via prefetchPair). Loading all three up-front means
+    // the chip face resolves immediately on first paint.
     for (const pair of pairs) {
-      const existing = transitions.find(
-        (t) =>
-          t.from_stop_id === pair.from.id && t.to_stop_id === pair.to.id,
-      );
-      if (existing?.computed_duration_minutes != null) continue;
-      triples.push({
-        fromStopId: pair.from.id,
-        toStopId: pair.to.id,
-        mode: "drive",
-      });
+      for (const mode of ["walk", "drive", "taxi"] as const) {
+        triples.push({
+          fromStopId: pair.from.id,
+          toStopId: pair.to.id,
+          mode,
+        });
+      }
     }
     if (triples.length > 0) {
       routePreviews.fetchPreviewsBatch(triples);
