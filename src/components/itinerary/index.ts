@@ -13,10 +13,12 @@ export { JourneySpine } from "./journey-spine";
 export {
   anchorFromStop,
   anchorsFromStops,
+  timelineFromStops,
   transitionsFromDb,
   stopoversFromDb,
   type DbStop,
   type DbTransition,
   type DbStopover,
+  type EditorTimelineItem,
 } from "./from-db";
 export { anchorToStopUpdate, type StopUpdateInput } from "./to-db";

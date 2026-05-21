@@ -618,24 +618,23 @@ export async function createItineraryFromBrief(
     await supabase.from("stops").insert(stopRows);
   }
 
-  // ── Transitions + pre-booked tickets ────────────────────────────
-  // The brief can tell us, for any adjacent pair of anchors (by their
-  // client_ids), what travel mode the user intends and — optionally —
-  // the details of a ticket they've already got. We process this once
-  // the stops exist so we can map client_ids → stop_ids.
-  if (parsed.value.transitions.length > 0) {
-    // Pull the freshly-inserted stop rows back so we can resolve
-    // client_id → stop_id via sequence number.
+  // ── Resolve client_id → stop_id ─────────────────────────────────
+  // Built once now so the stopovers block and the transitions block
+  // can share the same lookup. Stopovers add themselves to this map
+  // as they get inserted, which is how the leg transitions
+  // (anchor → stopover, stopover → anchor) eventually resolve their
+  // synthetic svUid sentinels to real stop ids.
+  const stopByClientId = new Map<
+    string,
+    { id: string; sequence: number; locationId: string | null }
+  >();
+  {
     const { data: insertedStops } = await supabase
       .from("stops")
       .select("id, sequence, location_id")
       .eq("itinerary_id", itinerary.id)
       .eq("workspace_id", ctx.workspaceId)
       .order("sequence");
-    const stopByClientId = new Map<
-      string,
-      { id: string; sequence: number; locationId: string | null }
-    >();
     for (const s of insertedStops ?? []) {
       const cid = clientIdBySeq.get(s.sequence);
       if (cid)
@@ -645,7 +644,118 @@ export async function createItineraryFromBrief(
           locationId: (s.location_id as string | null) ?? null,
         });
     }
+  }
 
+  // ── Stopovers — insert as real stops between their anchor pair ───
+  // Each stopover becomes a stops row with type='stopover' positioned
+  // between its from_stop and to_stop. Bumping later sequences makes
+  // room for the new row; the synthetic svUid sentinel that the
+  // client used to key its leg transitions (sv::{fromUid}::{toUid})
+  // is wired to the new stop_id so transitions can resolve it.
+  for (const sv of parsed.value.stopovers) {
+    const fromStop = stopByClientId.get(sv.from_client_id);
+    const toStop = stopByClientId.get(sv.to_client_id);
+    if (!fromStop || !toStop) continue;
+    if (!sv.location_id && !sv.customer_site_id && !sv.customer_id && !sv.label) {
+      continue;
+    }
+
+    let locationId = sv.location_id ?? null;
+    let label = sv.label ?? null;
+    if (!locationId && sv.customer_site_id) {
+      const { data: site } = await supabase
+        .from("customer_sites")
+        .select("name, address")
+        .eq("id", sv.customer_site_id)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+      if (site) label = label ?? site.name ?? site.address;
+    }
+    if (!locationId && !sv.customer_site_id && label) {
+      const { data: newLoc } = await supabase
+        .from("locations")
+        .insert({
+          name: label,
+          type: "other",
+          workspace_id: ctx.workspaceId,
+          user_id: ctx.userId,
+        })
+        .select("id, name")
+        .single();
+      if (newLoc) {
+        locationId = newLoc.id;
+        label = newLoc.name;
+      }
+    }
+
+    // Bump downstream sequences to open a slot at toStop.sequence.
+    // We have to re-read toStop's current sequence each time because
+    // a previous stopover in this loop may have shifted it already.
+    const { data: currentToStop } = await supabase
+      .from("stops")
+      .select("sequence")
+      .eq("id", toStop.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    const toSeq = currentToStop?.sequence ?? toStop.sequence;
+
+    // Shift down. Postgres has no built-in array shift, so we
+    // re-number explicitly. RLS-safe: same workspace_id filter as
+    // every other write.
+    const { data: shiftRows } = await supabase
+      .from("stops")
+      .select("id, sequence")
+      .eq("itinerary_id", itinerary.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .gte("sequence", toSeq)
+      .order("sequence", { ascending: false });
+    for (const r of shiftRows ?? []) {
+      await supabase
+        .from("stops")
+        .update({ sequence: (r.sequence as number) + 1 })
+        .eq("id", r.id as string)
+        .eq("workspace_id", ctx.workspaceId);
+    }
+
+    const { data: newStop } = await supabase
+      .from("stops")
+      .insert({
+        itinerary_id: itinerary.id,
+        workspace_id: ctx.workspaceId,
+        sequence: toSeq,
+        type: "stopover",
+        title: label,
+        location_id: locationId,
+        customer_id: sv.customer_id ?? null,
+        customer_site_id: sv.customer_site_id ?? null,
+        duration_minutes: sv.duration_minutes,
+        is_time_fixed: false,
+        metadata: { kind: "stopover" },
+      })
+      .select("id, sequence, location_id")
+      .single();
+
+    if (newStop) {
+      const svUid = `sv::${sv.from_client_id}::${sv.to_client_id}`;
+      stopByClientId.set(svUid, {
+        id: newStop.id as string,
+        sequence: newStop.sequence as number,
+        locationId: (newStop.location_id as string | null) ?? null,
+      });
+      // Refresh the toStop entry too — its sequence got bumped.
+      stopByClientId.set(sv.to_client_id, {
+        ...toStop,
+        sequence: (newStop.sequence as number) + 1,
+      });
+    }
+  }
+
+  // ── Transitions + pre-booked tickets ────────────────────────────
+  // The brief can tell us, for any adjacent pair of anchors (by their
+  // client_ids), what travel mode the user intends and — optionally —
+  // the details of a ticket they've already got. Run after stopovers
+  // so leg-transition svUids resolve to real stop rows.
+  if (parsed.value.transitions.length > 0) {
     for (const t of parsed.value.transitions) {
       const from = stopByClientId.get(t.from_client_id);
       const to = stopByClientId.get(t.to_client_id);
@@ -778,81 +888,6 @@ export async function createItineraryFromBrief(
           train_number: t.booking.service_number ?? null,
         });
       }
-    }
-  }
-
-  // Stopovers — intent rows sitting between two anchors. Persist them
-  // after stops are inserted so we can resolve client_id → stop_id, but
-  // independently of the transition pass (a stopover doesn't require a
-  // non-auto transition).
-  if (parsed.value.stopovers.length > 0) {
-    // Reuse the stop lookup if we built it for transitions; otherwise
-    // build a fresh one. (The transition block sits behind a length>0
-    // gate so when there are stopovers but no transitions, the map
-    // doesn't exist yet.)
-    const { data: insertedStops } = await supabase
-      .from("stops")
-      .select("id, sequence")
-      .eq("itinerary_id", itinerary.id)
-      .eq("workspace_id", ctx.workspaceId)
-      .order("sequence");
-    const stopIdByClientId = new Map<string, string>();
-    for (const s of insertedStops ?? []) {
-      const cid = clientIdBySeq.get(s.sequence as number);
-      if (cid) stopIdByClientId.set(cid, s.id as string);
-    }
-
-    for (const sv of parsed.value.stopovers) {
-      const fromStopId = stopIdByClientId.get(sv.from_client_id);
-      const toStopId = stopIdByClientId.get(sv.to_client_id);
-      // If either end no longer exists in the persisted set, drop the
-      // stopover silently — same forgiving stance as transitions.
-      if (!fromStopId || !toStopId) continue;
-      // A stopover needs SOMEWHERE to drop in — skip empty ones rather
-      // than persisting a placeless intent that adds nothing.
-      if (!sv.location_id && !sv.customer_site_id && !sv.customer_id && !sv.label) {
-        continue;
-      }
-
-      let locationId = sv.location_id ?? null;
-      let label = sv.label ?? null;
-      if (!locationId && sv.customer_site_id) {
-        const { data: site } = await supabase
-          .from("customer_sites")
-          .select("name, address")
-          .eq("id", sv.customer_site_id)
-          .eq("workspace_id", ctx.workspaceId)
-          .maybeSingle();
-        if (site) label = label ?? site.name ?? site.address;
-      }
-      if (!locationId && !sv.customer_site_id && label) {
-        const { data: newLoc } = await supabase
-          .from("locations")
-          .insert({
-            name: label,
-            type: "other",
-            workspace_id: ctx.workspaceId,
-            user_id: ctx.userId,
-          })
-          .select("id, name")
-          .single();
-        if (newLoc) {
-          locationId = newLoc.id;
-          label = newLoc.name;
-        }
-      }
-
-      await supabase.from("stopovers").insert({
-        itinerary_id: itinerary.id,
-        workspace_id: ctx.workspaceId,
-        from_stop_id: fromStopId,
-        to_stop_id: toStopId,
-        location_id: locationId,
-        customer_id: sv.customer_id ?? null,
-        customer_site_id: sv.customer_site_id ?? null,
-        title: label,
-        duration_minutes: sv.duration_minutes,
-      });
     }
   }
 

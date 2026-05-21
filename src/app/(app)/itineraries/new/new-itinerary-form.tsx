@@ -336,17 +336,21 @@ export function NewItineraryBrief({
             serialize(HOME_UID, anchors[0].uid, homeT);
           }
           // Then each adjacent pair. When a stopover sits between the
-          // pair we deliberately skip the parent transition: the user's
-          // intent is now expressed as two leg transitions around the
-          // stopover, and persisting the stale parent would re-introduce
-          // a single train/walk between the anchors as if no stopover
-          // existed. The two leg transitions themselves can't be sent
-          // yet (they reference a synthetic stopover uid that has no
-          // matching stop row) — that's tracked for Phase 2/3.
+          // pair we skip the parent (anchor → anchor) transition and
+          // instead send the two leg transitions around the stopover —
+          // anchor → sv::A::B and sv::A::B → anchor. The server
+          // resolves the svUid sentinel to the real stopover stop_id
+          // it inserts (migration 0014 made stopovers real stops).
           for (let i = 0; i < anchors.length - 1; i++) {
             const a = anchors[i];
             const next = anchors[i + 1];
-            if (stopovers.has(transitionKey(a.uid, next.uid))) continue;
+            const sv = stopovers.get(transitionKey(a.uid, next.uid));
+            if (sv) {
+              const svUid = stopoverUid(a.uid, next.uid);
+              serialize(a.uid, svUid, getTransition(a.uid, svUid));
+              serialize(svUid, next.uid, getTransition(svUid, next.uid));
+              continue;
+            }
             serialize(a.uid, next.uid, getTransition(a.uid, next.uid));
           }
           return out;

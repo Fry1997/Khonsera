@@ -197,16 +197,51 @@ export function anchorFromStop(stop: DbStop, timezone: string): Anchor {
 }
 
 // Build the editor's anchor list from the loaded stop rows. Filters
-// out the implicit "home" start stop — that's surfaced separately as
-// a header in the editor, not as an editable anchor.
+// out the implicit "home" start stop AND stopover stops — stopovers
+// are surfaced separately via `timelineFromStops`, so the editor can
+// render them with StopoverCard between the anchors they sit between.
 export function anchorsFromStops(
   stops: DbStop[],
   timezone: string,
 ): Anchor[] {
   return stops
-    .filter((s) => s.type !== "start")
+    .filter((s) => s.type !== "start" && s.type !== "stopover")
     .sort((a, b) => a.sequence - b.sequence)
     .map((s) => anchorFromStop(s, timezone));
+}
+
+// Convert a stopover-typed stop into the Stopover shape consumed by
+// StopoverCard. The stop's sequence + the surrounding anchors tell
+// the renderer which pair to slot it between.
+export type EditorTimelineItem =
+  | { kind: "anchor"; anchor: Anchor; stop: DbStop }
+  | { kind: "stopover"; stopover: { uid: string; place: PlaceSelection | null; durationMins: number }; stop: DbStop };
+
+export function timelineFromStops(
+  stops: DbStop[],
+  timezone: string,
+): EditorTimelineItem[] {
+  return stops
+    .filter((s) => s.type !== "start")
+    .sort((a, b) => a.sequence - b.sequence)
+    .map<EditorTimelineItem>((s) => {
+      if (s.type === "stopover") {
+        return {
+          kind: "stopover",
+          stopover: {
+            uid: s.id,
+            place: placeFromStop(s),
+            durationMins: s.duration_minutes ?? 30,
+          },
+          stop: s,
+        };
+      }
+      return {
+        kind: "anchor",
+        anchor: anchorFromStop(s, timezone),
+        stop: s,
+      };
+    });
 }
 
 // transitions live on (from_stop_id, to_stop_id). Convert each row

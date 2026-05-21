@@ -24,15 +24,20 @@ import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 import { TransportIcon, StopIcon } from "@/components/icons";
 import {
   AnchorCard,
+  StopoverCard,
   TransitionRow as PlanningTransitionRow,
   anchorsFromStops,
   anchorToStopUpdate,
   buildDatePresets,
   emptyTransition,
+  stopoverAsAnchor,
+  timelineFromStops,
+  transitionKey,
   transitionsFromDb,
   type Anchor,
   type BriefTransition,
   type DbStop,
+  type EditorTimelineItem,
 } from "@/components/itinerary";
 
 // Inline icons — line-art style matching the warm editorial design.
@@ -251,6 +256,12 @@ export function ItineraryEditor({
   // the full brief form. Multiple anchors can be expanded at once.
   const planningAnchors = useMemo<Anchor[]>(
     () => anchorsFromStops(stops as DbStop[], timezone),
+    [stops, timezone],
+  );
+  // Full timeline including stopovers — used when rendering so we can
+  // slot StopoverCard rows between the anchors they sit between.
+  const planningTimeline = useMemo<EditorTimelineItem[]>(
+    () => timelineFromStops(stops as DbStop[], timezone),
     [stops, timezone],
   );
   // editedAnchors holds the per-anchor in-flight patch while a card
@@ -744,7 +755,7 @@ export function ItineraryEditor({
               <span className="meta">{dateNumeric}</span>
             </div>
 
-            {planningAnchors.length === 0 ? (
+            {planningTimeline.length === 0 ? (
               <div className="j-card-soft mt-4 p-6 text-center">
                 <p className="body mb-2">
                   No points yet. Add your first point — usually home.
@@ -755,27 +766,149 @@ export function ItineraryEditor({
                 className="flex flex-col"
                 style={{ gap: 12 }}
               >
-                {planningAnchors.map((anchor, i) => {
-                  const next = planningAnchors[i + 1];
-                  // Find the original stop row so we can wire up the
-                  // booking + delete affordances that still live on
-                  // the StopBookingMenu (rendered as an inline tray
-                  // below the summary card).
-                  const stop = sortedStops.find((s) => s.id === anchor.uid);
+                {planningTimeline.map((item, i) => {
+                  // The next item on the timeline determines whether
+                  // we render a transition row. We refer to "anchor /
+                  // stopover" interchangeably as "this stop" for the
+                  // transition's `to` side.
+                  const nextItem = planningTimeline[i + 1];
+                  const stop = item.stop;
+                  // DbTransition for this leg — pulls computed
+                  // duration/distance for the inline meta line.
+                  const transitionToNext = nextItem
+                    ? transitionByFrom.get(stop.id)
+                    : null;
+
+                  if (item.kind === "stopover") {
+                    // Stopover row — render StopoverCard summary; its
+                    // surrounding anchors are derived from the
+                    // adjacent timeline entries (skipping any other
+                    // stopover that might sit immediately next to it,
+                    // though in practice stopovers don't chain).
+                    const prevAnchor = (() => {
+                      for (let j = i - 1; j >= 0; j--) {
+                        const it = planningTimeline[j];
+                        if (it.kind === "anchor") return it.anchor;
+                      }
+                      return null;
+                    })();
+                    const nextAnchor = (() => {
+                      for (let j = i + 1; j < planningTimeline.length; j++) {
+                        const it = planningTimeline[j];
+                        if (it.kind === "anchor") return it.anchor;
+                      }
+                      return null;
+                    })();
+                    const isExpanded = expandedUids.has(item.stopover.uid);
+                    return (
+                      <li key={stop.id} className="flex flex-col">
+                        <StopoverCard
+                          stopover={item.stopover}
+                          fromAnchor={
+                            prevAnchor ??
+                            stopoverAsAnchor(
+                              item.stopover,
+                              `placeholder-prev-${stop.id}`,
+                            )
+                          }
+                          toAnchor={
+                            nextAnchor ??
+                            stopoverAsAnchor(
+                              item.stopover,
+                              `placeholder-next-${stop.id}`,
+                            )
+                          }
+                          customers={customers}
+                          customerSites={customerSites}
+                          locations={locations}
+                          mode={isExpanded ? "expanded" : "summary"}
+                          onModeChange={(next) => {
+                            if (next === "expanded") {
+                              setExpandedUids((prev) =>
+                                new Set(prev).add(item.stopover.uid),
+                              );
+                            } else {
+                              setExpandedUids((prev) => {
+                                const n = new Set(prev);
+                                n.delete(item.stopover.uid);
+                                return n;
+                              });
+                            }
+                          }}
+                          // Editing a stopover's place/duration ideally
+                          // patches the underlying stop row. The brief
+                          // already persists stopovers as stops via
+                          // migration 0014; inline persistence of edits
+                          // is deferred to the next slice.
+                          onChange={() => {}}
+                          onRemove={() => handleDelete(stop.id)}
+                        />
+                        {nextItem ? (
+                          <>
+                            <PlanningTransitionRow
+                              from={
+                                prevAnchor ??
+                                stopoverAsAnchor(
+                                  item.stopover,
+                                  `placeholder-prev-${stop.id}`,
+                                )
+                              }
+                              to={
+                                nextItem.kind === "anchor"
+                                  ? nextItem.anchor
+                                  : stopoverAsAnchor(
+                                      nextItem.stopover,
+                                      nextItem.stopover.uid,
+                                    )
+                              }
+                              transition={
+                                planningTransitions.get(
+                                  transitionKey(
+                                    stop.id,
+                                    nextItem.kind === "anchor"
+                                      ? nextItem.anchor.uid
+                                      : nextItem.stopover.uid,
+                                  ),
+                                ) ?? emptyTransition()
+                              }
+                              onChange={(patch) =>
+                                handleTransitionPatch(
+                                  stop.id,
+                                  nextItem.kind === "anchor"
+                                    ? nextItem.anchor.uid
+                                    : nextItem.stopover.uid,
+                                  patch,
+                                )
+                              }
+                            />
+                            {transitionToNext ? (
+                              <TransitionMeta transition={transitionToNext} />
+                            ) : null}
+                          </>
+                        ) : null}
+                      </li>
+                    );
+                  }
+
+                  // Anchor row.
+                  const anchor = item.anchor;
                   const isExpanded = expandedUids.has(anchor.uid);
                   const liveAnchor =
                     editedAnchors.get(anchor.uid) ?? anchor;
-                  // Find the DbTransition for this leg (used by the
-                  // existing journey-leg display, kept beneath the
-                  // summary transition chip).
-                  const transitionToNext = next
-                    ? transitionByFrom.get(anchor.uid)
-                    : null;
+                  // StopBookingMenu wants the editor's richer StopRow
+                  // shape (with external_reference etc) — look it up
+                  // by id from the page-level stops query.
+                  const stopRow = sortedStops.find((s) => s.id === anchor.uid);
                   return (
                     <li key={anchor.uid} className="flex flex-col">
                       <AnchorCard
                         anchor={liveAnchor}
-                        earlier={planningAnchors.slice(0, i)}
+                        earlier={planningAnchors.slice(
+                          0,
+                          planningAnchors.findIndex(
+                            (a) => a.uid === anchor.uid,
+                          ),
+                        )}
                         first={i === 0}
                         canRemove={planningAnchors.length > 1}
                         customers={customers}
@@ -794,48 +927,62 @@ export function ItineraryEditor({
                         }
                         onRemove={() => handleDelete(anchor.uid)}
                       />
-                      {/* Booking + journey-leg detail kept alongside
-                          the summary card so the existing add-transport /
-                          add-accommodation flows still work. These
-                          render below the card in a small tray. */}
-                      {stop ? (
-                        <StopBookingMenu
-                          stop={stop}
-                          pending={pending}
-                          onAddTransport={(mode, label) =>
-                            setTransportBookingFor({
-                              stopId: stop.id,
-                              label,
-                              mode,
-                            })
-                          }
-                          onAddAccommodation={(label) =>
-                            setAccommodationBookingFor({
-                              afterStopId: stop.id,
-                              afterStopLabel: label,
-                              existingStopId:
-                                stop.type === "accommodation"
-                                  ? stop.id
-                                  : undefined,
-                            })
-                          }
-                        />
+                      {stopRow ? (
+                      <StopBookingMenu
+                        stop={stopRow}
+                        pending={pending}
+                        onAddTransport={(mode, label) =>
+                          setTransportBookingFor({
+                            stopId: stop.id,
+                            label,
+                            mode,
+                          })
+                        }
+                        onAddAccommodation={(label) =>
+                          setAccommodationBookingFor({
+                            afterStopId: stop.id,
+                            afterStopLabel: label,
+                            existingStopId:
+                              stop.type === "accommodation"
+                                ? stop.id
+                                : undefined,
+                          })
+                        }
+                      />
                       ) : null}
-                      {next ? (
+                      {nextItem ? (
                         <PlanningTransitionRow
                           from={anchor}
-                          to={next}
+                          to={
+                            nextItem.kind === "anchor"
+                              ? nextItem.anchor
+                              : stopoverAsAnchor(
+                                  nextItem.stopover,
+                                  nextItem.stopover.uid,
+                                )
+                          }
                           transition={
                             planningTransitions.get(
-                              `${anchor.uid}::${next.uid}`,
+                              transitionKey(
+                                anchor.uid,
+                                nextItem.kind === "anchor"
+                                  ? nextItem.anchor.uid
+                                  : nextItem.stopover.uid,
+                              ),
                             ) ?? emptyTransition()
                           }
                           onChange={(patch) =>
-                            handleTransitionPatch(anchor.uid, next.uid, patch)
+                            handleTransitionPatch(
+                              anchor.uid,
+                              nextItem.kind === "anchor"
+                                ? nextItem.anchor.uid
+                                : nextItem.stopover.uid,
+                              patch,
+                            )
                           }
                         />
                       ) : null}
-                      {next && transitionToNext ? (
+                      {nextItem && transitionToNext ? (
                         <TransitionMeta transition={transitionToNext} />
                       ) : null}
                     </li>
