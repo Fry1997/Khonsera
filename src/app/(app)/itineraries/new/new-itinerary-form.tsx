@@ -191,7 +191,35 @@ const APPT_DURATIONS = [
   { label: "Full day", mins: 480 },
 ];
 
-const TIME_PRESETS = ["09:00", "10:00", "13:00", "18:00", "19:30"];
+// Time presets — hourly across the working day plus a handful of common
+// shoulder-time slots. The pill row scrolls horizontally on mobile so
+// the full set is one swipe away; the explicit time input always wins
+// for unusual values.
+const TIME_PRESETS = [
+  "06:00",
+  "07:00",
+  "07:30",
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "21:00",
+  "22:00",
+];
 
 // Sentinel client_id for the implicit "home" anchor. The server doesn't
 // see this as an anchor — it's already auto-seeded from the travel
@@ -2135,7 +2163,10 @@ function buildDatePresets(timezone: string) {
     { label: "Today", value: value(today) },
     { label: "Tomorrow", value: value(tomorrow) },
   ];
-  for (let i = 2; i <= 5; i++) {
+  // Two weeks of day chips. The pill row scrolls horizontally on
+  // mobile so the long tail is one swipe away. The date input itself
+  // is always the fallback for further-out trips.
+  for (let i = 2; i <= 14; i++) {
     const d = new Date(now);
     d.setDate(today.getDate() + i);
     out.push({ label: fmt(d), value: value(d) });

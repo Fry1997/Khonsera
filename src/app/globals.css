@@ -131,6 +131,15 @@
     color-scheme: light;
   }
 
+  /* Universal box-sizing — every element (especially form controls
+     with intrinsic padding) measures including its border + padding so
+     "width: 100%" never overflows a grid cell. */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   html,
   body {
     background: var(--paper);
@@ -147,6 +156,11 @@
   textarea {
     font: inherit;
     color: inherit;
+    /* Stop date/time pickers and number spinners from imposing a
+       minimum intrinsic width that pushes their grid cell past the
+       viewport on narrow screens. */
+    min-width: 0;
+    max-width: 100%;
   }
 }
 
@@ -2011,19 +2025,52 @@
   }
   .brief-when-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr) prevents intrinsic content (date / time pickers)
+       from forcing the cell wider than its share. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 10px;
   }
   .brief-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
   }
+  .brief-field .field {
+    width: 100%;
+    max-width: 100%;
+  }
+  /* Pill rows always run on a single line and scroll horizontally on
+     overflow — keeps the form compact when the preset list grows. On
+     desktop a thin scrollbar appears under the row; on phones it's
+     hidden in favour of the touch-swipe affordance. */
   .brief-pill-row {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
     margin-top: 10px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-2) transparent;
+    /* Avoid clipping the focus ring vertically while still scrolling
+       horizontally. */
+    padding: 2px 0 6px;
+    margin-left: -2px;
+    margin-right: -2px;
+    padding-left: 2px;
+    padding-right: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .brief-pill-row > * {
+    flex: 0 0 auto;
+  }
+  .brief-pill-row::-webkit-scrollbar {
+    height: 6px;
+  }
+  .brief-pill-row::-webkit-scrollbar-thumb {
+    background: var(--rule-2);
+    border-radius: 999px;
   }
   .brief-pill {
     cursor: pointer;
@@ -2147,6 +2194,16 @@
     font-weight: 600;
     cursor: pointer;
     transition: border-color 0.12s, background 0.12s, color 0.12s;
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* Only the bare label span (no class) truncates; the pill + hint
+     children keep their own widths. */
+  .transition-chip > span:not([class]) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
   .transition-chip:hover {
     border-color: var(--gold);
@@ -2586,34 +2643,22 @@
       position: static;
     }
     .brief-when-row {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
     .brief-card {
       padding: 18px;
     }
   }
 
-  /* Phone — make all the pill rows in the brief scroll horizontally on
-     overflow rather than wrap, keep the popover hugging the viewport,
-     and reduce padding so nothing slips off the edge of the screen. */
+  /* Phone — keep the popover hugging the viewport, hide the scrollbar
+     under the chip rows (the swipe gesture is enough on touch), and
+     trim padding so nothing slips off the edge of the screen. */
   @media (max-width: 640px) {
     .brief-pill-row {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      padding-bottom: 4px;
-      margin-left: -2px;
-      margin-right: -2px;
-      padding-left: 2px;
-      padding-right: 2px;
     }
     .brief-pill-row::-webkit-scrollbar {
       display: none;
-    }
-    .brief-pill-row > .pill,
-    .brief-pill-row > .brief-pill {
-      flex: 0 0 auto;
     }
     .transition-pop {
       width: calc(100vw - 24px);
