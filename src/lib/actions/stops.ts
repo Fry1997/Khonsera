@@ -18,6 +18,11 @@ const stopTypeEnum = z.enum([
   "meal",
   "transport_booked",
   "transit_arrival",
+  // Added by later migrations (0011 added transit_departure; 0014
+  // added stopover). Kept in lock-step here so editor patches for
+  // those stop types pass validation.
+  "transit_departure",
+  "stopover",
   "other",
 ]);
 

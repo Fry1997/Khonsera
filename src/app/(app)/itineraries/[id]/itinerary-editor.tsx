@@ -32,6 +32,7 @@ import {
   buildDatePresets,
   emptyTransition,
   stopoverAsAnchor,
+  stopoverToStopUpdate,
   timelineFromStops,
   transitionKey,
   transitionsFromDb,
@@ -41,6 +42,7 @@ import {
   type DbStop,
   type EditorTimelineItem,
   type ModePreviewMap,
+  type Stopover,
   type StopoverBackCalc,
 } from "@/components/itinerary";
 
@@ -102,6 +104,8 @@ const STOP_ICON: Record<StopType, React.ReactNode> = {
   meal: Icon.fork,
   transport_booked: Icon.train,
   transit_arrival: Icon.plane,
+  transit_departure: Icon.train,
+  stopover: Icon.pin,
   other: Icon.pin,
 };
 
@@ -114,6 +118,8 @@ const STOP_LABEL: Record<StopType, string> = {
   meal: "Meal",
   transport_booked: "Transport",
   transit_arrival: "Arrive",
+  transit_departure: "Depart",
+  stopover: "Stopover",
   other: "Point",
 };
 
@@ -347,6 +353,12 @@ export function ItineraryEditor({
     () => new Map(),
   );
   const [expandedUids, setExpandedUids] = useState<Set<string>>(() => new Set());
+  // Per-stopover in-flight edits, mirrors editedAnchors above. Click
+  // Edit → seed local copy; onChange merges patches; click Done →
+  // flush via updateStop.
+  const [editedStopovers, setEditedStopovers] = useState<
+    Map<string, Stopover>
+  >(() => new Map());
   const planningDatePresets = useMemo(
     () => buildDatePresets(timezone),
     [timezone],
@@ -544,6 +556,61 @@ export function ItineraryEditor({
   };
   const handleAnchorPatch = (uid: string, patch: Partial<Anchor>) => {
     setEditedAnchors((prev) => {
+      const next = new Map(prev);
+      const current = next.get(uid);
+      if (!current) return prev;
+      next.set(uid, { ...current, ...patch });
+      return next;
+    });
+  };
+
+  // Stopover edit handlers — same shape as the anchor ones, but
+  // operate on the timeline's stopover items instead of
+  // planningAnchors. The flush path uses stopoverToStopUpdate, which
+  // writes back to the same stops table (stopovers are stops since
+  // migration 0014).
+  const handleStopoverExpand = (uid: string) => {
+    const fromTimeline = planningTimeline.find(
+      (it) => it.kind === "stopover" && it.stopover.uid === uid,
+    );
+    if (!fromTimeline || fromTimeline.kind !== "stopover") return;
+    const current =
+      editedStopovers.get(uid) ?? {
+        place: fromTimeline.stopover.place,
+        durationMins: fromTimeline.stopover.durationMins,
+      };
+    setEditedStopovers((prev) => {
+      const next = new Map(prev);
+      next.set(uid, current);
+      return next;
+    });
+    setExpandedUids((prev) => new Set(prev).add(uid));
+  };
+  const handleStopoverCollapse = (uid: string) => {
+    const edited = editedStopovers.get(uid);
+    setExpandedUids((prev) => {
+      const next = new Set(prev);
+      next.delete(uid);
+      return next;
+    });
+    if (!edited) return;
+    startTransition(async () => {
+      setError(null);
+      const result = await updateStop(stopoverToStopUpdate(edited, uid));
+      setEditedStopovers((prev) => {
+        const next = new Map(prev);
+        next.delete(uid);
+        return next;
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      router.refresh();
+    });
+  };
+  const handleStopoverPatch = (uid: string, patch: Partial<Stopover>) => {
+    setEditedStopovers((prev) => {
       const next = new Map(prev);
       const current = next.get(uid);
       if (!current) return prev;
@@ -830,6 +897,28 @@ export function ItineraryEditor({
               <span className="meta">{dateNumeric}</span>
             </div>
 
+            {/* Implicit home row. The 'start' stop is auto-seeded
+                from the travel profile and filtered out of the
+                editable timeline; we still surface it here so the
+                trip reads as a journey, not an isolated list of
+                appointments. */}
+            {(() => {
+              const startStop = sortedStops.find((s) => s.type === "start");
+              if (!startStop) return null;
+              const label =
+                startStop.location?.name ?? startStop.title ?? "Home";
+              return (
+                <div className="home-header">
+                  <div className="home-header-badge">
+                    <span className="home-header-dot" aria-hidden />
+                    <span className="uc">Start</span>
+                  </div>
+                  <h3 className="home-header-title">{label}</h3>
+                  <p className="home-header-meta">From your travel profile</p>
+                </div>
+              );
+            })()}
+
             {planningTimeline.length === 0 ? (
               <div className="j-card-soft mt-4 p-6 text-center">
                 <p className="body mb-2">
@@ -937,10 +1026,12 @@ export function ItineraryEditor({
                         : null,
                     );
                     const isExpanded = expandedUids.has(item.stopover.uid);
+                    const liveStopover =
+                      editedStopovers.get(item.stopover.uid) ?? item.stopover;
                     return (
                       <li key={stop.id} className="flex flex-col">
                         <StopoverCard
-                          stopover={item.stopover}
+                          stopover={liveStopover}
                           fromAnchor={
                             prevAnchor ??
                             stopoverAsAnchor(
@@ -960,25 +1051,14 @@ export function ItineraryEditor({
                           locations={locations}
                           backCalc={backCalc}
                           mode={isExpanded ? "expanded" : "summary"}
-                          onModeChange={(next) => {
-                            if (next === "expanded") {
-                              setExpandedUids((prev) =>
-                                new Set(prev).add(item.stopover.uid),
-                              );
-                            } else {
-                              setExpandedUids((prev) => {
-                                const n = new Set(prev);
-                                n.delete(item.stopover.uid);
-                                return n;
-                              });
-                            }
-                          }}
-                          // Editing a stopover's place/duration ideally
-                          // patches the underlying stop row. The brief
-                          // already persists stopovers as stops via
-                          // migration 0014; inline persistence of edits
-                          // is deferred to the next slice.
-                          onChange={() => {}}
+                          onModeChange={(next) =>
+                            next === "expanded"
+                              ? handleStopoverExpand(item.stopover.uid)
+                              : handleStopoverCollapse(item.stopover.uid)
+                          }
+                          onChange={(patch) =>
+                            handleStopoverPatch(item.stopover.uid, patch)
+                          }
                           onRemove={() => handleDelete(stop.id)}
                         />
                         {nextItem ? (

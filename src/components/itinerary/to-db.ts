@@ -4,7 +4,7 @@
 // updateStop in one go rather than autosaving on every keystroke.
 
 import { addMinutesIso, effectiveKind, effectiveRole, isoFromLocal } from "./helpers";
-import type { Anchor } from "./types";
+import type { Anchor, Stopover } from "./types";
 
 // What updateStop accepts. We deliberately don't pull the zod schema
 // directly — its `z.input` type would force this layer to depend on
@@ -21,6 +21,8 @@ export type StopUpdateInput = {
     | "meal"
     | "transport_booked"
     | "transit_arrival"
+    | "transit_departure"
+    | "stopover"
     | "other";
   title?: string | null;
   start_time?: string | null;
@@ -109,5 +111,35 @@ export function anchorToStopUpdate(
       // overrode it — otherwise we let inference re-run on read.
       timing_mode: anchor.timingModeOverride ? persistedTimingMode : null,
     },
+  };
+}
+
+// stopoverToStopUpdate — same shape as anchorToStopUpdate but for a
+// stopover-typed stop. The schema is identical (stopovers are
+// stops since migration 0014); only the fields that matter for a
+// stopover (place + ideal duration) are populated. Type stays
+// 'stopover' so the editor's renderer keeps treating it as one.
+export function stopoverToStopUpdate(
+  stopover: Stopover,
+  uid: string,
+): StopUpdateInput {
+  return {
+    id: uid,
+    type: "stopover",
+    title: stopover.place?.label ?? null,
+    duration_minutes: stopover.durationMins,
+    is_time_fixed: false,
+    location_id:
+      stopover.place?.kind === "location" ? stopover.place.location_id : null,
+    customer_id:
+      stopover.place?.kind === "customer_site" ||
+      stopover.place?.kind === "customer"
+        ? stopover.place.customer_id
+        : null,
+    customer_site_id:
+      stopover.place?.kind === "customer_site"
+        ? stopover.place.customer_site_id
+        : null,
+    metadata: { kind: "stopover" },
   };
 }

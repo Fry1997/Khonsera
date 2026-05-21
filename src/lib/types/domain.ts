@@ -36,6 +36,8 @@ export type StopType =
   | "meal"
   | "transport_booked"
   | "transit_arrival"
+  | "transit_departure"
+  | "stopover"
   | "other";
 
 export type TransitionMode =

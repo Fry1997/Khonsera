@@ -16,6 +16,7 @@ import {
   HOME_UID,
   JourneySpine,
   StopoverCard,
+  TRANSITION_OPTIONS,
   TransitionRow,
   anchorWithinStay,
   buildDatePresets,
@@ -31,12 +32,15 @@ import {
   stopoverAsAnchor,
   stopoverUid,
   transitionKey,
+  useRoutePreviewsForPlaces,
   type Anchor,
   type BriefTransition,
   type LocalMode,
+  type ModePreviewMap,
   type Stopover,
   type TransitionMode,
 } from "@/components/itinerary";
+import type { PlaceSelection } from "@/components/place-picker";
 
 export function NewItineraryBrief({
   customers,
@@ -146,6 +150,34 @@ export function NewItineraryBrief({
   };
 
   const datePresets = useMemo(() => buildDatePresets(timezone), [timezone]);
+
+  // Per-mode travel-time hints — same UX as the editor but keyed on
+  // PlaceSelection because the brief has no stop_ids yet. Only saved
+  // places (location_id / customer_site_id) get hints; free-text
+  // labels stay quiet until the user picks something concrete.
+  const briefPreviews = useRoutePreviewsForPlaces();
+  const briefPreviewsForPair = (
+    from: PlaceSelection | null,
+    to: PlaceSelection | null,
+  ): ModePreviewMap => {
+    const out: ModePreviewMap = {};
+    for (const opt of TRANSITION_OPTIONS) {
+      if (opt.value === "auto" || opt.value === "mixed") continue;
+      const entry = briefPreviews.get(from, to, opt.value);
+      if (entry) out[opt.value] = entry;
+    }
+    return out;
+  };
+  const briefPrefetchPair = (
+    from: PlaceSelection | null,
+    to: PlaceSelection | null,
+  ) => {
+    if (!from || !to) return;
+    for (const opt of TRANSITION_OPTIONS) {
+      if (opt.value === "auto" || opt.value === "mixed") continue;
+      briefPreviews.fetchPreview(from, to, opt.value);
+    }
+  };
 
   const updateAnchor = (uid: string, patch: Partial<Anchor>) => {
     setAnchors((prev) =>
@@ -474,6 +506,14 @@ export function NewItineraryBrief({
                             from={anchor}
                             to={svAnchor}
                             transition={getTransition(anchor.uid, svUid)}
+                            modePreviews={briefPreviewsForPair(
+                              anchor.place,
+                              sv.place,
+                            )}
+                            onOpenChange={(open) => {
+                              if (open)
+                                briefPrefetchPair(anchor.place, sv.place);
+                            }}
                             onChange={(patch) =>
                               setTransition(anchor.uid, svUid, patch)
                             }
@@ -496,6 +536,14 @@ export function NewItineraryBrief({
                             from={svAnchor}
                             to={next}
                             transition={getTransition(svUid, next.uid)}
+                            modePreviews={briefPreviewsForPair(
+                              sv.place,
+                              next.place,
+                            )}
+                            onOpenChange={(open) => {
+                              if (open)
+                                briefPrefetchPair(sv.place, next.place);
+                            }}
                             onChange={(patch) =>
                               setTransition(svUid, next.uid, patch)
                             }
@@ -509,6 +557,14 @@ export function NewItineraryBrief({
                           from={anchor}
                           to={next}
                           transition={getTransition(anchor.uid, next.uid)}
+                          modePreviews={briefPreviewsForPair(
+                            anchor.place,
+                            next.place,
+                          )}
+                          onOpenChange={(open) => {
+                            if (open)
+                              briefPrefetchPair(anchor.place, next.place);
+                          }}
                           onChange={(patch) =>
                             setTransition(anchor.uid, next.uid, patch)
                           }

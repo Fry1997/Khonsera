@@ -332,6 +332,85 @@ export async function previewRoute(
   });
 }
 
+// previewRouteForPlaces — sibling of previewRoute that takes raw
+// place references (location_id or customer_site_id) rather than
+// stop_ids. The brief uses this: it has no stops yet (they're
+// created on submit), only PlaceSelection values from the picker.
+//
+// Coordinates are resolved straight from the locations /
+// customer_sites tables in the user's workspace.
+const previewByPlaceSchema = z.object({
+  from_location_id: z.string().uuid().nullable().optional(),
+  from_customer_site_id: z.string().uuid().nullable().optional(),
+  to_location_id: z.string().uuid().nullable().optional(),
+  to_customer_site_id: z.string().uuid().nullable().optional(),
+  mode: modeEnum,
+});
+
+export async function previewRouteForPlaces(
+  input: z.input<typeof previewByPlaceSchema>,
+): Promise<
+  Result<{ durationMinutes: number | null; distanceMiles: number | null }>
+> {
+  const parsed = parseInput(previewByPlaceSchema, input);
+  if (!parsed.ok) return parsed;
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const lookup = async (
+    locationId: string | null | undefined,
+    customerSiteId: string | null | undefined,
+  ): Promise<{ lat: number; lng: number } | null> => {
+    if (locationId) {
+      const { data } = await supabase
+        .from("locations")
+        .select("latitude, longitude")
+        .eq("id", locationId)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+      if (data?.latitude != null && data?.longitude != null) {
+        return { lat: data.latitude, lng: data.longitude };
+      }
+      return null;
+    }
+    if (customerSiteId) {
+      const { data } = await supabase
+        .from("customer_sites")
+        .select("latitude, longitude")
+        .eq("id", customerSiteId)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+      if (data?.latitude != null && data?.longitude != null) {
+        return { lat: data.latitude, lng: data.longitude };
+      }
+      return null;
+    }
+    return null;
+  };
+
+  const fromPoint = await lookup(
+    parsed.value.from_location_id,
+    parsed.value.from_customer_site_id,
+  );
+  const toPoint = await lookup(
+    parsed.value.to_location_id,
+    parsed.value.to_customer_site_id,
+  );
+  if (!fromPoint || !toPoint) {
+    return ok({ durationMinutes: null, distanceMiles: null });
+  }
+
+  const route = await routeForTransition({
+    mode: parsed.value.mode,
+    origin: fromPoint,
+    destination: toPoint,
+  });
+  return ok({
+    durationMinutes: route?.totalDurationMinutes ?? null,
+    distanceMiles: route?.totalDistanceMiles ?? null,
+  });
+}
+
 function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   const s = first(stop) as
     | { location?: unknown; customer_site?: unknown }

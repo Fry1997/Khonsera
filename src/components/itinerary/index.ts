@@ -14,6 +14,7 @@ export {
 } from "./transition-row";
 export {
   useRoutePreviews,
+  useRoutePreviewsForPlaces,
   type RoutePreview,
 } from "./use-route-preview";
 export { StopoverCard, type StopoverBackCalc } from "./stopover-card";
@@ -29,4 +30,8 @@ export {
   type DbStopover,
   type EditorTimelineItem,
 } from "./from-db";
-export { anchorToStopUpdate, type StopUpdateInput } from "./to-db";
+export {
+  anchorToStopUpdate,
+  stopoverToStopUpdate,
+  type StopUpdateInput,
+} from "./to-db";

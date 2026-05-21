@@ -14,7 +14,11 @@
 // transitions anyway. Persistent caching is a future optimisation.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { previewRoute } from "@/lib/actions/transitions";
+import {
+  previewRoute,
+  previewRouteForPlaces,
+} from "@/lib/actions/transitions";
+import type { PlaceSelection } from "@/components/place-picker";
 import type { TransitionMode } from "@/lib/types/domain";
 
 export type RoutePreview = {
@@ -66,6 +70,80 @@ export function useRoutePreviews() {
     ): RoutePreview | "pending" | null => {
       const entry = cacheRef.current.get(cacheKey(fromStopId, toStopId, mode));
       return entry ?? null;
+    },
+    [],
+  );
+
+  return { fetchPreview, get };
+}
+
+// useRoutePreviewsForPlaces — sibling hook for the brief, which has
+// no stop ids (those are created on submit). Keys the cache on a
+// stable representation of two PlaceSelection values so a re-render
+// with the same picks reuses the prior fetch.
+const placeCacheKey = (
+  from: PlaceSelection | null,
+  to: PlaceSelection | null,
+  mode: TransitionMode,
+): string => {
+  const part = (p: PlaceSelection | null) =>
+    p
+      ? p.kind === "location"
+        ? `L:${p.location_id}`
+        : p.kind === "customer_site"
+          ? `S:${p.customer_site_id}`
+          : `C:${p.customer_id}`
+      : "?";
+  return `${part(from)}::${part(to)}::${mode}`;
+};
+
+export function useRoutePreviewsForPlaces() {
+  const cacheRef = useRef<Map<string, RoutePreview | "pending">>(new Map());
+  const [, force] = useState(0);
+
+  const fetchPreview = useCallback(
+    async (
+      from: PlaceSelection | null,
+      to: PlaceSelection | null,
+      mode: TransitionMode,
+    ) => {
+      if (!from || !to) return;
+      // Only saved-place pairs work — a free-text label hasn't been
+      // resolved to a row yet, so coordinates aren't available
+      // server-side. Silently skip rather than firing a doomed call.
+      if (from.kind === "customer") return;
+      if (to.kind === "customer") return;
+      const k = placeCacheKey(from, to, mode);
+      if (cacheRef.current.has(k)) return;
+      cacheRef.current.set(k, "pending");
+      const result = await previewRouteForPlaces({
+        from_location_id:
+          from.kind === "location" ? from.location_id : null,
+        from_customer_site_id:
+          from.kind === "customer_site" ? from.customer_site_id : null,
+        to_location_id: to.kind === "location" ? to.location_id : null,
+        to_customer_site_id:
+          to.kind === "customer_site" ? to.customer_site_id : null,
+        mode,
+      });
+      if (result.ok) {
+        cacheRef.current.set(k, result.value);
+      } else {
+        cacheRef.current.delete(k);
+      }
+      force((n) => n + 1);
+    },
+    [],
+  );
+
+  const get = useCallback(
+    (
+      from: PlaceSelection | null,
+      to: PlaceSelection | null,
+      mode: TransitionMode,
+    ): RoutePreview | "pending" | null => {
+      if (!from || !to) return null;
+      return cacheRef.current.get(placeCacheKey(from, to, mode)) ?? null;
     },
     [],
   );
