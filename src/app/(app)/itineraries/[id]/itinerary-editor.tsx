@@ -353,12 +353,16 @@ export function ItineraryEditor({
   ): Resolution => {
     const fromStop = sortedStops.find((s) => s.id === fromStopId) ?? null;
     const toStop = sortedStops.find((s) => s.id === toStopId) ?? null;
-    const existing = transitions.find(
-      (t) => t.from_stop_id === fromStopId && t.to_stop_id === toStopId,
-    );
+    // Don't pass user_mode_override to the engine. The explicit-pill
+    // picker is the source of truth for the user's pick; the engine
+    // is now purely a scoring helper that should always return all
+    // three candidates with their per-mode data. Passing an override
+    // short-circuited scoring and left the other two pills with no
+    // data — making them grey + unclickable in the picker, which is
+    // the opposite of what we want.
     const ctx: ScoringContext = {
       ...scoringContext,
-      userOverride: existing?.user_mode_override ?? null,
+      userOverride: null,
     };
     const lookup = (mode: ModeCandidate): PreviewEntry => {
       const entry = routePreviews.get(fromStopId, toStopId, mode);
