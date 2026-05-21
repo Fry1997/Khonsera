@@ -186,8 +186,11 @@ export async function getDirections(args: {
     "routes.legs.steps.startLocation.latLng",
     "routes.legs.steps.endLocation.latLng",
     "routes.legs.steps.navigationInstruction",
-    "geocodingResults.origin.formattedAddress",
-    "geocodingResults.destination.formattedAddress",
+    // Note: Routes API v2's GeocodingResults shape doesn't include
+    // formattedAddress (that's a Directions-v1 field). Requesting it
+    // returns INVALID_ARGUMENT for the whole call. Consumers fall
+    // back to the original origin/destination string when these
+    // aren't returned — see startAddress/endAddress below.
   ];
   const transitOnly = ["routes.legs.steps.transitDetails"];
   const fieldMask = (
