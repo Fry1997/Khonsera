@@ -280,7 +280,12 @@ export function NewItineraryBrief({
 
   const updateAnchor = (uid: string, patch: Partial<Anchor>) => {
     setAnchors((prev) =>
-      prev.map((a) => (a.uid === uid ? { ...a, ...patch } : a)),
+      // Re-sort after every patch so a date/time edit that pushes an
+      // anchor before its neighbour is reflected immediately in the
+      // visual order.
+      sortAnchorsByTime(
+        prev.map((a) => (a.uid === uid ? { ...a, ...patch } : a)),
+      ),
     );
   };
 
@@ -291,14 +296,14 @@ export function NewItineraryBrief({
     setAnchors((prev) => {
       const copy = [...prev];
       copy.splice(index, 0, seed);
-      return copy;
+      return sortAnchorsByTime(copy);
     });
   };
 
   const removeAnchor = (uid: string) => {
     setAnchors((prev) => {
       if (prev.length <= 1) return prev;
-      return prev.filter((a) => a.uid !== uid);
+      return sortAnchorsByTime(prev.filter((a) => a.uid !== uid));
     });
   };
 
@@ -335,7 +340,7 @@ export function NewItineraryBrief({
       }
       return a;
     });
-    if (dirty) setAnchors(next);
+    if (dirty) setAnchors(sortAnchorsByTime(next));
     // anchors is intentionally the only dep; we want this to re-evaluate
     // every time the user edits a place / date / time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -975,6 +980,7 @@ function HotelTimes({
   datePresets: Array<{ label: string; value: string }>;
   onChange: (patch: Partial<Anchor>) => void;
 }) {
+  const effectiveCheckOut = anchor.checkOutDate || nextDay(anchor.date);
   return (
     <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="brief-when-row">
@@ -997,13 +1003,37 @@ function HotelTimes({
           />
         </label>
       </div>
+      <div className="brief-pill-row">
+        {datePresets.map((p) => (
+          <button
+            key={`in-${p.value}`}
+            type="button"
+            className="pill brief-pill"
+            data-active={p.value === anchor.date}
+            onClick={() => {
+              // Picking a new check-in shifts the check-out only if the
+              // existing one no longer makes sense (empty, or now before
+              // the new check-in). Otherwise we preserve the user's
+              // explicit check-out choice.
+              const currentOut = anchor.checkOutDate;
+              const needsBump = !currentOut || currentOut <= p.value;
+              onChange({
+                date: p.value,
+                ...(needsBump ? { checkOutDate: nextDay(p.value) } : {}),
+              });
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
       <div className="brief-when-row">
         <label className="brief-field">
           <span className="uc">Check-out</span>
           <input
             type="date"
             className="field"
-            value={anchor.checkOutDate || nextDay(anchor.date)}
+            value={effectiveCheckOut}
             onChange={(e) => onChange({ checkOutDate: e.target.value })}
           />
         </label>
@@ -1020,16 +1050,13 @@ function HotelTimes({
       <div className="brief-pill-row">
         {datePresets.map((p) => (
           <button
-            key={p.value}
+            key={`out-${p.value}`}
             type="button"
             className="pill brief-pill"
-            data-active={p.value === anchor.date}
-            onClick={() =>
-              onChange({
-                date: p.value,
-                checkOutDate: nextDay(p.value),
-              })
-            }
+            data-active={p.value === effectiveCheckOut}
+            // A check-out before (or on) check-in is nonsense — disable.
+            disabled={!!anchor.date && p.value <= anchor.date}
+            onClick={() => onChange({ checkOutDate: p.value })}
           >
             {p.label}
           </button>
@@ -2120,6 +2147,17 @@ function cryptoUid(): string {
     return crypto.randomUUID();
   }
   return `a_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+// Anchors must always be in chronological order — an anchor IS a fixed
+// point in time. Sort by check-in date+time; empty date sorts to the
+// end so newly-inserted blank anchors don't jump above dated ones.
+function sortAnchorsByTime(anchors: Anchor[]): Anchor[] {
+  return [...anchors].sort((a, b) => {
+    const ka = a.date ? `${a.date} ${a.time || "00:00"}` : "￿";
+    const kb = b.date ? `${b.date} ${b.time || "00:00"}` : "￿";
+    return ka.localeCompare(kb);
+  });
 }
 
 function nextDay(iso: string): string {
