@@ -162,6 +162,19 @@
     min-width: 0;
     max-width: 100%;
   }
+  /* iOS Safari gives <input type="date|time"> a native chrome with an
+     intrinsic min-width that ignores `min-width: 0`. Strip the native
+     appearance so they obey the container's width like a text input
+     does. The picker UI is still triggered on tap. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+  }
 }
 
 @layer components {
