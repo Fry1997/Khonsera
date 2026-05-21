@@ -363,8 +363,20 @@ export function ItineraryEditor({
     fromStopId: string,
     toStopId: string,
   ): Resolution => {
-    const fromStop = sortedStops.find((s) => s.id === fromStopId) ?? null;
+    const rawFromStop = sortedStops.find((s) => s.id === fromStopId) ?? null;
     const toStop = sortedStops.find((s) => s.id === toStopId) ?? null;
+    // For accommodation (hotel) stops, end_time is the *checkout*
+    // (often the next day). The engine's arrival-buffer math reads
+    // end_time as "when you're done here and can leave" — which is
+    // wildly wrong for a hotel where you're available to leave for
+    // sightseeing from check-in onward. Substitute start_time as
+    // the leave-from-here time for accommodation; the rest of the
+    // engine doesn't care that it's not literally the end.
+    const fromStop = rawFromStop
+      ? rawFromStop.type === "accommodation"
+        ? { ...rawFromStop, end_time: rawFromStop.start_time }
+        : rawFromStop
+      : null;
     // Don't pass user_mode_override to the engine. The explicit-pill
     // picker is the source of truth for the user's pick; the engine
     // is now purely a scoring helper that should always return all
