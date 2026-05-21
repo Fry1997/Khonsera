@@ -233,6 +233,21 @@ export async function getDirections(args: {
       }
       return null;
     }
+    // SUCCESS-PATH DEBUG: dump the raw response so we can see what
+    // shape Routes API is returning. Same shunt + same try/catch.
+    const debugClone = await res.clone().json().catch(() => null);
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const sb = await createClient();
+      await sb.from("_debug_routes_api").insert({
+        status: "OK_DEBUG",
+        message: "success path raw response",
+        body: debugClone,
+        field_mask: fieldMask,
+      });
+    } catch {
+      // swallow
+    }
     type RoutesStep = {
       travelMode?: string;
       staticDuration?: string;
