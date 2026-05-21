@@ -19,3 +19,4 @@ export {
   type DbTransition,
   type DbStopover,
 } from "./from-db";
+export { anchorToStopUpdate, type StopUpdateInput } from "./to-db";

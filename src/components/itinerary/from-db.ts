@@ -61,7 +61,10 @@ export type DbTransition = {
   to_stop_id: string;
   mode: string | null;
   is_locked: boolean;
-  notes: string | null;
+  // Optional because the existing editor's TransitionRow type
+  // doesn't pick up notes — we only read the khonsera:local_* marker
+  // from it when present, and the absence is harmless.
+  notes?: string | null;
   computed_duration_minutes: number | null;
   distance_miles: number | null;
 };

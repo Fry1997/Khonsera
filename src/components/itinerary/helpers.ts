@@ -433,6 +433,33 @@ export function fmtShortDate(iso: string, timezone: string): string {
   }).format(new Date(`${iso}T12:00:00Z`));
 }
 
+// Build an ISO timestamp from a local date + time in a named timezone.
+// Mirrors createItineraryFromBrief's server-side helper of the same
+// shape — kept here so the editor can construct identical timestamps
+// when patching a stop inline.
+export function isoFromLocal(
+  date: string,
+  time: string,
+  timezone: string,
+): string {
+  const asUtc = new Date(`${date}T${time}:00.000Z`);
+  const tzString = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(asUtc);
+  const [tzHour, tzMin] = tzString.split(":").map((p) => parseInt(p, 10));
+  const utcHour = asUtc.getUTCHours();
+  const utcMin = asUtc.getUTCMinutes();
+  const offsetMins = (tzHour - utcHour) * 60 + (tzMin - utcMin);
+  return new Date(asUtc.getTime() - offsetMins * 60_000).toISOString();
+}
+
+export function addMinutesIso(iso: string, minutes: number): string {
+  return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
+}
+
 export function fmtDur(m: number): string {
   if (m >= 480) return "Full day";
   if (m >= 240) return "Half-day";

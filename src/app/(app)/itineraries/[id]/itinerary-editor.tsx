@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
-import { createStop, deleteStop } from "@/lib/actions/stops";
+import { createStop, deleteStop, updateStop } from "@/lib/actions/stops";
 import { upsertTransition, setTransitionMode } from "@/lib/actions/transitions";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import { feedbackFromError } from "@/lib/actions/_form";
@@ -22,6 +22,18 @@ import {
 import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 import { TransportIcon, StopIcon } from "@/components/icons";
+import {
+  AnchorCard,
+  TransitionRow as PlanningTransitionRow,
+  anchorsFromStops,
+  anchorToStopUpdate,
+  buildDatePresets,
+  emptyTransition,
+  transitionsFromDb,
+  type Anchor,
+  type BriefTransition,
+  type DbStop,
+} from "@/components/itinerary";
 
 // Inline icons — line-art style matching the warm editorial design.
 const Icon = {
@@ -94,28 +106,6 @@ const STOP_LABEL: Record<StopType, string> = {
   transport_booked: "Transport",
   transit_arrival: "Arrive",
   other: "Point",
-};
-
-const MODE_LABEL: Record<TransitionMode, string> = {
-  walk: "Walk",
-  drive: "Drive",
-  taxi: "Taxi",
-  bus: "Bus",
-  tube: "Tube",
-  train: "Train",
-  flight: "Flight",
-  mixed: "Mixed",
-};
-
-const MODE_ICON: Record<TransitionMode, React.ReactNode> = {
-  walk: Icon.walk,
-  drive: Icon.car,
-  taxi: Icon.car,
-  bus: Icon.car,
-  tube: Icon.train,
-  train: Icon.train,
-  flight: Icon.plane,
-  mixed: Icon.arrow,
 };
 
 const STATUS_SB: Record<ItineraryStatus, string> = {
@@ -255,6 +245,34 @@ export function ItineraryEditor({
     return m;
   }, [transitions]);
 
+  // Planning-view state: shared-component cards derived from the DB
+  // rows above. Anchors get a per-card "expanded" toggle so the user
+  // sees a tidy summary by default and clicks Edit to flip back to
+  // the full brief form. Multiple anchors can be expanded at once.
+  const planningAnchors = useMemo<Anchor[]>(
+    () => anchorsFromStops(stops as DbStop[], timezone),
+    [stops, timezone],
+  );
+  // editedAnchors holds the per-anchor in-flight patch while a card
+  // is in expanded mode. We seed each entry from the DB anchor on
+  // first expand; onChange writes here; clicking Done flushes the
+  // accumulated patch through updateStop.
+  const [editedAnchors, setEditedAnchors] = useState<Map<string, Anchor>>(
+    () => new Map(),
+  );
+  const [expandedUids, setExpandedUids] = useState<Set<string>>(() => new Set());
+  const planningDatePresets = useMemo(
+    () => buildDatePresets(timezone),
+    [timezone],
+  );
+  // Transitions keyed by `${fromStopId}::${toStopId}` for the
+  // planning view, decoded from the same DbTransition[] the existing
+  // primitive view uses.
+  const planningTransitions = useMemo<Map<string, BriefTransition>>(
+    () => transitionsFromDb(transitions),
+    [transitions],
+  );
+
   const legsByTransition = useMemo(() => {
     const m = new Map<string, JourneyLegRow[]>();
     for (const l of journeyLegs) {
@@ -384,6 +402,89 @@ export function ItineraryEditor({
       }
       router.refresh();
     });
+  };
+
+  // Planning-view handlers ────────────────────────────────────────────
+  //
+  // Anchor edit flow:
+  //   * onModeChange('expanded') copies the current DB-derived anchor
+  //     into editedAnchors and adds the uid to expandedUids.
+  //   * onChange(patch) merges the patch into editedAnchors.
+  //   * onModeChange('summary') flushes the accumulated patch through
+  //     updateStop and removes the uid from expandedUids.
+  // This keeps changes optimistic-local while the user is editing,
+  // and only writes once per Done click — quieter than autosaving.
+  const handleAnchorExpand = (uid: string) => {
+    const current =
+      editedAnchors.get(uid) ?? planningAnchors.find((a) => a.uid === uid);
+    if (!current) return;
+    setEditedAnchors((prev) => {
+      const next = new Map(prev);
+      next.set(uid, current);
+      return next;
+    });
+    setExpandedUids((prev) => new Set(prev).add(uid));
+  };
+  const handleAnchorCollapse = (uid: string) => {
+    const edited = editedAnchors.get(uid);
+    setExpandedUids((prev) => {
+      const next = new Set(prev);
+      next.delete(uid);
+      return next;
+    });
+    if (!edited) return;
+    // Fire the patch; clear the local copy regardless of outcome so
+    // we re-derive from server state on the next refresh.
+    const earlier = planningAnchors.slice(
+      0,
+      planningAnchors.findIndex((a) => a.uid === uid),
+    );
+    startTransition(async () => {
+      setError(null);
+      const result = await updateStop(
+        anchorToStopUpdate(edited, timezone, earlier),
+      );
+      setEditedAnchors((prev) => {
+        const next = new Map(prev);
+        next.delete(uid);
+        return next;
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      router.refresh();
+    });
+  };
+  const handleAnchorPatch = (uid: string, patch: Partial<Anchor>) => {
+    setEditedAnchors((prev) => {
+      const next = new Map(prev);
+      const current = next.get(uid);
+      if (!current) return prev;
+      next.set(uid, { ...current, ...patch });
+      return next;
+    });
+  };
+
+  // Transition patches: the planning view sends a full BriefTransition
+  // patch (mode, localBefore, localAfter, booked). Today we only wire
+  // mode + booked through to the DB via setTransitionMode + an
+  // upsertTransition update — local-leg preferences and booking
+  // details are deferred to the next slice.
+  const handleTransitionPatch = (
+    fromStopId: string,
+    toStopId: string,
+    patch: Partial<BriefTransition>,
+  ) => {
+    const existing = transitions.find(
+      (t) => t.from_stop_id === fromStopId && t.to_stop_id === toStopId,
+    );
+    // 'auto' is the brief's "let Khonsera decide" sentinel — the DB
+    // schema has no such mode, so we just skip the patch. The server
+    // will fall back to its own solver in the absence of a locked mode.
+    if (patch.mode !== undefined && patch.mode !== "auto" && existing) {
+      handleSetMode(existing.id, patch.mode);
+    }
   };
 
   const handleAdvanceStatus = () => {
@@ -643,56 +744,99 @@ export function ItineraryEditor({
               <span className="meta">{dateNumeric}</span>
             </div>
 
-            {sortedStops.length === 0 ? (
+            {planningAnchors.length === 0 ? (
               <div className="j-card-soft mt-4 p-6 text-center">
                 <p className="body mb-2">
                   No points yet. Add your first point — usually home.
                 </p>
               </div>
             ) : (
-              <ol className="flex flex-col">
-                {sortedStops.map((stop, i) => {
-                  const next = sortedStops[i + 1];
+              <ol
+                className="flex flex-col"
+                style={{ gap: 12 }}
+              >
+                {planningAnchors.map((anchor, i) => {
+                  const next = planningAnchors[i + 1];
+                  // Find the original stop row so we can wire up the
+                  // booking + delete affordances that still live on
+                  // the StopBookingMenu (rendered as an inline tray
+                  // below the summary card).
+                  const stop = sortedStops.find((s) => s.id === anchor.uid);
+                  const isExpanded = expandedUids.has(anchor.uid);
+                  const liveAnchor =
+                    editedAnchors.get(anchor.uid) ?? anchor;
+                  // Find the DbTransition for this leg (used by the
+                  // existing journey-leg display, kept beneath the
+                  // summary transition chip).
                   const transitionToNext = next
-                    ? transitionByFrom.get(stop.id)
+                    ? transitionByFrom.get(anchor.uid)
                     : null;
                   return (
-                    <li key={stop.id} className="flex flex-col">
-                      <StopRowView
-                        stop={stop}
-                        index={i}
-                        isFirst={i === 0}
-                        isLast={!next}
+                    <li key={anchor.uid} className="flex flex-col">
+                      <AnchorCard
+                        anchor={liveAnchor}
+                        earlier={planningAnchors.slice(0, i)}
+                        first={i === 0}
+                        canRemove={planningAnchors.length > 1}
+                        customers={customers}
+                        customerSites={customerSites}
+                        locations={locations}
+                        datePresets={planningDatePresets}
                         timezone={timezone}
-                        pending={pending}
-                        onDelete={handleDelete}
-                        onAddTransport={(mode, label) =>
-                          setTransportBookingFor({
-                            stopId: stop.id,
-                            label,
-                            mode,
-                          })
+                        mode={isExpanded ? "expanded" : "summary"}
+                        onModeChange={(next) =>
+                          next === "expanded"
+                            ? handleAnchorExpand(anchor.uid)
+                            : handleAnchorCollapse(anchor.uid)
                         }
-                        onAddAccommodation={(label) =>
-                          setAccommodationBookingFor({
-                            afterStopId: stop.id,
-                            afterStopLabel: label,
-                            existingStopId:
-                              stop.type === "accommodation"
-                                ? stop.id
-                                : undefined,
-                          })
+                        onChange={(patch) =>
+                          handleAnchorPatch(anchor.uid, patch)
                         }
+                        onRemove={() => handleDelete(anchor.uid)}
                       />
-                      {next && transitionToNext ? (
-                        <TransitionRowView
-                          transition={transitionToNext}
-                          legs={legsByTransition.get(transitionToNext.id) ?? []}
+                      {/* Booking + journey-leg detail kept alongside
+                          the summary card so the existing add-transport /
+                          add-accommodation flows still work. These
+                          render below the card in a small tray. */}
+                      {stop ? (
+                        <StopBookingMenu
+                          stop={stop}
                           pending={pending}
-                          onSetMode={(mode) =>
-                            handleSetMode(transitionToNext.id, mode)
+                          onAddTransport={(mode, label) =>
+                            setTransportBookingFor({
+                              stopId: stop.id,
+                              label,
+                              mode,
+                            })
+                          }
+                          onAddAccommodation={(label) =>
+                            setAccommodationBookingFor({
+                              afterStopId: stop.id,
+                              afterStopLabel: label,
+                              existingStopId:
+                                stop.type === "accommodation"
+                                  ? stop.id
+                                  : undefined,
+                            })
                           }
                         />
+                      ) : null}
+                      {next ? (
+                        <PlanningTransitionRow
+                          from={anchor}
+                          to={next}
+                          transition={
+                            planningTransitions.get(
+                              `${anchor.uid}::${next.uid}`,
+                            ) ?? emptyTransition()
+                          }
+                          onChange={(patch) =>
+                            handleTransitionPatch(anchor.uid, next.uid, patch)
+                          }
+                        />
+                      ) : null}
+                      {next && transitionToNext ? (
+                        <TransitionMeta transition={transitionToNext} />
                       ) : null}
                     </li>
                   );
@@ -891,135 +1035,6 @@ function MastheadHeadline({
   return <em>{date}</em>;
 }
 
-function StopRowView({
-  stop,
-  index,
-  isFirst,
-  isLast,
-  timezone,
-  pending,
-  onDelete,
-  onAddTransport,
-  onAddAccommodation,
-}: {
-  stop: StopRow;
-  index: number;
-  isFirst: boolean;
-  isLast: boolean;
-  timezone: string;
-  pending: boolean;
-  onDelete: (id: string) => void;
-  onAddTransport: (mode: TransportBookingMode, label: string) => void;
-  onAddAccommodation: (label: string) => void;
-}) {
-  const customerLabel = stop.customer?.name ?? null;
-  const siteLabel = stop.customer_site?.name ?? null;
-  const locationLabel = stop.location?.name ?? null;
-  const addressLabel =
-    stop.customer_site?.address ?? stop.location?.address ?? null;
-
-  const isAppointment = stop.type === "appointment";
-  const titleLine =
-    stop.title ??
-    siteLabel ??
-    customerLabel ??
-    locationLabel ??
-    STOP_LABEL[stop.type];
-
-  // Subline: place reference (address / station code etc.)
-  const subline =
-    customerLabel && titleLine !== customerLabel
-      ? customerLabel
-      : addressLabel
-        ? addressLabel
-        : null;
-
-  const dotClass = isAppointment ? "tl-dot terra" : "tl-dot";
-
-  return (
-    <div className="tl">
-      <div className="tl-time">
-        {fmtTime(stop.start_time, timezone)}
-      </div>
-      <div className="tl-rail">
-        <span className={dotClass}>{STOP_ICON[stop.type]}</span>
-      </div>
-      <div className="tl-content">
-        <div className={isAppointment ? "appt-block" : ""}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="tl-eyebrow">
-                {STOP_LABEL[stop.type]}
-                {isFirst ? " · home" : null}
-                {isLast && !isFirst ? " · finish" : null}
-              </p>
-              <h3 className="tl-title">
-                {isAppointment ? <em>{titleLine}</em> : titleLine}
-              </h3>
-              {subline ? <p className="tl-sub">{subline}</p> : null}
-              {stop.duration_minutes && isAppointment ? (
-                <p className="tl-sub mono">
-                  {fmtDuration(stop.duration_minutes)}
-                  {siteLabel && titleLine !== siteLabel
-                    ? ` · ${siteLabel}`
-                    : ""}
-                </p>
-              ) : null}
-              {stop.external_reference ? (
-                <p className="tl-sub mono">
-                  Ref {stop.external_reference}
-                </p>
-              ) : null}
-              {(stop.metadata?.flight_iata as string | undefined) ? (
-                <p className="tl-sub mono">
-                  Flight {String(stop.metadata?.flight_iata)}
-                </p>
-              ) : null}
-              {stop.notes ? (
-                <p className="tl-sub line-clamp-3">{stop.notes}</p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1.5">
-              {stop.end_time && stop.end_time !== stop.start_time ? (
-                <p className="mono text-xs text-ink-dim">
-                  → {fmtTime(stop.end_time, timezone)}
-                </p>
-              ) : null}
-              {stop.is_time_fixed ? (
-                <span
-                  className="mono text-[10px] uppercase tracking-wider text-ink-dim"
-                  title="Time is fixed"
-                >
-                  fixed
-                </span>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
-            <StopBookingMenu
-              stop={stop}
-              pending={pending}
-              onAddTransport={onAddTransport}
-              onAddAccommodation={onAddAccommodation}
-            />
-            {!isFirst ? (
-              <button
-                type="button"
-                className="text-xs text-ink-dim hover:text-rust hover:underline disabled:opacity-50"
-                onClick={() => onDelete(stop.id)}
-                disabled={pending}
-              >
-                Delete
-              </button>
-            ) : null}
-            <span className="sr-only">Stop {index + 1}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function StopBookingMenu({
   stop,
   pending,
@@ -1149,77 +1164,27 @@ function StopBookingMenu({
   );
 }
 
-function TransitionRowView({
-  transition,
-  legs,
-  pending,
-  onSetMode,
-}: {
-  transition: TransitionRow;
-  legs: JourneyLegRow[];
-  pending: boolean;
-  onSetMode: (mode: TransitionMode) => void;
-}) {
-  const isTrain = transition.mode === "train" || transition.mode === "tube";
+// TransitionMeta — small inline row showing the computed travel
+// duration + distance under a transition chip. Surfaces the data
+// that lived inside the old TransitionRowView (computed by the
+// editor's solver / Google Directions). The chip itself is now the
+// shared PlanningTransitionRow.
+function TransitionMeta({ transition }: { transition: TransitionRow }) {
   const mins = transition.computed_duration_minutes ?? 0;
   const miles = Number(transition.distance_miles ?? 0);
-
-  // For train transitions, surface service info from the first leg
-  const trainLeg = legs.find((l) => l.leg_type === "train");
-
+  if (!mins && !miles) return null;
   return (
-    <div className="tl-transition">
-      <div></div>
-      <div className="tl-rail" style={{ minHeight: 36 }} />
-      <div className="tl-transition-body">
-        <span className="inline-flex items-center gap-1.5 text-ink-2">
-          {MODE_ICON[transition.mode]}
-          <span className="tl-transition-mode">
-            {MODE_LABEL[transition.mode]}
-          </span>
-        </span>
-        {mins ? (
-          <span className="tl-transition-meta">{fmtDuration(mins)}</span>
-        ) : null}
-        {miles ? (
-          <span className="tl-transition-meta">
-            {miles.toFixed(1)} mi
-          </span>
-        ) : null}
-        {isTrain && trainLeg ? (
-          <span className="tl-transition-meta">
-            {trainLeg.start_location_name && trainLeg.end_location_name
-              ? `${trainLeg.start_location_name} → ${trainLeg.end_location_name}`
-              : (trainLeg.service_number ?? "")}
-          </span>
-        ) : null}
-        {transition.is_locked ? (
-          <span className="sb sb-booked">Booked</span>
-        ) : (
-          <select
-            value={transition.mode}
-            disabled={pending}
-            onChange={(e) => onSetMode(e.target.value as TransitionMode)}
-            className="input-base"
-            style={{
-              width: "auto",
-              padding: "2px 6px",
-              fontSize: 11,
-              background: "transparent",
-              border: "1px solid var(--rule)",
-            }}
-          >
-            {(
-              ["walk", "drive", "taxi", "bus", "tube", "train", "flight"] as TransitionMode[]
-            ).map((m) => (
-              <option key={m} value={m}>
-                {MODE_LABEL[m]}
-              </option>
-            ))}
-          </select>
-        )}
-        <span className="tl-transition-chev">›</span>
-      </div>
+    <div
+      style={{
+        marginLeft: 56,
+        fontSize: 11.5,
+        color: "var(--ink-dim)",
+        padding: "2px 0 6px",
+      }}
+    >
+      {mins ? fmtDuration(mins) : null}
+      {mins && miles ? " · " : null}
+      {miles ? `${miles.toFixed(1)} mi` : null}
     </div>
   );
 }
@@ -1286,115 +1251,6 @@ function LegTypeIcon({ leg }: { leg: string }) {
     default:
       return <span aria-hidden>·</span>;
   }
-}
-
-function LegCard({
-  transition,
-  legs,
-  pending,
-  onSetMode,
-}: {
-  transition: TransitionRow;
-  legs: JourneyLegRow[];
-  pending: boolean;
-  onSetMode: (mode: TransitionMode) => void;
-}) {
-  const mapSrc = transition.overview_polyline
-    ? buildClientStaticMapUrl({
-        width: 480,
-        height: 140,
-        paths: [
-          {
-            encoded: transition.overview_polyline,
-            color: "c25c3a",
-            weight: 4,
-          },
-        ],
-      })
-    : null;
-
-  return (
-    <div className="my-3 ml-4 rounded-md border border-rule/60 bg-card-2/40 p-3 text-sm">
-      <div className="mb-2 flex flex-wrap items-center gap-3">
-        <span className="uc">via</span>
-        {transition.is_locked ? (
-          <span
-            className="uc"
-            title="Locked — driven by a booked ticket"
-            style={{ color: "var(--rust)" }}
-          >
-            🔒 booked
-          </span>
-        ) : null}
-        <select
-          value={transition.mode}
-          disabled={pending}
-          onChange={(e) => onSetMode(e.target.value as TransitionMode)}
-          className="input-base"
-          style={{ width: "auto", padding: "4px 8px", fontSize: 12 }}
-        >
-          {(
-            [
-              "walk",
-              "drive",
-              "taxi",
-              "bus",
-              "tube",
-              "train",
-              "flight",
-            ] as TransitionMode[]
-          ).map((m) => (
-            <option key={m} value={m}>
-              {MODE_LABEL[m]}
-            </option>
-          ))}
-        </select>
-        {transition.computed_duration_minutes ? (
-          <span className="mono text-ink-dim">
-            {transition.computed_duration_minutes} min
-          </span>
-        ) : null}
-        {transition.distance_miles ? (
-          <span className="mono text-ink-dim">
-            {Number(transition.distance_miles).toFixed(1)} mi
-          </span>
-        ) : null}
-      </div>
-
-      {legs.length > 1 ? (
-        <ol className="mb-2 flex flex-col gap-1">
-          {legs.map((l) => (
-            <li
-              key={l.id}
-              className="flex items-baseline gap-2 text-xs"
-              style={{ color: "var(--ink-dim)" }}
-            >
-              <span aria-hidden style={{ display: "inline-flex", color: "var(--ink-dim)" }}>
-                <LegTypeIcon leg={l.leg_type} />
-              </span>
-              <span className="mono">
-                {l.duration_minutes ? `${l.duration_minutes}m` : ""}
-              </span>
-              <span className="truncate">
-                {l.service_number
-                  ? `${l.service_number}: ${l.start_location_name ?? ""} → ${l.end_location_name ?? ""}`
-                  : (l.instructions ?? l.start_location_name ?? l.leg_type)}
-              </span>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-
-      {mapSrc ? (
-        <img
-          src={mapSrc}
-          alt="Route map"
-          className="block w-full rounded border border-rule"
-          style={{ aspectRatio: "480 / 140", objectFit: "cover" }}
-        />
-      ) : null}
-    </div>
-  );
 }
 
 // Client-safe builder for /api/maps/static URLs (mirrors the server-side
