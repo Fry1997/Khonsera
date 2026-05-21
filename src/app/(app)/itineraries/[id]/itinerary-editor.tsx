@@ -11,10 +11,12 @@ import {
   updateStop,
 } from "@/lib/actions/stops";
 import {
+  insertTransitLeg,
   upsertTransition,
   setTransitionMode,
   setTransitionOverride,
 } from "@/lib/actions/transitions";
+import { TransportHubPicker } from "@/components/transport-hub-picker";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import { resolveLeg, type PreviewEntry } from "@/lib/scoring/resolve-leg";
 import type {
@@ -428,6 +430,51 @@ export function ItineraryEditor({
     });
   };
 
+  // State for the inline + Train / + Flight form. When set, the
+  // editor renders the form between the named anchor pair instead
+  // of the usual inline-add row. Cleared on submit or cancel.
+  const [transitFormFor, setTransitFormFor] = useState<{
+    beforeStopId: string;
+    afterStopId: string;
+    mode: "train" | "flight";
+  } | null>(null);
+
+  const handleInsertTransitLeg = (input: {
+    beforeStopId: string;
+    afterStopId: string;
+    mode: "train" | "flight";
+    departHubId: string;
+    departLabel: string;
+    departTime: string;
+    arriveHubId: string;
+    arriveLabel: string;
+    arriveTime: string;
+    serviceNumber?: string;
+  }) => {
+    startTransition(async () => {
+      setError(null);
+      const result = await insertTransitLeg({
+        itinerary_id: itinerary.id,
+        before_stop_id: input.beforeStopId,
+        after_stop_id: input.afterStopId,
+        mode: input.mode,
+        depart_hub_id: input.departHubId,
+        depart_label: input.departLabel,
+        depart_time: new Date(input.departTime).toISOString(),
+        arrive_hub_id: input.arriveHubId,
+        arrive_label: input.arriveLabel,
+        arrive_time: new Date(input.arriveTime).toISOString(),
+        service_number: input.serviceNumber ?? null,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      setTransitFormFor(null);
+      router.refresh();
+    });
+  };
+
   // Insert a new stopover between two existing anchor stops.
   // 'stopover' stops are intent rows (no fixed time); the user picks
   // a place + ideal duration via the StopoverCard expanded mode.
@@ -455,6 +502,16 @@ export function ItineraryEditor({
       router.refresh();
     });
   };
+
+  // Pull the uid out of any timeline item, regardless of kind.
+  // Transit stops use the raw stop_id since they don't have an
+  // anchor/stopover wrapper.
+  const uidOf = (it: EditorTimelineItem): string =>
+    it.kind === "anchor"
+      ? it.anchor.uid
+      : it.kind === "stopover"
+        ? it.stopover.uid
+        : it.stop.id;
 
   const handleSetOverride = (
     fromStopId: string,
@@ -1130,7 +1187,7 @@ export function ItineraryEditor({
                     <h3 className="home-header-title">{label}</h3>
                     <p className="home-header-meta">From your travel profile</p>
                   </div>
-                  {first ? (
+                  {first && first.kind !== "transit" ? (
                     <PlanningTransitionRow
                       from={null}
                       to={
@@ -1145,57 +1202,43 @@ export function ItineraryEditor({
                         planningTransitions.get(
                           transitionKey(
                             startStop.id,
-                            first.kind === "anchor"
-                              ? first.anchor.uid
-                              : first.stopover.uid,
+                            uidOf(first),
                           ),
                         ) ?? emptyTransition()
                       }
                       modePreviews={previewsForPair(
                         startStop.id,
-                        first.kind === "anchor"
-                          ? first.anchor.uid
-                          : first.stopover.uid,
+                        uidOf(first),
                       )}
                       onOpenChange={(open) => {
                         if (open)
                           prefetchPair(
                             startStop.id,
-                            first.kind === "anchor"
-                              ? first.anchor.uid
-                              : first.stopover.uid,
+                            uidOf(first),
                           );
                       }}
                       onChange={(patch) =>
                         handleTransitionPatch(
                           startStop.id,
-                          first.kind === "anchor"
-                            ? first.anchor.uid
-                            : first.stopover.uid,
+                          uidOf(first),
                           patch,
                         )
                       }
                       resolution={resolveLegFor(
                         startStop.id,
-                        first.kind === "anchor"
-                          ? first.anchor.uid
-                          : first.stopover.uid,
+                        uidOf(first),
                       )}
                       onSetOverride={(mode) =>
                         handleSetOverride(
                           startStop.id,
-                          first.kind === "anchor"
-                            ? first.anchor.uid
-                            : first.stopover.uid,
+                          uidOf(first),
                           mode,
                         )
                       }
                       onClearOverride={() =>
                         handleSetOverride(
                           startStop.id,
-                          first.kind === "anchor"
-                            ? first.anchor.uid
-                            : first.stopover.uid,
+                          uidOf(first),
                           null,
                         )
                       }
@@ -1229,6 +1272,24 @@ export function ItineraryEditor({
                   const transitionToNext = nextItem
                     ? transitionByFrom.get(stop.id)
                     : null;
+
+                  if (item.kind === "transit") {
+                    // Compact card for transit_departure /
+                    // transit_arrival stops. Not editable in the same
+                    // way an anchor is — the train/flight leg between
+                    // them is the editable thing; the stops are
+                    // facts of the journey.
+                    return (
+                      <li key={item.stop.id} className="flex flex-col">
+                        <TransitStopCard
+                          stop={item.stop}
+                          direction={item.transitDirection}
+                          timezone={timezone}
+                          onRemove={() => handleDelete(item.stop.id)}
+                        />
+                      </li>
+                    );
+                  }
 
                   if (item.kind === "stopover") {
                     // Stopover row — render StopoverCard summary; its
@@ -1348,7 +1409,7 @@ export function ItineraryEditor({
                           }
                           onRemove={() => handleDelete(stop.id)}
                         />
-                        {nextItem ? (
+                        {nextItem && nextItem.kind !== "transit" ? (
                           <>
                             <PlanningTransitionRow
                               from={
@@ -1370,57 +1431,43 @@ export function ItineraryEditor({
                                 planningTransitions.get(
                                   transitionKey(
                                     stop.id,
-                                    nextItem.kind === "anchor"
-                                      ? nextItem.anchor.uid
-                                      : nextItem.stopover.uid,
+                                    uidOf(nextItem),
                                   ),
                                 ) ?? emptyTransition()
                               }
                               modePreviews={previewsForPair(
                                 stop.id,
-                                nextItem.kind === "anchor"
-                                  ? nextItem.anchor.uid
-                                  : nextItem.stopover.uid,
+                                uidOf(nextItem),
                               )}
                               onOpenChange={(open) => {
                                 if (open)
                                   prefetchPair(
                                     stop.id,
-                                    nextItem.kind === "anchor"
-                                      ? nextItem.anchor.uid
-                                      : nextItem.stopover.uid,
+                                    uidOf(nextItem),
                                   );
                               }}
                               onChange={(patch) =>
                                 handleTransitionPatch(
                                   stop.id,
-                                  nextItem.kind === "anchor"
-                                    ? nextItem.anchor.uid
-                                    : nextItem.stopover.uid,
+                                  uidOf(nextItem),
                                   patch,
                                 )
                               }
                               resolution={resolveLegFor(
                                 stop.id,
-                                nextItem.kind === "anchor"
-                                  ? nextItem.anchor.uid
-                                  : nextItem.stopover.uid,
+                                uidOf(nextItem),
                               )}
                               onSetOverride={(mode) =>
                                 handleSetOverride(
                                   stop.id,
-                                  nextItem.kind === "anchor"
-                                    ? nextItem.anchor.uid
-                                    : nextItem.stopover.uid,
+                                  uidOf(nextItem),
                                   mode,
                                 )
                               }
                               onClearOverride={() =>
                                 handleSetOverride(
                                   stop.id,
-                                  nextItem.kind === "anchor"
-                                    ? nextItem.anchor.uid
-                                    : nextItem.stopover.uid,
+                                  uidOf(nextItem),
                                   null,
                                 )
                               }
@@ -1474,7 +1521,7 @@ export function ItineraryEditor({
                         }
                         onRemove={() => handleDelete(anchor.uid)}
                       />
-                      {nextItem ? (
+                      {nextItem && nextItem.kind !== "transit" ? (
                         <PlanningTransitionRow
                           from={anchor}
                           to={
@@ -1489,57 +1536,43 @@ export function ItineraryEditor({
                             planningTransitions.get(
                               transitionKey(
                                 anchor.uid,
-                                nextItem.kind === "anchor"
-                                  ? nextItem.anchor.uid
-                                  : nextItem.stopover.uid,
+                                uidOf(nextItem),
                               ),
                             ) ?? emptyTransition()
                           }
                           modePreviews={previewsForPair(
                             anchor.uid,
-                            nextItem.kind === "anchor"
-                              ? nextItem.anchor.uid
-                              : nextItem.stopover.uid,
+                            uidOf(nextItem),
                           )}
                           onOpenChange={(open) => {
                             if (open)
                               prefetchPair(
                                 anchor.uid,
-                                nextItem.kind === "anchor"
-                                  ? nextItem.anchor.uid
-                                  : nextItem.stopover.uid,
+                                uidOf(nextItem),
                               );
                           }}
                           onChange={(patch) =>
                             handleTransitionPatch(
                               anchor.uid,
-                              nextItem.kind === "anchor"
-                                ? nextItem.anchor.uid
-                                : nextItem.stopover.uid,
+                              uidOf(nextItem),
                               patch,
                             )
                           }
                           resolution={resolveLegFor(
                             anchor.uid,
-                            nextItem.kind === "anchor"
-                              ? nextItem.anchor.uid
-                              : nextItem.stopover.uid,
+                            uidOf(nextItem),
                           )}
                           onSetOverride={(mode) =>
                             handleSetOverride(
                               anchor.uid,
-                              nextItem.kind === "anchor"
-                                ? nextItem.anchor.uid
-                                : nextItem.stopover.uid,
+                              uidOf(nextItem),
                               mode,
                             )
                           }
                           onClearOverride={() =>
                             handleSetOverride(
                               anchor.uid,
-                              nextItem.kind === "anchor"
-                                ? nextItem.anchor.uid
-                                : nextItem.stopover.uid,
+                              uidOf(nextItem),
                               null,
                             )
                           }
@@ -1560,30 +1593,88 @@ export function ItineraryEditor({
                           stopover between this anchor and the next
                           (only when no stopover already exists for
                           the pair). Mirrors the brief's UI. */}
-                      {nextItem && item.kind === "anchor" ? (
-                        <div className="anchor-inline-adds">
-                          <AddBetween
-                            between
-                            onAdd={() =>
-                              handleInsertAnchorAt(nextItem.stop.sequence)
+                      {nextItem &&
+                      item.kind === "anchor" &&
+                      nextItem.kind !== "transit" ? (
+                        transitFormFor &&
+                        transitFormFor.beforeStopId === stop.id &&
+                        transitFormFor.afterStopId === nextItem.stop.id ? (
+                          <TransitLegForm
+                            mode={transitFormFor.mode}
+                            beforeLabel={
+                              item.anchor.place?.label ?? "previous"
+                            }
+                            afterLabel={
+                              nextItem.kind === "anchor"
+                                ? nextItem.anchor.place?.label ?? "next"
+                                : "next"
+                            }
+                            pending={pending}
+                            onCancel={() => setTransitFormFor(null)}
+                            onSubmit={(form) =>
+                              handleInsertTransitLeg({
+                                beforeStopId: stop.id,
+                                afterStopId: nextItem.stop.id,
+                                mode: transitFormFor.mode,
+                                ...form,
+                              })
                             }
                           />
-                          {nextItem.kind === "anchor" ? (
-                            <button
-                              type="button"
-                              className="brief-add-stop-trigger"
-                              onClick={() =>
-                                handleInsertStopoverBetween(
-                                  stop.id,
-                                  nextItem.stop.id,
-                                )
+                        ) : (
+                          <div className="anchor-inline-adds">
+                            <AddBetween
+                              between
+                              onAdd={() =>
+                                handleInsertAnchorAt(nextItem.stop.sequence)
                               }
-                              title="Drop in somewhere between these two anchors"
-                            >
-                              + Add a stop between these
-                            </button>
-                          ) : null}
-                        </div>
+                            />
+                            {nextItem.kind === "anchor" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="brief-add-stop-trigger"
+                                  onClick={() =>
+                                    handleInsertStopoverBetween(
+                                      stop.id,
+                                      nextItem.stop.id,
+                                    )
+                                  }
+                                  title="Drop in somewhere between these two anchors"
+                                >
+                                  + Add a stop between these
+                                </button>
+                                <button
+                                  type="button"
+                                  className="brief-add-stop-trigger"
+                                  onClick={() =>
+                                    setTransitFormFor({
+                                      beforeStopId: stop.id,
+                                      afterStopId: nextItem.stop.id,
+                                      mode: "train",
+                                    })
+                                  }
+                                  title="Add a train journey between these"
+                                >
+                                  + Train
+                                </button>
+                                <button
+                                  type="button"
+                                  className="brief-add-stop-trigger"
+                                  onClick={() =>
+                                    setTransitFormFor({
+                                      beforeStopId: stop.id,
+                                      afterStopId: nextItem.stop.id,
+                                      mode: "flight",
+                                    })
+                                  }
+                                  title="Add a flight between these"
+                                >
+                                  + Flight
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        )
                       ) : null}
                     </li>
                   );
@@ -1890,6 +1981,187 @@ function StopBookingMenu({
 // that lived inside the old TransitionRowView (computed by the
 // editor's solver / Google Directions). The chip itself is now the
 // shared PlanningTransitionRow.
+// TransitStopCard — compact card for transit_departure /
+// transit_arrival stops. Shows the station/airport name + time, with
+// a small Remove button. Less affordance than an AnchorCard because
+// these stops are facts of a booked train/flight, not free-form
+// anchors the user fills in.
+function TransitStopCard({
+  stop,
+  direction,
+  timezone,
+  onRemove,
+}: {
+  // Structural shape — both the editor's StopRow and the shared
+  // DbStop satisfy this. Card only needs title + start_time.
+  stop: { title: string | null; start_time: string | null };
+  direction: "departure" | "arrival";
+  timezone: string;
+  onRemove: () => void;
+}) {
+  const kindLabel =
+    direction === "departure" ? "Depart" : "Arrive";
+  const time = stop.start_time
+    ? new Intl.DateTimeFormat("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: timezone,
+      }).format(new Date(stop.start_time))
+    : "—";
+  return (
+    <section className="transit-stop-card">
+      <div className="transit-stop-head">
+        <span className="uc">{kindLabel}</span>
+        <span className="transit-stop-time">{time}</span>
+      </div>
+      <h3 className="transit-stop-title">{stop.title ?? "Station"}</h3>
+      <button
+        type="button"
+        className="transit-stop-remove"
+        onClick={onRemove}
+        aria-label="Remove transit stop"
+      >
+        Remove
+      </button>
+    </section>
+  );
+}
+
+// TransitLegForm — inline form rendered between two anchors when the
+// user clicks '+ Train' or '+ Flight'. Collects depart hub, arrive
+// hub, depart time, arrive time, optional service number. Submits
+// to insertTransitLeg, which writes both transit stops + the locked
+// transition between them.
+function TransitLegForm({
+  mode,
+  beforeLabel,
+  afterLabel,
+  pending,
+  onCancel,
+  onSubmit,
+}: {
+  mode: "train" | "flight";
+  beforeLabel: string;
+  afterLabel: string;
+  pending: boolean;
+  onCancel: () => void;
+  onSubmit: (form: {
+    departHubId: string;
+    departLabel: string;
+    departTime: string;
+    arriveHubId: string;
+    arriveLabel: string;
+    arriveTime: string;
+    serviceNumber?: string;
+  }) => void;
+}) {
+  const hubKind = mode === "train" ? "rail_station" : "airport";
+  const noun = mode === "train" ? "station" : "airport";
+  const [departHub, setDepartHub] = useState<{ id: string | null; label: string | null }>({ id: null, label: null });
+  const [arriveHub, setArriveHub] = useState<{ id: string | null; label: string | null }>({ id: null, label: null });
+  const [departTime, setDepartTime] = useState("");
+  const [arriveTime, setArriveTime] = useState("");
+  const [serviceNumber, setServiceNumber] = useState("");
+
+  const ready =
+    departHub.id != null &&
+    arriveHub.id != null &&
+    departHub.label != null &&
+    arriveHub.label != null &&
+    departTime !== "" &&
+    arriveTime !== "";
+
+  return (
+    <div className="transit-leg-form">
+      <header className="transit-leg-form-head">
+        <span className="uc">
+          {mode === "train" ? "Train" : "Flight"} from {beforeLabel} to{" "}
+          {afterLabel}
+        </span>
+        <button
+          type="button"
+          className="transit-leg-form-cancel"
+          onClick={onCancel}
+          disabled={pending}
+        >
+          Cancel
+        </button>
+      </header>
+      <div className="transit-leg-form-grid">
+        <label className="brief-field">
+          <span className="uc">Departing {noun}</span>
+          <TransportHubPicker
+            kind={hubKind}
+            name="depart_hub"
+            value={departHub}
+            onChange={setDepartHub}
+            placeholder={`Pick a ${noun}`}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Departure time</span>
+          <input
+            type="datetime-local"
+            className="field"
+            value={departTime}
+            onChange={(e) => setDepartTime(e.target.value)}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Arriving {noun}</span>
+          <TransportHubPicker
+            kind={hubKind}
+            name="arrive_hub"
+            value={arriveHub}
+            onChange={setArriveHub}
+            placeholder={`Pick a ${noun}`}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Arrival time</span>
+          <input
+            type="datetime-local"
+            className="field"
+            value={arriveTime}
+            onChange={(e) => setArriveTime(e.target.value)}
+          />
+        </label>
+        <label className="brief-field" style={{ gridColumn: "1 / -1" }}>
+          <span className="uc">Service / flight number (optional)</span>
+          <input
+            type="text"
+            className="field"
+            value={serviceNumber}
+            onChange={(e) => setServiceNumber(e.target.value)}
+            placeholder={mode === "train" ? "9M14" : "BA245"}
+          />
+        </label>
+      </div>
+      <div className="transit-leg-form-actions">
+        <button
+          type="button"
+          className="btn btn-gold"
+          disabled={!ready || pending}
+          onClick={() =>
+            onSubmit({
+              departHubId: departHub.id!,
+              departLabel: departHub.label!,
+              departTime,
+              arriveHubId: arriveHub.id!,
+              arriveLabel: arriveHub.label!,
+              arriveTime,
+              serviceNumber: serviceNumber.trim() || undefined,
+            })
+          }
+        >
+          Add {mode}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TransitionMeta({
   transition,
   feasibility,

@@ -2483,6 +2483,97 @@
     color: var(--rust);
   }
 
+  /* Transit stop card — compact card for transit_departure /
+     transit_arrival stops. Reads as a station/airport fact in the
+     timeline, not a free-form anchor. */
+  .transit-stop-card {
+    margin: 8px 0;
+    padding: 10px 14px;
+    background: var(--card-2, var(--card));
+    border: 1px solid var(--rule-2);
+    border-left: 3px solid var(--gold-2);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+  }
+  .transit-stop-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .transit-stop-time {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .transit-stop-title {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 2px 0 0;
+    letter-spacing: -0.005em;
+  }
+  .transit-stop-remove {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: transparent;
+    border: 0;
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .transit-stop-remove:hover {
+    color: var(--rust);
+  }
+
+  /* Transit leg form — inline form between two anchors when the
+     user clicks + Train or + Flight. Replaces the usual inline-adds
+     row while open. */
+  .transit-leg-form {
+    margin: 8px 0;
+    padding: 14px 16px;
+    background: var(--card-2, var(--card));
+    border: 1px dashed var(--gold-2);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .transit-leg-form-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .transit-leg-form-cancel {
+    background: transparent;
+    border: 0;
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .transit-leg-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+  }
+  @media (max-width: 640px) {
+    .transit-leg-form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .transit-leg-form-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
   /* Inline-adds container under each anchor row — sits between the
      transition's meta line and the next anchor card. Two add
      affordances ('+ Add another here' and '+ Add a stop between

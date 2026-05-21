@@ -485,6 +485,33 @@ export async function setTransitionOverride(
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
 
+  // Fetch coords once so we can route under the new mode and write
+  // the overview polyline back to the transition (the map widget
+  // reads transitions.overview_polyline). Without this step the
+  // editor's picker would change the mode silently, but the map
+  // would stay blank for that leg.
+  const { data: stopRows } = await supabase
+    .from("stops")
+    .select(
+      `id,
+       location:locations(latitude, longitude),
+       customer_site:customer_sites(latitude, longitude)`,
+    )
+    .in("id", [parsed.value.from_stop_id, parsed.value.to_stop_id])
+    .eq("workspace_id", ctx.workspaceId);
+  const fromStopRow = stopRows?.find((s) => s.id === parsed.value.from_stop_id);
+  const toStopRow = stopRows?.find((s) => s.id === parsed.value.to_stop_id);
+  const fromPoint = pickPoint(fromStopRow);
+  const toPoint = pickPoint(toStopRow);
+  let route: TransitionRoute | null = null;
+  if (parsed.value.mode && fromPoint && toPoint) {
+    route = await routeForTransition({
+      mode: parsed.value.mode,
+      origin: fromPoint,
+      destination: toPoint,
+    });
+  }
+
   if (existing) {
     const { data, error } = await supabase
       .from("transitions")
@@ -497,7 +524,15 @@ export async function setTransitionOverride(
         // with the picked mode. Null override means "use the
         // recommended mode" — leave the existing mode alone since it
         // may already reflect a deliberate non-override choice.
-        ...(parsed.value.mode ? { mode: parsed.value.mode } : {}),
+        ...(parsed.value.mode
+          ? {
+              mode: parsed.value.mode,
+              computed_duration_minutes:
+                route?.totalDurationMinutes ?? null,
+              distance_miles: route?.totalDistanceMiles ?? null,
+              overview_polyline: route?.overviewPolyline ?? null,
+            }
+          : {}),
       })
       .eq("id", existing.id)
       .eq("workspace_id", ctx.workspaceId)
@@ -519,6 +554,9 @@ export async function setTransitionOverride(
       mode: parsed.value.mode,
       user_mode_override: parsed.value.mode,
       override_locked: false,
+      computed_duration_minutes: route?.totalDurationMinutes ?? null,
+      distance_miles: route?.totalDistanceMiles ?? null,
+      overview_polyline: route?.overviewPolyline ?? null,
     })
     .select("id")
     .single();
@@ -548,6 +586,145 @@ export async function lockTransitionOverride(
     .select("id")
     .single();
   return dbResult<{ id: string }>(data, error, "transition");
+}
+
+// insertTransitLeg — inserts a transit_departure + transit_arrival
+// stop pair + a single train/flight transition between them, at the
+// position immediately before `after_stop_id`. The two stops bump
+// every later stop's sequence by +2 to open a slot.
+//
+// Doesn't touch the surrounding 'last-mile' legs (before_anchor →
+// departure station, arrival station → after_anchor) — the user
+// picks those modes via the existing 3-pill picker once the leg
+// is inserted.
+const insertTransitLegSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  before_stop_id: z.string().uuid(),
+  after_stop_id: z.string().uuid(),
+  mode: z.enum(["train", "flight"]),
+  depart_hub_id: z.string().uuid(),
+  depart_label: z.string().trim().max(200),
+  depart_time: z.string().datetime(),
+  arrive_hub_id: z.string().uuid(),
+  arrive_label: z.string().trim().max(200),
+  arrive_time: z.string().datetime(),
+  service_number: z.string().trim().max(80).nullable().optional(),
+});
+
+export async function insertTransitLeg(
+  input: z.input<typeof insertTransitLegSchema>,
+): Promise<Result<{ depart_stop_id: string; arrive_stop_id: string }>> {
+  const parsed = parseInput(insertTransitLegSchema, input);
+  if (!parsed.ok) return parsed;
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Find the target slot. We insert at the after_stop's current
+  // sequence — both new transit stops will sit before it.
+  const { data: afterStop } = await supabase
+    .from("stops")
+    .select("sequence")
+    .eq("id", parsed.value.after_stop_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!afterStop) return err(errors.notFound("stop"));
+  const targetSeq = afterStop.sequence as number;
+
+  // Bump every later stop's sequence by +2 (we're inserting two
+  // stops at this position). Iterate desc so updates don't collide
+  // on any in-flight sequence-uniqueness assumptions.
+  const { data: shiftRows } = await supabase
+    .from("stops")
+    .select("id, sequence")
+    .eq("itinerary_id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .gte("sequence", targetSeq)
+    .order("sequence", { ascending: false });
+  for (const r of shiftRows ?? []) {
+    await supabase
+      .from("stops")
+      .update({ sequence: (r.sequence as number) + 2 })
+      .eq("id", r.id as string)
+      .eq("workspace_id", ctx.workspaceId);
+  }
+
+  // Insert the two transit stops.
+  const { data: departStop, error: dErr } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id: parsed.value.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: targetSeq,
+      type: "transit_departure",
+      title: parsed.value.depart_label,
+      transport_hub_id: parsed.value.depart_hub_id,
+      start_time: parsed.value.depart_time,
+      is_time_fixed: true,
+      metadata: { kind: parsed.value.mode === "train" ? "station" : "airport" },
+    })
+    .select("id")
+    .single();
+  if (dErr || !departStop) return err(errors.notFound("stop"));
+
+  const { data: arriveStop, error: aErr } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id: parsed.value.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: targetSeq + 1,
+      type: "transit_arrival",
+      title: parsed.value.arrive_label,
+      transport_hub_id: parsed.value.arrive_hub_id,
+      start_time: parsed.value.arrive_time,
+      is_time_fixed: true,
+      metadata: { kind: parsed.value.mode === "train" ? "station" : "airport" },
+    })
+    .select("id")
+    .single();
+  if (aErr || !arriveStop) return err(errors.notFound("stop"));
+
+  // Insert the locked transition between the two transit stops.
+  const durationMins = Math.max(
+    1,
+    Math.round(
+      (new Date(parsed.value.arrive_time).getTime() -
+        new Date(parsed.value.depart_time).getTime()) /
+        60_000,
+    ),
+  );
+  await supabase.from("transitions").insert({
+    itinerary_id: parsed.value.itinerary_id,
+    workspace_id: ctx.workspaceId,
+    from_stop_id: departStop.id,
+    to_stop_id: arriveStop.id,
+    mode: parsed.value.mode,
+    is_locked: true,
+    start_time: parsed.value.depart_time,
+    end_time: parsed.value.arrive_time,
+    computed_duration_minutes: durationMins,
+    notes: parsed.value.service_number
+      ? `khonsera:service=${parsed.value.service_number}`
+      : null,
+  });
+
+  // The pre-existing transition from before_stop → after_stop is
+  // now spurious (the route goes through the stations). Drop it so
+  // the editor doesn't draw a phantom direct leg through the
+  // station chain.
+  await supabase
+    .from("transitions")
+    .delete()
+    .eq("itinerary_id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("from_stop_id", parsed.value.before_stop_id)
+    .eq("to_stop_id", parsed.value.after_stop_id);
+
+  await resolveItineraryTimes(parsed.value.itinerary_id);
+
+  return ok({
+    depart_stop_id: departStop.id as string,
+    arrive_stop_id: arriveStop.id as string,
+  });
 }
 
 function pickPoint(stop: unknown): { lat: number; lng: number } | null {

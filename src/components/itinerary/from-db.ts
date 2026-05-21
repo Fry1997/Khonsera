@@ -211,6 +211,8 @@ const PLANNING_ANCHOR_TYPES = new Set([
   "other",
 ]);
 
+const TRANSIT_TYPES = new Set(["transit_departure", "transit_arrival"]);
+
 // Build the editor's anchor list from the loaded stop rows. Filters
 // out the implicit "home" start stop AND stopover stops — stopovers
 // are surfaced separately via `timelineFromStops`, so the editor can
@@ -230,7 +232,8 @@ export function anchorsFromStops(
 // the renderer which pair to slot it between.
 export type EditorTimelineItem =
   | { kind: "anchor"; anchor: Anchor; stop: DbStop }
-  | { kind: "stopover"; stopover: { uid: string; place: PlaceSelection | null; durationMins: number }; stop: DbStop };
+  | { kind: "stopover"; stopover: { uid: string; place: PlaceSelection | null; durationMins: number }; stop: DbStop }
+  | { kind: "transit"; stop: DbStop; transitDirection: "departure" | "arrival" };
 
 export function timelineFromStops(
   stops: DbStop[],
@@ -238,7 +241,10 @@ export function timelineFromStops(
 ): EditorTimelineItem[] {
   return stops
     .filter(
-      (s) => PLANNING_ANCHOR_TYPES.has(s.type) || s.type === "stopover",
+      (s) =>
+        PLANNING_ANCHOR_TYPES.has(s.type) ||
+        s.type === "stopover" ||
+        TRANSIT_TYPES.has(s.type),
     )
     .sort((a, b) => a.sequence - b.sequence)
     .map<EditorTimelineItem>((s) => {
@@ -251,6 +257,13 @@ export function timelineFromStops(
             durationMins: s.duration_minutes ?? 30,
           },
           stop: s,
+        };
+      }
+      if (TRANSIT_TYPES.has(s.type)) {
+        return {
+          kind: "transit",
+          stop: s,
+          transitDirection: s.type === "transit_departure" ? "departure" : "arrival",
         };
       }
       return {

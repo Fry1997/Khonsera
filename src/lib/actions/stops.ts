@@ -37,6 +37,10 @@ const baseStopFields = {
   customer_id: z.string().uuid().nullable().optional(),
   customer_site_id: z.string().uuid().nullable().optional(),
   contact_id: z.string().uuid().nullable().optional(),
+  // Optional FK to the global transport_hubs catalogue. Set for
+  // transit_departure / transit_arrival stops the user creates via
+  // the editor's '+ Train' / '+ Flight' inline buttons.
+  transport_hub_id: z.string().uuid().nullable().optional(),
   external_reference: z.string().trim().max(200).nullable().optional(),
   external_url: z.string().trim().max(2000).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).nullable().optional(),
