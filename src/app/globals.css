@@ -2185,10 +2185,7 @@
      dashed border so it reads as secondary / dependent on its neighbours,
      not a hard-pinned anchor of its own. */
   .stopover-card {
-    margin-left: 32px;
-    margin-right: 16px;
-    margin-top: -6px;
-    margin-bottom: -6px;
+    margin: 8px 16px 8px 32px;
     padding: 16px 18px;
     background: var(--card-2, var(--card));
     border: 1px dashed var(--gold-2);
@@ -2200,8 +2197,7 @@
   }
   @media (max-width: 640px) {
     .stopover-card {
-      margin-left: 12px;
-      margin-right: 0;
+      margin: 8px 0 8px 12px;
       padding: 14px;
     }
   }
@@ -2701,14 +2697,18 @@
     flex-wrap: wrap;
   }
 
-  /* Between-anchors + buttons — slim hairline-flanked add row */
+  /* Between-anchors + buttons — slim hairline-flanked add row. Top
+     margin gives the button air against the card above it; without
+     it the button reads as part of the card border. */
   .brief-between {
     display: flex;
     justify-content: center;
     padding: 0;
+    margin-top: 10px;
   }
   .brief-between-mid {
     padding: 2px 0;
+    margin-top: 10px;
   }
   .brief-between-btn {
     display: inline-flex;
