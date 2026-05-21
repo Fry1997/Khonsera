@@ -57,6 +57,7 @@ export async function autocompletePlaces(args: {
     if (!res.ok) return [];
     const data = (await res.json()) as {
       status: string;
+      error_message?: string;
       predictions?: Array<{
         place_id: string;
         description: string;
@@ -68,7 +69,13 @@ export async function autocompletePlaces(args: {
       }>;
     };
     if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-      console.warn("Places autocomplete status:", data.status);
+      console.warn(
+        "Places autocomplete failed:",
+        data.status,
+        data.error_message ?? "(no error_message)",
+        "query:",
+        args.query,
+      );
       return [];
     }
     return (data.predictions ?? []).map((p) => ({
