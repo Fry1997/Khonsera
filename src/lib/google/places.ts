@@ -2,21 +2,21 @@
 // server; the browser calls /api/maps/places/autocomplete + /api/maps/places/details
 // which proxy through these functions.
 //
-// Uses the legacy Places API (free tier covers it; modern Places API New
-// returns the same fields with a different shape — easy to swap later).
+// Uses Places API (New) — the legacy /maps/api/place/* endpoints are no
+// longer enabled on new GCP projects. The public types (PlaceAutocomplete
+// Suggestion / PlaceDetails) are unchanged so callers stay the same.
 
 import { mapsApiKey } from "./maps";
 
 const AUTOCOMPLETE_ENDPOINT =
-  "https://maps.googleapis.com/maps/api/place/autocomplete/json";
-const DETAILS_ENDPOINT =
-  "https://maps.googleapis.com/maps/api/place/details/json";
+  "https://places.googleapis.com/v1/places:autocomplete";
+// Place details (New) is a GET on /v1/places/{PLACE_ID}. Built per-request.
 
 export type PlaceAutocompleteSuggestion = {
   place_id: string;
   description: string;
-  primary: string; // main_text (e.g. "King's Cross Station")
-  secondary: string; // secondary_text (e.g. "London, UK")
+  primary: string; // structuredFormat.mainText (e.g. "King's Cross Station")
+  secondary: string; // structuredFormat.secondaryText (e.g. "London, UK")
   types: string[]; // Google place types (e.g. ["train_station","point_of_interest"])
 };
 
@@ -32,10 +32,30 @@ export type PlaceDetails = {
 
 export type PlaceAutocompleteResult = {
   suggestions: PlaceAutocompleteSuggestion[];
-  // Only set when Google returned a non-OK / non-ZERO_RESULTS status,
-  // so the API route can surface the reason for debugging.
+  // Only set when Google returned an error, so the API route can surface
+  // the reason for debugging.
   failure?: { status: string; error_message?: string };
 };
+
+// Map our legacy "types" hints to Places API (New) `includedPrimaryTypes`.
+// "establishment" / "geocode" / "address" have no direct primary-type
+// equivalent — omit them (the new API ranks businesses well by default).
+function toIncludedPrimaryTypes(legacy: string | null | undefined): string[] | null {
+  if (!legacy) return null;
+  const known = new Set([
+    "train_station",
+    "subway_station",
+    "transit_station",
+    "airport",
+    "lodging",
+    "restaurant",
+    "cafe",
+    "bar",
+    "parking",
+    "tourist_attraction",
+  ]);
+  return known.has(legacy) ? [legacy] : null;
+}
 
 export async function autocompletePlaces(args: {
   query: string;
@@ -43,60 +63,72 @@ export async function autocompletePlaces(args: {
   // Bias toward a country (ISO 3166-1 alpha-2). UK default for now since
   // every customer lives in GB. Pass null to disable.
   country?: string | null;
-  // Optional bias to a place type ("train_station", "airport", "lodging",
-  // "establishment", "geocode", "address"). Falls back to no restriction.
+  // Optional bias to a place type ("train_station", "airport", "lodging", …).
   types?: string | null;
 }): Promise<PlaceAutocompleteResult> {
   const key = mapsApiKey();
   if (!key || !args.query?.trim()) return { suggestions: [] };
 
-  const url = new URL(AUTOCOMPLETE_ENDPOINT);
-  url.searchParams.set("input", args.query);
-  url.searchParams.set("key", key);
-  if (args.sessionToken) url.searchParams.set("sessiontoken", args.sessionToken);
-  if (args.country !== null) {
-    url.searchParams.set("components", `country:${args.country ?? "gb"}`);
-  }
-  if (args.types) url.searchParams.set("types", args.types);
+  const includedPrimaryTypes = toIncludedPrimaryTypes(args.types);
+  const countryCode =
+    args.country === null ? null : (args.country ?? "gb").toUpperCase();
+
+  const body: Record<string, unknown> = { input: args.query };
+  if (args.sessionToken) body.sessionToken = args.sessionToken;
+  if (countryCode) body.includedRegionCodes = [countryCode];
+  if (includedPrimaryTypes) body.includedPrimaryTypes = includedPrimaryTypes;
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await fetch(AUTOCOMPLETE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    const raw = await res.json().catch(() => null);
     if (!res.ok) {
-      return { suggestions: [], failure: { status: `HTTP_${res.status}` } };
-    }
-    const data = (await res.json()) as {
-      status: string;
-      error_message?: string;
-      predictions?: Array<{
-        place_id: string;
-        description: string;
-        structured_formatting?: {
-          main_text: string;
-          secondary_text?: string;
-        };
-        types?: string[];
-      }>;
-    };
-    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      const err = raw as { error?: { status?: string; message?: string } } | null;
+      const status = err?.error?.status ?? `HTTP_${res.status}`;
+      const error_message = err?.error?.message;
       console.warn(
         "Places autocomplete failed:",
-        data.status,
-        data.error_message ?? "(no error_message)",
+        status,
+        error_message ?? "(no message)",
         "query:",
         args.query,
       );
-      return {
-        suggestions: [],
-        failure: { status: data.status, error_message: data.error_message },
-      };
+      return { suggestions: [], failure: { status, error_message } };
     }
-    const suggestions = (data.predictions ?? []).map((p) => ({
-      place_id: p.place_id,
-      description: p.description,
-      primary: p.structured_formatting?.main_text ?? p.description,
-      secondary: p.structured_formatting?.secondary_text ?? "",
-      types: p.types ?? [],
-    }));
+    const data = raw as {
+      suggestions?: Array<{
+        placePrediction?: {
+          place?: string;
+          placeId: string;
+          text?: { text?: string };
+          structuredFormat?: {
+            mainText?: { text?: string };
+            secondaryText?: { text?: string };
+          };
+          types?: string[];
+        };
+      }>;
+    } | null;
+    const suggestions = (data?.suggestions ?? [])
+      .map((s) => s.placePrediction)
+      .filter((p): p is NonNullable<typeof p> => !!p?.placeId)
+      .map((p) => ({
+        place_id: p.placeId,
+        description: p.text?.text ?? p.structuredFormat?.mainText?.text ?? "",
+        primary:
+          p.structuredFormat?.mainText?.text ??
+          p.text?.text ??
+          "",
+        secondary: p.structuredFormat?.secondaryText?.text ?? "",
+        types: p.types ?? [],
+      }));
     return { suggestions };
   } catch (e) {
     console.error("autocompletePlaces failed", e);
@@ -114,45 +146,55 @@ export async function getPlaceDetails(args: {
   const key = mapsApiKey();
   if (!key || !args.placeId) return null;
 
-  const url = new URL(DETAILS_ENDPOINT);
-  url.searchParams.set("place_id", args.placeId);
-  url.searchParams.set(
-    "fields",
-    "place_id,name,formatted_address,geometry/location,types,address_components",
+  const url = new URL(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(args.placeId)}`,
   );
-  url.searchParams.set("key", key);
-  if (args.sessionToken) url.searchParams.set("sessiontoken", args.sessionToken);
+  if (args.sessionToken) url.searchParams.set("sessionToken", args.sessionToken);
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) return null;
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask":
+          "id,displayName,formattedAddress,location,types,addressComponents",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      console.warn(
+        "Place details failed:",
+        err?.error?.status ?? `HTTP_${res.status}`,
+        err?.error?.message ?? "(no message)",
+        "placeId:",
+        args.placeId,
+      );
+      return null;
+    }
     const data = (await res.json()) as {
-      status: string;
-      result?: {
-        place_id: string;
-        name: string;
-        formatted_address: string;
-        geometry: { location: { lat: number; lng: number } };
-        types?: string[];
-        address_components?: Array<{
-          long_name: string;
-          short_name: string;
-          types: string[];
-        }>;
-      };
+      id: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+      location?: { latitude: number; longitude: number };
+      types?: string[];
+      addressComponents?: Array<{
+        longText: string;
+        shortText: string;
+        types: string[];
+      }>;
     };
-    if (data.status !== "OK" || !data.result) return null;
-    const r = data.result;
+    if (!data?.id || !data.location) return null;
     const postcode =
-      r.address_components?.find((c) => c.types.includes("postal_code"))
-        ?.long_name ?? null;
+      data.addressComponents?.find((c) => c.types.includes("postal_code"))
+        ?.longText ?? null;
     return {
-      place_id: r.place_id,
-      name: r.name,
-      formatted_address: r.formatted_address,
-      latitude: r.geometry.location.lat,
-      longitude: r.geometry.location.lng,
-      types: r.types ?? [],
+      place_id: data.id,
+      name: data.displayName?.text ?? "",
+      formatted_address: data.formattedAddress ?? "",
+      latitude: data.location.latitude,
+      longitude: data.location.longitude,
+      types: data.types ?? [],
       postcode,
     };
   } catch (e) {
