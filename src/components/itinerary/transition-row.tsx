@@ -132,6 +132,24 @@ export function TransitionRow({
     !isAuto &&
     (transition.localBefore !== "auto" || transition.localAfter !== "auto");
 
+  // When the editor passes a resolution AND the leg isn't booked,
+  // render the explicit-pill picker per the latest UX spec: three
+  // mode pills always visible (walk / drive / taxi), each showing
+  // its own time + distance + (taxi-only) cost. User clicks one to
+  // pick it — no auto-resolve, no chevron popover for mode. Filtered
+  // candidates render dimmed with a tooltip so the user sees why
+  // (e.g. walk too long).
+  if (useResolved && onSetOverride) {
+    return (
+      <ExplicitModePicker
+        resolution={resolution!}
+        currentMode={transition.mode}
+        onSetOverride={onSetOverride}
+        fromVirtualLabel={fromVirtualLabel}
+      />
+    );
+  }
+
   return (
     <div ref={ref} className="transition-row">
       <div className="transition-line" aria-hidden />
@@ -509,6 +527,179 @@ function ResolvedChipFace({
         {isOverride ? <span className="transition-chip-userdot" aria-hidden /> : null}
       </span>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ExplicitModePicker — flat-3-pill picker per the latest UX brief.
+// Drops the auto-resolve chip entirely. All three modes
+// (walk / drive / taxi) are always visible side-by-side, each
+// showing its own time / distance / cost. The user picks one; that
+// becomes the leg's mode. Filtered candidates render dimmed with a
+// tooltip explaining why (e.g. walk over the user's threshold).
+// Modes for which Routes API hasn't returned data yet render as a
+// soft 'calculating…' placeholder.
+// ─────────────────────────────────────────────────────────────────────
+function ExplicitModePicker({
+  resolution,
+  currentMode,
+  onSetOverride,
+  fromVirtualLabel,
+}: {
+  resolution: Resolution;
+  currentMode: TransitionMode;
+  onSetOverride: (mode: ModeCandidate) => void;
+  fromVirtualLabel?: string;
+}) {
+  // Build a map mode → state so we can iterate all three in order
+  // even when the engine filtered or dropped some.
+  const pickerEntries: ModePickerEntry[] = (
+    ["walk", "drive", "taxi"] as const
+  ).map((mode) => {
+    const ranked = resolution.ranked.find((r) => r.mode === mode);
+    if (ranked) {
+      return { mode, kind: "ok" as const, ranked };
+    }
+    const filtered = resolution.filtered.find((f) => f.input.mode === mode);
+    if (filtered) {
+      return {
+        mode,
+        kind: "filtered" as const,
+        filterReason: filtered.filterReason,
+        input: filtered.input,
+      };
+    }
+    // Not in either list — means resolution.state is 'resolving'
+    // and we haven't seen a settled entry for this mode yet.
+    return { mode, kind: "pending" as const };
+  });
+
+  return (
+    <div className="transition-row transition-row-pickers">
+      <div className="transition-line" aria-hidden />
+      <div
+        className="mode-pickers"
+        title={
+          fromVirtualLabel
+            ? `Travel from ${fromVirtualLabel}`
+            : "Choose how you'll travel"
+        }
+      >
+        {pickerEntries.map((entry) => (
+          <ModePickerPill
+            key={entry.mode}
+            entry={entry}
+            selected={currentMode === entry.mode}
+            onPick={() => onSetOverride(entry.mode)}
+          />
+        ))}
+      </div>
+      <div className="transition-line" aria-hidden />
+    </div>
+  );
+}
+
+type ModePickerEntry =
+  | {
+      mode: ModeCandidate;
+      kind: "ok";
+      ranked: ScoredCandidate;
+    }
+  | {
+      mode: ModeCandidate;
+      kind: "filtered";
+      filterReason: string;
+      input: ScoredCandidate["input"];
+    }
+  | { mode: ModeCandidate; kind: "pending" };
+
+function ModePickerPill({
+  entry,
+  selected,
+  onPick,
+}: {
+  entry: ModePickerEntry;
+  selected: boolean;
+  onPick: () => void;
+}) {
+  const label =
+    entry.mode === "walk"
+      ? "Walk"
+      : entry.mode === "drive"
+        ? "Drive"
+        : "Taxi";
+  const optMatch = TRANSITION_OPTIONS.find((o) => o.value === entry.mode);
+  const Icon = optMatch ? TransportIcon[optMatch.icon] : TransportIcon.auto;
+
+  if (entry.kind === "pending") {
+    return (
+      <button
+        type="button"
+        className="mode-pill"
+        data-state="pending"
+        disabled
+      >
+        <Icon size={13} />
+        <span className="mode-pill-label">{label}</span>
+        <span className="mode-pill-meta">…</span>
+      </button>
+    );
+  }
+
+  if (entry.kind === "filtered") {
+    const reasonCopy = filterReasonCopy(entry.filterReason);
+    const mins =
+      entry.input.durationSeconds != null
+        ? Math.round(entry.input.durationSeconds / 60)
+        : null;
+    return (
+      <button
+        type="button"
+        className="mode-pill"
+        data-state="filtered"
+        title={reasonCopy}
+        // Filtered (e.g. walk-too-long) candidates can still be
+        // picked deliberately — the engine's filter is advisory, not
+        // a hard veto. User overrides win.
+        onClick={onPick}
+      >
+        <Icon size={13} />
+        <span className="mode-pill-label">{label}</span>
+        <span className="mode-pill-meta">
+          {mins != null ? `${mins}m` : "—"}
+        </span>
+      </button>
+    );
+  }
+
+  const c = entry.ranked;
+  const mins =
+    c.input.durationSeconds != null
+      ? Math.round(c.input.durationSeconds / 60)
+      : null;
+  const miles =
+    c.input.distanceMeters != null
+      ? c.input.distanceMeters / 1609.344
+      : null;
+  const cost =
+    c.input.mode === "taxi" && c.input.costEstimatePence != null
+      ? `£${(c.input.costEstimatePence / 100).toFixed(0)}`
+      : null;
+  return (
+    <button
+      type="button"
+      className="mode-pill"
+      data-state={selected ? "selected" : "available"}
+      onClick={onPick}
+    >
+      <Icon size={13} />
+      <span className="mode-pill-label">{label}</span>
+      <span className="mode-pill-meta">
+        {mins != null ? `${mins}m` : "—"}
+        {miles != null ? ` · ${miles.toFixed(1)}mi` : ""}
+        {cost ? ` · ${cost}` : ""}
+      </span>
+    </button>
   );
 }
 

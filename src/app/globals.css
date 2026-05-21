@@ -2483,6 +2483,66 @@
     color: var(--rust);
   }
 
+  /* Explicit mode picker — flat three-pill row that replaces the
+     auto-resolved chip in the editor. Walk · Drive · Taxi each
+     visible with their times, user picks one. */
+  .transition-row-pickers {
+    align-items: center;
+  }
+  .mode-pickers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+  }
+  .mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--rule-2);
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+  .mode-pill:hover:not([disabled]) {
+    background: var(--card-2);
+    border-color: var(--gold);
+    color: var(--ink);
+  }
+  .mode-pill[data-state="selected"] {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--paper);
+  }
+  .mode-pill[data-state="selected"]:hover {
+    background: var(--gold);
+    color: var(--paper);
+  }
+  .mode-pill[data-state="filtered"] {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+  .mode-pill[data-state="pending"] {
+    opacity: 0.55;
+    cursor: progress;
+  }
+  .mode-pill-label {
+    font-weight: 600;
+  }
+  .mode-pill-meta {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: inherit;
+    opacity: 0.85;
+  }
+
   /* Resolved chip-face — the redesign per the scoring spec. The
      spinner state, the override dot, and the alternative pills
      below the chip live here. */
