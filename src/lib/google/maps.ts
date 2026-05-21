@@ -203,10 +203,15 @@ export async function getDirections(args: {
       const err = (await res.json().catch(() => null)) as {
         error?: { status?: string; message?: string };
       } | null;
+      // One long string so Vercel's runtime-log table doesn't truncate
+      // the useful details. Includes the body we sent so we can spot
+      // bad field-mask paths or invalid params from the log alone.
       console.warn(
-        "Routes API failed:",
-        err?.error?.status ?? `HTTP_${res.status}`,
-        err?.error?.message ?? "(no message)",
+        `Routes API failed status=${
+          err?.error?.status ?? `HTTP_${res.status}`
+        } message=${err?.error?.message ?? "(no message)"} body=${JSON.stringify(
+          body,
+        )} fieldMask=${fieldMask}`,
       );
       return null;
     }
