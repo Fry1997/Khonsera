@@ -132,6 +132,31 @@ export default async function ItineraryDetailPage({
           .order("sequence")
       : { data: [] as never[] };
 
+  // Pre-fetch route_preview_cache rows for every stop in this
+  // itinerary so the editor doesn't have to round-trip the
+  // previewRoute server action 15+ times on every page load. The
+  // client-side hook seeds from these on mount; cache misses still
+  // fire previewRoute lazily.
+  const stopIds = (stops ?? []).map((s) => s.id);
+  const { data: previewCacheRows } =
+    stopIds.length > 0
+      ? await supabase
+          .from("route_preview_cache")
+          .select(
+            "from_stop_id, to_stop_id, mode, duration_minutes, distance_miles",
+          )
+          .in("from_stop_id", stopIds)
+          .in("to_stop_id", stopIds)
+      : {
+          data: [] as Array<{
+            from_stop_id: string;
+            to_stop_id: string;
+            mode: string;
+            duration_minutes: number | null;
+            distance_miles: number | null;
+          }>,
+        };
+
   const totalCost = (expenseRows ?? []).reduce(
     (sum, e) => sum + (Number(e.amount) || 0),
     0,
@@ -163,6 +188,13 @@ export default async function ItineraryDetailPage({
       contacts={contacts ?? []}
       timezone={wsCfg.timezone}
       totals={{ cost: totalCost, currency }}
+      initialPreviewCache={(previewCacheRows ?? []).map((row) => ({
+        fromStopId: row.from_stop_id,
+        toStopId: row.to_stop_id,
+        mode: row.mode as "walk" | "drive" | "taxi",
+        durationMinutes: row.duration_minutes,
+        distanceMiles: row.distance_miles,
+      }))}
       scoringProfile={{
         preferredMode:
           (scoringProfile?.preferred_mode as

@@ -32,11 +32,36 @@ const cacheKey = (
   mode: TransitionMode,
 ) => `${fromStopId}::${toStopId}::${mode}`;
 
-export function useRoutePreviews() {
-  // Map<key, RoutePreview | 'pending' | 'error'>. Stored in a ref so
+export type InitialPreviewSeed = {
+  fromStopId: string;
+  toStopId: string;
+  mode: TransitionMode;
+  durationMinutes: number | null;
+  distanceMiles: number | null;
+};
+
+export function useRoutePreviews(initialSeeds?: InitialPreviewSeed[]) {
+  // Map<key, RoutePreview | 'pending'>. Stored in a ref so
   // concurrent calls don't reset state; the public Map is mirrored
   // into useState only on resolution to trigger re-renders.
+  //
+  // Seeded from server-side cache rows on first construction so the
+  // editor can render resolved pills on first paint instead of
+  // flashing 'pending' for 10s while N round-tripped previewRoute
+  // calls work through Vercel + DB.
   const cacheRef = useRef<Map<string, RoutePreview | "pending">>(new Map());
+  const seededRef = useRef(false);
+  if (!seededRef.current) {
+    seededRef.current = true;
+    if (initialSeeds) {
+      for (const s of initialSeeds) {
+        cacheRef.current.set(cacheKey(s.fromStopId, s.toStopId, s.mode), {
+          durationMinutes: s.durationMinutes,
+          distanceMiles: s.distanceMiles,
+        });
+      }
+    }
+  }
   const [, force] = useState(0);
 
   const fetchPreview = useCallback(

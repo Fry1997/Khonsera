@@ -22,6 +22,7 @@ import type {
   Resolution,
   ScoringContext,
 } from "@/lib/scoring/types";
+import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { feedbackFromError } from "@/lib/actions/_form";
 import type {
   ItineraryStatus,
@@ -238,6 +239,7 @@ export function ItineraryEditor({
   timezone,
   totals,
   scoringProfile,
+  initialPreviewCache,
 }: {
   itinerary: {
     id: string;
@@ -272,6 +274,10 @@ export function ItineraryEditor({
     maxTaxiFarePence: number;
     luggageDefault: "none" | "light" | "heavy";
   };
+  // Server-side cached previews keyed by (from_stop_id, to_stop_id,
+  // mode). Seeded into the route-preview hook on mount so the picker
+  // renders resolved pills on first paint instead of grey-pending.
+  initialPreviewCache: InitialPreviewSeed[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -315,7 +321,7 @@ export function ItineraryEditor({
   // entries out by (fromStopId, toStopId, mode); the helper below
   // collapses them into a per-pair Map that PlanningTransitionRow
   // accepts via its modePreviews prop.
-  const routePreviews = useRoutePreviews();
+  const routePreviews = useRoutePreviews(initialPreviewCache);
   const previewsForPair = (
     fromStopId: string,
     toStopId: string,
