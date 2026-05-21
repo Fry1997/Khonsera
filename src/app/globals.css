@@ -2245,21 +2245,24 @@
     color: var(--ink-faint);
     line-height: 1.45;
   }
-  /* "+ Add a stop on the way" trigger inside the transition popover. */
-  .transition-add-stopover {
-    margin-top: 6px;
+  /* "+ Add a stop between these" — visible inline trigger between a
+     transition chip and the next anchor card. Pulled out of the
+     popover so users can find it without opening the mode picker. */
+  .brief-add-stop-trigger {
     align-self: flex-start;
+    margin: 4px 0 4px 28px;
     background: transparent;
     border: 1px dashed var(--gold-2);
     color: var(--gold-2);
-    padding: 6px 10px;
+    padding: 5px 12px;
     border-radius: 999px;
-    font-size: 12.5px;
+    font-size: 12px;
     cursor: pointer;
-    transition: background 0.12s;
+    transition: background 0.12s, color 0.12s;
   }
-  .transition-add-stopover:hover {
+  .brief-add-stop-trigger:hover {
     background: var(--gold-tint, rgba(200, 157, 77, 0.08));
+    color: var(--gold);
   }
 
   .transition-row {

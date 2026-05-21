@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Fragment, useMemo, useState, useTransition, useEffect, useRef } from "react";
+import { Fragment, useMemo, useState, useTransition, useEffect, useRef, type ReactNode } from "react";
 import { FormError } from "@/components/ui/form";
 import { createItineraryFromBrief } from "@/lib/actions/itineraries";
 import { updateLocationType } from "@/lib/actions/locations";
@@ -319,12 +319,70 @@ export function NewItineraryBrief({
   };
 
   const removeStopover = (fromUid: string, toUid: string) => {
+    const svUid = stopoverUid(fromUid, toUid);
     setStopovers((prev) => {
       const next = new Map(prev);
       next.delete(transitionKey(fromUid, toUid));
       return next;
     });
+    // A stopover splits the parent transition into two leg transitions
+    // (anchor → stopover, stopover → anchor). When the stopover goes
+    // away we also drop those leg entries so the parent (fromUid, toUid)
+    // transition takes over again — without this the leg modes would
+    // linger in state and re-apply if the user re-added a stopover.
+    setTransitions((prev) => {
+      const next = new Map(prev);
+      next.delete(transitionKey(fromUid, svUid));
+      next.delete(transitionKey(svUid, toUid));
+      return next;
+    });
   };
+
+  // Synthesise a stable uid for the stopover so the transitions Map can
+  // carry the two split-leg entries alongside anchor-pair entries. The
+  // uid encodes the parent pair, which means it follows the stopover if
+  // the surrounding anchors get reordered (and gets dropped naturally
+  // if either anchor disappears).
+  const stopoverUid = (fromUid: string, toUid: string) =>
+    `sv::${fromUid}::${toUid}`;
+
+  // Adding a stopover splits the existing single transition into two
+  // independently-editable legs. We seed both new legs with the
+  // parent's mode/booking so a user who already said "we're walking
+  // this leg" doesn't have to re-pick walk twice — they can edit
+  // either leg afterwards.
+  const addStopover = (fromUid: string, toUid: string) => {
+    const parent = getTransition(fromUid, toUid);
+    const svUid = stopoverUid(fromUid, toUid);
+    setTransitions((prev) => {
+      const next = new Map(prev);
+      next.set(transitionKey(fromUid, svUid), { ...parent });
+      next.set(transitionKey(svUid, toUid), { ...parent });
+      return next;
+    });
+    setStopovers((prev) => {
+      const next = new Map(prev);
+      next.set(transitionKey(fromUid, toUid), emptyStopover());
+      return next;
+    });
+  };
+
+  // Synthetic Anchor used purely so TransitionRow / BookedFields can
+  // pull place.label for hints. Most Anchor fields are unused in that
+  // context — we fill them with safe defaults.
+  const stopoverAsAnchor = (sv: Stopover, uid: string): Anchor => ({
+    uid,
+    place: sv.place,
+    kindOverride: null,
+    roleOverride: null,
+    date: "",
+    time: "",
+    timingMode: "around_then",
+    timingModeOverride: false,
+    durationMins: sv.durationMins,
+    checkOutDate: "",
+    checkOutTime: "",
+  });
 
   const datePresets = useMemo(() => buildDatePresets(timezone), [timezone]);
 
@@ -517,10 +575,18 @@ export function NewItineraryBrief({
             const homeT = getTransition(HOME_UID, anchors[0].uid);
             serialize(HOME_UID, anchors[0].uid, homeT);
           }
-          // Then each adjacent pair.
+          // Then each adjacent pair. When a stopover sits between the
+          // pair we deliberately skip the parent transition: the user's
+          // intent is now expressed as two leg transitions around the
+          // stopover, and persisting the stale parent would re-introduce
+          // a single train/walk between the anchors as if no stopover
+          // existed. The two leg transitions themselves can't be sent
+          // yet (they reference a synthetic stopover uid that has no
+          // matching stop row) — that's tracked for Phase 2/3.
           for (let i = 0; i < anchors.length - 1; i++) {
             const a = anchors[i];
             const next = anchors[i + 1];
+            if (stopovers.has(transitionKey(a.uid, next.uid))) continue;
             serialize(a.uid, next.uid, getTransition(a.uid, next.uid));
           }
           return out;
@@ -632,40 +698,69 @@ export function NewItineraryBrief({
                 onChange={(patch) => updateAnchor(anchor.uid, patch)}
                 onRemove={() => removeAnchor(anchor.uid)}
               />
-              {next ? (
-                <>
-                  <TransitionRow
-                    from={anchor}
-                    to={next}
-                    transition={getTransition(anchor.uid, next.uid)}
-                    stopoverPresent={!!getStopover(anchor.uid, next.uid)}
-                    onAddStopover={() =>
-                      setStopoverPatch(anchor.uid, next.uid, {})
-                    }
-                    onChange={(patch) =>
-                      setTransition(anchor.uid, next.uid, patch)
-                    }
-                  />
-                  {(() => {
+              {next
+                ? (() => {
                     const sv = getStopover(anchor.uid, next.uid);
-                    if (!sv) return null;
+                    if (sv) {
+                      const svUid = stopoverUid(anchor.uid, next.uid);
+                      const svAnchor = stopoverAsAnchor(sv, svUid);
+                      return (
+                        <>
+                          <TransitionRow
+                            from={anchor}
+                            to={svAnchor}
+                            transition={getTransition(anchor.uid, svUid)}
+                            onChange={(patch) =>
+                              setTransition(anchor.uid, svUid, patch)
+                            }
+                          />
+                          <StopoverCard
+                            stopover={sv}
+                            fromAnchor={anchor}
+                            toAnchor={next}
+                            customers={customers}
+                            customerSites={customerSites}
+                            locations={locations}
+                            onChange={(patch) =>
+                              setStopoverPatch(anchor.uid, next.uid, patch)
+                            }
+                            onRemove={() =>
+                              removeStopover(anchor.uid, next.uid)
+                            }
+                          />
+                          <TransitionRow
+                            from={svAnchor}
+                            to={next}
+                            transition={getTransition(svUid, next.uid)}
+                            onChange={(patch) =>
+                              setTransition(svUid, next.uid, patch)
+                            }
+                          />
+                        </>
+                      );
+                    }
                     return (
-                      <StopoverCard
-                        stopover={sv}
-                        fromAnchor={anchor}
-                        toAnchor={next}
-                        customers={customers}
-                        customerSites={customerSites}
-                        locations={locations}
-                        onChange={(patch) =>
-                          setStopoverPatch(anchor.uid, next.uid, patch)
-                        }
-                        onRemove={() => removeStopover(anchor.uid, next.uid)}
-                      />
+                      <>
+                        <TransitionRow
+                          from={anchor}
+                          to={next}
+                          transition={getTransition(anchor.uid, next.uid)}
+                          onChange={(patch) =>
+                            setTransition(anchor.uid, next.uid, patch)
+                          }
+                        />
+                        <button
+                          type="button"
+                          className="brief-add-stop-trigger"
+                          onClick={() => addStopover(anchor.uid, next.uid)}
+                          title="Drop in somewhere between these two anchors"
+                        >
+                          + Add a stop between these
+                        </button>
+                      </>
                     );
-                  })()}
-                </>
-              ) : null}
+                  })()
+                : null}
               <AddBetween
                 onAdd={() => insertAnchorAt(i + 1)}
                 between={i < anchors.length - 1}
@@ -768,6 +863,7 @@ export function NewItineraryBrief({
         <BonesPreview
           anchors={anchors}
           transitions={transitions}
+          stopovers={stopovers}
           titleOverride={titleOverride}
           timezone={timezone}
         />
@@ -1508,19 +1604,12 @@ function TransitionRow({
   // Optional label for the from-anchor when it isn't a real anchor —
   // e.g. the implicit "home" leg before the first anchor.
   fromVirtualLabel,
-  // Stopovers are an opt-in concept attached to the transition between
-  // two real anchors. The row exposes an "add stop" action when no
-  // stopover exists yet, and hides it once one has been added.
-  stopoverPresent,
-  onAddStopover,
 }: {
   from: Anchor | null;
   to: Anchor;
   transition: BriefTransition;
   onChange: (patch: Partial<BriefTransition>) => void;
   fromVirtualLabel?: string;
-  stopoverPresent?: boolean;
-  onAddStopover?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -1702,19 +1791,6 @@ function TransitionRow({
                 </p>
               ) : null}
             </div>
-          ) : null}
-
-          {onAddStopover && !stopoverPresent && from ? (
-            <button
-              type="button"
-              className="transition-add-stopover"
-              onClick={() => {
-                onAddStopover();
-                setOpen(false);
-              }}
-            >
-              + Add a stop on the way
-            </button>
           ) : null}
 
           <label className="transition-booked-toggle">
@@ -2010,11 +2086,13 @@ function AddBetween({
 function BonesPreview({
   anchors,
   transitions,
+  stopovers,
   titleOverride,
   timezone,
 }: {
   anchors: Anchor[];
   transitions: Map<string, BriefTransition>;
+  stopovers: Map<string, Stopover>;
   titleOverride: string;
   timezone: string;
 }) {
@@ -2082,16 +2160,44 @@ function BonesPreview({
         {sorted.map((a, i) => {
           const earlier = sorted.slice(0, i);
           const prev = sorted[i - 1];
-          // Surface a "via …" row when the user has expressed travel
-          // intent for the prev→this adjacent pair (in entry order it
-          // doesn't matter — the transitions Map is keyed by uid pair).
-          const via = prev
-            ? transitions.get(`${prev.uid}::${a.uid}`)
-            : undefined;
-          const viaRow =
-            via && (via.mode !== "auto" || via.booked) ? (
-              <BonesVia key={`via-${prev?.uid}-${a.uid}`} transition={via} />
+          // The prev→this leg either:
+          //   * has a stopover sitting between them → render the
+          //     in-leg via, the stopover stop, and the out-leg via
+          //   * has no stopover → render the single parent via row
+          // A via row is suppressed when the mode is still "auto" and
+          // no booking exists — nothing meaningful to show yet.
+          const svKey = prev ? `${prev.uid}::${a.uid}` : null;
+          const sv = svKey ? stopovers.get(svKey) : undefined;
+          const showVia = (t?: BriefTransition) =>
+            !!t && (t.mode !== "auto" || t.booked);
+          let viaRow: ReactNode = null;
+          if (prev && sv) {
+            const svUid = `sv::${prev.uid}::${a.uid}`;
+            const legIn = transitions.get(`${prev.uid}::${svUid}`);
+            const legOut = transitions.get(`${svUid}::${a.uid}`);
+            viaRow = (
+              <Fragment key={`sv-spine-${prev.uid}-${a.uid}`}>
+                {showVia(legIn) ? (
+                  <BonesVia transition={legIn!} />
+                ) : null}
+                <BonesStop
+                  time="—"
+                  eyebrow="Stopover"
+                  title={sv.place?.label ?? "Pick a place"}
+                  sub={`drop-in · ${fmtDur(sv.durationMins)}`}
+                  dotKind="default"
+                />
+                {showVia(legOut) ? (
+                  <BonesVia transition={legOut!} />
+                ) : null}
+              </Fragment>
+            );
+          } else if (prev) {
+            const via = transitions.get(`${prev.uid}::${a.uid}`);
+            viaRow = showVia(via) ? (
+              <BonesVia key={`via-${prev.uid}-${a.uid}`} transition={via!} />
             ) : null;
+          }
 
           const kind = effectiveKind(a);
           const role = effectiveRole(a, earlier);
