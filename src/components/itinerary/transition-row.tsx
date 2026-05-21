@@ -11,6 +11,17 @@ import type {
   TransitionMode,
 } from "./types";
 
+// Per-mode duration hints — populated by the editor via the
+// useRoutePreviews hook. Each entry is either a resolved preview
+// (minutes + miles) or "pending" while a call is in flight.
+export type ModePreview = {
+  durationMinutes: number | null;
+  distanceMiles: number | null;
+};
+export type ModePreviewMap = Partial<
+  Record<TransitionMode, ModePreview | "pending">
+>;
+
 // ─────────────────────────────────────────────────────────────────────
 // TransitionRow — the slim "via X" element between two anchors. Click
 // the mode chip to switch mode; "Pre-booked" toggle expands a small
@@ -24,23 +35,45 @@ export function TransitionRow({
   // Optional label for the from-anchor when it isn't a real anchor —
   // e.g. the implicit "home" leg before the first anchor.
   fromVirtualLabel,
+  // Per-mode duration hints. When provided, each mode pill in the
+  // popover renders a tiny "12m" / "—" tail. Callers (the editor)
+  // wire this via the useRoutePreviews hook; the brief leaves it
+  // undefined so no hints appear.
+  modePreviews,
+  // Fires when the popover opens, so the consumer can prefetch
+  // previews for any modes it hasn't seen yet. Optional — without
+  // it the popover stays silent (which is fine for the brief).
+  onOpenChange,
 }: {
   from: Anchor | null;
   to: Anchor;
   transition: BriefTransition;
   onChange: (patch: Partial<BriefTransition>) => void;
   fromVirtualLabel?: string;
+  modePreviews?: ModePreviewMap;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Surface popover open-state to the consumer so it can prefetch
+  // route previews on first open. Wrapped here so the caller doesn't
+  // have to hand-roll the click-outside handler.
+  const setOpenWithSignal = (next: boolean) => {
+    setOpen(next);
+    onOpenChange?.(next);
+  };
+
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      if (!ref.current?.contains(e.target as Node)) setOpenWithSignal(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
+    // setOpenWithSignal is stable enough — the consumer's
+    // onOpenChange identity isn't worth a dependency array dance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
@@ -73,7 +106,7 @@ export function TransitionRow({
         className={
           isAuto ? "transition-chip transition-chip-auto" : "transition-chip"
         }
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpenWithSignal(!open)}
         data-active={open}
         title={
           fromVirtualLabel
@@ -138,6 +171,15 @@ export function TransitionRow({
             >
               {TRANSITION_OPTIONS.map((o) => {
                 const OIcon = TransportIcon[o.icon];
+                const preview = modePreviews?.[o.value];
+                const hint =
+                  o.value === "auto" || preview == null
+                    ? null
+                    : preview === "pending"
+                      ? "…"
+                      : preview.durationMinutes != null
+                        ? `${preview.durationMinutes}m`
+                        : null;
                 return (
                   <button
                     key={o.value}
@@ -153,6 +195,14 @@ export function TransitionRow({
                   >
                     <OIcon size={13} />
                     {o.label}
+                    {hint ? (
+                      <span
+                        className="mode-pill-hint"
+                        aria-label={`${hint} estimated`}
+                      >
+                        {hint}
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
@@ -250,7 +300,7 @@ export function TransitionRow({
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              onClick={() => setOpen(false)}
+              onClick={() => setOpenWithSignal(false)}
             >
               Done
             </button>

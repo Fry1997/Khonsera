@@ -7,7 +7,15 @@ export { DurationRow } from "./duration-row";
 export { TimingModeRow } from "./timing-mode-row";
 export { AddBetween } from "./add-between";
 export { AnchorCard } from "./anchor-card";
-export { TransitionRow } from "./transition-row";
+export {
+  TransitionRow,
+  type ModePreview,
+  type ModePreviewMap,
+} from "./transition-row";
+export {
+  useRoutePreviews,
+  type RoutePreview,
+} from "./use-route-preview";
 export { StopoverCard } from "./stopover-card";
 export { JourneySpine } from "./journey-spine";
 export {

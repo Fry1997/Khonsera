@@ -2335,6 +2335,49 @@
     color: var(--ink-faint);
     line-height: 1.45;
   }
+  /* Feasibility flags — soft inline badges under a transition row
+     when the planned travel time eats too much of the window between
+     two fixed-time anchors. "tight" is amber/gold (warning), "bad"
+     is rust (actually infeasible at the current settings). */
+  .feasibility-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .feasibility-flag-tight {
+    background: var(--gold-tint, rgba(200, 157, 77, 0.16));
+    color: var(--gold-2);
+  }
+  .feasibility-flag-bad {
+    background: rgba(190, 70, 50, 0.12);
+    color: var(--rust);
+  }
+
+  /* Mode-pill hint tail — the small "12m" tag the editor surfaces
+     next to each transport mode while the user is picking, fed by
+     the per-mode Routes API previews. Sits inside the pill on the
+     right with subtle dimming so it reads as supporting data, not a
+     button affordance. */
+  .mode-pill-hint {
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: var(--card-2, rgba(0, 0, 0, 0.04));
+    color: var(--ink-dim);
+  }
+  .brief-pill[data-active="true"] .mode-pill-hint {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--paper);
+  }
+
   /* "+ Add a stop between these" — visible inline trigger between a
      transition chip and the next anchor card. Pulled out of the
      popover so users can find it without opening the mode picker. */

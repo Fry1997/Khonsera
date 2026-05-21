@@ -25,6 +25,7 @@ import { TransportIcon, StopIcon } from "@/components/icons";
 import {
   AnchorCard,
   StopoverCard,
+  TRANSITION_OPTIONS,
   TransitionRow as PlanningTransitionRow,
   anchorsFromStops,
   anchorToStopUpdate,
@@ -34,10 +35,12 @@ import {
   timelineFromStops,
   transitionKey,
   transitionsFromDb,
+  useRoutePreviews,
   type Anchor,
   type BriefTransition,
   type DbStop,
   type EditorTimelineItem,
+  type ModePreviewMap,
 } from "@/components/itinerary";
 
 // Inline icons — line-art style matching the warm editorial design.
@@ -264,6 +267,31 @@ export function ItineraryEditor({
     () => timelineFromStops(stops as DbStop[], timezone),
     [stops, timezone],
   );
+
+  // Route previews — populated lazily when the user opens a
+  // transition's mode picker. The hook fans the saved RoutePreview
+  // entries out by (fromStopId, toStopId, mode); the helper below
+  // collapses them into a per-pair Map that PlanningTransitionRow
+  // accepts via its modePreviews prop.
+  const routePreviews = useRoutePreviews();
+  const previewsForPair = (
+    fromStopId: string,
+    toStopId: string,
+  ): ModePreviewMap => {
+    const out: ModePreviewMap = {};
+    for (const opt of TRANSITION_OPTIONS) {
+      if (opt.value === "auto" || opt.value === "mixed") continue;
+      const entry = routePreviews.get(fromStopId, toStopId, opt.value);
+      if (entry) out[opt.value] = entry;
+    }
+    return out;
+  };
+  const prefetchPair = (fromStopId: string, toStopId: string) => {
+    for (const opt of TRANSITION_OPTIONS) {
+      if (opt.value === "auto" || opt.value === "mixed") continue;
+      routePreviews.fetchPreview(fromStopId, toStopId, opt.value);
+    }
+  };
   // editedAnchors holds the per-anchor in-flight patch while a card
   // is in expanded mode. We seed each entry from the DB anchor on
   // first expand; onChange writes here; clicking Done flushes the
@@ -871,6 +899,21 @@ export function ItineraryEditor({
                                   ),
                                 ) ?? emptyTransition()
                               }
+                              modePreviews={previewsForPair(
+                                stop.id,
+                                nextItem.kind === "anchor"
+                                  ? nextItem.anchor.uid
+                                  : nextItem.stopover.uid,
+                              )}
+                              onOpenChange={(open) => {
+                                if (open)
+                                  prefetchPair(
+                                    stop.id,
+                                    nextItem.kind === "anchor"
+                                      ? nextItem.anchor.uid
+                                      : nextItem.stopover.uid,
+                                  );
+                              }}
                               onChange={(patch) =>
                                 handleTransitionPatch(
                                   stop.id,
@@ -882,7 +925,14 @@ export function ItineraryEditor({
                               }
                             />
                             {transitionToNext ? (
-                              <TransitionMeta transition={transitionToNext} />
+                              <TransitionMeta
+                                transition={transitionToNext}
+                                feasibility={computeFeasibility(
+                                  stop,
+                                  nextItem.stop,
+                                  transitionToNext,
+                                )}
+                              />
                             ) : null}
                           </>
                         ) : null}
@@ -971,6 +1021,21 @@ export function ItineraryEditor({
                               ),
                             ) ?? emptyTransition()
                           }
+                          modePreviews={previewsForPair(
+                            anchor.uid,
+                            nextItem.kind === "anchor"
+                              ? nextItem.anchor.uid
+                              : nextItem.stopover.uid,
+                          )}
+                          onOpenChange={(open) => {
+                            if (open)
+                              prefetchPair(
+                                anchor.uid,
+                                nextItem.kind === "anchor"
+                                  ? nextItem.anchor.uid
+                                  : nextItem.stopover.uid,
+                              );
+                          }}
                           onChange={(patch) =>
                             handleTransitionPatch(
                               anchor.uid,
@@ -983,7 +1048,14 @@ export function ItineraryEditor({
                         />
                       ) : null}
                       {nextItem && transitionToNext ? (
-                        <TransitionMeta transition={transitionToNext} />
+                        <TransitionMeta
+                          transition={transitionToNext}
+                          feasibility={computeFeasibility(
+                            stop,
+                            nextItem.stop,
+                            transitionToNext,
+                          )}
+                        />
                       ) : null}
                     </li>
                   );
@@ -1316,10 +1388,16 @@ function StopBookingMenu({
 // that lived inside the old TransitionRowView (computed by the
 // editor's solver / Google Directions). The chip itself is now the
 // shared PlanningTransitionRow.
-function TransitionMeta({ transition }: { transition: TransitionRow }) {
+function TransitionMeta({
+  transition,
+  feasibility,
+}: {
+  transition: TransitionRow;
+  feasibility?: FeasibilityFlag | null;
+}) {
   const mins = transition.computed_duration_minutes ?? 0;
   const miles = Number(transition.distance_miles ?? 0);
-  if (!mins && !miles) return null;
+  if (!mins && !miles && !feasibility) return null;
   return (
     <div
       style={{
@@ -1327,13 +1405,82 @@ function TransitionMeta({ transition }: { transition: TransitionRow }) {
         fontSize: 11.5,
         color: "var(--ink-dim)",
         padding: "2px 0 6px",
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+        flexWrap: "wrap",
       }}
     >
-      {mins ? fmtDuration(mins) : null}
-      {mins && miles ? " · " : null}
-      {miles ? `${miles.toFixed(1)} mi` : null}
+      {mins ? <span>{fmtDuration(mins)}</span> : null}
+      {miles ? <span>{miles.toFixed(1)} mi</span> : null}
+      {feasibility ? (
+        <span
+          className={
+            feasibility.severity === "infeasible"
+              ? "feasibility-flag feasibility-flag-bad"
+              : "feasibility-flag feasibility-flag-tight"
+          }
+        >
+          {feasibility.message}
+        </span>
+      ) : null}
     </div>
   );
+}
+
+// Feasibility derivation — purely from the loaded data. When two
+// adjacent stops both have fixed times AND the transition between
+// them has a computed travel duration, we can compare the available
+// window to the required travel time. The display is intentionally
+// soft (an inline badge, no modal) — it's a heads-up, not a blocker.
+type FeasibilityFlag = {
+  severity: "tight" | "infeasible";
+  message: string;
+};
+
+// Structural shape we actually need — both StopRow (the editor's
+// richer fetch) and DbStop (the shared mapper's view) satisfy it.
+type FeasibilityStop = {
+  is_time_fixed: boolean;
+  start_time: string | null;
+  end_time: string | null;
+};
+
+function computeFeasibility(
+  fromStop: FeasibilityStop | undefined,
+  toStop: FeasibilityStop | undefined,
+  transition: TransitionRow | null | undefined,
+): FeasibilityFlag | null {
+  if (!fromStop || !toStop || !transition) return null;
+  if (!fromStop.is_time_fixed || !toStop.is_time_fixed) return null;
+  const required = transition.computed_duration_minutes ?? 0;
+  if (required <= 0) return null;
+  const fromEnd = fromStop.end_time ?? fromStop.start_time;
+  const toStart = toStop.start_time;
+  if (!fromEnd || !toStart) return null;
+  const gapMins =
+    (new Date(toStart).getTime() - new Date(fromEnd).getTime()) / 60_000;
+  if (gapMins <= 0) {
+    return {
+      severity: "infeasible",
+      message: `Tight: needs ~${required}m, no gap between fixed times`,
+    };
+  }
+  if (required > gapMins) {
+    return {
+      severity: "infeasible",
+      message: `Won't make it: needs ${required}m in a ${Math.round(gapMins)}m window`,
+    };
+  }
+  // 10-minute buffer is the soft warning threshold — anything tighter
+  // than 10 minutes of slack gets called out.
+  if (required + 10 > gapMins) {
+    return {
+      severity: "tight",
+      message: `Tight: ${Math.round(gapMins - required)}m of slack`,
+    };
+  }
+  return null;
 }
 
 function fmtDuration(minutes: number): string {

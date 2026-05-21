@@ -273,6 +273,65 @@ function first<T>(v: T | T[] | null | undefined): T | null {
   return (Array.isArray(v) ? v[0] : v) ?? null;
 }
 
+// previewRoute — lightweight read-only sibling of upsertTransition.
+// Given two stop ids and a mode, return the routing provider's
+// duration + distance estimate without writing anything back. The
+// editor's mode-picker uses it to surface per-mode hints (12m walk /
+// 4m drive); the brief uses it to colour feasibility flags.
+//
+// Returns nulls when the routing provider isn't configured or when
+// either stop is missing coordinates — callers treat that as "no
+// estimate yet" and stay silent.
+const previewSchema = z.object({
+  from_stop_id: z.string().uuid(),
+  to_stop_id: z.string().uuid(),
+  mode: modeEnum,
+});
+
+export async function previewRoute(
+  input: z.input<typeof previewSchema>,
+): Promise<
+  Result<{ durationMinutes: number | null; distanceMiles: number | null }>
+> {
+  const parsed = parseInput(previewSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: stops } = await supabase
+    .from("stops")
+    .select(
+      `id, location_id, customer_site_id,
+       location:locations(latitude, longitude),
+       customer_site:customer_sites(latitude, longitude)`,
+    )
+    .in("id", [parsed.value.from_stop_id, parsed.value.to_stop_id])
+    .eq("workspace_id", ctx.workspaceId);
+  if (!stops || stops.length !== 2) return err(errors.notFound("stop"));
+
+  const fromStop =
+    stops.find((s) => s.id === parsed.value.from_stop_id) ?? stops[0];
+  const toStop =
+    stops.find((s) => s.id === parsed.value.to_stop_id) ?? stops[1];
+
+  const fromPoint = pickPoint(fromStop);
+  const toPoint = pickPoint(toStop);
+  if (!fromPoint || !toPoint) {
+    return ok({ durationMinutes: null, distanceMiles: null });
+  }
+
+  const route = await routeForTransition({
+    mode: parsed.value.mode,
+    origin: fromPoint,
+    destination: toPoint,
+  });
+  return ok({
+    durationMinutes: route?.totalDurationMinutes ?? null,
+    distanceMiles: route?.totalDistanceMiles ?? null,
+  });
+}
+
 function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   const s = first(stop) as
     | { location?: unknown; customer_site?: unknown }
