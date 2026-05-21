@@ -2181,6 +2181,100 @@
   /* Transition row — the slim "via X" element between two anchor cards.
      Centred mode chip with hairline rules either side; clicking opens
      a popover with mode pills + an optional booked-ticket form. */
+  /* Anchor summary — the collapsed editor view of an AnchorCard. Same
+     base palette as .brief-card but tighter, with a quick-read
+     date/time row underneath the title. Click Edit to flip back to
+     the brief's expanded form. */
+  .anchor-summary {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .anchor-summary-hero {
+    border-color: var(--gold);
+    box-shadow: 0 1px 0 var(--gold-tint),
+      0 8px 24px rgba(200, 157, 77, 0.08);
+  }
+  .anchor-summary-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .anchor-summary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .anchor-summary-kind {
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .anchor-summary-sep {
+    opacity: 0.5;
+  }
+  .anchor-summary-role {
+    color: var(--ink-dim);
+  }
+  .anchor-summary-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .anchor-card-toggle {
+    background: transparent;
+    border: 1px solid var(--rule-2);
+    color: var(--gold-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .anchor-card-toggle:hover {
+    background: var(--gold-tint, rgba(200, 157, 77, 0.08));
+    border-color: var(--gold);
+  }
+  .anchor-summary-remove {
+    background: transparent;
+    border: 0;
+    color: var(--rust);
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .anchor-summary-title {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 2px 0 0;
+    letter-spacing: -0.01em;
+  }
+  .anchor-summary-meta {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  /* Stopover summary — same card chrome as the expanded stopover,
+     but no place picker / no duration row / no follow-up text. */
+  .stopover-card-summary {
+    padding: 12px 16px;
+    gap: 0;
+  }
+
   /* Stopover — an intent card that lives between two anchors. Indented +
      dashed border so it reads as secondary / dependent on its neighbours,
      not a hard-pinned anchor of its own. */

@@ -20,6 +20,7 @@ import {
   effectiveKind,
   effectiveRole,
   effectiveTimingMode,
+  fmtDur,
   fmtShortDate,
   labelForKind,
   labelForRole,
@@ -85,8 +86,15 @@ export function AnchorCard({
   customerSites,
   locations,
   datePresets,
+  timezone,
   onChange,
   onRemove,
+  // Editor surfaces render anchors collapsed by default and expand
+  // them inline when the user clicks Edit. The brief always passes
+  // "expanded" and omits onModeChange — that hides the Edit/Done
+  // buttons and locks the card open.
+  mode = "expanded",
+  onModeChange,
 }: {
   anchor: Anchor;
   earlier: Anchor[];
@@ -96,13 +104,33 @@ export function AnchorCard({
   customerSites: PlacePickerCustomerSite[];
   locations: PlacePickerLocation[];
   datePresets: Array<{ label: string; value: string }>;
+  // Used by the summary view to render the date/time tidy. Optional
+  // because the brief doesn't need it for the expanded form fields.
+  timezone?: string;
   onChange: (patch: Partial<Anchor>) => void;
   onRemove: () => void;
+  mode?: "expanded" | "summary";
+  onModeChange?: (next: "expanded" | "summary") => void;
 }) {
   const kind = effectiveKind(anchor);
   const role = effectiveRole(anchor, earlier);
   const isStayCheckIn = kind === "stay" && role !== "return_to_room";
   const isStayReturn = kind === "stay" && role === "return_to_room";
+
+  if (mode === "summary") {
+    return (
+      <SummaryAnchorCard
+        anchor={anchor}
+        kind={kind}
+        role={role}
+        first={first}
+        canRemove={canRemove}
+        timezone={timezone ?? "UTC"}
+        onEdit={onModeChange ? () => onModeChange("expanded") : undefined}
+        onRemove={onRemove}
+      />
+    );
+  }
 
   return (
     <section className={first ? "brief-card brief-card-hero" : "brief-card"}>
@@ -132,15 +160,26 @@ export function AnchorCard({
             onChange={onChange}
           />
         </div>
-        {canRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            style={{ fontSize: 11.5, color: "var(--rust)" }}
-          >
-            Remove
-          </button>
-        ) : null}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {onModeChange ? (
+            <button
+              type="button"
+              onClick={() => onModeChange("summary")}
+              className="anchor-card-toggle"
+            >
+              Done
+            </button>
+          ) : null}
+          {canRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              style={{ fontSize: 11.5, color: "var(--rust)" }}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <PlacePicker
@@ -710,3 +749,108 @@ function AppointmentTimes({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// SummaryAnchorCard — the elegant collapsed-view that the editor uses.
+// Shows place, kind/role badge, date+time, duration. Click Edit to
+// flip back to the expanded form. The vision is to grow this into a
+// reference card carrying restaurant phone numbers, hotel reception,
+// booking contacts — anything you'd want to hand on the live day —
+// but for now it sticks to the essentials.
+// ─────────────────────────────────────────────────────────────────────
+
+function SummaryAnchorCard({
+  anchor,
+  kind,
+  role,
+  first,
+  canRemove,
+  timezone,
+  onEdit,
+  onRemove,
+}: {
+  anchor: Anchor;
+  kind: AnchorKind;
+  role: AnchorRole;
+  first: boolean;
+  canRemove: boolean;
+  timezone: string;
+  onEdit?: () => void;
+  onRemove: () => void;
+}) {
+  const isCheckIn = kind === "stay" && role !== "return_to_room";
+  const isReturn = kind === "stay" && role === "return_to_room";
+  const mode = anchor.timingMode;
+
+  const date = fmtShortDate(anchor.date, timezone);
+  const timeBit = (() => {
+    if (isCheckIn) {
+      const co =
+        anchor.checkOutDate && anchor.checkOutTime
+          ? `${fmtShortDate(anchor.checkOutDate, timezone)} ${
+              anchor.checkOutTime || "11:00"
+            }`
+          : "";
+      return `${anchor.time}${co ? ` → ${co}` : ""}`;
+    }
+    if (mode === "around_then") return `~${fmtDur(anchor.durationMins)}`;
+    const prefix = mode === "leave_by" ? "by " : "";
+    return `${prefix}${anchor.time} · ${fmtDur(anchor.durationMins)}`;
+  })();
+
+  const placeLabel = anchor.place?.label ?? "(no place yet)";
+  const title = isReturn
+    ? `Back at ${placeLabel}`
+    : placeLabel;
+  const kindLabel = labelForKind(kind);
+  const roleLabel = role ? labelForRole(kind, role) : null;
+
+  return (
+    <section
+      className={
+        first
+          ? "anchor-summary anchor-summary-hero"
+          : "anchor-summary"
+      }
+    >
+      <header className="anchor-summary-head">
+        <div className="anchor-summary-badge">
+          <KindDot kind={kind} />
+          <span className="anchor-summary-kind">{kindLabel}</span>
+          {roleLabel ? (
+            <>
+              <span aria-hidden className="anchor-summary-sep">·</span>
+              <span className="anchor-summary-role">{roleLabel}</span>
+            </>
+          ) : null}
+        </div>
+        <div className="anchor-summary-actions">
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="anchor-card-toggle"
+            >
+              Edit
+            </button>
+          ) : null}
+          {canRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="anchor-summary-remove"
+              aria-label="Remove anchor"
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      </header>
+      <h3 className="anchor-summary-title">{title}</h3>
+      <p className="anchor-summary-meta">
+        {date} · {timeBit}
+      </p>
+    </section>
+  );
+}
+

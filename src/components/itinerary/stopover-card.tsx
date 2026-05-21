@@ -7,7 +7,7 @@ import {
   type PlacePickerLocation,
 } from "@/components/place-picker";
 import { DurationRow } from "./duration-row";
-import { STOPOVER_DURATIONS } from "./helpers";
+import { STOPOVER_DURATIONS, fmtDur } from "./helpers";
 import type { Anchor, Stopover } from "./types";
 
 // StopoverCard — an *intent* card for a place you want to fit between
@@ -29,6 +29,8 @@ export function StopoverCard({
   locations,
   onChange,
   onRemove,
+  mode = "expanded",
+  onModeChange,
 }: {
   stopover: Stopover;
   fromAnchor: Anchor;
@@ -38,9 +40,47 @@ export function StopoverCard({
   locations: PlacePickerLocation[];
   onChange: (patch: Partial<Stopover>) => void;
   onRemove: () => void;
+  mode?: "expanded" | "summary";
+  onModeChange?: (next: "expanded" | "summary") => void;
 }) {
   const fromLabel = fromAnchor.place?.label ?? "the previous stop";
   const toLabel = toAnchor.place?.label ?? "the next anchor";
+
+  if (mode === "summary") {
+    return (
+      <div className="stopover-card stopover-card-summary">
+        <header className="stopover-card-head">
+          <div className="stopover-card-eyebrow">
+            <span className="uc">Stopover</span>
+            <span className="stopover-card-helper">
+              {stopover.place?.label ?? "Pick a place"} ·{" "}
+              {fmtDur(stopover.durationMins)}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {onModeChange ? (
+              <button
+                type="button"
+                onClick={() => onModeChange("expanded")}
+                className="anchor-card-toggle"
+              >
+                Edit
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="stopover-card-remove"
+              onClick={onRemove}
+              aria-label="Remove stopover"
+            >
+              Remove
+            </button>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
   return (
     <div className="stopover-card">
       <header className="stopover-card-head">
@@ -50,14 +90,25 @@ export function StopoverCard({
             Fits between {fromLabel} and {toLabel}.
           </span>
         </div>
-        <button
-          type="button"
-          className="stopover-card-remove"
-          onClick={onRemove}
-          aria-label="Remove stopover"
-        >
-          Remove
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {onModeChange ? (
+            <button
+              type="button"
+              onClick={() => onModeChange("summary")}
+              className="anchor-card-toggle"
+            >
+              Done
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="stopover-card-remove"
+            onClick={onRemove}
+            aria-label="Remove stopover"
+          >
+            Remove
+          </button>
+        </div>
       </header>
 
       <PlacePicker
