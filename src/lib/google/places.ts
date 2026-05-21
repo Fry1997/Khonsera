@@ -30,6 +30,13 @@ export type PlaceDetails = {
   postcode: string | null;
 };
 
+export type PlaceAutocompleteResult = {
+  suggestions: PlaceAutocompleteSuggestion[];
+  // Only set when Google returned a non-OK / non-ZERO_RESULTS status,
+  // so the API route can surface the reason for debugging.
+  failure?: { status: string; error_message?: string };
+};
+
 export async function autocompletePlaces(args: {
   query: string;
   sessionToken?: string;
@@ -39,9 +46,9 @@ export async function autocompletePlaces(args: {
   // Optional bias to a place type ("train_station", "airport", "lodging",
   // "establishment", "geocode", "address"). Falls back to no restriction.
   types?: string | null;
-}): Promise<PlaceAutocompleteSuggestion[]> {
+}): Promise<PlaceAutocompleteResult> {
   const key = mapsApiKey();
-  if (!key || !args.query?.trim()) return [];
+  if (!key || !args.query?.trim()) return { suggestions: [] };
 
   const url = new URL(AUTOCOMPLETE_ENDPOINT);
   url.searchParams.set("input", args.query);
@@ -54,7 +61,9 @@ export async function autocompletePlaces(args: {
 
   try {
     const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return { suggestions: [], failure: { status: `HTTP_${res.status}` } };
+    }
     const data = (await res.json()) as {
       status: string;
       error_message?: string;
@@ -76,18 +85,25 @@ export async function autocompletePlaces(args: {
         "query:",
         args.query,
       );
-      return [];
+      return {
+        suggestions: [],
+        failure: { status: data.status, error_message: data.error_message },
+      };
     }
-    return (data.predictions ?? []).map((p) => ({
+    const suggestions = (data.predictions ?? []).map((p) => ({
       place_id: p.place_id,
       description: p.description,
       primary: p.structured_formatting?.main_text ?? p.description,
       secondary: p.structured_formatting?.secondary_text ?? "",
       types: p.types ?? [],
     }));
+    return { suggestions };
   } catch (e) {
     console.error("autocompletePlaces failed", e);
-    return [];
+    return {
+      suggestions: [],
+      failure: { status: "FETCH_THREW", error_message: String(e) },
+    };
   }
 }
 

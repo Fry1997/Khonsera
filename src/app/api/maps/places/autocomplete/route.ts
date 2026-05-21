@@ -22,12 +22,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ suggestions: [], configured: true });
   }
 
-  const suggestions = await autocompletePlaces({
+  const { suggestions, failure } = await autocompletePlaces({
     query,
     sessionToken: session,
     types,
     country: country === "" ? null : country,
   });
 
-  return NextResponse.json({ suggestions, configured: true });
+  // Surface Google's failure reason in the response so it's visible in
+  // the browser network panel without having to crack open Vercel's
+  // truncated log viewer.
+  return NextResponse.json({
+    suggestions,
+    configured: true,
+    ...(failure ? { failure } : {}),
+  });
 }
