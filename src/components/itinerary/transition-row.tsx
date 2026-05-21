@@ -685,19 +685,27 @@ function ModePickerPill({
     c.input.mode === "taxi" && c.input.costEstimatePence != null
       ? `£${(c.input.costEstimatePence / 100).toFixed(0)}`
       : null;
+  // Keep the visible meta short: time only on the pill itself, with
+  // the fuller breakdown (distance, cost) in the tooltip so all
+  // three pills fit horizontally on every transition row.
+  const titleParts = [
+    mins != null ? `${mins} min` : null,
+    miles != null ? `${miles.toFixed(1)} mi` : null,
+    cost,
+  ].filter(Boolean);
   return (
     <button
       type="button"
       className="mode-pill"
       data-state={selected ? "selected" : "available"}
       onClick={onPick}
+      title={titleParts.join(" · ")}
     >
       <Icon size={13} />
       <span className="mode-pill-label">{label}</span>
       <span className="mode-pill-meta">
         {mins != null ? `${mins}m` : "—"}
-        {miles != null ? ` · ${miles.toFixed(1)}mi` : ""}
-        {cost ? ` · ${cost}` : ""}
+        {cost ? ` ${cost}` : ""}
       </span>
     </button>
   );

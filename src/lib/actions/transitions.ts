@@ -299,6 +299,30 @@ export async function previewRoute(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
+  // Cache check first. Migration 0017's route_preview_cache stores
+  // (from_stop_id, to_stop_id, mode) -> duration + distance. Routes
+  // API charges per request and the underlying coords are stable,
+  // so we serve from cache when fresh. Stale rows (> 7 days) fall
+  // through and re-fetch.
+  const { data: cached } = await supabase
+    .from("route_preview_cache")
+    .select("duration_minutes, distance_miles, computed_at")
+    .eq("from_stop_id", parsed.value.from_stop_id)
+    .eq("to_stop_id", parsed.value.to_stop_id)
+    .eq("mode", parsed.value.mode)
+    .maybeSingle();
+  if (cached) {
+    const ageMs =
+      Date.now() - new Date(cached.computed_at as string).getTime();
+    const fresh = ageMs < 7 * 24 * 60 * 60_000;
+    if (fresh) {
+      return ok({
+        durationMinutes: (cached.duration_minutes as number | null) ?? null,
+        distanceMiles: (cached.distance_miles as number | null) ?? null,
+      });
+    }
+  }
+
   const { data: stops } = await supabase
     .from("stops")
     .select(
@@ -326,9 +350,29 @@ export async function previewRoute(
     origin: fromPoint,
     destination: toPoint,
   });
+  const durationMinutes = route?.totalDurationMinutes ?? null;
+  const distanceMiles = route?.totalDistanceMiles ?? null;
+
+  // Write-through cache. Best-effort: a write failure doesn't fail
+  // the user's preview, but does mean the next load will recompute.
+  void supabase
+    .from("route_preview_cache")
+    .upsert(
+      {
+        from_stop_id: parsed.value.from_stop_id,
+        to_stop_id: parsed.value.to_stop_id,
+        mode: parsed.value.mode,
+        duration_minutes: durationMinutes,
+        distance_miles: distanceMiles,
+        computed_at: new Date().toISOString(),
+      },
+      { onConflict: "from_stop_id,to_stop_id,mode" },
+    )
+    .then(() => undefined);
+
   return ok({
-    durationMinutes: route?.totalDurationMinutes ?? null,
-    distanceMiles: route?.totalDistanceMiles ?? null,
+    durationMinutes,
+    distanceMiles,
   });
 }
 
