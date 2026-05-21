@@ -5,8 +5,18 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
 import { createStop, deleteStop, updateStop } from "@/lib/actions/stops";
-import { upsertTransition, setTransitionMode } from "@/lib/actions/transitions";
+import {
+  upsertTransition,
+  setTransitionMode,
+  setTransitionOverride,
+} from "@/lib/actions/transitions";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
+import { resolveLeg, type PreviewEntry } from "@/lib/scoring/resolve-leg";
+import type {
+  ModeCandidate,
+  Resolution,
+  ScoringContext,
+} from "@/lib/scoring/types";
 import { feedbackFromError } from "@/lib/actions/_form";
 import type {
   ItineraryStatus,
@@ -193,6 +203,8 @@ type TransitionRow = {
   distance_miles: number | null;
   is_locked: boolean;
   overview_polyline: string | null;
+  user_mode_override: "walk" | "drive" | "taxi" | null;
+  override_locked: boolean;
 };
 
 type JourneyLegRow = {
@@ -219,6 +231,7 @@ export function ItineraryEditor({
   contacts,
   timezone,
   totals,
+  scoringProfile,
 }: {
   itinerary: {
     id: string;
@@ -227,6 +240,12 @@ export function ItineraryEditor({
     date_end: string;
     status: ItineraryStatus;
     notes: string | null;
+    trip_purpose:
+      | "maximise_meetings"
+      | "budget_conscious"
+      | "balanced"
+      | string;
+    luggage_for_trip: "none" | "light" | "heavy" | string | null;
   };
   stops: StopRow[];
   transitions: TransitionRow[];
@@ -237,6 +256,16 @@ export function ItineraryEditor({
   contacts: { id: string; customer_id: string; name: string }[];
   timezone: string;
   totals: { cost: number; currency: string };
+  // Scoring inputs from the travel profile. Stays optional so older
+  // route handlers that haven't been updated don't break — but the
+  // chip-face redesign needs it to surface the resolved mode.
+  scoringProfile: {
+    preferredMode: "walk" | "drive" | "taxi" | "no_preference";
+    walkingThresholdMinutes: number;
+    minimumBufferMinutes: number;
+    maxTaxiFarePence: number;
+    luggageDefault: "none" | "light" | "heavy";
+  };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -298,6 +327,64 @@ export function ItineraryEditor({
       if (opt.value === "auto" || opt.value === "mixed") continue;
       routePreviews.fetchPreview(fromStopId, toStopId, opt.value);
     }
+  };
+
+  // Build a per-leg ScoringContext + ask the engine for a Resolution.
+  // Pulls preview data straight from the routePreviews cache via the
+  // PreviewEntry shape resolveLeg expects.
+  const scoringContext: ScoringContext = {
+    preferredMode: scoringProfile.preferredMode,
+    walkingThresholdMinutes: scoringProfile.walkingThresholdMinutes,
+    minimumBufferMinutes: scoringProfile.minimumBufferMinutes,
+    maxTaxiFarePence: scoringProfile.maxTaxiFarePence,
+    luggage:
+      (itinerary.luggage_for_trip as "none" | "light" | "heavy" | null) ??
+      scoringProfile.luggageDefault,
+    tripPurpose:
+      (itinerary.trip_purpose as
+        | "maximise_meetings"
+        | "budget_conscious"
+        | "balanced") ?? "balanced",
+    userOverride: null,
+  };
+  const resolveLegFor = (
+    fromStopId: string,
+    toStopId: string,
+  ): Resolution => {
+    const fromStop = sortedStops.find((s) => s.id === fromStopId) ?? null;
+    const toStop = sortedStops.find((s) => s.id === toStopId) ?? null;
+    const existing = transitions.find(
+      (t) => t.from_stop_id === fromStopId && t.to_stop_id === toStopId,
+    );
+    const ctx: ScoringContext = {
+      ...scoringContext,
+      userOverride: existing?.user_mode_override ?? null,
+    };
+    const lookup = (mode: ModeCandidate): PreviewEntry => {
+      const entry = routePreviews.get(fromStopId, toStopId, mode);
+      return entry;
+    };
+    return resolveLeg(fromStop, toStop, lookup, ctx);
+  };
+  const handleSetOverride = (
+    fromStopId: string,
+    toStopId: string,
+    mode: ModeCandidate | null,
+  ) => {
+    startTransition(async () => {
+      setError(null);
+      const result = await setTransitionOverride({
+        itinerary_id: itinerary.id,
+        from_stop_id: fromStopId,
+        to_stop_id: toStopId,
+        mode,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      router.refresh();
+    });
   };
 
   // Background prefetch: every adjacent leg in the planning timeline
@@ -995,6 +1082,30 @@ export function ItineraryEditor({
                           patch,
                         )
                       }
+                      resolution={resolveLegFor(
+                        startStop.id,
+                        first.kind === "anchor"
+                          ? first.anchor.uid
+                          : first.stopover.uid,
+                      )}
+                      onSetOverride={(mode) =>
+                        handleSetOverride(
+                          startStop.id,
+                          first.kind === "anchor"
+                            ? first.anchor.uid
+                            : first.stopover.uid,
+                          mode,
+                        )
+                      }
+                      onClearOverride={() =>
+                        handleSetOverride(
+                          startStop.id,
+                          first.kind === "anchor"
+                            ? first.anchor.uid
+                            : first.stopover.uid,
+                          null,
+                        )
+                      }
                       fromVirtualLabel={label}
                     />
                   ) : null}
@@ -1196,6 +1307,30 @@ export function ItineraryEditor({
                                   patch,
                                 )
                               }
+                              resolution={resolveLegFor(
+                                stop.id,
+                                nextItem.kind === "anchor"
+                                  ? nextItem.anchor.uid
+                                  : nextItem.stopover.uid,
+                              )}
+                              onSetOverride={(mode) =>
+                                handleSetOverride(
+                                  stop.id,
+                                  nextItem.kind === "anchor"
+                                    ? nextItem.anchor.uid
+                                    : nextItem.stopover.uid,
+                                  mode,
+                                )
+                              }
+                              onClearOverride={() =>
+                                handleSetOverride(
+                                  stop.id,
+                                  nextItem.kind === "anchor"
+                                    ? nextItem.anchor.uid
+                                    : nextItem.stopover.uid,
+                                  null,
+                                )
+                              }
                             />
                             {transitionToNext ? (
                               <TransitionMeta
@@ -1289,6 +1424,30 @@ export function ItineraryEditor({
                                 ? nextItem.anchor.uid
                                 : nextItem.stopover.uid,
                               patch,
+                            )
+                          }
+                          resolution={resolveLegFor(
+                            anchor.uid,
+                            nextItem.kind === "anchor"
+                              ? nextItem.anchor.uid
+                              : nextItem.stopover.uid,
+                          )}
+                          onSetOverride={(mode) =>
+                            handleSetOverride(
+                              anchor.uid,
+                              nextItem.kind === "anchor"
+                                ? nextItem.anchor.uid
+                                : nextItem.stopover.uid,
+                              mode,
+                            )
+                          }
+                          onClearOverride={() =>
+                            handleSetOverride(
+                              anchor.uid,
+                              nextItem.kind === "anchor"
+                                ? nextItem.anchor.uid
+                                : nextItem.stopover.uid,
+                              null,
                             )
                           }
                         />

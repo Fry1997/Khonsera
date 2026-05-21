@@ -411,6 +411,101 @@ export async function previewRouteForPlaces(
   });
 }
 
+// setTransitionOverride — write the user's manual mode pick to the
+// existing transitions row, OR upsert a new row + write the override
+// in one go if none exists. Clearing is passing null. Touching the
+// override also resets override_locked, since explicitly picking
+// (or clearing) is a fresh expression of intent.
+const setOverrideSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  from_stop_id: z.string().uuid(),
+  to_stop_id: z.string().uuid(),
+  mode: z.enum(["walk", "drive", "taxi"]).nullable(),
+});
+
+export async function setTransitionOverride(
+  input: z.input<typeof setOverrideSchema>,
+): Promise<Result<{ id: string }>> {
+  const parsed = parseInput(setOverrideSchema, input);
+  if (!parsed.ok) return parsed;
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Find existing row.
+  const { data: existing } = await supabase
+    .from("transitions")
+    .select("id, mode")
+    .eq("itinerary_id", parsed.value.itinerary_id)
+    .eq("from_stop_id", parsed.value.from_stop_id)
+    .eq("to_stop_id", parsed.value.to_stop_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("transitions")
+      .update({
+        user_mode_override: parsed.value.mode,
+        override_locked: false,
+        // When the user picks an explicit override we also flip the
+        // transition's mode to match — keeps the editor's existing
+        // mode-based logic (route computation, journey legs) in step
+        // with the picked mode. Null override means "use the
+        // recommended mode" — leave the existing mode alone since it
+        // may already reflect a deliberate non-override choice.
+        ...(parsed.value.mode ? { mode: parsed.value.mode } : {}),
+      })
+      .eq("id", existing.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .select("id")
+      .single();
+    return dbResult<{ id: string }>(data, error, "transition");
+  }
+  // No row yet — only meaningful when setting a non-null override.
+  if (!parsed.value.mode) {
+    return { ok: true, value: { id: "" } };
+  }
+  const { data, error } = await supabase
+    .from("transitions")
+    .insert({
+      itinerary_id: parsed.value.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      from_stop_id: parsed.value.from_stop_id,
+      to_stop_id: parsed.value.to_stop_id,
+      mode: parsed.value.mode,
+      user_mode_override: parsed.value.mode,
+      override_locked: false,
+    })
+    .select("id")
+    .single();
+  return dbResult<{ id: string }>(data, error, "transition");
+}
+
+// lockTransitionOverride — used by the live-system's dismiss action.
+// Once locked, subsequent live signals don't surface suggestions
+// for this leg until either the leg starts or the user clears the
+// override via the picker.
+const lockOverrideSchema = z.object({
+  transition_id: z.string().uuid(),
+});
+
+export async function lockTransitionOverride(
+  input: z.input<typeof lockOverrideSchema>,
+): Promise<Result<{ id: string }>> {
+  const parsed = parseInput(lockOverrideSchema, input);
+  if (!parsed.ok) return parsed;
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("transitions")
+    .update({ override_locked: true })
+    .eq("id", parsed.value.transition_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .select("id")
+    .single();
+  return dbResult<{ id: string }>(data, error, "transition");
+}
+
 function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   const s = first(stop) as
     | { location?: unknown; customer_site?: unknown }

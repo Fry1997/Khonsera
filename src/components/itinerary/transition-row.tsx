@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TransportIcon } from "@/components/icons";
-import { LOCAL_MODES, TRANSITION_OPTIONS } from "./helpers";
+import { LOCAL_MODES, TRANSITION_OPTIONS, fmtDur } from "./helpers";
 import type {
   Anchor,
   BriefBooking,
@@ -10,6 +10,11 @@ import type {
   LocalMode,
   TransitionMode,
 } from "./types";
+import type {
+  ModeCandidate,
+  Resolution,
+  ScoredCandidate,
+} from "@/lib/scoring/types";
 
 // Per-mode duration hints — populated by the editor via the
 // useRoutePreviews hook. Each entry is either a resolved preview
@@ -44,6 +49,18 @@ export function TransitionRow({
   // previews for any modes it hasn't seen yet. Optional — without
   // it the popover stays silent (which is fine for the brief).
   onOpenChange,
+  // Scoring engine output. When provided, the chip face shows the
+  // resolved mode + duration + distance + alternative pills; the
+  // popover shows scored candidates with explanations. When absent,
+  // we fall back to the original 'Khonsera picks the mode' chip and
+  // the simple mode-pill picker — that's what the brief still uses.
+  resolution,
+  // Override callbacks for the picker. onSetOverride fires when the
+  // user picks a non-recommended mode; onClearOverride fires when
+  // they tap 'Reset to recommended'. Editor wires these to
+  // setTransitionOverride; brief leaves them undefined.
+  onSetOverride,
+  onClearOverride,
 }: {
   from: Anchor | null;
   to: Anchor;
@@ -52,6 +69,9 @@ export function TransitionRow({
   fromVirtualLabel?: string;
   modePreviews?: ModePreviewMap;
   onOpenChange?: (open: boolean) => void;
+  resolution?: Resolution;
+  onSetOverride?: (mode: ModeCandidate) => void;
+  onClearOverride?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,7 +96,21 @@ export function TransitionRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
+  // Chip-face rendering pulls from `resolution` when the caller
+  // provides it (the editor); otherwise falls back to the legacy
+  // 'Khonsera picks the mode' / 'via X' rendering (the brief).
+  const useResolved = resolution != null && !transition.booked;
+  const winner = useResolved ? resolution!.winner : null;
+  const resolvedMode = winner?.input.mode ?? null;
+  const isOverride = useResolved && resolution!.state === "resolved_override";
+
+  // Effective chip mode: the resolved winner if we have one,
+  // otherwise the transition's stored mode (legacy behaviour).
+  const effectiveModeForChip: TransitionMode | null = resolvedMode
+    ?? (transition.mode === "auto" ? null : transition.mode);
+  const opt = TRANSITION_OPTIONS.find(
+    (o) => o.value === (effectiveModeForChip ?? transition.mode),
+  );
   const Icon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
   const isAuto = transition.mode === "auto" && !transition.booked;
   const stationBased = opt?.stationBased ?? false;
@@ -104,7 +138,9 @@ export function TransitionRow({
       <button
         type="button"
         className={
-          isAuto ? "transition-chip transition-chip-auto" : "transition-chip"
+          isAuto && !useResolved
+            ? "transition-chip transition-chip-auto"
+            : "transition-chip"
         }
         onClick={() => setOpenWithSignal(!open)}
         data-active={open}
@@ -114,16 +150,22 @@ export function TransitionRow({
             : "Set the travel mode or add a booked ticket"
         }
       >
-        <Icon size={14} />
-        <span>
-          {transition.booked
-            ? `${opt?.label ?? "Booked"} · ${
-                transition.booking.serviceNumber || "ticket"
-              }`
-            : isAuto
-              ? "Khonsera picks the mode"
-              : `via ${opt?.label}`}
-        </span>
+        {useResolved ? (
+          <ResolvedChipFace resolution={resolution!} isOverride={isOverride} />
+        ) : (
+          <>
+            <Icon size={14} />
+            <span>
+              {transition.booked
+                ? `${opt?.label ?? "Booked"} · ${
+                    transition.booking.serviceNumber || "ticket"
+                  }`
+                : isAuto
+                  ? "Khonsera picks the mode"
+                  : `via ${opt?.label}`}
+            </span>
+          </>
+        )}
         {showLocalHint ? (
           <span className="transition-local-hint">
             <BeforeIcon size={11} />
@@ -146,6 +188,34 @@ export function TransitionRow({
       </button>
       <div className="transition-line" aria-hidden />
 
+      {/* Alternative-mode pills below the chip — only when resolved
+          and we actually have alternatives (not for single_candidate
+          or override states). */}
+      {useResolved &&
+      (resolution!.state === "resolved" ||
+        resolution!.state === "resolved_override") &&
+      resolution!.ranked.length > 1 ? (
+        <div className="transition-alts" role="list">
+          {resolution!.ranked.slice(1).map((alt) => (
+            <button
+              key={alt.mode}
+              type="button"
+              role="listitem"
+              className="transition-alt"
+              onClick={() => onSetOverride?.(alt.mode)}
+              title={alt.explanation}
+            >
+              {alt.input.mode === "walk"
+                ? "Walk"
+                : alt.input.mode === "drive"
+                  ? "Drive"
+                  : "Taxi"}{" "}
+              {altDeltaLabel(alt, winner!)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {open ? (
         <div className="transition-pop">
           {fromVirtualLabel ? (
@@ -163,51 +233,60 @@ export function TransitionRow({
             </p>
           ) : null}
 
-          <div className="transition-pop-section">
-            <span className="uc">Mode</span>
-            <div
-              className="brief-pill-row"
-              style={{ marginTop: 6, marginBottom: 4 }}
-            >
-              {TRANSITION_OPTIONS.map((o) => {
-                const OIcon = TransportIcon[o.icon];
-                const preview = modePreviews?.[o.value];
-                const hint =
-                  o.value === "auto" || preview == null
-                    ? null
-                    : preview === "pending"
-                      ? "…"
-                      : preview.durationMinutes != null
-                        ? `${preview.durationMinutes}m`
-                        : null;
-                return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    className="pill brief-pill"
-                    data-active={o.value === transition.mode}
-                    onClick={() => onChange({ mode: o.value })}
-                    title={
-                      o.value === "auto"
-                        ? "Let Khonsera pick once it knows distance"
-                        : `Travel by ${o.label.toLowerCase()}`
-                    }
-                  >
-                    <OIcon size={13} />
-                    {o.label}
-                    {hint ? (
-                      <span
-                        className="mode-pill-hint"
-                        aria-label={`${hint} estimated`}
-                      >
-                        {hint}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+          {useResolved ? (
+            <ScoredPicker
+              resolution={resolution!}
+              isOverride={isOverride}
+              onSetOverride={onSetOverride}
+              onClearOverride={onClearOverride}
+            />
+          ) : (
+            <div className="transition-pop-section">
+              <span className="uc">Mode</span>
+              <div
+                className="brief-pill-row"
+                style={{ marginTop: 6, marginBottom: 4 }}
+              >
+                {TRANSITION_OPTIONS.map((o) => {
+                  const OIcon = TransportIcon[o.icon];
+                  const preview = modePreviews?.[o.value];
+                  const hint =
+                    o.value === "auto" || preview == null
+                      ? null
+                      : preview === "pending"
+                        ? "…"
+                        : preview.durationMinutes != null
+                          ? `${preview.durationMinutes}m`
+                          : null;
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className="pill brief-pill"
+                      data-active={o.value === transition.mode}
+                      onClick={() => onChange({ mode: o.value })}
+                      title={
+                        o.value === "auto"
+                          ? "Let Khonsera pick once it knows distance"
+                          : `Travel by ${o.label.toLowerCase()}`
+                      }
+                    >
+                      <OIcon size={13} />
+                      {o.label}
+                      {hint ? (
+                        <span
+                          className="mode-pill-hint"
+                          aria-label={`${hint} estimated`}
+                        >
+                          {hint}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {stationBased ? (
             <div className="transition-pop-section">
@@ -363,6 +442,250 @@ function LocalLegPicker({
       </div>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Resolved chip face — the redesign per the scoring spec. Replaces
+// the legacy 'Khonsera picks the mode' text with the actual picked
+// mode + duration + distance, plus a small 'user-set' dot when an
+// override is active. Other states (resolving, no_data,
+// single_candidate) fall back to softer copy.
+// ─────────────────────────────────────────────────────────────────────
+function ResolvedChipFace({
+  resolution,
+  isOverride,
+}: {
+  resolution: Resolution;
+  isOverride: boolean;
+}) {
+  if (resolution.state === "resolving") {
+    return (
+      <>
+        <span className="transition-chip-spinner" aria-hidden />
+        <span>Choosing best mode…</span>
+      </>
+    );
+  }
+  if (
+    resolution.state === "no_data" ||
+    resolution.state === "no_survivors"
+  ) {
+    return (
+      <>
+        <TransportIcon.auto size={14} />
+        <span>Mode · — · —</span>
+      </>
+    );
+  }
+  const w = resolution.winner;
+  if (!w) {
+    return (
+      <>
+        <TransportIcon.auto size={14} />
+        <span>Mode · — · —</span>
+      </>
+    );
+  }
+  const opt = TRANSITION_OPTIONS.find((o) => o.value === w.input.mode);
+  const ChipIcon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
+  const mins = w.input.durationSeconds
+    ? Math.round(w.input.durationSeconds / 60)
+    : null;
+  const miles = w.input.distanceMeters
+    ? w.input.distanceMeters / 1609.344
+    : null;
+  const meta = [
+    mins != null ? `${mins} min` : null,
+    miles != null ? `${miles.toFixed(1)} mi` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <>
+      <ChipIcon size={14} />
+      <span className={isOverride ? "transition-chip-override" : undefined}>
+        {opt?.label ?? "Mode"}
+        {meta ? ` · ${meta}` : ""}
+        {isOverride ? <span className="transition-chip-userdot" aria-hidden /> : null}
+      </span>
+    </>
+  );
+}
+
+// "+2 min" / "+17 min" delta against the winner. Used on the
+// alternative pills under the chip.
+function altDeltaLabel(alt: ScoredCandidate, winner: ScoredCandidate): string {
+  const altMins = alt.input.durationSeconds
+    ? Math.round(alt.input.durationSeconds / 60)
+    : null;
+  const winMins = winner.input.durationSeconds
+    ? Math.round(winner.input.durationSeconds / 60)
+    : null;
+  if (altMins == null || winMins == null) return "";
+  const delta = altMins - winMins;
+  if (delta === 0) return "(same time)";
+  if (delta > 0) return `+${delta} min`;
+  return `${delta} min`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ScoredPicker — the popover's mode-picker section when the editor
+// has run scoring on the leg. Each ranked candidate gets a row:
+// icon · label · duration · distance (· cost for taxi only) ·
+// one-line explanation. The top row has a "Recommended" badge.
+// Selecting non-recommended sets user_mode_override; selecting the
+// current winner clears it (or no-ops if no override is active).
+// Filtered candidates collapse into a 'Why isn't X here?' disclosure.
+// ─────────────────────────────────────────────────────────────────────
+function ScoredPicker({
+  resolution,
+  isOverride,
+  onSetOverride,
+  onClearOverride,
+}: {
+  resolution: Resolution;
+  isOverride: boolean;
+  onSetOverride?: (mode: ModeCandidate) => void;
+  onClearOverride?: () => void;
+}) {
+  // Resolving / no_data: nothing to choose between yet.
+  if (
+    resolution.state === "resolving" ||
+    resolution.state === "no_data" ||
+    resolution.state === "no_survivors"
+  ) {
+    return (
+      <div className="transition-pop-section">
+        <span className="uc">Mode</span>
+        <p className="brief-helper" style={{ margin: "6px 0 0" }}>
+          {resolution.state === "resolving"
+            ? "Working out travel times…"
+            : resolution.state === "no_data"
+              ? "Couldn't fetch travel data for this leg. Try again later or set a mode manually."
+              : "No mode arrives on time given the surrounding times."}
+        </p>
+      </div>
+    );
+  }
+
+  const recommended = resolution.ranked[0];
+
+  return (
+    <div className="transition-pop-section">
+      <span className="uc">Mode</span>
+      <div className="scored-picker">
+        {resolution.ranked.map((c, i) => (
+          <ScoredPickerRow
+            key={c.mode}
+            candidate={c}
+            isRecommended={i === 0}
+            isSelected={
+              isOverride
+                ? c === resolution.winner
+                : i === 0
+            }
+            onClick={() => {
+              if (c === recommended) {
+                onClearOverride?.();
+              } else {
+                onSetOverride?.(c.mode);
+              }
+            }}
+          />
+        ))}
+      </div>
+      {isOverride ? (
+        <button
+          type="button"
+          className="scored-picker-reset"
+          onClick={() => onClearOverride?.()}
+        >
+          Reset to recommended
+        </button>
+      ) : null}
+      {resolution.filtered.length > 0 ? (
+        <details className="scored-picker-filtered">
+          <summary>
+            Why isn't {resolution.filtered.length === 1 ? "it" : "X"} here?
+          </summary>
+          <ul>
+            {resolution.filtered.map((f) => (
+              <li key={f.input.mode}>
+                <span className="scored-picker-filtered-mode">
+                  {f.input.mode === "walk"
+                    ? "Walk"
+                    : f.input.mode === "drive"
+                      ? "Drive"
+                      : "Taxi"}
+                </span>{" "}
+                — {filterReasonCopy(f.filterReason)}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function ScoredPickerRow({
+  candidate,
+  isRecommended,
+  isSelected,
+  onClick,
+}: {
+  candidate: ScoredCandidate;
+  isRecommended: boolean;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const opt = TRANSITION_OPTIONS.find((o) => o.value === candidate.input.mode);
+  const RowIcon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
+  const mins = candidate.input.durationSeconds
+    ? Math.round(candidate.input.durationSeconds / 60)
+    : null;
+  const miles = candidate.input.distanceMeters
+    ? candidate.input.distanceMeters / 1609.344
+    : null;
+  const cost =
+    candidate.input.mode === "taxi" && candidate.input.costEstimatePence != null
+      ? `£${(candidate.input.costEstimatePence / 100).toFixed(2)}`
+      : null;
+  return (
+    <button
+      type="button"
+      className="scored-picker-row"
+      data-selected={isSelected}
+      onClick={onClick}
+    >
+      <span className="scored-picker-row-head">
+        <RowIcon size={13} />
+        <span className="scored-picker-row-mode">{opt?.label}</span>
+        {isRecommended ? (
+          <span className="scored-picker-row-rec">Recommended</span>
+        ) : null}
+      </span>
+      <span className="scored-picker-row-meta">
+        {mins != null ? `${mins} min` : "—"}
+        {miles != null ? ` · ${miles.toFixed(1)} mi` : ""}
+        {cost ? ` · ${cost}` : ""}
+      </span>
+      <span className="scored-picker-row-why">{candidate.explanation}</span>
+    </button>
+  );
+}
+
+function filterReasonCopy(reason: string): string {
+  switch (reason) {
+    case "walk_exceeds_threshold":
+      return "Walk exceeds your usual length.";
+    case "would_be_late":
+      return "Would arrive after your next anchor.";
+    case "no_data":
+      return "No travel-time data available.";
+    default:
+      return "Unavailable.";
+  }
 }
 
 function BookedFields({

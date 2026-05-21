@@ -2483,6 +2483,153 @@
     color: var(--rust);
   }
 
+  /* Resolved chip-face — the redesign per the scoring spec. The
+     spinner state, the override dot, and the alternative pills
+     below the chip live here. */
+  .transition-chip-spinner {
+    width: 11px;
+    height: 11px;
+    border: 1.5px solid var(--rule-2);
+    border-top-color: var(--gold-2);
+    border-radius: 999px;
+    animation: chip-spin 0.8s linear infinite;
+  }
+  @keyframes chip-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .transition-chip-override {
+    font-style: italic;
+  }
+  .transition-chip-userdot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--gold-2);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .transition-alts {
+    display: flex;
+    gap: 8px;
+    margin: 4px 28px 0 28px;
+    flex-wrap: wrap;
+  }
+  .transition-alt {
+    background: transparent;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 11px;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+  .transition-alt:hover {
+    background: var(--card-2);
+    border-color: var(--gold);
+    color: var(--gold-2);
+  }
+
+  /* Scored picker — ranked candidate list inside the transition
+     popover when scoring is on. Each row is a button with a
+     recommended badge on the top one and a one-line explanation. */
+  .scored-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 6px;
+  }
+  .scored-picker-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "head why"
+      "meta meta";
+    gap: 2px 8px;
+    padding: 8px 10px;
+    background: var(--card);
+    border: 1px solid var(--rule-2);
+    border-radius: 10px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .scored-picker-row:hover {
+    background: var(--card-2);
+    border-color: var(--gold);
+  }
+  .scored-picker-row[data-selected="true"] {
+    border-color: var(--gold);
+    background: var(--gold-tint, rgba(200, 157, 77, 0.08));
+  }
+  .scored-picker-row-head {
+    grid-area: head;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .scored-picker-row-mode {
+    color: var(--ink);
+  }
+  .scored-picker-row-rec {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--gold-tint);
+    color: var(--gold-2);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .scored-picker-row-why {
+    grid-area: why;
+    font-size: 11px;
+    color: var(--ink-dim);
+    align-self: center;
+    text-align: right;
+  }
+  .scored-picker-row-meta {
+    grid-area: meta;
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    font-family: var(--serif);
+    font-style: italic;
+  }
+  .scored-picker-reset {
+    align-self: flex-start;
+    margin-top: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--gold-2);
+    font-size: 11.5px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .scored-picker-filtered {
+    margin-top: 8px;
+    font-size: 11.5px;
+    color: var(--ink-dim);
+  }
+  .scored-picker-filtered summary {
+    cursor: pointer;
+    user-select: none;
+  }
+  .scored-picker-filtered ul {
+    margin: 6px 0 0;
+    padding-left: 16px;
+  }
+  .scored-picker-filtered-mode {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+
   /* Mode-pill hint tail — the small "12m" tag the editor surfaces
      next to each transport mode while the user is picking, fed by
      the per-mode Routes API previews. Sits inside the pill on the
