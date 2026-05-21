@@ -118,6 +118,28 @@ type BriefBooking = {
 
 type LocalMode = "auto" | "walk" | "drive" | "taxi";
 
+// A Stopover is an *intent* to drop in somewhere between two anchors — not
+// an anchor itself. It has no fixed time, only an ideal duration; its
+// position is implied by which two anchors it sits between. The leave-by
+// times propagate backwards from the next anchor's fixed start.
+type Stopover = {
+  place: PlaceSelection | null;
+  durationMins: number;
+};
+
+function emptyStopover(): Stopover {
+  return { place: null, durationMins: 30 };
+}
+
+// Same preset chips the AppointmentTimes block uses, minus half/full-day —
+// a stopover that lasts half a day is really a Meal or Appointment anchor.
+const STOPOVER_DURATIONS = [
+  { label: "15m", mins: 15 },
+  { label: "30m", mins: 30 },
+  { label: "1h", mins: 60 },
+  { label: "2h", mins: 120 },
+];
+
 type BriefTransition = {
   mode: TransitionMode;
   // For station-/airport-based modes, the user's intent for the legs
@@ -252,6 +274,9 @@ export function NewItineraryBrief({
   const [transitions, setTransitions] = useState<
     Map<string, BriefTransition>
   >(new Map());
+  // Stopovers keyed by the same transition pair — a stopover lives on
+  // the leg between two anchors, not as an anchor itself.
+  const [stopovers, setStopovers] = useState<Map<string, Stopover>>(new Map());
   const [titleOverride, setTitleOverride] = useState("");
   const [notes, setNotes] = useState("");
   const [notesOn, setNotesOn] = useState(false);
@@ -272,6 +297,31 @@ export function NewItineraryBrief({
       const k = transitionKey(fromUid, toUid);
       const existing = next.get(k) ?? emptyTransition();
       next.set(k, { ...existing, ...patch });
+      return next;
+    });
+  };
+
+  const getStopover = (fromUid: string, toUid: string): Stopover | undefined =>
+    stopovers.get(transitionKey(fromUid, toUid));
+
+  const setStopoverPatch = (
+    fromUid: string,
+    toUid: string,
+    patch: Partial<Stopover>,
+  ) => {
+    setStopovers((prev) => {
+      const next = new Map(prev);
+      const k = transitionKey(fromUid, toUid);
+      const existing = next.get(k) ?? emptyStopover();
+      next.set(k, { ...existing, ...patch });
+      return next;
+    });
+  };
+
+  const removeStopover = (fromUid: string, toUid: string) => {
+    setStopovers((prev) => {
+      const next = new Map(prev);
+      next.delete(transitionKey(fromUid, toUid));
       return next;
     });
   };
@@ -546,14 +596,38 @@ export function NewItineraryBrief({
                 onRemove={() => removeAnchor(anchor.uid)}
               />
               {next ? (
-                <TransitionRow
-                  from={anchor}
-                  to={next}
-                  transition={getTransition(anchor.uid, next.uid)}
-                  onChange={(patch) =>
-                    setTransition(anchor.uid, next.uid, patch)
-                  }
-                />
+                <>
+                  <TransitionRow
+                    from={anchor}
+                    to={next}
+                    transition={getTransition(anchor.uid, next.uid)}
+                    stopoverPresent={!!getStopover(anchor.uid, next.uid)}
+                    onAddStopover={() =>
+                      setStopoverPatch(anchor.uid, next.uid, {})
+                    }
+                    onChange={(patch) =>
+                      setTransition(anchor.uid, next.uid, patch)
+                    }
+                  />
+                  {(() => {
+                    const sv = getStopover(anchor.uid, next.uid);
+                    if (!sv) return null;
+                    return (
+                      <StopoverCard
+                        stopover={sv}
+                        fromAnchor={anchor}
+                        toAnchor={next}
+                        customers={customers}
+                        customerSites={customerSites}
+                        locations={locations}
+                        onChange={(patch) =>
+                          setStopoverPatch(anchor.uid, next.uid, patch)
+                        }
+                        onRemove={() => removeStopover(anchor.uid, next.uid)}
+                      />
+                    );
+                  })()}
+                </>
               ) : null}
               <AddBetween
                 onAdd={() => insertAnchorAt(i + 1)}
@@ -1397,12 +1471,19 @@ function TransitionRow({
   // Optional label for the from-anchor when it isn't a real anchor —
   // e.g. the implicit "home" leg before the first anchor.
   fromVirtualLabel,
+  // Stopovers are an opt-in concept attached to the transition between
+  // two real anchors. The row exposes an "add stop" action when no
+  // stopover exists yet, and hides it once one has been added.
+  stopoverPresent,
+  onAddStopover,
 }: {
   from: Anchor | null;
   to: Anchor;
   transition: BriefTransition;
   onChange: (patch: Partial<BriefTransition>) => void;
   fromVirtualLabel?: string;
+  stopoverPresent?: boolean;
+  onAddStopover?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -1586,6 +1667,19 @@ function TransitionRow({
             </div>
           ) : null}
 
+          {onAddStopover && !stopoverPresent && from ? (
+            <button
+              type="button"
+              className="transition-add-stopover"
+              onClick={() => {
+                onAddStopover();
+                setOpen(false);
+              }}
+            >
+              + Add a stop on the way
+            </button>
+          ) : null}
+
           <label className="transition-booked-toggle">
             <input
               type="checkbox"
@@ -1684,6 +1778,80 @@ function LocalLegPicker({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// StopoverCard — an *intent* card for a place you want to fit between
+// two anchors. Visually indented + dashed border so it reads as a
+// secondary item that depends on its neighbours, not a hard-pinned
+// anchor of its own.
+//
+// The actual "leave by" / "available duration" back-calculation needs
+// travel-time data from the Routes API plus debouncing/caching — that
+// is a follow-up. For now the card scaffolds the data model + UI and
+// shows the user a helper line describing what Khonsera will do.
+function StopoverCard({
+  stopover,
+  fromAnchor,
+  toAnchor,
+  customers,
+  customerSites,
+  locations,
+  onChange,
+  onRemove,
+}: {
+  stopover: Stopover;
+  fromAnchor: Anchor;
+  toAnchor: Anchor;
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
+  onChange: (patch: Partial<Stopover>) => void;
+  onRemove: () => void;
+}) {
+  const fromLabel = fromAnchor.place?.label ?? "the previous stop";
+  const toLabel = toAnchor.place?.label ?? "the next anchor";
+  return (
+    <div className="stopover-card">
+      <header className="stopover-card-head">
+        <div className="stopover-card-eyebrow">
+          <span className="uc">Stopover</span>
+          <span className="stopover-card-helper">
+            Fits between {fromLabel} and {toLabel}.
+          </span>
+        </div>
+        <button
+          type="button"
+          className="stopover-card-remove"
+          onClick={onRemove}
+          aria-label="Remove stopover"
+        >
+          Remove
+        </button>
+      </header>
+
+      <PlacePicker
+        customers={customers}
+        customerSites={customerSites}
+        locations={locations}
+        value={stopover.place}
+        onChange={(place) => onChange({ place })}
+        placeholder="Where do you want to drop in?"
+      />
+
+      <DurationRow
+        label="Ideal duration"
+        presets={STOPOVER_DURATIONS}
+        value={stopover.durationMins}
+        onChange={(mins) => onChange({ durationMins: mins })}
+      />
+
+      <p className="stopover-followup">
+        Khonsera will work out the latest you can leave {fromLabel} and
+        leave here so you still hit {toLabel} on time — travel-time math
+        coming next.
+      </p>
     </div>
   );
 }
@@ -2149,15 +2317,34 @@ function cryptoUid(): string {
   return `a_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-// Anchors must always be in chronological order — an anchor IS a fixed
-// point in time. Sort by check-in date+time; empty date sorts to the
-// end so newly-inserted blank anchors don't jump above dated ones.
+// Anchors are sorted chronologically by check-in date+time. Two
+// exceptions:
+//   * around_then anchors have no fixed time — sorting them by date+00:00
+//     would always shove them above their daytime siblings. Instead we
+//     give them the date+time of the nearest dated anchor that comes
+//     before them in their *original* insertion order, with a tiebreaker
+//     suffix so they sort immediately after that anchor. This keeps the
+//     user's intended position when they say "fit this between A and C".
+//   * Anchors without any date sort to the end (newly-added blanks).
+// Original insertion index is also used as a tiebreaker so the sort is
+// stable for anchors sharing the same date+time.
 function sortAnchorsByTime(anchors: Anchor[]): Anchor[] {
-  return [...anchors].sort((a, b) => {
-    const ka = a.date ? `${a.date} ${a.time || "00:00"}` : "￿";
-    const kb = b.date ? `${b.date} ${b.time || "00:00"}` : "￿";
-    return ka.localeCompare(kb);
+  const idxPad = (i: number) => String(i).padStart(4, "0");
+  const keyed = anchors.map((a, i) => {
+    if (a.timingMode === "around_then") {
+      let prev = i - 1;
+      while (prev >= 0 && anchors[prev].timingMode === "around_then") prev--;
+      const anchor = prev >= 0 ? anchors[prev] : null;
+      const base = anchor?.date
+        ? `${anchor.date} ${anchor.time || "00:00"}`
+        : "￿";
+      return { a, key: `${base}.${idxPad(i)}` };
+    }
+    const base = a.date ? `${a.date} ${a.time || "00:00"}` : "￿";
+    return { a, key: `${base}.${idxPad(i)}` };
   });
+  keyed.sort((x, y) => x.key.localeCompare(y.key));
+  return keyed.map(({ a }) => a);
 }
 
 function nextDay(iso: string): string {

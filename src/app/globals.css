@@ -2181,6 +2181,87 @@
   /* Transition row — the slim "via X" element between two anchor cards.
      Centred mode chip with hairline rules either side; clicking opens
      a popover with mode pills + an optional booked-ticket form. */
+  /* Stopover — an intent card that lives between two anchors. Indented +
+     dashed border so it reads as secondary / dependent on its neighbours,
+     not a hard-pinned anchor of its own. */
+  .stopover-card {
+    margin-left: 32px;
+    margin-right: 16px;
+    margin-top: -6px;
+    margin-bottom: -6px;
+    padding: 16px 18px;
+    background: var(--card-2, var(--card));
+    border: 1px dashed var(--gold-2);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+  }
+  @media (max-width: 640px) {
+    .stopover-card {
+      margin-left: 12px;
+      margin-right: 0;
+      padding: 14px;
+    }
+  }
+  .stopover-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .stopover-card-eyebrow {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .stopover-card-helper {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    line-height: 1.4;
+  }
+  .stopover-card-remove {
+    background: transparent;
+    border: 0;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .stopover-card-remove:hover {
+    color: var(--rust);
+    background: var(--card);
+  }
+  .stopover-followup {
+    margin: 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    line-height: 1.45;
+  }
+  /* "+ Add a stop on the way" trigger inside the transition popover. */
+  .transition-add-stopover {
+    margin-top: 6px;
+    align-self: flex-start;
+    background: transparent;
+    border: 1px dashed var(--gold-2);
+    color: var(--gold-2);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .transition-add-stopover:hover {
+    background: var(--gold-tint, rgba(200, 157, 77, 0.08));
+  }
+
   .transition-row {
     position: relative;
     display: flex;
