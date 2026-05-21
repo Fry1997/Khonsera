@@ -209,16 +209,25 @@ export async function getDirections(args: {
       const err = (await res.json().catch(() => null)) as {
         error?: { status?: string; message?: string };
       } | null;
-      // One long string so Vercel's runtime-log table doesn't truncate
-      // the useful details. Includes the body we sent so we can spot
-      // bad field-mask paths or invalid params from the log alone.
-      console.warn(
-        `Routes API failed status=${
-          err?.error?.status ?? `HTTP_${res.status}`
-        } message=${err?.error?.message ?? "(no message)"} body=${JSON.stringify(
+      const status = err?.error?.status ?? `HTTP_${res.status}`;
+      const message = err?.error?.message ?? "(no message)";
+      console.warn(`Routes API failed status=${status}`);
+      // Debug shunt: Vercel's runtime-log column truncates at ~30
+      // chars, so the full message is unreadable in the dashboard.
+      // Write to a Supabase table so we can read the whole thing
+      // server-side. Best-effort — never let the debug write throw.
+      try {
+        const { createClient } = await import("@/lib/supabase/server");
+        const sb = await createClient();
+        await sb.from("_debug_routes_api").insert({
+          status,
+          message,
           body,
-        )} fieldMask=${fieldMask}`,
-      );
+          field_mask: fieldMask,
+        });
+      } catch {
+        // swallow
+      }
       return null;
     }
     type RoutesStep = {
