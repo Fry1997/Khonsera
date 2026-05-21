@@ -295,15 +295,32 @@ const briefTransitionSchema = z.object({
   booking: briefBookingSchema.nullable().optional(),
 });
 
+// A stopover is an *intent* to drop in somewhere between two anchors —
+// it has no fixed time, only an ideal duration. The place reference
+// mirrors the anchor schema (one of location_id / customer_site_id /
+// customer_id, with a free-text label fallback that creates an
+// ephemeral location row).
+const briefStopoverSchema = z.object({
+  from_client_id: z.string().min(1).max(80),
+  to_client_id: z.string().min(1).max(80),
+  location_id: z.string().uuid().nullable().optional(),
+  customer_id: z.string().uuid().nullable().optional(),
+  customer_site_id: z.string().uuid().nullable().optional(),
+  label: z.string().trim().max(200).nullable().optional(),
+  duration_minutes: z.number().int().positive().max(24 * 60).default(30),
+});
+
 const briefSchema = z.object({
   anchors: z.array(anchorInputSchema).min(1),
   transitions: z.array(briefTransitionSchema).optional().default([]),
+  stopovers: z.array(briefStopoverSchema).optional().default([]),
   title: z.string().trim().max(200).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
   timezone: z.string().min(1).max(80),
 });
 
 type BriefTransitionInput = z.infer<typeof briefTransitionSchema>;
+type BriefStopoverInput = z.infer<typeof briefStopoverSchema>;
 
 type AnchorInput = z.infer<typeof anchorInputSchema>;
 
@@ -756,6 +773,81 @@ export async function createItineraryFromBrief(
           train_number: t.booking.service_number ?? null,
         });
       }
+    }
+  }
+
+  // Stopovers — intent rows sitting between two anchors. Persist them
+  // after stops are inserted so we can resolve client_id → stop_id, but
+  // independently of the transition pass (a stopover doesn't require a
+  // non-auto transition).
+  if (parsed.value.stopovers.length > 0) {
+    // Reuse the stop lookup if we built it for transitions; otherwise
+    // build a fresh one. (The transition block sits behind a length>0
+    // gate so when there are stopovers but no transitions, the map
+    // doesn't exist yet.)
+    const { data: insertedStops } = await supabase
+      .from("stops")
+      .select("id, sequence")
+      .eq("itinerary_id", itinerary.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .order("sequence");
+    const stopIdByClientId = new Map<string, string>();
+    for (const s of insertedStops ?? []) {
+      const cid = clientIdBySeq.get(s.sequence as number);
+      if (cid) stopIdByClientId.set(cid, s.id as string);
+    }
+
+    for (const sv of parsed.value.stopovers) {
+      const fromStopId = stopIdByClientId.get(sv.from_client_id);
+      const toStopId = stopIdByClientId.get(sv.to_client_id);
+      // If either end no longer exists in the persisted set, drop the
+      // stopover silently — same forgiving stance as transitions.
+      if (!fromStopId || !toStopId) continue;
+      // A stopover needs SOMEWHERE to drop in — skip empty ones rather
+      // than persisting a placeless intent that adds nothing.
+      if (!sv.location_id && !sv.customer_site_id && !sv.customer_id && !sv.label) {
+        continue;
+      }
+
+      let locationId = sv.location_id ?? null;
+      let label = sv.label ?? null;
+      if (!locationId && sv.customer_site_id) {
+        const { data: site } = await supabase
+          .from("customer_sites")
+          .select("name, address")
+          .eq("id", sv.customer_site_id)
+          .eq("workspace_id", ctx.workspaceId)
+          .maybeSingle();
+        if (site) label = label ?? site.name ?? site.address;
+      }
+      if (!locationId && !sv.customer_site_id && label) {
+        const { data: newLoc } = await supabase
+          .from("locations")
+          .insert({
+            name: label,
+            type: "other",
+            workspace_id: ctx.workspaceId,
+            user_id: ctx.userId,
+          })
+          .select("id, name")
+          .single();
+        if (newLoc) {
+          locationId = newLoc.id;
+          label = newLoc.name;
+        }
+      }
+
+      await supabase.from("stopovers").insert({
+        itinerary_id: itinerary.id,
+        workspace_id: ctx.workspaceId,
+        from_stop_id: fromStopId,
+        to_stop_id: toStopId,
+        location_id: locationId,
+        customer_id: sv.customer_id ?? null,
+        customer_site_id: sv.customer_site_id ?? null,
+        title: label,
+        duration_minutes: sv.duration_minutes,
+      });
     }
   }
 

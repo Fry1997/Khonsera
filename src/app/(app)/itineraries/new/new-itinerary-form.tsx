@@ -525,6 +525,43 @@ export function NewItineraryBrief({
           }
           return out;
         })(),
+        // Stopovers — one row per (fromUid, toUid) intent. Skip any that
+        // are still placeholder-empty (no place picked) so the server
+        // doesn't persist meaningless rows.
+        stopovers: (() => {
+          const out: Array<{
+            from_client_id: string;
+            to_client_id: string;
+            location_id?: string | null;
+            customer_id?: string | null;
+            customer_site_id?: string | null;
+            label?: string | null;
+            duration_minutes: number;
+          }> = [];
+          for (const [key, sv] of stopovers.entries()) {
+            const [fromUid, toUid] = key.split("::");
+            // A stopover with no place set isn't worth sending — the
+            // user opened the card but never filled it in.
+            if (!sv.place) continue;
+            const placeArgs =
+              sv.place.kind === "location"
+                ? { location_id: sv.place.location_id, label: sv.place.label }
+                : sv.place.kind === "customer_site"
+                  ? {
+                      customer_site_id: sv.place.customer_site_id,
+                      customer_id: sv.place.customer_id,
+                      label: sv.place.label,
+                    }
+                  : { customer_id: sv.place.customer_id, label: sv.place.label };
+            out.push({
+              from_client_id: fromUid,
+              to_client_id: toUid,
+              ...placeArgs,
+              duration_minutes: sv.durationMins,
+            });
+          }
+          return out;
+        })(),
         title: titleOverride.trim() || null,
         notes: notesOn ? notes.trim() || null : null,
         timezone,
