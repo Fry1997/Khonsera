@@ -8,7 +8,23 @@ import { dbResult, parseInput } from "./_helpers";
 import type { Result } from "@/lib/errors";
 import type { TravelModePreference } from "@/lib/types/domain";
 
-const preferenceEnum = z.enum(["rail", "drive", "compare", "mixed"]);
+// Migration 0016 extended this enum with walk / taxi / no_preference
+// and migrated legacy 'rail' / 'compare' / 'mixed' rows to
+// 'no_preference'. Old values stay on the Postgres enum (can't be
+// dropped cleanly) but the scoring engine treats anything outside
+// the new four as 'no_preference'.
+const preferenceEnum = z.enum([
+  "walk",
+  "drive",
+  "taxi",
+  "no_preference",
+  // Legacy values kept so existing rows still validate on read.
+  "rail",
+  "compare",
+  "mixed",
+]);
+
+const luggageEnum = z.enum(["none", "light", "heavy"]);
 
 // Travel profile is 1:1 per (user, workspace) and provisioned by the auth
 // trigger, so we only ever update it.
@@ -27,6 +43,11 @@ const updateTravelProfileSchema = z.object({
   default_arrival_buffer_minutes: z.number().int().min(0).max(180).optional(),
   default_return_buffer_minutes: z.number().int().min(0).max(180).optional(),
   mileage_rate: z.number().min(0).max(10).optional(),
+  // Scoring engine inputs (migration 0016).
+  walking_threshold_minutes: z.number().int().min(0).max(60).optional(),
+  minimum_buffer_minutes: z.number().int().min(0).max(60).optional(),
+  max_taxi_fare_pence: z.number().int().min(0).max(10000).optional(),
+  luggage_default: luggageEnum.optional(),
 });
 
 export type TravelProfile = {
@@ -42,6 +63,10 @@ export type TravelProfile = {
   default_arrival_buffer_minutes: number;
   default_return_buffer_minutes: number;
   mileage_rate: number;
+  walking_threshold_minutes: number;
+  minimum_buffer_minutes: number;
+  max_taxi_fare_pence: number;
+  luggage_default: "none" | "light" | "heavy";
 };
 
 // Search the global transport_hubs catalogue for the settings UI's

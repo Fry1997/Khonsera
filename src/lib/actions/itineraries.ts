@@ -317,6 +317,13 @@ const briefSchema = z.object({
   title: z.string().trim().max(200).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
   timezone: z.string().min(1).max(80),
+  // Scoring engine input — picked by the user on brief creation,
+  // optional + defaulted for older callers that haven't been
+  // updated to send it.
+  trip_purpose: z
+    .enum(["maximise_meetings", "budget_conscious", "balanced"])
+    .optional()
+    .default("balanced"),
 });
 
 type BriefTransitionInput = z.infer<typeof briefTransitionSchema>;
@@ -436,6 +443,7 @@ export async function createItineraryFromBrief(
       // pass it explicitly so the intent stays visible at the call
       // site and doesn't depend on the column default being correct.
       status: "planning",
+      trip_purpose: parsed.value.trip_purpose,
     })
     .select("*")
     .single();

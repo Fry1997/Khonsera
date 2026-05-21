@@ -16,7 +16,19 @@ export type LocationType =
   | "parking"
   | "other";
 
-export type TravelModePreference = "rail" | "drive" | "compare" | "mixed";
+// Migration 0016 extended this enum with walk / taxi / no_preference
+// for the scoring engine. The legacy values ('rail', 'compare',
+// 'mixed') stay in the union so reads of pre-migration rows still
+// typecheck — they get migrated to 'no_preference' on first
+// settings-page save.
+export type TravelModePreference =
+  | "walk"
+  | "drive"
+  | "taxi"
+  | "no_preference"
+  | "rail"
+  | "compare"
+  | "mixed";
 
 // Itinerary-level
 export type ItineraryStatus =

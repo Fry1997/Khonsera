@@ -19,7 +19,7 @@ export default async function SettingsPage({
       supabase
         .from("travel_profiles")
         .select(
-          "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate",
+          "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate, walking_threshold_minutes, minimum_buffer_minutes, max_taxi_fare_pence, luggage_default",
         )
         .eq("user_id", ctx.userId)
         .eq("workspace_id", ctx.workspaceId)
@@ -122,7 +122,11 @@ export default async function SettingsPage({
                 profile?.default_rail_origin_transport_hub_id ?? null,
               default_flight_origin_transport_hub_id:
                 profile?.default_flight_origin_transport_hub_id ?? null,
-              preferred_mode: (profile?.preferred_mode ?? "compare") as
+              preferred_mode: (profile?.preferred_mode ?? "no_preference") as
+                | "walk"
+                | "drive"
+                | "taxi"
+                | "no_preference"
                 | "rail"
                 | "drive"
                 | "compare"
@@ -132,6 +136,13 @@ export default async function SettingsPage({
               default_return_buffer_minutes:
                 profile?.default_return_buffer_minutes ?? 15,
               mileage_rate: Number(profile?.mileage_rate ?? 0.45),
+              walking_threshold_minutes:
+                profile?.walking_threshold_minutes ?? 15,
+              max_taxi_fare_pence: profile?.max_taxi_fare_pence ?? 1500,
+              luggage_default: (profile?.luggage_default ?? "none") as
+                | "none"
+                | "light"
+                | "heavy",
             }}
             locations={locations ?? []}
             defaultRailHub={defaultRailHub}

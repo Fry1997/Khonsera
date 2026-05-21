@@ -32,6 +32,9 @@ export function TravelProfileForm({
     default_arrival_buffer_minutes: number;
     default_return_buffer_minutes: number;
     mileage_rate: number;
+    walking_threshold_minutes: number;
+    max_taxi_fare_pence: number;
+    luggage_default: "none" | "light" | "heavy";
   };
   locations: LocationOption[];
   // Pre-resolved labels for the two hub defaults so the picker
@@ -105,6 +108,16 @@ export function TravelProfileForm({
             default_arrival_buffer_minutes: Number(formData.get("arrival_buffer") ?? 15),
             default_return_buffer_minutes: Number(formData.get("return_buffer") ?? 15),
             mileage_rate: Number(formData.get("mileage_rate") ?? 0.45),
+            walking_threshold_minutes: Number(
+              formData.get("walking_threshold") ?? 15,
+            ),
+            max_taxi_fare_pence: Math.round(
+              Number(formData.get("max_taxi_fare") ?? 15) * 100,
+            ),
+            luggage_default: (formData.get("luggage_default") as
+              | "none"
+              | "light"
+              | "heavy") ?? "none",
           });
           if (!result.ok) {
             setFeedback(feedbackFromError(result.error));
@@ -120,6 +133,7 @@ export function TravelProfileForm({
       <FormField
         label="Preferred travel mode"
         htmlFor="preferred_mode"
+        hint="Scoring nudge: a +15% tiebreaker toward this mode when it's a close call. Legacy options ('rail', 'mixed', 'compare') are kept for older accounts and treated as 'no preference' by the scorer."
         error={feedback?.fieldErrors.preferred_mode}
       >
         <Select
@@ -127,10 +141,57 @@ export function TravelProfileForm({
           name="preferred_mode"
           defaultValue={initial.preferred_mode}
         >
-          <option value="compare">Compare rail and drive</option>
-          <option value="rail">Rail</option>
+          <option value="no_preference">No preference</option>
+          <option value="walk">Walk</option>
           <option value="drive">Drive</option>
-          <option value="mixed">Mixed</option>
+          <option value="taxi">Taxi</option>
+        </Select>
+      </FormField>
+
+      <FormField
+        label="Walking threshold (min)"
+        htmlFor="walking_threshold"
+        hint="Above this length, the scorer drops walk from the candidates entirely."
+      >
+        <Input
+          id="walking_threshold"
+          name="walking_threshold"
+          type="number"
+          min={0}
+          max={60}
+          defaultValue={initial.walking_threshold_minutes}
+        />
+      </FormField>
+
+      <FormField
+        label="Taxi spend (£)"
+        htmlFor="max_taxi_fare"
+        hint="When would a taxi feel like good value vs. a bit much? We'll suggest taxis under this amount, mention it when they're a bit over, and only push more expensive ones when they save significant time."
+      >
+        <Input
+          id="max_taxi_fare"
+          name="max_taxi_fare"
+          type="number"
+          min={5}
+          max={40}
+          step={1}
+          defaultValue={(initial.max_taxi_fare_pence / 100).toFixed(0)}
+        />
+      </FormField>
+
+      <FormField
+        label="Default luggage"
+        htmlFor="luggage_default"
+        hint="Affects how much walk is penalised. Light = -10, heavy = -25."
+      >
+        <Select
+          id="luggage_default"
+          name="luggage_default"
+          defaultValue={initial.luggage_default}
+        >
+          <option value="none">None</option>
+          <option value="light">Light</option>
+          <option value="heavy">Heavy</option>
         </Select>
       </FormField>
 
