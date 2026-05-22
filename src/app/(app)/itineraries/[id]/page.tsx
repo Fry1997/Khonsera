@@ -17,23 +17,12 @@ export default async function ItineraryDetailPage({
   const { data: itinerary } = await supabase
     .from("itineraries")
     .select(
-      "id, title, date_start, date_end, status, notes, trip_purpose, luggage_for_trip",
+      "id, title, date_start, date_end, status, notes, luggage_for_trip",
     )
     .eq("id", id)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
   if (!itinerary) notFound();
-
-  // Travel-profile inputs for the scoring engine — pulled here so
-  // the editor can build a ScoringContext per leg.
-  const { data: scoringProfile } = await supabase
-    .from("travel_profiles")
-    .select(
-      "preferred_mode, walking_threshold_minutes, minimum_buffer_minutes, max_taxi_fare_pence, luggage_default",
-    )
-    .eq("user_id", ctx.userId)
-    .eq("workspace_id", ctx.workspaceId)
-    .maybeSingle();
 
   // Auto-seed the first "start" point from the user's travel profile defaults
   // (drive origin → rail origin → return location). Only fires when the
@@ -92,7 +81,7 @@ export default async function ItineraryDetailPage({
     supabase
       .from("transitions")
       .select(
-        "id, from_stop_id, to_stop_id, mode, start_time, end_time, computed_duration_minutes, distance_miles, overview_polyline, is_locked, notes, user_mode_override, override_locked",
+        "id, from_stop_id, to_stop_id, mode, start_time, end_time, computed_duration_minutes, distance_miles, overview_polyline, is_locked, notes",
       )
       .eq("itinerary_id", id),
     supabase
@@ -173,8 +162,6 @@ export default async function ItineraryDetailPage({
         date_end: itinerary.date_end,
         status: itinerary.status,
         notes: itinerary.notes,
-        trip_purpose:
-          (itinerary as { trip_purpose?: string }).trip_purpose ?? "balanced",
         luggage_for_trip:
           (itinerary as { luggage_for_trip?: string | null }).luggage_for_trip ??
           null,
@@ -195,25 +182,6 @@ export default async function ItineraryDetailPage({
         durationMinutes: row.duration_minutes,
         distanceMiles: row.distance_miles,
       }))}
-      scoringProfile={{
-        preferredMode:
-          (scoringProfile?.preferred_mode as
-            | "walk"
-            | "drive"
-            | "taxi"
-            | "no_preference"
-            | undefined) ?? "no_preference",
-        walkingThresholdMinutes:
-          scoringProfile?.walking_threshold_minutes ?? 15,
-        minimumBufferMinutes: scoringProfile?.minimum_buffer_minutes ?? 10,
-        maxTaxiFarePence: scoringProfile?.max_taxi_fare_pence ?? 1500,
-        luggageDefault:
-          (scoringProfile?.luggage_default as
-            | "none"
-            | "light"
-            | "heavy"
-            | undefined) ?? "none",
-      }}
     />
   );
 }

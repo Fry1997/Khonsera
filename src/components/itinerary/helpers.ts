@@ -244,6 +244,45 @@ export function effectiveTimingMode(a: Anchor): TimingMode {
   return inferredTimingMode(a);
 }
 
+// Earliest time the executive can leave this anchor for the next
+// leg. For around_then anchors there's no fixed time so we return
+// null — the feasibility check treats that as "stay quiet". For a
+// stay+check_in we also return null because the hotel is open-ended
+// (they can leave for the next thing whenever it makes sense).
+//
+// Both date and time strings come straight from the Anchor as the
+// user typed them. We parse as local; callers compare the result to
+// another Date computed the same way, so local-vs-UTC offsets cancel.
+export function anchorEndDate(a: Anchor): Date | null {
+  if (effectiveTimingMode(a) === "around_then") return null;
+  const kind = effectiveKind(a);
+  const role = effectiveRole(a, []);
+  if (kind === "stay" && (role ?? "check_in") === "check_in") return null;
+  if (!a.date || !a.time) return null;
+  const base = new Date(`${a.date}T${a.time}`);
+  if (Number.isNaN(base.getTime())) return null;
+  if (effectiveTimingMode(a) === "arrive_by") {
+    return new Date(base.getTime() + (a.durationMins ?? 0) * 60_000);
+  }
+  return base;
+}
+
+// Latest time the executive needs to start being at this anchor —
+// when the leg INTO it must complete. For a leave_by anchor (the
+// "catch the 09:42 train" pattern), the executive needs to be there
+// duration before the time. For arrive_by, the time itself is the
+// deadline.
+export function anchorStartDate(a: Anchor): Date | null {
+  if (effectiveTimingMode(a) === "around_then") return null;
+  if (!a.date || !a.time) return null;
+  const base = new Date(`${a.date}T${a.time}`);
+  if (Number.isNaN(base.getTime())) return null;
+  if (effectiveTimingMode(a) === "leave_by") {
+    return new Date(base.getTime() - (a.durationMins ?? 0) * 60_000);
+  }
+  return base;
+}
+
 function inferredTimingMode(a: Anchor): TimingMode {
   const kind = effectiveKind(a);
   const role = a.roleOverride;

@@ -14,17 +14,11 @@ import {
   insertTransitLeg,
   upsertTransition,
   setTransitionMode,
-  setTransitionOverride,
 } from "@/lib/actions/transitions";
 import { TransportHubPicker } from "@/components/transport-hub-picker";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
-import { resolveLeg, type PreviewEntry } from "@/lib/scoring/resolve-leg";
-import type {
-  ModeCandidate,
-  Resolution,
-  ScoringContext,
-} from "@/lib/scoring/types";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
+import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { feedbackFromError } from "@/lib/actions/_form";
 import type {
   ItineraryStatus,
@@ -212,8 +206,6 @@ type TransitionRow = {
   distance_miles: number | null;
   is_locked: boolean;
   overview_polyline: string | null;
-  user_mode_override: "walk" | "drive" | "taxi" | null;
-  override_locked: boolean;
 };
 
 type JourneyLegRow = {
@@ -240,7 +232,6 @@ export function ItineraryEditor({
   contacts,
   timezone,
   totals,
-  scoringProfile,
   initialPreviewCache,
 }: {
   itinerary: {
@@ -250,11 +241,6 @@ export function ItineraryEditor({
     date_end: string;
     status: ItineraryStatus;
     notes: string | null;
-    trip_purpose:
-      | "maximise_meetings"
-      | "budget_conscious"
-      | "balanced"
-      | string;
     luggage_for_trip: "none" | "light" | "heavy" | string | null;
   };
   stops: StopRow[];
@@ -266,16 +252,6 @@ export function ItineraryEditor({
   contacts: { id: string; customer_id: string; name: string }[];
   timezone: string;
   totals: { cost: number; currency: string };
-  // Scoring inputs from the travel profile. Stays optional so older
-  // route handlers that haven't been updated don't break — but the
-  // chip-face redesign needs it to surface the resolved mode.
-  scoringProfile: {
-    preferredMode: "walk" | "drive" | "taxi" | "no_preference";
-    walkingThresholdMinutes: number;
-    minimumBufferMinutes: number;
-    maxTaxiFarePence: number;
-    luggageDefault: "none" | "light" | "heavy";
-  };
   // Server-side cached previews keyed by (from_stop_id, to_stop_id,
   // mode). Seeded into the route-preview hook on mount so the picker
   // renders resolved pills on first paint instead of grey-pending.
@@ -343,59 +319,6 @@ export function ItineraryEditor({
     }
   };
 
-  // Build a per-leg ScoringContext + ask the engine for a Resolution.
-  // Pulls preview data straight from the routePreviews cache via the
-  // PreviewEntry shape resolveLeg expects.
-  const scoringContext: ScoringContext = {
-    preferredMode: scoringProfile.preferredMode,
-    walkingThresholdMinutes: scoringProfile.walkingThresholdMinutes,
-    minimumBufferMinutes: scoringProfile.minimumBufferMinutes,
-    maxTaxiFarePence: scoringProfile.maxTaxiFarePence,
-    luggage:
-      (itinerary.luggage_for_trip as "none" | "light" | "heavy" | null) ??
-      scoringProfile.luggageDefault,
-    tripPurpose:
-      (itinerary.trip_purpose as
-        | "maximise_meetings"
-        | "budget_conscious"
-        | "balanced") ?? "balanced",
-    userOverride: null,
-  };
-  const resolveLegFor = (
-    fromStopId: string,
-    toStopId: string,
-  ): Resolution => {
-    const rawFromStop = sortedStops.find((s) => s.id === fromStopId) ?? null;
-    const toStop = sortedStops.find((s) => s.id === toStopId) ?? null;
-    // For accommodation (hotel) stops, end_time is the *checkout*
-    // (often the next day). The engine's arrival-buffer math reads
-    // end_time as "when you're done here and can leave" — which is
-    // wildly wrong for a hotel where you're available to leave for
-    // sightseeing from check-in onward. Substitute start_time as
-    // the leave-from-here time for accommodation; the rest of the
-    // engine doesn't care that it's not literally the end.
-    const fromStop = rawFromStop
-      ? rawFromStop.type === "accommodation"
-        ? { ...rawFromStop, end_time: rawFromStop.start_time }
-        : rawFromStop
-      : null;
-    // Don't pass user_mode_override to the engine. The explicit-pill
-    // picker is the source of truth for the user's pick; the engine
-    // is now purely a scoring helper that should always return all
-    // three candidates with their per-mode data. Passing an override
-    // short-circuited scoring and left the other two pills with no
-    // data — making them grey + unclickable in the picker, which is
-    // the opposite of what we want.
-    const ctx: ScoringContext = {
-      ...scoringContext,
-      userOverride: null,
-    };
-    const lookup = (mode: ModeCandidate): PreviewEntry => {
-      const entry = routePreviews.get(fromStopId, toStopId, mode);
-      return entry;
-    };
-    return resolveLeg(fromStop, toStop, lookup, ctx);
-  };
   // Track the most recently created stop so we can auto-expand it
   // in the picker on the next render after router.refresh resolves.
   const [pendingExpandUid, setPendingExpandUid] = useState<string | null>(null);
@@ -515,27 +438,6 @@ export function ItineraryEditor({
         ? it.stopover.uid
         : it.stop.id;
 
-  const handleSetOverride = (
-    fromStopId: string,
-    toStopId: string,
-    mode: ModeCandidate | null,
-  ) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await setTransitionOverride({
-        itinerary_id: itinerary.id,
-        from_stop_id: fromStopId,
-        to_stop_id: toStopId,
-        mode,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      router.refresh();
-    });
-  };
-
   // Background prefetch: every adjacent leg in the planning timeline
   // (anchor↔anchor, anchor↔stopover, home↔anchor) that doesn't
   // already have a computed_duration_minutes gets a quiet 'drive'
@@ -622,6 +524,41 @@ export function ItineraryEditor({
     () => [...stops].sort((a, b) => a.sequence - b.sequence),
     [stops],
   );
+
+  // Roll up feasibility flags across every adjacent pair of stops
+  // whose transition has a computed duration. Drives the heads-up
+  // callout above the timeline — tells the executive at a glance
+  // which legs the day depends on getting right.
+  const feasibilityRollup = useMemo(() => {
+    const flagged: Array<{
+      fromLabel: string;
+      toLabel: string;
+      severity: "tight" | "infeasible";
+      message: string;
+    }> = [];
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const fromStop = sortedStops[i];
+      const toStop = sortedStops[i + 1];
+      const transition = transitionByFrom.get(fromStop.id);
+      const flag = computeFeasibility(fromStop, toStop, transition);
+      if (!flag) continue;
+      flagged.push({
+        fromLabel:
+          fromStop.location?.name ??
+          fromStop.customer_site?.name ??
+          fromStop.title ??
+          "stop",
+        toLabel:
+          toStop.location?.name ??
+          toStop.customer_site?.name ??
+          toStop.title ??
+          "stop",
+        severity: flag.severity,
+        message: flag.message,
+      });
+    }
+    return flagged;
+  }, [sortedStops, transitionByFrom]);
 
   // The most recent prior place we could "return to" — i.e. the second-to-last
   // stop's place. Lets a user quickly close a hotel → expo → hotel hop without
@@ -1156,6 +1093,10 @@ export function ItineraryEditor({
           </span>
         </div>
 
+        {feasibilityRollup.length > 0 ? (
+          <FeasibilityCallout flags={feasibilityRollup} />
+        ) : null}
+
         {/* ── Two-column body: timeline + map/digest sidebar ─────────── */}
         <div className="editor-grid">
           {/* Left: day header + stops timeline */}
@@ -1224,24 +1165,6 @@ export function ItineraryEditor({
                           startStop.id,
                           uidOf(first),
                           patch,
-                        )
-                      }
-                      resolution={resolveLegFor(
-                        startStop.id,
-                        uidOf(first),
-                      )}
-                      onSetOverride={(mode) =>
-                        handleSetOverride(
-                          startStop.id,
-                          uidOf(first),
-                          mode,
-                        )
-                      }
-                      onClearOverride={() =>
-                        handleSetOverride(
-                          startStop.id,
-                          uidOf(first),
-                          null,
                         )
                       }
                       fromVirtualLabel={label}
@@ -1494,24 +1417,6 @@ export function ItineraryEditor({
                                   patch,
                                 )
                               }
-                              resolution={resolveLegFor(
-                                stop.id,
-                                uidOf(nextItem),
-                              )}
-                              onSetOverride={(mode) =>
-                                handleSetOverride(
-                                  stop.id,
-                                  uidOf(nextItem),
-                                  mode,
-                                )
-                              }
-                              onClearOverride={() =>
-                                handleSetOverride(
-                                  stop.id,
-                                  uidOf(nextItem),
-                                  null,
-                                )
-                              }
                             />
                             {transitionToNext ? (
                               <TransitionMeta
@@ -1597,24 +1502,6 @@ export function ItineraryEditor({
                               anchor.uid,
                               uidOf(nextItem),
                               patch,
-                            )
-                          }
-                          resolution={resolveLegFor(
-                            anchor.uid,
-                            uidOf(nextItem),
-                          )}
-                          onSetOverride={(mode) =>
-                            handleSetOverride(
-                              anchor.uid,
-                              uidOf(nextItem),
-                              mode,
-                            )
-                          }
-                          onClearOverride={() =>
-                            handleSetOverride(
-                              anchor.uid,
-                              uidOf(nextItem),
-                              null,
                             )
                           }
                         />
@@ -2352,6 +2239,61 @@ function TransitLegForm({
   );
 }
 
+// Heads-up callout — shown above the timeline whenever any leg
+// arrives late or runs tight under its current mode + travel time.
+// Lists each flagged leg by anchor name. Disappears on its own as
+// the user fixes the issues; no dismiss button — this is signal,
+// not noise.
+function FeasibilityCallout({
+  flags,
+}: {
+  flags: Array<{
+    fromLabel: string;
+    toLabel: string;
+    severity: "tight" | "infeasible";
+    message: string;
+  }>;
+}) {
+  const hasLate = flags.some((f) => f.severity === "infeasible");
+  return (
+    <aside
+      className={
+        hasLate
+          ? "feasibility-callout feasibility-callout-bad"
+          : "feasibility-callout feasibility-callout-tight"
+      }
+      aria-live="polite"
+    >
+      <div className="feasibility-callout-head">
+        <span className="uc">Heads up</span>
+        <span className="feasibility-callout-count">
+          {hasLate
+            ? `${flags.filter((f) => f.severity === "infeasible").length} leg${flags.filter((f) => f.severity === "infeasible").length === 1 ? "" : "s"} won't make it`
+            : `${flags.length} leg${flags.length === 1 ? "" : "s"} running tight`}
+        </span>
+      </div>
+      <ul className="feasibility-callout-list">
+        {flags.map((f, i) => (
+          <li key={i}>
+            <span className="feasibility-callout-route">
+              {f.fromLabel} → {f.toLabel}
+            </span>
+            <span
+              className={
+                f.severity === "infeasible"
+                  ? "feasibility-flag feasibility-flag-bad"
+                  : "feasibility-flag feasibility-flag-tight"
+              }
+            >
+              {f.message}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
 function TransitionMeta({
   transition,
   feasibility,
@@ -2394,9 +2336,10 @@ function TransitionMeta({
 
 // Feasibility derivation — purely from the loaded data. When two
 // adjacent stops both have fixed times AND the transition between
-// them has a computed travel duration, we can compare the available
-// window to the required travel time. The display is intentionally
-// soft (an inline badge, no modal) — it's a heads-up, not a blocker.
+// them has a computed travel duration, we ask the shared
+// checkLegFeasibility helper whether the executive arrives on time.
+// The display is intentionally soft (an inline badge, no modal) —
+// it's a heads-up, not a blocker.
 type FeasibilityFlag = {
   severity: "tight" | "infeasible";
   message: string;
@@ -2494,32 +2437,19 @@ function computeFeasibility(
 ): FeasibilityFlag | null {
   if (!fromStop || !toStop || !transition) return null;
   if (!fromStop.is_time_fixed || !toStop.is_time_fixed) return null;
-  const required = transition.computed_duration_minutes ?? 0;
-  if (required <= 0) return null;
+  const required = transition.computed_duration_minutes;
   const fromEnd = fromStop.end_time ?? fromStop.start_time;
   const toStart = toStop.start_time;
-  if (!fromEnd || !toStart) return null;
-  const gapMins =
-    (new Date(toStart).getTime() - new Date(fromEnd).getTime()) / 60_000;
-  if (gapMins <= 0) {
-    return {
-      severity: "infeasible",
-      message: `Tight: needs ~${required}m, no gap between fixed times`,
-    };
+  const result = checkLegFeasibility({
+    fromEnd: fromEnd ? new Date(fromEnd) : null,
+    toStart: toStart ? new Date(toStart) : null,
+    travelMinutes: required,
+  });
+  if (result.state === "late") {
+    return { severity: "infeasible", message: result.message };
   }
-  if (required > gapMins) {
-    return {
-      severity: "infeasible",
-      message: `Won't make it: needs ${required}m in a ${Math.round(gapMins)}m window`,
-    };
-  }
-  // 10-minute buffer is the soft warning threshold — anything tighter
-  // than 10 minutes of slack gets called out.
-  if (required + 10 > gapMins) {
-    return {
-      severity: "tight",
-      message: `Tight: ${Math.round(gapMins - required)}m of slack`,
-    };
+  if (result.state === "tight") {
+    return { severity: "tight", message: `Tight: ${result.message}` };
   }
   return null;
 }
