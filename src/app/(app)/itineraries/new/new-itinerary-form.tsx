@@ -82,12 +82,6 @@ export function NewItineraryBrief({
   const [titleOverride, setTitleOverride] = useState("");
   const [notes, setNotes] = useState("");
   const [notesOn, setNotesOn] = useState(false);
-  // Trip purpose drives the scoring engine's weight profile. The
-  // scorer maps each value to a (time / cost / effort / risk) row in
-  // src/lib/scoring/weights.json.
-  const [tripPurpose, setTripPurpose] = useState<
-    "maximise_meetings" | "budget_conscious" | "balanced"
-  >("balanced");
 
   const getTransition = (fromUid: string, toUid: string): BriefTransition =>
     transitions.get(transitionKey(fromUid, toUid)) ?? emptyTransition();
@@ -442,7 +436,6 @@ export function NewItineraryBrief({
         title: titleOverride.trim() || null,
         notes: notesOn ? notes.trim() || null : null,
         timezone,
-        trip_purpose: tripPurpose,
       });
 
       if (!result.ok) {
@@ -644,47 +637,6 @@ export function NewItineraryBrief({
               />
             </div>
           )}
-
-          <div className="brief-purpose">
-            <span className="uc">What's the day for?</span>
-            <p className="brief-helper" style={{ margin: "2px 0 6px" }}>
-              Drives how Khonsera trades off time, cost, and comfort
-              when picking travel modes.
-            </p>
-            <div className="brief-pill-row">
-              {(
-                [
-                  {
-                    value: "maximise_meetings",
-                    label: "Cram meetings",
-                    helper: "Time first; spend if it saves significant time.",
-                  },
-                  {
-                    value: "balanced",
-                    label: "Balanced",
-                    helper: "Sensible mix of time, cost and effort.",
-                  },
-                  {
-                    value: "budget_conscious",
-                    label: "Watch spending",
-                    helper:
-                      "Cost first; walk and drive over taxi when reasonable.",
-                  },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className="pill brief-pill"
-                  data-active={tripPurpose === opt.value}
-                  onClick={() => setTripPurpose(opt.value)}
-                  title={opt.helper}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <details className="brief-details">
             <summary className="brief-details-summary">
