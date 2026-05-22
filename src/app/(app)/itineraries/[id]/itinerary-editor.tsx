@@ -18,6 +18,7 @@ import {
 import { TransportHubPicker } from "@/components/transport-hub-picker";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
+import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { feedbackFromError } from "@/lib/actions/_form";
 import type {
   ItineraryStatus,
@@ -523,6 +524,41 @@ export function ItineraryEditor({
     () => [...stops].sort((a, b) => a.sequence - b.sequence),
     [stops],
   );
+
+  // Roll up feasibility flags across every adjacent pair of stops
+  // whose transition has a computed duration. Drives the heads-up
+  // callout above the timeline — tells the executive at a glance
+  // which legs the day depends on getting right.
+  const feasibilityRollup = useMemo(() => {
+    const flagged: Array<{
+      fromLabel: string;
+      toLabel: string;
+      severity: "tight" | "infeasible";
+      message: string;
+    }> = [];
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const fromStop = sortedStops[i];
+      const toStop = sortedStops[i + 1];
+      const transition = transitionByFrom.get(fromStop.id);
+      const flag = computeFeasibility(fromStop, toStop, transition);
+      if (!flag) continue;
+      flagged.push({
+        fromLabel:
+          fromStop.location?.name ??
+          fromStop.customer_site?.name ??
+          fromStop.title ??
+          "stop",
+        toLabel:
+          toStop.location?.name ??
+          toStop.customer_site?.name ??
+          toStop.title ??
+          "stop",
+        severity: flag.severity,
+        message: flag.message,
+      });
+    }
+    return flagged;
+  }, [sortedStops, transitionByFrom]);
 
   // The most recent prior place we could "return to" — i.e. the second-to-last
   // stop's place. Lets a user quickly close a hotel → expo → hotel hop without
@@ -1056,6 +1092,10 @@ export function ItineraryEditor({
             />
           </span>
         </div>
+
+        {feasibilityRollup.length > 0 ? (
+          <FeasibilityCallout flags={feasibilityRollup} />
+        ) : null}
 
         {/* ── Two-column body: timeline + map/digest sidebar ─────────── */}
         <div className="editor-grid">
@@ -2199,6 +2239,61 @@ function TransitLegForm({
   );
 }
 
+// Heads-up callout — shown above the timeline whenever any leg
+// arrives late or runs tight under its current mode + travel time.
+// Lists each flagged leg by anchor name. Disappears on its own as
+// the user fixes the issues; no dismiss button — this is signal,
+// not noise.
+function FeasibilityCallout({
+  flags,
+}: {
+  flags: Array<{
+    fromLabel: string;
+    toLabel: string;
+    severity: "tight" | "infeasible";
+    message: string;
+  }>;
+}) {
+  const hasLate = flags.some((f) => f.severity === "infeasible");
+  return (
+    <aside
+      className={
+        hasLate
+          ? "feasibility-callout feasibility-callout-bad"
+          : "feasibility-callout feasibility-callout-tight"
+      }
+      aria-live="polite"
+    >
+      <div className="feasibility-callout-head">
+        <span className="uc">Heads up</span>
+        <span className="feasibility-callout-count">
+          {hasLate
+            ? `${flags.filter((f) => f.severity === "infeasible").length} leg${flags.filter((f) => f.severity === "infeasible").length === 1 ? "" : "s"} won't make it`
+            : `${flags.length} leg${flags.length === 1 ? "" : "s"} running tight`}
+        </span>
+      </div>
+      <ul className="feasibility-callout-list">
+        {flags.map((f, i) => (
+          <li key={i}>
+            <span className="feasibility-callout-route">
+              {f.fromLabel} → {f.toLabel}
+            </span>
+            <span
+              className={
+                f.severity === "infeasible"
+                  ? "feasibility-flag feasibility-flag-bad"
+                  : "feasibility-flag feasibility-flag-tight"
+              }
+            >
+              {f.message}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
 function TransitionMeta({
   transition,
   feasibility,
@@ -2241,9 +2336,10 @@ function TransitionMeta({
 
 // Feasibility derivation — purely from the loaded data. When two
 // adjacent stops both have fixed times AND the transition between
-// them has a computed travel duration, we can compare the available
-// window to the required travel time. The display is intentionally
-// soft (an inline badge, no modal) — it's a heads-up, not a blocker.
+// them has a computed travel duration, we ask the shared
+// checkLegFeasibility helper whether the executive arrives on time.
+// The display is intentionally soft (an inline badge, no modal) —
+// it's a heads-up, not a blocker.
 type FeasibilityFlag = {
   severity: "tight" | "infeasible";
   message: string;
@@ -2341,32 +2437,19 @@ function computeFeasibility(
 ): FeasibilityFlag | null {
   if (!fromStop || !toStop || !transition) return null;
   if (!fromStop.is_time_fixed || !toStop.is_time_fixed) return null;
-  const required = transition.computed_duration_minutes ?? 0;
-  if (required <= 0) return null;
+  const required = transition.computed_duration_minutes;
   const fromEnd = fromStop.end_time ?? fromStop.start_time;
   const toStart = toStop.start_time;
-  if (!fromEnd || !toStart) return null;
-  const gapMins =
-    (new Date(toStart).getTime() - new Date(fromEnd).getTime()) / 60_000;
-  if (gapMins <= 0) {
-    return {
-      severity: "infeasible",
-      message: `Tight: needs ~${required}m, no gap between fixed times`,
-    };
+  const result = checkLegFeasibility({
+    fromEnd: fromEnd ? new Date(fromEnd) : null,
+    toStart: toStart ? new Date(toStart) : null,
+    travelMinutes: required,
+  });
+  if (result.state === "late") {
+    return { severity: "infeasible", message: result.message };
   }
-  if (required > gapMins) {
-    return {
-      severity: "infeasible",
-      message: `Won't make it: needs ${required}m in a ${Math.round(gapMins)}m window`,
-    };
-  }
-  // 10-minute buffer is the soft warning threshold — anything tighter
-  // than 10 minutes of slack gets called out.
-  if (required + 10 > gapMins) {
-    return {
-      severity: "tight",
-      message: `Tight: ${Math.round(gapMins - required)}m of slack`,
-    };
+  if (result.state === "tight") {
+    return { severity: "tight", message: `Tight: ${result.message}` };
   }
   return null;
 }

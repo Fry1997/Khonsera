@@ -18,6 +18,8 @@ import {
   StopoverCard,
   TRANSITION_OPTIONS,
   TransitionRow,
+  anchorEndDate,
+  anchorStartDate,
   anchorWithinStay,
   buildDatePresets,
   defaultAnchorDate,
@@ -40,6 +42,7 @@ import {
   type Stopover,
   type TransitionMode,
 } from "@/components/itinerary";
+import { checkLegFeasibility } from "@/lib/feasibility/check";
 import type { PlaceSelection } from "@/components/place-picker";
 
 export function NewItineraryBrief({
@@ -187,6 +190,23 @@ export function NewItineraryBrief({
       briefPreviews.fetchPreview(from, to, opt.value);
     }
   };
+  // Eager prefetch the chosen mode for each adjacent pair so the
+  // footer summary can flag late / tight legs without the user
+  // opening every picker. Only fires for pairs with two saved
+  // places (free-text labels have no coords). Cheap when cached —
+  // useRoutePreviewsForPlaces dedupes on the same key.
+  useEffect(() => {
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const from = anchors[i].place;
+      const to = anchors[i + 1].place;
+      const t = transitions.get(transitionKey(anchors[i].uid, anchors[i + 1].uid));
+      if (!t || t.mode === "auto" || t.mode === "mixed") continue;
+      briefPreviews.fetchPreview(from, to, t.mode);
+    }
+    // briefPreviews is a stable hook; depending on anchors + transitions
+    // refires whenever the user edits either.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchors, transitions]);
 
   const updateAnchor = (uid: string, patch: Partial<Anchor>) => {
     setAnchors((prev) =>
@@ -256,6 +276,35 @@ export function NewItineraryBrief({
   }, [anchors]);
 
   const canSubmit = anchors.every((a) => a.place != null);
+
+  // Roll up feasibility flags across every adjacent pair the user
+  // has actually committed to a mode for. Pairs left on "auto" or
+  // with pending previews stay silent — we don't claim to know
+  // something is wrong until we have the duration to back it up.
+  const feasibilityRollup = useMemo(() => {
+    let late = 0;
+    let tight = 0;
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const from = anchors[i];
+      const to = anchors[i + 1];
+      const t = transitions.get(transitionKey(from.uid, to.uid));
+      if (!t || t.mode === "auto" || t.mode === "mixed") continue;
+      const preview = briefPreviews.get(from.place, to.place, t.mode);
+      if (!preview || preview === "pending") continue;
+      const result = checkLegFeasibility({
+        fromEnd: anchorEndDate(from),
+        toStart: anchorStartDate(to),
+        travelMinutes: preview.durationMinutes,
+      });
+      if (result.state === "late") late++;
+      else if (result.state === "tight") tight++;
+    }
+    return { late, tight };
+    // briefPreviews.get reads cache state that updates via the hook's
+    // internal force-render; depending on anchors + transitions covers
+    // every user-facing change that should re-run the rollup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchors, transitions, briefPreviews]);
 
   const submit = () => {
     setFeedback(null);
@@ -679,6 +728,21 @@ export function NewItineraryBrief({
           {!canSubmit ? (
             <span className="brief-helper" style={{ margin: 0 }}>
               Every anchor needs a place to continue.
+            </span>
+          ) : feasibilityRollup.late > 0 || feasibilityRollup.tight > 0 ? (
+            <span
+              className={
+                feasibilityRollup.late > 0
+                  ? "feasibility-flag feasibility-flag-bad"
+                  : "feasibility-flag feasibility-flag-tight"
+              }
+            >
+              {feasibilityRollup.late > 0
+                ? `${feasibilityRollup.late} leg${feasibilityRollup.late === 1 ? "" : "s"} arrive${feasibilityRollup.late === 1 ? "s" : ""} late`
+                : `${feasibilityRollup.tight} leg${feasibilityRollup.tight === 1 ? "" : "s"} tight`}
+              {feasibilityRollup.late > 0 && feasibilityRollup.tight > 0
+                ? `, ${feasibilityRollup.tight} tight`
+                : ""}
             </span>
           ) : null}
         </div>

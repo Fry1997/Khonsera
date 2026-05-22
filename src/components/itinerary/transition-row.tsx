@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TransportIcon } from "@/components/icons";
-import { LOCAL_MODES, TRANSITION_OPTIONS, fmtDur } from "./helpers";
+import {
+  LOCAL_MODES,
+  TRANSITION_OPTIONS,
+  anchorEndDate,
+  anchorStartDate,
+  fmtDur,
+} from "./helpers";
 import type {
   Anchor,
   BriefBooking,
@@ -10,6 +16,7 @@ import type {
   LocalMode,
   TransitionMode,
 } from "./types";
+import { checkLegFeasibility, type Feasibility } from "@/lib/feasibility/check";
 
 // Per-mode duration hints — populated by the editor via the
 // useRoutePreviews hook. Each entry is either a resolved preview
@@ -184,14 +191,24 @@ export function TransitionRow({
                       : preview.durationMinutes != null
                         ? `${preview.durationMinutes}m`
                         : null;
+                const feas = feasibilityForMode(from, to, preview);
+                const feasState =
+                  feas.state === "tight" || feas.state === "late"
+                    ? feas.state
+                    : null;
                 return (
                   <button
                     key={o.value}
                     type="button"
                     className="pill brief-pill"
                     data-active={o.value === transition.mode}
+                    data-feasibility={feasState ?? undefined}
                     onClick={() => onChange({ mode: o.value })}
-                    title={`Travel by ${o.label.toLowerCase()}`}
+                    title={
+                      feas.state === "late" || feas.state === "tight"
+                        ? `${o.label} — ${feas.message}`
+                        : `Travel by ${o.label.toLowerCase()}`
+                    }
                   >
                     <OIcon size={13} />
                     {o.label}
@@ -202,6 +219,13 @@ export function TransitionRow({
                       >
                         {hint}
                       </span>
+                    ) : null}
+                    {feasState ? (
+                      <span
+                        className="brief-pill-feas"
+                        data-state={feasState}
+                        aria-hidden
+                      />
                     ) : null}
                   </button>
                 );
@@ -363,6 +387,31 @@ function LocalLegPicker({
       </div>
     </div>
   );
+}
+
+// Per-mode feasibility for a leg's mode picker. Resolves the
+// preview's duration (when not pending / null), the anchor times on
+// each end, and asks the shared feasibility helper whether arrival
+// is on time. Unknown is the quiet default — pending previews and
+// missing anchor times both fall here so the picker doesn't flash
+// flags it can't justify.
+function feasibilityForMode(
+  from: Anchor | null,
+  to: Anchor,
+  preview:
+    | { durationMinutes: number | null; distanceMiles: number | null }
+    | "pending"
+    | null
+    | undefined,
+): Feasibility {
+  if (!from || !preview || preview === "pending") {
+    return { state: "unknown" };
+  }
+  return checkLegFeasibility({
+    fromEnd: anchorEndDate(from),
+    toStart: anchorStartDate(to),
+    travelMinutes: preview.durationMinutes,
+  });
 }
 
 function BookedFields({

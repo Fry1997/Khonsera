@@ -2094,6 +2094,29 @@
     background: var(--ink);
     color: var(--paper);
   }
+  /* Feasibility hints on mode pills — amber for tight, rust for late.
+     Render as a left border so the active-state background still
+     shows. Picked-mode active state wins on background; the border
+     stays. */
+  .brief-pill[data-feasibility="tight"] {
+    border-color: var(--gold-2);
+  }
+  .brief-pill[data-feasibility="late"] {
+    border-color: var(--rust);
+  }
+  .brief-pill-feas {
+    margin-left: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .brief-pill-feas[data-state="tight"] {
+    background: var(--gold-2);
+  }
+  .brief-pill-feas[data-state="late"] {
+    background: var(--rust);
+  }
   .brief-pill-lg {
     flex-direction: column;
     align-items: flex-start;
@@ -2481,6 +2504,54 @@
   .feasibility-flag-bad {
     background: rgba(190, 70, 50, 0.12);
     color: var(--rust);
+  }
+
+  /* Heads-up callout — sits above the editor timeline whenever the
+     rollup has any tight or late legs. Rust border for late, gold for
+     tight. Plain list of "<from> → <to> · message" rows so the
+     executive can see at a glance which legs to fix. */
+  .feasibility-callout {
+    border: 1px solid var(--rule-2);
+    border-left-width: 3px;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-top: 8px;
+    background: var(--card);
+  }
+  .feasibility-callout-bad {
+    border-left-color: var(--rust);
+  }
+  .feasibility-callout-tight {
+    border-left-color: var(--gold-2);
+  }
+  .feasibility-callout-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .feasibility-callout-count {
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .feasibility-callout-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .feasibility-callout-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .feasibility-callout-route {
+    font-size: 13px;
+    color: var(--ink-dim);
   }
 
   /* Transit stop card — compact card for transit_departure /
