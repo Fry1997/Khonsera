@@ -4,6 +4,8 @@
 // modules can pull from it without dragging UI deps along.
 
 import type { PlaceSelection } from "@/components/place-picker";
+import type { TransportBookingValue } from "@/components/transport-booking-fields";
+import type { AccommodationBookingValue } from "@/components/accommodation-booking-fields";
 
 // ─────────────────────────────────────────────────────────────────────
 // Kinds + sub-roles
@@ -38,15 +40,14 @@ export type Anchor = {
   kindOverride: AnchorKind | null;
   roleOverride: AnchorRole | null;
   date: string;
-  // The single "when" field — its meaning depends on timingMode.
-  // For around_then it's ignored.
   time: string;
   timingMode: TimingMode;
   timingModeOverride: boolean;
   durationMins: number;
-  // stay (check_in) only — always arrive_by semantically.
   checkOutDate: string;
   checkOutTime: string;
+  notes: string | null;
+  accommodation: AccommodationBookingValue | null;
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -93,14 +94,11 @@ export type Stopover = {
 
 export type BriefTransition = {
   mode: TransitionMode;
-  // For station-/airport-based modes, the user's intent for the legs
-  // at each end of the main service:
-  //   localBefore — origin → departure terminal
-  //   localAfter  — arrival terminal → destination
-  // The two can differ (drive to your local station, walk from Euston
-  // to the hotel) — that's the point of having two.
   localBefore: LocalMode;
   localAfter: LocalMode;
   booked: boolean;
   booking: BriefBooking;
+  // Rich booking via the full transport modal (same form as planning).
+  // When set, takes precedence over the simple `booking` fields.
+  transportBooking: TransportBookingValue | null;
 };

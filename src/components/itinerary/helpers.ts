@@ -161,6 +161,7 @@ export function emptyTransition(): BriefTransition {
       seat: "",
       price: "",
     },
+    transportBooking: null,
   };
 }
 
@@ -177,6 +178,8 @@ export function emptyAnchor(date: string): Anchor {
     durationMins: 60,
     checkOutDate: nextDay(date),
     checkOutTime: "11:00",
+    notes: null,
+    accommodation: null,
   };
 }
 
@@ -218,6 +221,8 @@ export function stopoverAsAnchor(sv: Stopover, uid: string): Anchor {
     durationMins: sv.durationMins,
     checkOutDate: "",
     checkOutTime: "",
+    notes: null,
+    accommodation: null,
   };
 }
 

@@ -317,6 +317,11 @@ const briefSchema = z.object({
   title: z.string().trim().max(200).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
   timezone: z.string().min(1).max(80),
+  base_location_id: z.string().uuid().nullable().optional(),
+  be_home_by: z
+    .object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) })
+    .nullable()
+    .optional(),
 });
 
 type BriefTransitionInput = z.infer<typeof briefTransitionSchema>;
@@ -450,19 +455,24 @@ export async function createItineraryFromBrief(
     after: itinerary,
   });
 
-  const { data: profile } = await supabase
-    .from("travel_profiles")
-    .select(
-      "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
-    )
-    .eq("user_id", ctx.userId)
-    .eq("workspace_id", ctx.workspaceId)
-    .maybeSingle();
-  const homeId =
-    profile?.default_drive_origin_location_id ??
-    profile?.default_rail_origin_location_id ??
-    profile?.default_return_location_id ??
-    null;
+  // Use the explicit base_location_id from the brief when provided;
+  // fall back to the travel profile for backward compat.
+  let homeId = parsed.value.base_location_id ?? null;
+  if (!homeId) {
+    const { data: profile } = await supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    homeId =
+      profile?.default_drive_origin_location_id ??
+      profile?.default_rail_origin_location_id ??
+      profile?.default_return_location_id ??
+      null;
+  }
 
   type StopType =
     | "start"
@@ -609,6 +619,28 @@ export async function createItineraryFromBrief(
         role: a.role ?? null,
         timing_mode: a.timing_mode,
       },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+  }
+
+  // "Be home by" constraint → an end stop at the base location.
+  if (parsed.value.be_home_by && homeId) {
+    const bhb = parsed.value.be_home_by;
+    const endTime = isoFromLocal(bhb.date, bhb.time, tz);
+    stopRows.push({
+      sequence: seq++,
+      type: "start",
+      location_id: homeId,
+      customer_id: null,
+      customer_site_id: null,
+      title: null,
+      start_time: endTime,
+      end_time: null,
+      duration_minutes: null,
+      is_time_fixed: true,
+      notes: null,
+      metadata: { kind: "be_home_by" },
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });

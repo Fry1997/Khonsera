@@ -3148,6 +3148,28 @@
     color: var(--rust);
   }
 
+  .booking-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .booking-modal {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+  }
+
   /* Custom-duration input — sits at the end of a duration pill row so
      the user can type any number of minutes when no preset fits.
      Highlights when the current value doesn't match any preset. */

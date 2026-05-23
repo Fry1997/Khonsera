@@ -107,10 +107,9 @@ export function anchorToStopUpdate(
     metadata: {
       kind,
       role,
-      // Only stamp timing_mode in metadata when the user explicitly
-      // overrode it — otherwise we let inference re-run on read.
       timing_mode: anchor.timingModeOverride ? persistedTimingMode : null,
     },
+    notes: anchor.notes ?? null,
   };
 }
 

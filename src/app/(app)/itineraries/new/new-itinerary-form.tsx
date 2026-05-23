@@ -44,6 +44,11 @@ import {
 } from "@/components/itinerary";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import type { PlaceSelection } from "@/components/place-picker";
+import {
+  BaseLocationCard,
+  type BaseLocation,
+} from "./base-location-card";
+import { BeHomeByField } from "./be-home-by-field";
 
 export function NewItineraryBrief({
   customers,
@@ -53,19 +58,18 @@ export function NewItineraryBrief({
   homeLabel,
   railHubLabel,
   flightHubLabel,
+  baseLocations,
+  defaultBaseId,
 }: {
   customers: PlacePickerCustomer[];
   customerSites: PlacePickerCustomerSite[];
   locations: PlacePickerLocation[];
   timezone: string;
   homeLabel: string | null;
-  // Labels for the user's default rail station / airport. The spine
-  // surfaces them inside train / tube / flight via rows so a planning
-  // user sees "via Wellingborough (WLB)" without having to manually
-  // add a station stop. Either can be null when the user hasn't set
-  // a default in settings.
   railHubLabel?: string | null;
   flightHubLabel?: string | null;
+  baseLocations: BaseLocation[];
+  defaultBaseId: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -85,6 +89,19 @@ export function NewItineraryBrief({
   const [titleOverride, setTitleOverride] = useState("");
   const [notes, setNotes] = useState("");
   const [notesOn, setNotesOn] = useState(false);
+
+  // Base location — explicit pick from home/office locations.
+  const [selectedBaseId, setSelectedBaseId] = useState<string | null>(
+    defaultBaseId ?? baseLocations[0]?.id ?? null,
+  );
+  const selectedBase = baseLocations.find((b) => b.id === selectedBaseId);
+  const baseName = selectedBase?.name ?? homeLabel ?? "Home";
+
+  // "Be home by" constraint.
+  const [beHomeBy, setBeHomeBy] = useState<{
+    date: string;
+    time: string;
+  } | null>(null);
 
   const getTransition = (fromUid: string, toUid: string): BriefTransition =>
     transitions.get(transitionKey(fromUid, toUid)) ?? emptyTransition();
@@ -345,7 +362,7 @@ export function NewItineraryBrief({
             timing_mode: isCheckIn ? ("arrive_by" as const) : mode,
             time:
               mode === "around_then" && !isCheckIn ? null : a.time,
-            notes: null,
+            notes: a.notes || null,
             ...placeArgs,
           };
           if (isCheckIn) {
@@ -393,12 +410,39 @@ export function NewItineraryBrief({
             toUid: string,
             t: BriefTransition,
           ) => {
-            const meaningful = t.mode !== "auto" || t.booked;
+            const meaningful =
+              t.mode !== "auto" || t.booked || t.transportBooking != null;
             if (!meaningful) return;
-            const booking =
-              t.booked &&
-              t.booking.departTime &&
-              t.booking.arriveTime
+
+            // Rich transport booking takes precedence over simple fields.
+            const tb = t.transportBooking;
+            const booking = tb
+              ? {
+                  provider: tb.provider || null,
+                  reference: tb.reference || null,
+                  service_number:
+                    tb.segments[0]?.service_number || null,
+                  depart_time:
+                    tb.segments[0]?.departure_at
+                      ? new Date(tb.segments[0].departure_at)
+                          .toTimeString()
+                          .slice(0, 5)
+                      : "",
+                  arrive_time:
+                    tb.segments[tb.segments.length - 1]?.arrival_at
+                      ? new Date(
+                          tb.segments[tb.segments.length - 1].arrival_at,
+                        )
+                          .toTimeString()
+                          .slice(0, 5)
+                      : "",
+                  seat: tb.seat || null,
+                  price: tb.price ? Number(tb.price) : null,
+                  currency: "GBP" as const,
+                }
+              : t.booked &&
+                  t.booking.departTime &&
+                  t.booking.arriveTime
                 ? {
                     provider: t.booking.provider || null,
                     reference: t.booking.reference || null,
@@ -406,14 +450,16 @@ export function NewItineraryBrief({
                     depart_time: t.booking.departTime,
                     arrive_time: t.booking.arriveTime,
                     seat: t.booking.seat || null,
-                    price: t.booking.price ? Number(t.booking.price) : null,
+                    price: t.booking.price
+                      ? Number(t.booking.price)
+                      : null,
                     currency: "GBP" as const,
                   }
                 : null;
             out.push({
               from_client_id: fromUid,
               to_client_id: toUid,
-              mode: t.mode,
+              mode: tb ? (tb.mode as TransitionMode) : t.mode,
               local_before: t.localBefore,
               local_after: t.localAfter,
               booking,
@@ -485,6 +531,8 @@ export function NewItineraryBrief({
         title: titleOverride.trim() || null,
         notes: notesOn ? notes.trim() || null : null,
         timezone,
+        base_location_id: selectedBaseId,
+        be_home_by: beHomeBy,
       });
 
       if (!result.ok) {
@@ -501,6 +549,13 @@ export function NewItineraryBrief({
       {/* Left — the anchor stack */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <FormError message={feedback?.message} />
+
+        <BaseLocationCard
+          baseLocations={baseLocations}
+          defaultBaseId={defaultBaseId}
+          selectedBaseId={selectedBaseId}
+          onSelect={setSelectedBaseId}
+        />
 
         <header style={{ marginBottom: 4 }}>
           <span className="uc">Anchors · {anchors.length}</span>
@@ -522,14 +577,9 @@ export function NewItineraryBrief({
 
         {anchors.map((anchor, i) => {
           const next = anchors[i + 1];
-          // For the first anchor with a place picked, surface the
-          // implicit "from home" transition above the card so the user
-          // can pick a mode (or add a booked ticket) for the leg
-          // before the brief even starts.
-          const showHomeVia = i === 0 && anchor.place != null;
           return (
             <div key={anchor.uid}>
-              {showHomeVia ? (
+              {i === 0 ? (
                 <TransitionRow
                   from={null}
                   to={anchor}
@@ -537,7 +587,10 @@ export function NewItineraryBrief({
                   onChange={(patch) =>
                     setTransition(HOME_UID, anchor.uid, patch)
                   }
-                  fromVirtualLabel={homeLabel ?? "Home"}
+                  fromVirtualLabel={baseName}
+                  customers={customers}
+                  customerSites={customerSites}
+                  locations={locations}
                 />
               ) : null}
               <AnchorCard
@@ -575,6 +628,9 @@ export function NewItineraryBrief({
                             onChange={(patch) =>
                               setTransition(anchor.uid, svUid, patch)
                             }
+                            customers={customers}
+                            customerSites={customerSites}
+                            locations={locations}
                           />
                           <StopoverCard
                             stopover={sv}
@@ -605,6 +661,9 @@ export function NewItineraryBrief({
                             onChange={(patch) =>
                               setTransition(svUid, next.uid, patch)
                             }
+                            customers={customers}
+                            customerSites={customerSites}
+                            locations={locations}
                           />
                         </>
                       );
@@ -626,6 +685,9 @@ export function NewItineraryBrief({
                           onChange={(patch) =>
                             setTransition(anchor.uid, next.uid, patch)
                           }
+                          customers={customers}
+                          customerSites={customerSites}
+                          locations={locations}
                         />
                         <button
                           type="button"
@@ -646,6 +708,12 @@ export function NewItineraryBrief({
             </div>
           );
         })}
+
+        <BeHomeByField
+          value={beHomeBy}
+          onChange={setBeHomeBy}
+          defaultDate={anchors[anchors.length - 1]?.date ?? defaultAnchorDate()}
+        />
 
         {/* Notes + title — collapsed, low-priority */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -761,6 +829,8 @@ export function NewItineraryBrief({
           timezone={timezone}
           railHubLabel={railHubLabel ?? null}
           flightHubLabel={flightHubLabel ?? null}
+          baseName={baseName}
+          beHomeBy={beHomeBy}
         />
       </aside>
     </div>

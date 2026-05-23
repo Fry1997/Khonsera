@@ -25,12 +25,10 @@ export function JourneySpine({
   stopovers,
   titleOverride,
   timezone,
-  // Labels for the user's default rail station / airport. When the
-  // leg is by train / tube / flight we tag the via row with
-  // "via {hub}" so the spine shows the station even before a real
-  // transit_departure stop has been inserted into the itinerary.
   railHubLabel,
   flightHubLabel,
+  baseName,
+  beHomeBy,
 }: {
   anchors: Anchor[];
   transitions: Map<string, BriefTransition>;
@@ -39,6 +37,8 @@ export function JourneySpine({
   timezone: string;
   railHubLabel?: string | null;
   flightHubLabel?: string | null;
+  baseName?: string;
+  beHomeBy?: { date: string; time: string } | null;
 }) {
   const haveAny = anchors.some((a) => a.place != null);
   if (!haveAny) {
@@ -97,8 +97,8 @@ export function JourneySpine({
         <SpineStop
           time="—"
           eyebrow="Start"
-          title="Home"
-          sub="From your travel profile"
+          title={baseName || "Home"}
+          sub="Where your day begins"
           dotKind="default"
         />
         {sorted.map((a, i) => {
@@ -112,7 +112,7 @@ export function JourneySpine({
           // no booking exists — nothing meaningful to show yet.
           const sv = prev ? stopovers.get(transitionKey(prev.uid, a.uid)) : undefined;
           const showVia = (t?: BriefTransition) =>
-            !!t && (t.mode !== "auto" || t.booked);
+            !!t && (t.mode !== "auto" || t.booked || t.transportBooking != null);
           let viaRow: ReactNode = null;
           if (prev && sv) {
             const svUid = stopoverUid(prev.uid, a.uid);
@@ -175,6 +175,10 @@ export function JourneySpine({
                           a.checkOutTime || "11:00"
                         }`
                       : ""
+                  }${
+                    a.accommodation?.reference
+                      ? ` · ref ${a.accommodation.reference}`
+                      : ""
                   }`}
                   dotKind="default"
                 />
@@ -214,6 +218,15 @@ export function JourneySpine({
             </Fragment>
           );
         })}
+        {beHomeBy ? (
+          <SpineStop
+            time={beHomeBy.time}
+            eyebrow="Be home by"
+            title={baseName || "Home"}
+            sub={fmtShortDate(beHomeBy.date, timezone)}
+            dotKind="default"
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -242,15 +255,26 @@ function SpineVia({
           transition.mode === "bus"
         ? railHubLabel
         : null;
-  const sub = transition.booked
-    ? `${transition.booking.serviceNumber || "ticket"}${
-        transition.booking.departTime && transition.booking.arriveTime
-          ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
+  const tb = transition.transportBooking;
+  const sub = tb
+    ? `${tb.segments[0]?.service_number || "ticket"}${
+        tb.segments[0]?.departure_at
+          ? ` · ${new Date(tb.segments[0].departure_at).toTimeString().slice(0, 5)}`
+          : ""
+      }${
+        tb.segments[tb.segments.length - 1]?.arrival_at
+          ? ` → ${new Date(tb.segments[tb.segments.length - 1].arrival_at).toTimeString().slice(0, 5)}`
           : ""
       }`
-    : hubLabel
-      ? `from ${hubLabel}`
-      : "intent — Khonsera fills in distance + time";
+    : transition.booked
+      ? `${transition.booking.serviceNumber || "ticket"}${
+          transition.booking.departTime && transition.booking.arriveTime
+            ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
+            : ""
+        }`
+      : hubLabel
+        ? `from ${hubLabel}`
+        : "intent — Khonsera fills in distance + time";
   return (
     <>
       <div className="tl-time" />
@@ -262,7 +286,7 @@ function SpineVia({
       <div className="tl-content" style={{ padding: "2px 0 8px" }}>
         <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
           via {label}
-          {transition.booked ? " · booked" : ""}
+          {transition.booked || transition.transportBooking ? " · booked" : ""}
         </p>
         <p className="tl-sub" style={{ marginTop: 0 }}>
           {sub}

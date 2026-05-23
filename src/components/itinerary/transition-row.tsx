@@ -17,6 +17,18 @@ import type {
   TransitionMode,
 } from "./types";
 import { checkLegFeasibility, type Feasibility } from "@/lib/feasibility/check";
+import {
+  TransportBookingFields,
+  emptyTransportBooking,
+  MODE_LABELS as TB_MODE_LABELS,
+  ModeIcon as TBModeIcon,
+  type TransportBookingValue,
+} from "@/components/transport-booking-fields";
+import type {
+  PlacePickerCustomer,
+  PlacePickerCustomerSite,
+  PlacePickerLocation,
+} from "@/components/place-picker";
 
 // Per-mode duration hints — populated by the editor via the
 // useRoutePreviews hook. Each entry is either a resolved preview
@@ -39,18 +51,12 @@ export function TransitionRow({
   to,
   transition,
   onChange,
-  // Optional label for the from-anchor when it isn't a real anchor —
-  // e.g. the implicit "home" leg before the first anchor.
   fromVirtualLabel,
-  // Per-mode duration hints. When provided, each mode pill in the
-  // popover renders a tiny "12m" / "—" tail. Callers (the editor)
-  // wire this via the useRoutePreviews hook; the brief leaves it
-  // undefined so no hints appear.
   modePreviews,
-  // Fires when the popover opens, so the consumer can prefetch
-  // previews for any modes it hasn't seen yet. Optional — without
-  // it the popover stays silent (which is fine for the brief).
   onOpenChange,
+  customers,
+  customerSites,
+  locations,
 }: {
   from: Anchor | null;
   to: Anchor;
@@ -59,8 +65,12 @@ export function TransitionRow({
   fromVirtualLabel?: string;
   modePreviews?: ModePreviewMap;
   onOpenChange?: (open: boolean) => void;
+  customers?: PlacePickerCustomer[];
+  customerSites?: PlacePickerCustomerSite[];
+  locations?: PlacePickerLocation[];
 }) {
   const [open, setOpen] = useState(false);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Surface popover open-state to the consumer so it can prefetch
@@ -127,13 +137,17 @@ export function TransitionRow({
       >
         <Icon size={14} />
         <span>
-          {transition.booked
-            ? `${opt?.label ?? "Booked"} · ${
-                transition.booking.serviceNumber || "ticket"
+          {transition.transportBooking
+            ? `${TB_MODE_LABELS[transition.transportBooking.mode]} · ${
+                transition.transportBooking.segments[0]?.service_number || "booked"
               }`
-            : isUnset
-              ? "Set a travel mode"
-              : `via ${opt?.label}`}
+            : transition.booked
+              ? `${opt?.label ?? "Booked"} · ${
+                  transition.booking.serviceNumber || "ticket"
+                }`
+              : isUnset
+                ? "Set a travel mode"
+                : `via ${opt?.label}`}
         </span>
         {showLocalHint ? (
           <span className="transition-local-hint">
@@ -148,7 +162,7 @@ export function TransitionRow({
             )}
           </span>
         ) : null}
-        {transition.booked ? (
+        {transition.booked || transition.transportBooking ? (
           <span className="pill pill-gold transition-booked-badge">
             <span className="dot" />
             booked
@@ -287,38 +301,96 @@ export function TransitionRow({
             </div>
           ) : null}
 
-          <label className="transition-booked-toggle">
-            <input
-              type="checkbox"
-              checked={transition.booked}
-              onChange={(e) =>
-                onChange({
-                  booked: e.target.checked,
-                  // Default ticket mode to non-auto when toggling on.
-                  ...(e.target.checked && transition.mode === "auto"
-                    ? { mode: "train" as TransitionMode }
-                    : {}),
-                })
-              }
-            />
-            <span>This is already booked</span>
-            <span className="brief-helper" style={{ margin: 0, fontSize: 12 }}>
-              Adds the ticket to Bookings and locks the editor onto these times.
-            </span>
-          </label>
-
-          {transition.booked ? (
-            <BookedFields
-              fromAnchor={from}
-              toAnchor={to}
-              booking={transition.booking}
-              onChange={(patch) =>
-                onChange({
-                  booking: { ...transition.booking, ...patch },
-                })
-              }
-            />
-          ) : null}
+          {customers && customerSites && locations ? (
+            <>
+              {transition.transportBooking ? (
+                <div className="transition-pop-section">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span className="uc">
+                      Booking · {TB_MODE_LABELS[transition.transportBooking.mode]}
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        className="text-xs hover:underline"
+                        style={{ color: "var(--ink-dim)" }}
+                        onClick={() => setBookingModalOpen(true)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs hover:underline"
+                        style={{ color: "var(--rust)" }}
+                        onClick={() =>
+                          onChange({ transportBooking: null, booked: false })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <p className="brief-helper" style={{ margin: "4px 0 0" }}>
+                    {transition.transportBooking.segments[0]?.from_location_name
+                      ? `${transition.transportBooking.segments[0].from_location_name} → ${transition.transportBooking.segments[0].to_location_name}`
+                      : transition.transportBooking.arrival?.label ?? "Configured"}
+                    {transition.transportBooking.segments[0]?.service_number
+                      ? ` · ${transition.transportBooking.segments[0].service_number}`
+                      : ""}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setBookingModalOpen(true)}
+                  style={{ alignSelf: "flex-start" }}
+                >
+                  + Add a booked ticket
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <label className="transition-booked-toggle">
+                <input
+                  type="checkbox"
+                  checked={transition.booked}
+                  onChange={(e) =>
+                    onChange({
+                      booked: e.target.checked,
+                      ...(e.target.checked && transition.mode === "auto"
+                        ? { mode: "train" as TransitionMode }
+                        : {}),
+                    })
+                  }
+                />
+                <span>This is already booked</span>
+                <span className="brief-helper" style={{ margin: 0, fontSize: 12 }}>
+                  Adds the ticket to Bookings and locks the editor onto these
+                  times.
+                </span>
+              </label>
+              {transition.booked ? (
+                <BookedFields
+                  fromAnchor={from}
+                  toAnchor={to}
+                  booking={transition.booking}
+                  onChange={(patch) =>
+                    onChange({
+                      booking: { ...transition.booking, ...patch },
+                    })
+                  }
+                />
+              ) : null}
+            </>
+          )}
 
           <div className="transition-pop-foot">
             <button
@@ -328,7 +400,7 @@ export function TransitionRow({
             >
               Done
             </button>
-            {transition.mode !== "auto" || transition.booked ? (
+            {transition.mode !== "auto" || transition.booked || transition.transportBooking ? (
               <button
                 type="button"
                 className="transition-pop-clear"
@@ -338,6 +410,7 @@ export function TransitionRow({
                     localBefore: "auto",
                     localAfter: "auto",
                     booked: false,
+                    transportBooking: null,
                   });
                 }}
               >
@@ -346,6 +419,27 @@ export function TransitionRow({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {bookingModalOpen && customers && customerSites && locations ? (
+        <TransportBookingModal
+          initial={transition.transportBooking}
+          fromLabel={
+            fromVirtualLabel ?? from?.place?.label ?? "Previous stop"
+          }
+          customers={customers}
+          customerSites={customerSites}
+          locations={locations}
+          onConfirm={(tb) => {
+            onChange({
+              transportBooking: tb,
+              booked: true,
+              mode: tb.mode === "drive" ? "drive" : tb.mode as TransitionMode,
+            });
+            setBookingModalOpen(false);
+          }}
+          onCancel={() => setBookingModalOpen(false)}
+        />
       ) : null}
     </div>
   );
@@ -384,6 +478,73 @@ function LocalLegPicker({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function TransportBookingModal({
+  initial,
+  fromLabel,
+  customers,
+  customerSites,
+  locations,
+  onConfirm,
+  onCancel,
+}: {
+  initial: TransportBookingValue | null;
+  fromLabel: string;
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
+  onConfirm: (value: TransportBookingValue) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState<TransportBookingValue>(
+    initial ?? emptyTransportBooking("train"),
+  );
+
+  return (
+    <div
+      className="booking-modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="booking-modal" role="dialog">
+        <header style={{ marginBottom: 12 }}>
+          <p className="uc">Booked ticket · From {fromLabel}</p>
+          <h3 className="h2" style={{ marginTop: 4 }}>
+            {TB_MODE_LABELS[value.mode]} ticket
+          </h3>
+        </header>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <TransportBookingFields
+            value={value}
+            onChange={setValue}
+            fromLabel={fromLabel}
+            customers={customers}
+            customerSites={customerSites}
+            locations={locations}
+            idPrefix="brief-tb"
+          />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <button
+            type="button"
+            className="btn btn-gold btn-sm"
+            onClick={() => onConfirm(value)}
+          >
+            Confirm
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
