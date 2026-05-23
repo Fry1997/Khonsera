@@ -1695,30 +1695,30 @@
   /* Display heads inside the desktop shell */
   .desk-h1 {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 42px;
     line-height: 1.05;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.035em;
     color: var(--ink);
     margin: 0;
   }
   .desk-h1 em {
     color: var(--gold);
+    font-style: normal;
     font-weight: 500;
   }
   .desk-h2 {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 26px;
     line-height: 1.1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--ink);
     margin: 0;
   }
   .desk-h2 em {
     color: var(--gold);
+    font-style: normal;
     font-weight: 500;
   }
 
