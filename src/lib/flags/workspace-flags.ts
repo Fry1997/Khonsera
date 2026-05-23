@@ -3,7 +3,6 @@
 // have a single place to add new flags. Global feature flags still live in
 // src/lib/features.ts; this module is per-workspace.
 
-import { cache } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,28 +23,28 @@ export type WorkspaceConfig = {
   currency: string;
 };
 
-export const getWorkspaceConfig = cache(
-  async (workspaceId: string): Promise<WorkspaceConfig> => {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("workspace_settings")
-      .select("flags, timezone, currency")
-      .eq("workspace_id", workspaceId)
-      .single();
+export async function getWorkspaceConfig(
+  workspaceId: string,
+): Promise<WorkspaceConfig> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workspace_settings")
+    .select("flags, timezone, currency")
+    .eq("workspace_id", workspaceId)
+    .single();
 
-    if (error || !data) {
-      // Shouldn't happen because handle_new_workspace() seeds it, but degrade
-      // gracefully rather than crashing the request.
-      return { flags: {}, timezone: "Europe/London", currency: "GBP" };
-    }
+  if (error || !data) {
+    // Shouldn't happen because handle_new_workspace() seeds it, but degrade
+    // gracefully rather than crashing the request.
+    return { flags: {}, timezone: "Europe/London", currency: "GBP" };
+  }
 
-    return {
-      flags: workspaceFlagsSchema.parse(data.flags ?? {}),
-      timezone: data.timezone,
-      currency: data.currency,
-    };
-  },
-);
+  return {
+    flags: workspaceFlagsSchema.parse(data.flags ?? {}),
+    timezone: data.timezone,
+    currency: data.currency,
+  };
+}
 
 export async function isFlagEnabled(
   workspaceId: string,
