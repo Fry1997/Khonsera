@@ -2,53 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Khonsera — design tokens & atoms, exact match to the reference identity
- * sheet. The canonical five-colour palette is:
+/* Khonsera — design tokens & atoms, aligned to the Visual Identity brand
+ * book (Edition I · MMXXVI). The canonical "dusk" palette is the default;
+ * "sahara" (sun-up) and "dark" (midnight) are the two sanctioned alternates.
  *
- *   #1C1C1C  ink            primary text, brand black
- *   #C89D4D  gold           the moon, the accent, the lead
- *   #E9DFC6  sand           secondary surface, dividers
- *   #F6F1E6  paper          primary app ground
- *   #475569  slate          cool foil for chips / links
+ *   Khonsera Gold      #B8893F   the moon, the accent, the lead
+ *   Walnut Ink         #1E1812   primary text, brand black
+ *   Dusk Paper         #EFE6D0   primary app ground
+ *   Bone               #F7EED7   secondary paper / card highlight
+ *   Terracotta         #C25C3A   rare salt — celebratory, alerts
+ *   Dusk Plum          #5C3A48   evening depth — overnight contexts
+ *   Khorasan Sage      #687856   quiet success
  *
- * Themes: [data-theme="light"] (default) | [data-theme="dark"]
- * The legacy --terra / --rule-2 / --plum tokens stay so existing screens
- * keep resolving; they alias onto the canonical palette where it makes
- * sense (terra → gold for hot accents, plum → slate for cool ones). */
+ * Gold ramp:  100 #EFDFB1 · 200 #D4AE6A · 400 #B8893F · 600 #936820 · 800 #5C3F10
+ *
+ * Themes:
+ *   [data-theme="light"]   — Dusk (default, candlelit warm)
+ *   [data-theme="sahara"]  — Sun-up (papyrus + ochre)
+ *   [data-theme="dark"]    — Midnight (aubergine ground, brass moon)
+ *
+ * Per the composition rule (p. 11), paper dominates, ink frames, gold is
+ * the punctuation. Terracotta and plum are rare salts — one per composition,
+ * never both. */
 @layer base {
   :root,
   [data-theme="light"] {
-    /* canonical paper + ink */
-    --paper: #f6f1e6;
-    --paper-2: #ece4d2;
-    --sand: #e9dfc6;
-    --sand-2: #d9cdb1;
-    --card: #fbf7ec;
-    --card-2: #f2ead6;
+    /* Dusk — the canonical palette */
+    --paper: #efe6d0;        /* Dusk Paper */
+    --paper-2: #e6dabf;
+    --sand: #f7eed7;         /* Bone */
+    --sand-2: #e8d9b5;
+    --card: #f4ecd6;
+    --card-2: #ece0bd;
 
-    --ink: #1c1c1c;
-    --ink-2: #2a2620;
-    --ink-dim: #6e6557;
-    --ink-faint: #a39681;
+    --ink: #1e1812;          /* Walnut Ink */
+    --ink-2: #2c241a;
+    --ink-dim: #6b5c46;
+    --ink-faint: #a2917a;
 
-    --rule: #decfab;
-    --rule-2: #c9b989;
+    --rule: #ddc99e;
+    --rule-2: #c8b074;
 
-    /* gold — the moon */
-    --gold: #c89d4d;
-    --gold-2: #a77e2f;
-    --gold-soft: #f0e1b7;
-    --gold-tint: rgba(200, 157, 77, 0.10);
+    /* Gold — the moon. Khonsera Gold #B8893F is the 400 step. */
+    --gold-100: #efdfb1;
+    --gold-200: #d4ae6a;
+    --gold: #b8893f;         /* 400 */
+    --gold-2: #936820;       /* 600 */
+    --gold-800: #5c3f10;
+    --gold-soft: #efdfb1;
+    --gold-tint: rgba(184, 137, 63, 0.10);
 
-    /* cool foil — slate (kept for non-warm accents like links/chips) */
+    /* Terracotta — celebratory salt; also the notification badge per
+       p. 20. Not a primary palette colour; use sparingly. */
+    --terra: #c25c3a;
+    --terra-2: #a14c2c;
+    --terra-deep: #7d3a1e;
+
+    /* Plum — overnight, ceremony. Rare. */
+    --plum: #5c3a48;
+    --plum-soft: #e3d5db;
+
+    /* Cool foil — slate, retained for non-warm chips and links. Not on
+       the canonical six but used inside the app for state contrast. */
     --slate: #475569;
     --slate-2: #334155;
     --slate-soft: #dde3ea;
 
-    /* status families */
-    --sage: #6b7a4e;
-    --sage-2: #dce2c8;
-    --sage-soft: #dce2c8;
+    /* Status families — sage for success, amber for caution, rust for
+       danger. Sage = Khorasan Sage. */
+    --sage: #687856;
+    --sage-2: #dce0cd;
+    --sage-soft: #dce0cd;
     --amber: #a87526;
     --amber-2: #f0e0b5;
     --amber-soft: #f0e0b5;
@@ -56,56 +80,115 @@
     --rust-2: #f0d6cf;
     --rust-soft: #f0d6cf;
 
-    /* legacy aliases — old code referred to these; route them onto the
-       canonical palette so the visual language stays unified. */
-    --terra: var(--gold);
-    --terra-2: var(--gold-2);
-    --terra-deep: var(--gold-2);
-    --plum: var(--slate);
-    --plum-soft: var(--slate-soft);
+    --ink-soft: rgba(30, 24, 18, 0.06);
+    --gold-soft-alpha: rgba(184, 137, 63, 0.16);
+    --shadow-sm: 0 1px 3px rgba(30, 24, 18, 0.06);
+    --shadow: 0 4px 16px rgba(30, 24, 18, 0.09);
+    --shadow-lg: 0 16px 40px rgba(30, 24, 18, 0.14);
 
-    --ink-soft: rgba(28, 28, 28, 0.06);
-    --gold-soft-alpha: rgba(200, 157, 77, 0.16);
-    --shadow-sm: 0 1px 3px rgba(28, 28, 28, 0.06);
-    --shadow: 0 4px 16px rgba(28, 28, 28, 0.08);
-    --shadow-lg: 0 16px 40px rgba(28, 28, 28, 0.12);
-
-    --display: var(--font-display), "Playfair Display", "Lora", Georgia, serif;
-    --serif: var(--font-serif), "Lora", Georgia, serif;
+    /* Type stack — Satoshi for display + wordmark + headlines, Inter for
+       body & UI, JetBrains Mono for codes & eyebrows, Cormorant Garamond
+       for decorative serif italic. (Brand book pp. 13–15.) */
+    --display: "Satoshi", var(--font-sans), -apple-system, system-ui, sans-serif;
+    --serif: var(--font-serif), "Cormorant Garamond", Georgia, serif;
     --sans: var(--font-sans), "Inter", -apple-system, system-ui, sans-serif;
     --mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   }
 
-  /* Night theme — kept for the profile-page palette toggle. Same gold +
-     slate, deep walnut paper, paper-as-ink. */
+  /* Sun-up — for daylight contexts: in-flight magazines, beach hotels,
+     white-walled studio shoots. Gold deepens to ochre; paper bleaches to
+     papyrus. (Brand book p. 12.) */
+  [data-theme="sahara"] {
+    --paper: #f3e8c8;
+    --paper-2: #ecdeb1;
+    --sand: #fbf1d4;
+    --sand-2: #ecdeb1;
+    --card: #f8ecc4;
+    --card-2: #ecdeb1;
+
+    --ink: #20180e;
+    --ink-2: #483a23;
+    --ink-dim: #816f48;
+    --ink-faint: #b6a576;
+
+    --rule: #d8c184;
+    --rule-2: #b89c52;
+
+    --gold-100: #f4e2a2;
+    --gold-200: #d4ae6a;
+    --gold: #a87826;
+    --gold-2: #7f5618;
+    --gold-800: #533710;
+    --gold-soft: #f0dca1;
+    --gold-tint: rgba(168, 120, 38, 0.10);
+
+    --terra: #b85a31;
+    --terra-2: #94431f;
+    --terra-deep: #732f12;
+    --plum: #5a3540;
+    --plum-soft: #e6d0d0;
+
+    --slate: #6b7a8c;
+    --slate-2: #4f5d6e;
+    --slate-soft: #d6dee6;
+
+    --sage: #6b7449;
+    --sage-2: #e1ddb6;
+    --sage-soft: #e1ddb6;
+    --amber: #a87526;
+    --amber-2: #f0e0b5;
+    --amber-soft: #f0e0b5;
+    --rust: #94431f;
+    --rust-2: #f0d6cf;
+    --rust-soft: #f0d6cf;
+
+    --ink-soft: rgba(32, 24, 14, 0.07);
+    --gold-soft-alpha: rgba(168, 120, 38, 0.16);
+    --shadow-sm: 0 1px 3px rgba(32, 24, 14, 0.07);
+    --shadow: 0 4px 16px rgba(32, 24, 14, 0.10);
+    --shadow-lg: 0 16px 40px rgba(32, 24, 14, 0.15);
+  }
+
+  /* Midnight — overnight flights, premium tickets, hotel keycards, the
+     after-hours newsletter. Aubergine ground, brass moon. Reserved.
+     (Brand book p. 12.) */
   [data-theme="dark"] {
-    --paper: #14110d;
-    --paper-2: #0c0a07;
-    --sand: #1f1a12;
-    --sand-2: #2a2318;
-    --card: #1b170f;
-    --card-2: #221c13;
+    --paper: #1f1825;
+    --paper-2: #15101a;
+    --sand: #2a2032;
+    --sand-2: #362841;
+    --card: #251c2d;
+    --card-2: #2d2236;
 
-    --ink: #f5eedc;
-    --ink-2: #e2d6bb;
-    --ink-dim: #98876a;
-    --ink-faint: #5d5340;
+    --ink: #f4e8cf;
+    --ink-2: #ddd0b6;
+    --ink-dim: #97896e;
+    --ink-faint: #6c5e47;
 
-    --rule: #2e2618;
-    --rule-2: #3e331f;
+    --rule: #38293d;
+    --rule-2: #4a3850;
 
-    --gold: #d9b065;
-    --gold-2: #bd9748;
-    --gold-soft: #2d2418;
-    --gold-tint: rgba(217, 176, 101, 0.10);
+    --gold-100: #3a2c1c;
+    --gold-200: #6e521f;
+    --gold: #d4a04d;
+    --gold-2: #b07b2a;
+    --gold-800: #f0c87a;
+    --gold-soft: #3b2f1c;
+    --gold-tint: rgba(212, 160, 77, 0.12);
+
+    --terra: #d77450;
+    --terra-2: #c25c3a;
+    --terra-deep: #9d4225;
+    --plum: #905d72;
+    --plum-soft: #392332;
 
     --slate: #8b9bb0;
     --slate-2: #6f7e92;
     --slate-soft: #2a3140;
 
-    --sage: #a7b385;
-    --sage-2: #28301b;
-    --sage-soft: #28301b;
+    --sage: #93a07a;
+    --sage-2: #2f3a2a;
+    --sage-soft: #2f3a2a;
     --amber: #d9a85a;
     --amber-2: #3a2f15;
     --amber-soft: #3a2f15;
@@ -113,14 +196,8 @@
     --rust-2: #3a1f18;
     --rust-soft: #3a1f18;
 
-    --terra: var(--gold);
-    --terra-2: var(--gold-2);
-    --terra-deep: var(--gold-2);
-    --plum: var(--slate);
-    --plum-soft: var(--slate-soft);
-
-    --ink-soft: rgba(245, 238, 220, 0.06);
-    --gold-soft-alpha: rgba(217, 176, 101, 0.18);
+    --ink-soft: rgba(244, 232, 207, 0.07);
+    --gold-soft-alpha: rgba(212, 160, 77, 0.18);
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
     --shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
     --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.65);
@@ -421,17 +498,21 @@
     font-style: normal;
   }
 
-  /* Khonsera brand lockup — moon + wordmark, gold "a" tail. */
+  /* Khonsera brand lockup — moon + KHONSERA wordmark. Set in Satoshi 500,
+     uppercase, tracked, monocolour ink. The mark is the only gold element
+     (brand book p. 9 — "Don't recolour. Gold or ink only; never invent
+     palettes."). The KhonseraBrand React component overrides per-size
+     letter-spacing for true brand-book tracking values. */
   .brand-lockup {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
-    font-size: 22px;
+    font-size: 15px;
     line-height: 1;
-    letter-spacing: -0.015em;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
     color: var(--ink);
   }
   .brand-lockup svg {
@@ -509,31 +590,42 @@
   }
   .display {
     font-family: var(--display);
-    font-style: italic;
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
-
-  /* Wordmark sizes for hero/marketing surfaces */
-  .wordmark {
+  .display-i {
     font-family: var(--display);
     font-style: italic;
     font-weight: 500;
-    font-size: 72px;
-    line-height: 0.95;
-    letter-spacing: -0.025em;
+  }
+
+  /* Wordmark — Satoshi 500, uppercase, tracked. Monocolour ink. The .em
+     span used to receive a gold tint; per the brand book wordmark rule
+     ("Don't recolour. Gold or ink only; never invent palettes.") it now
+     resolves to ink as well. The mark is the only gold element. */
+  .wordmark {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 0.98;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--ink);
   }
   .wordmark .em {
-    color: var(--gold);
-    font-style: italic;
+    color: inherit;
   }
   .wordmark.sm {
-    font-size: 28px;
+    font-size: 22px;
+    letter-spacing: 0.18em;
   }
   .wordmark.md {
-    font-size: 44px;
+    font-size: 34px;
+    letter-spacing: 0.08em;
   }
   .wordmark.lg {
-    font-size: 96px;
+    font-size: 88px;
+    letter-spacing: 0.02em;
   }
 
   /* Luxe ornamental rule — a hairline with a gold dot in the middle, used
