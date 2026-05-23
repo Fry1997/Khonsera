@@ -55,8 +55,9 @@ export default function LandingPage() {
           className="standfirst"
           style={{ maxWidth: 520, fontSize: 18, color: "var(--ink-2)" }}
         >
-          The traveller&rsquo;s evening — <em>plan, book and keep</em> the
-          days a working life is built of.
+          A quiet concierge for the slow blue hour. <em>Plan the in-between
+          hours</em> — the train that might not be running, the taxi at
+          dusk, the careful arithmetic of getting there.
         </p>
       </div>
 
@@ -110,7 +111,7 @@ export default function LandingPage() {
             letterSpacing: 0.02,
           }}
         >
-          Calm. Considered. Confident.
+          Calm. Considered. Precise. Premium.
         </p>
       </div>
     </main>

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { TravelProfileForm } from "./travel-profile-form";
 import { CalendarSection } from "./calendar-section";
+import { ThemePicker } from "@/components/theme-picker";
 
 export default async function SettingsPage({
   searchParams,
@@ -150,6 +151,25 @@ export default async function SettingsPage({
           />
         </div>
       </section>
+
+      {ctx.isStaff ? (
+        <section className="j-card p-5">
+          <div className="mb-1 flex items-baseline justify-between gap-3 flex-wrap">
+            <h2 className="h3">Palette</h2>
+            {/* TODO(brand): remove the staff guard once the alternate
+                palettes are signed off for all users. */}
+            <span className="tiny" style={{ color: "var(--gold-2)" }}>
+              Visible to staff only · TODO open to all users
+            </span>
+          </div>
+          <p className="small mb-4" style={{ color: "var(--ink-dim)" }}>
+            The three sanctioned Khonsera palettes from the brand book.
+            Selection persists in this browser; the rest of the workspace
+            isn&rsquo;t affected.
+          </p>
+          <ThemePicker />
+        </section>
+      ) : null}
 
       <ComingSoon
         feature="Notifications · working hours · Outlook calendar"

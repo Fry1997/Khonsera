@@ -93,8 +93,9 @@ export function AppSidebar({
               alignItems: "center",
               justifyContent: "center",
               fontFamily: "var(--display)",
-              fontStyle: "italic",
-              fontSize: 15,
+              fontWeight: 600,
+              fontSize: 14,
+              letterSpacing: "0.04em",
             }}
           >
             {initial}
