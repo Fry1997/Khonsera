@@ -489,10 +489,10 @@ export function PlacePicker({
                 style={{
                   color: "var(--gold-2)",
                   fontFamily: "var(--display)",
-                  fontStyle: "italic",
                   fontWeight: 600,
                   fontSize: 16,
                   lineHeight: 1,
+                  letterSpacing: "-0.01em",
                 }}
               >
                 +

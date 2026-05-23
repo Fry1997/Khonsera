@@ -466,9 +466,10 @@ function BookingCard({
             <span
               style={{
                 fontFamily: "var(--display)",
-                fontStyle: "italic",
+                fontWeight: 500,
                 fontSize: 20,
                 color: "var(--ink)",
+                letterSpacing: "-0.02em",
               }}
             >
               {fmtMoney(Number(booking.actual_price), booking.currency)}

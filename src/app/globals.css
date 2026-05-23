@@ -273,30 +273,27 @@
   }
 
   .h0 {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 56px;
     line-height: 1.02;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.035em;
     color: var(--ink);
   }
   .h1 {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 40px;
     line-height: 1.05;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--ink);
   }
   .h2 {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 28px;
     line-height: 1.1;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
     color: var(--ink);
   }
   .h3 {
@@ -481,22 +478,8 @@
     color: var(--ink-faint);
   }
 
-  .brand-glyph {
-    font-family: var(--serif);
-    font-style: italic;
-    font-weight: 500;
-    font-size: 18px;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-    display: inline-flex;
-    align-items: center;
-  }
-  .brand-glyph::before {
-    content: "∗";
-    color: var(--terra);
-    margin-right: 6px;
-    font-style: normal;
-  }
+  /* Legacy .brand-glyph removed — superseded by .brand-lockup +
+     KhonseraBrand component (waxing-crescent mark + Satoshi wordmark). */
 
   /* Khonsera brand lockup — moon + KHONSERA wordmark. Set in Satoshi 500,
      uppercase, tracked, monocolour ink. The mark is the only gold element
@@ -820,18 +803,18 @@
 
   /* Magazine-style title */
   .masthead-title {
-    font-family: var(--serif);
+    font-family: var(--display);
     font-weight: 500;
     font-size: 50px;
     line-height: 1.02;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.035em;
     color: var(--ink);
     margin: 0;
     text-wrap: pretty;
   }
   .masthead-title em,
   .masthead-title .em {
-    font-style: italic;
+    font-style: normal;
     color: var(--gold);
     font-weight: 500;
   }
@@ -864,13 +847,12 @@
     min-width: 0;
   }
   .stat-col .v {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 30px;
     line-height: 1;
     color: var(--ink);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
   .stat-col .l {
     font-size: 10px;
@@ -1009,13 +991,12 @@
     margin-bottom: 4px;
   }
   .tl-title {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 19px;
     line-height: 1.25;
     color: var(--ink);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     margin: 0;
   }
   .tl-sub {
@@ -1145,9 +1126,10 @@
     color: var(--ink);
   }
   .digest-panel .row.total .v {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
+    font-weight: 500;
     font-size: 20px;
+    letter-spacing: -0.02em;
     color: var(--ink);
   }
 
@@ -1173,13 +1155,12 @@
   /* Giant serif italic chapter numeral — used as the kickoff for a story
      block ("01", "02", "03" in the deck). Terra so the eye finds it first. */
   .chapter-number {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 64px;
     line-height: 0.95;
-    letter-spacing: -0.03em;
-    color: var(--terra);
+    letter-spacing: -0.04em;
+    color: var(--gold);
     display: inline-block;
   }
   .chapter-number.lg {
@@ -1315,11 +1296,10 @@
     color: var(--ink-dim);
   }
   .day-header .title {
-    font-family: var(--serif);
-    font-style: italic;
+    font-family: var(--display);
     font-weight: 500;
     font-size: 24px;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.025em;
     color: var(--ink);
   }
   .day-header .meta {
@@ -1747,14 +1727,14 @@
   }
   .anchor-stat .v {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 36px;
     line-height: 1;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
     color: var(--ink);
   }
   .anchor-stat .v em {
+    font-style: normal;
     color: var(--gold);
     font-weight: 500;
   }
@@ -1778,11 +1758,10 @@
   }
   .kpi .v {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 28px;
     line-height: 1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     color: var(--ink);
   }
   .kpi .l {
@@ -1843,15 +1822,15 @@
   }
   .app-header .title {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 32px;
     line-height: 1.04;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
     color: var(--ink);
     margin: 0;
   }
   .app-header .title em {
+    font-style: normal;
     color: var(--gold);
   }
   .app-header .sub {
@@ -1957,12 +1936,11 @@
   }
   .trip-row-day {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 44px;
     line-height: 1;
     color: var(--ink);
-    letter-spacing: -0.025em;
+    letter-spacing: -0.035em;
     margin-top: 2px;
   }
   .trip-row-live .trip-row-day {
@@ -1988,13 +1966,12 @@
   }
   .trip-row-title {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 500;
     font-size: 26px;
     line-height: 1.15;
     color: var(--ink);
     margin: 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -2002,6 +1979,7 @@
     -webkit-box-orient: vertical;
   }
   .trip-row-title em {
+    font-style: normal;
     color: var(--gold);
     font-weight: 500;
   }
@@ -2114,10 +2092,10 @@
     background: var(--gold);
     color: #fff;
     font-family: var(--display);
-    font-style: italic;
     font-weight: 600;
     font-size: 13px;
     line-height: 1;
+    letter-spacing: 0.02em;
   }
   .brief-helper {
     margin: 0 0 12px;
@@ -2367,12 +2345,11 @@
   }
   .anchor-summary-title {
     font-family: var(--display);
-    font-style: italic;
     font-size: 20px;
     font-weight: 500;
     color: var(--ink);
     margin: 2px 0 0;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
   .anchor-summary-meta {
     font-family: var(--serif);
@@ -2543,12 +2520,11 @@
   }
   .home-header-title {
     font-family: var(--display);
-    font-style: italic;
     font-size: 18px;
     font-weight: 500;
     color: var(--ink);
     margin: 2px 0 0;
-    letter-spacing: -0.005em;
+    letter-spacing: -0.015em;
   }
   .home-header-meta {
     font-family: var(--serif);
@@ -2675,12 +2651,11 @@
   }
   .transit-stop-title {
     font-family: var(--display);
-    font-style: italic;
     font-size: 16px;
     font-weight: 500;
     color: var(--ink);
     margin: 2px 0 0;
-    letter-spacing: -0.005em;
+    letter-spacing: -0.01em;
   }
   .transit-stop-remove {
     position: absolute;
@@ -3087,7 +3062,7 @@
   }
   .transition-chip > span:first-child {
     font-family: var(--display);
-    font-style: italic;
+    font-weight: 500;
     font-size: 14px;
     line-height: 1;
   }
@@ -3319,9 +3294,10 @@
   }
   .around-then-blurb > span:first-child {
     font-family: var(--display);
-    font-style: italic;
+    font-weight: 500;
     font-size: 18px;
     line-height: 1;
+    letter-spacing: -0.015em;
   }
 
   /* Anchor kind badge + sub-role badge — the primary classification
@@ -3506,7 +3482,6 @@
   }
   .brief-between-btn span:first-child {
     font-family: var(--display);
-    font-style: italic;
     font-weight: 600;
     color: var(--gold-2);
     font-size: 16px;

@@ -49,6 +49,14 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900,300i,400i,500i,700i,900i&display=swap"
         />
+        {/* No-FOUC theme init — applies the persisted palette (dusk /
+            sahara / midnight) before first paint. Settings → Palette
+            sets the key. Currently only staff can change it. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('khonsera:theme');if(t==='sahara'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}`,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>
