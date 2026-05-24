@@ -346,10 +346,24 @@ export async function scanGmailForBookings(): Promise<
               _debug_wallet_links: (() => {
                 const h = html ?? "";
                 const links: string[] = [];
-                const re = /href="([^"]*(?:wallet|pkpass|pass\.trainline|apple\.co|google(?:pay|wallet))[^"]*)"/gi;
+                const re = /href="(https?:\/\/[^"]+)"/gi;
                 let lm;
-                while ((lm = re.exec(h)) !== null) links.push(lm[1]);
-                return links;
+                while ((lm = re.exec(h)) !== null) {
+                  const url = lm[1];
+                  if (/trainline|wallet|pkpass|pass\.|apple|google/i.test(url)) {
+                    links.push(url);
+                  }
+                }
+                // If nothing matched, grab ALL unique domains as clues
+                if (links.length === 0) {
+                  const allLinks: string[] = [];
+                  const re2 = /href="(https?:\/\/[^"]+)"/gi;
+                  let lm2;
+                  while ((lm2 = re2.exec(h)) !== null) allLinks.push(lm2[1]);
+                  const domains = [...new Set(allLinks.map(u => { try { return new URL(u).hostname; } catch { return u.slice(0, 50); } }))];
+                  return { matched: [], all_domains: domains };
+                }
+                return { matched: links, all_domains: [] };
               })(),
             },
             parse_failed: !parsed,
