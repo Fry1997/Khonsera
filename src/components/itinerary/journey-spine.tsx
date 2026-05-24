@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { TransportIcon } from "@/components/icons";
 import {
   TRANSITION_OPTIONS,
@@ -147,28 +147,11 @@ export function JourneySpine({
               const tb = entry.booking;
               const MIcon = TransportIcon[tb.mode!];
               return (
-                <Fragment key={`tb-${tb.uid}`}>
-                  <div className="tl-time" />
-                  <div className="tl-rail">
-                    <div className="bones-via-tick" aria-hidden>
-                      <MIcon size={11} />
-                    </div>
-                  </div>
-                  <div className="tl-content" style={{ padding: "2px 0 8px" }}>
-                    <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
-                      Booked {tb.mode}
-                    </p>
-                    <p className="tl-sub" style={{ marginTop: 0 }}>
-                      {tb.departureHub?.label && tb.destinationHub?.label
-                        ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
-                        : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
-                      {tb.date ? ` · ${fmtShortDate(tb.date, timezone)}` : ""}
-                      {tb.serviceNumber ? ` · ${tb.serviceNumber}` : ""}
-                      {tb.departTime ? ` · ${tb.departTime}` : ""}
-                      {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
-                    </p>
-                  </div>
-                </Fragment>
+                <SpineTransportBooking
+                  key={`tb-${tb.uid}`}
+                  booking={tb}
+                  timezone={timezone}
+                />
               );
             }
             const a = entry.anchor;
@@ -421,6 +404,91 @@ function SpineStop({
           {dotKind === "gold" ? <em>{title}</em> : title}
         </h3>
         <p className="tl-sub">{sub}</p>
+      </div>
+    </>
+  );
+}
+
+function SpineTransportBooking({
+  booking: tb,
+  timezone,
+}: {
+  booking: BriefTransportBooking;
+  timezone: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const MIcon = TransportIcon[tb.mode!];
+  const modeLabel = tb.mode === "train" ? "Train" : tb.mode === "flight" ? "Flight" : tb.mode ?? "";
+
+  return (
+    <>
+      <div className="tl-time" style={{ fontSize: 11 }}>
+        {tb.departTime || ""}
+      </div>
+      <div className="tl-rail">
+        <div className="bones-via-tick" aria-hidden>
+          <MIcon size={11} />
+        </div>
+      </div>
+      <div className="tl-content" style={{ padding: "2px 0 8px" }}>
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            all: "unset",
+            cursor: "pointer",
+            display: "block",
+            width: "100%",
+          }}
+        >
+          <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
+            Booked {modeLabel}
+            <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.6 }}>
+              {expanded ? "collapse" : "details"}
+            </span>
+          </p>
+          <p className="tl-sub" style={{ marginTop: 0 }}>
+            {tb.departureHub?.label && tb.destinationHub?.label
+              ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
+              : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
+            {tb.date ? ` · ${fmtShortDate(tb.date, timezone)}` : ""}
+            {tb.departTime ? ` · ${tb.departTime}` : ""}
+            {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
+          </p>
+        </button>
+        {expanded ? (
+          <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink-dim)" }}>
+            {tb.changeovers.length > 0 ? (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontWeight: 500, color: "var(--ink)" }}>Route: </span>
+                {tb.departureHub?.label ?? "?"}
+                {tb.changeovers.map((co, i) => (
+                  <span key={i}>
+                    {" → "}
+                    {co.hub?.label ?? "?"}
+                    {co.arriveTime || co.departTime
+                      ? ` (${co.arriveTime}${co.departTime ? `–${co.departTime}` : ""})`
+                      : ""}
+                  </span>
+                ))}
+                {" → "}
+                {tb.destinationHub?.label ?? "?"}
+              </div>
+            ) : null}
+            {tb.serviceNumber ? (
+              <div>Service: {tb.serviceNumber}</div>
+            ) : null}
+            {tb.reference ? (
+              <div>Ref: {tb.reference}</div>
+            ) : null}
+            {tb.seat ? (
+              <div>Seat: {tb.seat}</div>
+            ) : null}
+            {tb.price ? (
+              <div>Price: {tb.price}</div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   );
