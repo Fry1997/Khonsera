@@ -284,6 +284,14 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
+        // Debug: log MIME structure for diagnosis
+        const describeParts = (p: { mimeType: string; body?: { size?: number; data?: string }; parts?: unknown[] }): string => {
+          let s = p.mimeType + `(size:${p.body?.size ?? 0},hasData:${!!p.body?.data})`;
+          if (p.parts) s += `[${(p.parts as typeof p[]).map(describeParts).join(",")}]`;
+          return s;
+        };
+        console.log(`[gmail-scan] msg ${ref.id} MIME: ${describeParts(msg.payload)}, html=${html?.length ?? 0}, text=${text?.length ?? 0}`);
+
         // Extract text from PDF attachments (etickets have the actual
         // train times, service numbers, and seat assignments).
         let pdfText = "";
@@ -324,7 +332,7 @@ export async function scanGmailForBookings(): Promise<
             parsed_type: parsed?.type ?? null,
             parsed_data: parsed
               ? (parsed as unknown as Record<string, unknown>)
-              : { _debug_text_length: combinedText.length, _debug_text_start: combinedText.slice(0, 500), _debug_pdf_count: pdfAttachments.length, _debug_attachments: attachments.map(a => a.filename) },
+              : { _debug_text_length: combinedText.length, _debug_text_start: combinedText.slice(0, 500), _debug_pdf_count: pdfAttachments.length, _debug_attachments: attachments.map(a => a.filename), _debug_html_length: (html ?? "").length, _debug_raw_text_length: (text ?? "").length, _debug_mime: describeParts(msg.payload) },
             parse_failed: !parsed,
             imported: false,
           },
