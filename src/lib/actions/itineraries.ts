@@ -522,6 +522,7 @@ export async function createItineraryFromBrief(
     location_id: string | null;
     customer_id: string | null;
     customer_site_id: string | null;
+    transport_hub_id?: string | null;
     title: string | null;
     start_time: string | null;
     end_time: string | null;
@@ -679,6 +680,7 @@ export async function createItineraryFromBrief(
       location_id: null,
       customer_id: null,
       customer_site_id: null,
+      transport_hub_id: tb.departure_hub_id ?? null,
       title: tb.departure_label ?? `${tb.mode} departure`,
       start_time: departIso,
       end_time: departIso,
@@ -713,6 +715,7 @@ export async function createItineraryFromBrief(
         location_id: null,
         customer_id: null,
         customer_site_id: null,
+        transport_hub_id: co.hub_id ?? null,
         title: co.hub_label ?? "Changeover",
         start_time: coArrIso,
         end_time: coDepIso,
@@ -735,6 +738,7 @@ export async function createItineraryFromBrief(
       location_id: null,
       customer_id: null,
       customer_site_id: null,
+      transport_hub_id: tb.destination_hub_id ?? null,
       title: tb.destination_label ?? `${tb.mode} arrival`,
       start_time: arriveIso,
       end_time: arriveIso,
@@ -815,6 +819,39 @@ export async function createItineraryFromBrief(
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
+  }
+
+  // Tag each row with its clientId before sorting (object identity survives sort).
+  type RowRef = (typeof stopRows)[0];
+  const rowClientId = new Map<RowRef, string>();
+  for (const [origSeq, cid] of clientIdBySeq.entries()) {
+    const row = stopRows.find((r) => r.sequence === origSeq);
+    if (row) rowClientId.set(row, cid);
+  }
+
+  // Sort all stops chronologically by start_time. Home stays first,
+  // be_home_by stays last, everything else by time.
+  stopRows.sort((a, b) => {
+    const aIsHome = a.type === "start" && !(a.metadata && "kind" in a.metadata && (a.metadata as Record<string, unknown>).kind === "be_home_by");
+    const bIsHome = b.type === "start" && !(b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by");
+    if (aIsHome && !bIsHome) return -1;
+    if (bIsHome && !aIsHome) return 1;
+    const aIsBhb = a.metadata && "kind" in a.metadata && (a.metadata as Record<string, unknown>).kind === "be_home_by";
+    const bIsBhb = b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by";
+    if (aIsBhb && !bIsBhb) return 1;
+    if (bIsBhb && !aIsBhb) return -1;
+    if (!a.start_time && !b.start_time) return 0;
+    if (!a.start_time) return 1;
+    if (!b.start_time) return -1;
+    return a.start_time.localeCompare(b.start_time);
+  });
+
+  // Reassign sequences and rebuild the clientId map.
+  clientIdBySeq.clear();
+  for (let i = 0; i < stopRows.length; i++) {
+    stopRows[i].sequence = i;
+    const cid = rowClientId.get(stopRows[i]);
+    if (cid) clientIdBySeq.set(i, cid);
   }
 
   if (stopRows.length > 0) {
@@ -1093,6 +1130,76 @@ export async function createItineraryFromBrief(
       }
     }
   }
+
+  // ── Create transitions for ALL adjacent stop pairs ──────────────
+  // Ensures the planning page shows mode pickers between every stop,
+  // not just user-specified anchor pairs. Transport booking legs get
+  // locked transitions; everything else gets mode=auto.
+  {
+    const { data: allStops } = await supabase
+      .from("stops")
+      .select("id, sequence, metadata")
+      .eq("itinerary_id", itinerary.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .order("sequence");
+    if (allStops && allStops.length > 1) {
+      // Collect existing transitions to avoid duplicates.
+      const { data: existingTrans } = await supabase
+        .from("transitions")
+        .select("from_stop_id, to_stop_id")
+        .eq("itinerary_id", itinerary.id)
+        .eq("workspace_id", ctx.workspaceId);
+      const existingKeys = new Set(
+        (existingTrans ?? []).map(
+          (t) => `${t.from_stop_id}::${t.to_stop_id}`,
+        ),
+      );
+
+      const newTransitions: Array<{
+        itinerary_id: string;
+        workspace_id: string;
+        from_stop_id: string;
+        to_stop_id: string;
+        mode: string;
+        is_locked: boolean;
+        computed_duration_minutes: number | null;
+      }> = [];
+
+      for (let i = 0; i < allStops.length - 1; i++) {
+        const from = allStops[i];
+        const to = allStops[i + 1];
+        const key = `${from.id}::${to.id}`;
+        if (existingKeys.has(key)) continue;
+
+        // Transport booking legs (departure → changeover → arrival)
+        // get locked transitions.
+        const fromMeta = from.metadata as Record<string, unknown> | null;
+        const toMeta = to.metadata as Record<string, unknown> | null;
+        const isTransitLeg =
+          (fromMeta?.kind === "transit_departure" ||
+            fromMeta?.kind === "transit_changeover") &&
+          (toMeta?.kind === "transit_changeover" ||
+            toMeta?.kind === "transit_arrival");
+
+        newTransitions.push({
+          itinerary_id: itinerary.id,
+          workspace_id: ctx.workspaceId,
+          from_stop_id: from.id as string,
+          to_stop_id: to.id as string,
+          mode: isTransitLeg ? "train" : "mixed",
+          is_locked: isTransitLeg,
+          computed_duration_minutes: null,
+        });
+      }
+
+      if (newTransitions.length > 0) {
+        await supabase.from("transitions").insert(newTransitions);
+      }
+    }
+  }
+
+  // ── Run the solver to propagate times ──────────────────────────
+  await resolveItineraryTimes(itinerary.id);
 
   return ok({ id: itinerary.id });
 }
