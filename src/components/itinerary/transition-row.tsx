@@ -3,9 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { TransportIcon } from "@/components/icons";
 import {
-  TransportHubPicker,
-} from "@/components/transport-hub-picker";
-import {
   LOCAL_MODES,
   TRANSITION_OPTIONS,
   anchorEndDate,
@@ -14,7 +11,6 @@ import {
 } from "./helpers";
 import type {
   Anchor,
-  BriefBooking,
   BriefTransition,
   LocalMode,
   TransitionMode,
@@ -281,40 +277,6 @@ export function TransitionRow({
             </div>
           ) : null}
 
-          <label className="transition-booked-toggle">
-            <input
-              type="checkbox"
-              checked={transition.booked}
-              onChange={(e) =>
-                onChange({
-                  booked: e.target.checked,
-                  ...(e.target.checked && transition.mode === "auto"
-                    ? { mode: "train" as TransitionMode }
-                    : {}),
-                })
-              }
-            />
-            <span>This is already booked</span>
-            <span className="brief-helper" style={{ margin: 0, fontSize: 12 }}>
-              Adds the ticket to Bookings and locks the editor onto these
-              times.
-            </span>
-          </label>
-          {transition.booked ? (
-            <BookedFields
-              fromAnchor={from}
-              toAnchor={to}
-              booking={transition.booking}
-              onChange={(patch) =>
-                onChange({
-                  booking: { ...transition.booking, ...patch },
-                })
-              }
-              stationBased={stationBased}
-              mode={transition.mode}
-            />
-          ) : null}
-
           <div className="transition-pop-foot">
             <button
               type="button"
@@ -410,129 +372,3 @@ function feasibilityForMode(
   });
 }
 
-function BookedFields({
-  fromAnchor,
-  toAnchor,
-  booking,
-  onChange,
-  stationBased,
-  mode,
-}: {
-  fromAnchor: Anchor | null;
-  toAnchor: Anchor;
-  booking: BriefBooking;
-  onChange: (patch: Partial<BriefBooking>) => void;
-  stationBased?: boolean;
-  mode?: TransitionMode;
-}) {
-  const departDefault =
-    fromAnchor && fromAnchor.timingMode === "leave_by"
-      ? fromAnchor.time
-      : "";
-  const arriveDefault =
-    toAnchor.timingMode === "arrive_by" ? toAnchor.time : "";
-
-  const hubKind: "rail_station" | "airport" =
-    mode === "flight" ? "airport" : "rail_station";
-  const hubLabel =
-    mode === "flight"
-      ? "Airport"
-      : mode === "tube"
-        ? "Station"
-        : mode === "bus"
-          ? "Stop"
-          : "Station";
-
-  return (
-    <div className="transition-booked-fields">
-      {stationBased ? (
-        <div className="brief-field" style={{ marginBottom: 6 }}>
-          <span className="uc">Destination {hubLabel.toLowerCase()}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            value={booking.destinationHub}
-            onChange={(hub) => onChange({ destinationHub: hub })}
-            name="destination-hub"
-            placeholder={
-              hubKind === "airport"
-                ? "LHR, Manchester…"
-                : "WLB, Kings Cross…"
-            }
-          />
-        </div>
-      ) : null}
-      <div className="brief-when-row">
-        <label className="brief-field">
-          <span className="uc">Depart</span>
-          <input
-            type="time"
-            className="field"
-            value={booking.departTime || departDefault}
-            onChange={(e) => onChange({ departTime: e.target.value })}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arrive</span>
-          <input
-            type="time"
-            className="field"
-            value={booking.arriveTime || arriveDefault}
-            onChange={(e) => onChange({ arriveTime: e.target.value })}
-          />
-        </label>
-      </div>
-      <div className="brief-when-row">
-        <label className="brief-field">
-          <span className="uc">Service no.</span>
-          <input
-            type="text"
-            className="field"
-            placeholder={
-              mode === "flight"
-                ? "BA245"
-                : mode === "bus"
-                  ? "Bus 24"
-                  : "1A45"
-            }
-            value={booking.serviceNumber}
-            onChange={(e) => onChange({ serviceNumber: e.target.value })}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Booking ref.</span>
-          <input
-            type="text"
-            className="field"
-            placeholder="ABC123"
-            value={booking.reference}
-            onChange={(e) => onChange({ reference: e.target.value })}
-          />
-        </label>
-      </div>
-      <div className="brief-when-row">
-        <label className="brief-field">
-          <span className="uc">Seat / row</span>
-          <input
-            type="text"
-            className="field"
-            placeholder="Coach E, Seat 32"
-            value={booking.seat}
-            onChange={(e) => onChange({ seat: e.target.value })}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Price (£)</span>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className="field"
-            placeholder="148.50"
-            value={booking.price}
-            onChange={(e) => onChange({ price: e.target.value })}
-          />
-        </label>
-      </div>
-    </div>
-  );
-}

@@ -15,6 +15,8 @@ import {
   transitionKey,
 } from "./helpers";
 import type { Anchor, BriefTransition, Stopover } from "./types";
+import type { BriefTransportBooking } from "./transport-booking-card";
+import type { BriefAccommodationBooking } from "./accommodation-booking-card";
 
 // JourneySpine — the live read-only "what we'll build" timeline on
 // the right side of the brief. Reused on the editor in summary mode
@@ -31,6 +33,8 @@ export function JourneySpine({
   baseAddress,
   baseType,
   beHomeBy,
+  transportBookings,
+  accommodationBookings,
 }: {
   anchors: Anchor[];
   transitions: Map<string, BriefTransition>;
@@ -43,6 +47,8 @@ export function JourneySpine({
   baseAddress?: string | null;
   baseType?: "home" | "office" | null;
   beHomeBy?: { date: string; time: string } | null;
+  transportBookings?: BriefTransportBooking[];
+  accommodationBookings?: BriefAccommodationBooking[];
 }) {
   const haveAny = anchors.some((a) => a.place != null);
   if (!haveAny) {
@@ -220,6 +226,50 @@ export function JourneySpine({
                 dotKind={kind === "stay" ? "default" : "gold"}
               />
             </Fragment>
+          );
+        })}
+        {transportBookings?.map((tb) => {
+          if (!tb.mode) return null;
+          const MIcon = TransportIcon[tb.mode];
+          return (
+            <Fragment key={tb.uid}>
+              <div className="tl-time" />
+              <div className="tl-rail">
+                <div className="bones-via-tick" aria-hidden>
+                  <MIcon size={11} />
+                </div>
+              </div>
+              <div className="tl-content" style={{ padding: "2px 0 8px" }}>
+                <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
+                  Booked {tb.mode}
+                </p>
+                <p className="tl-sub" style={{ marginTop: 0 }}>
+                  {tb.destinationHub?.label ?? "Destination TBC"}
+                  {tb.serviceNumber ? ` · ${tb.serviceNumber}` : ""}
+                  {tb.departTime ? ` · ${tb.departTime}` : ""}
+                  {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
+                </p>
+              </div>
+            </Fragment>
+          );
+        })}
+        {accommodationBookings?.map((ab) => {
+          if (!ab.hotel) return null;
+          return (
+            <SpineStop
+              key={ab.uid}
+              time="—"
+              eyebrow="Hotel"
+              title={ab.hotel.label}
+              sub={
+                ab.checkInDate && ab.checkOutDate
+                  ? `${fmtShortDate(ab.checkInDate, timezone)} → ${fmtShortDate(ab.checkOutDate, timezone)}${ab.reference ? ` · ref ${ab.reference}` : ""}`
+                  : ab.reference
+                    ? `ref ${ab.reference}`
+                    : "Dates TBC"
+              }
+              dotKind="default"
+            />
           );
         })}
         {beHomeBy ? (

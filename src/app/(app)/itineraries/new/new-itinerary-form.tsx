@@ -18,6 +18,8 @@ import {
   StopoverCard,
   TRANSITION_OPTIONS,
   TransitionRow,
+  TransportBookingCard,
+  AccommodationBookingCard,
   anchorEndDate,
   anchorStartDate,
   anchorWithinStay,
@@ -29,6 +31,8 @@ import {
   emptyAnchor,
   emptyStopover,
   emptyTransition,
+  emptyTransportBookingItem,
+  emptyAccommodationBookingItem,
   samePlace,
   sortAnchorsByTime,
   stopoverAsAnchor,
@@ -37,6 +41,8 @@ import {
   useRoutePreviewsForPlaces,
   type Anchor,
   type BriefTransition,
+  type BriefTransportBooking,
+  type BriefAccommodationBooking,
   type LocalMode,
   type ModePreviewMap,
   type Stopover,
@@ -102,6 +108,34 @@ export function NewItineraryBrief({
     date: string;
     time: string;
   } | null>(null);
+
+  // Standalone booking cards.
+  const [transportBookings, setTransportBookings] = useState<
+    BriefTransportBooking[]
+  >([]);
+  const [accommodationBookings, setAccommodationBookings] = useState<
+    BriefAccommodationBooking[]
+  >([]);
+
+  const updateTransportBooking = (
+    uid: string,
+    patch: Partial<BriefTransportBooking>,
+  ) =>
+    setTransportBookings((prev) =>
+      prev.map((b) => (b.uid === uid ? { ...b, ...patch } : b)),
+    );
+  const removeTransportBooking = (uid: string) =>
+    setTransportBookings((prev) => prev.filter((b) => b.uid !== uid));
+
+  const updateAccommodationBooking = (
+    uid: string,
+    patch: Partial<BriefAccommodationBooking>,
+  ) =>
+    setAccommodationBookings((prev) =>
+      prev.map((b) => (b.uid === uid ? { ...b, ...patch } : b)),
+    );
+  const removeAccommodationBooking = (uid: string) =>
+    setAccommodationBookings((prev) => prev.filter((b) => b.uid !== uid));
 
   const getTransition = (fromUid: string, toUid: string): BriefTransition =>
     transitions.get(transitionKey(fromUid, toUid)) ?? emptyTransition();
@@ -530,21 +564,54 @@ export function NewItineraryBrief({
           onSelect={setSelectedBaseId}
         />
 
-        <header style={{ marginBottom: 4 }}>
-          <span className="uc">Anchors · {anchors.length}</span>
-          <h2
-            className="display-i"
-            style={{
-              fontSize: 22,
-              fontWeight: 500,
-              margin: "4px 0 0",
-              color: "var(--ink)",
-              letterSpacing: "-0.015em",
-            }}
+        <div
+          className="brief-add-buttons"
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              insertAnchorAt(anchors.length)
+            }
           >
-            Each place the trip has to hit.
-          </h2>
-        </header>
+            + Anchor
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              setTransportBookings((prev) => [
+                ...prev,
+                emptyTransportBookingItem(),
+              ])
+            }
+          >
+            + Transport
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              setAccommodationBookings((prev) => [
+                ...prev,
+                emptyAccommodationBookingItem(),
+              ])
+            }
+          >
+            + Accommodation
+          </button>
+        </div>
+
+        {anchors.length > 0 ? (
+          <header style={{ marginBottom: 4 }}>
+            <span className="uc">Anchors · {anchors.length}</span>
+          </header>
+        ) : null}
 
         <AddBetween onAdd={() => insertAnchorAt(0)} />
 
@@ -670,6 +737,49 @@ export function NewItineraryBrief({
           );
         })}
 
+        {transportBookings.length > 0 ? (
+          <>
+            <header style={{ marginBottom: 4, marginTop: 6 }}>
+              <span className="uc">
+                Transport · {transportBookings.length}
+              </span>
+            </header>
+            {transportBookings.map((tb) => (
+              <TransportBookingCard
+                key={tb.uid}
+                booking={tb}
+                onChange={(patch) =>
+                  updateTransportBooking(tb.uid, patch)
+                }
+                onRemove={() => removeTransportBooking(tb.uid)}
+              />
+            ))}
+          </>
+        ) : null}
+
+        {accommodationBookings.length > 0 ? (
+          <>
+            <header style={{ marginBottom: 4, marginTop: 6 }}>
+              <span className="uc">
+                Accommodation · {accommodationBookings.length}
+              </span>
+            </header>
+            {accommodationBookings.map((ab) => (
+              <AccommodationBookingCard
+                key={ab.uid}
+                booking={ab}
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                onChange={(patch) =>
+                  updateAccommodationBooking(ab.uid, patch)
+                }
+                onRemove={() => removeAccommodationBooking(ab.uid)}
+              />
+            ))}
+          </>
+        ) : null}
+
         <BeHomeByField
           value={beHomeBy}
           onChange={setBeHomeBy}
@@ -794,6 +904,8 @@ export function NewItineraryBrief({
           baseAddress={selectedBase?.address}
           baseType={selectedBase?.type}
           beHomeBy={beHomeBy}
+          transportBookings={transportBookings}
+          accommodationBookings={accommodationBookings}
         />
       </aside>
     </div>

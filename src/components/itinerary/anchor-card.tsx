@@ -225,17 +225,6 @@ export function AnchorCard({
         />
       )}
 
-      {/* Accommodation booking — for stay+check_in anchors */}
-      {isStayCheckIn ? (
-        <AccommodationBookingSection
-          anchor={anchor}
-          customers={customers}
-          customerSites={customerSites}
-          locations={locations}
-          onChange={onChange}
-        />
-      ) : null}
-
       {/* Notes — collapsible, same field as planning's per-stop notes */}
       {anchor.notes != null ? (
         <div style={{ marginTop: 8 }}>
