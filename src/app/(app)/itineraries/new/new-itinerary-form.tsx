@@ -92,9 +92,7 @@ export function NewItineraryBrief({
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<FormFeedback | null>(null);
 
-  const [anchors, setAnchors] = useState<Anchor[]>([
-    emptyAnchor(defaultAnchorDate()),
-  ]);
+  const [anchors, setAnchors] = useState<Anchor[]>([]);
   // Transitions keyed by "fromUid::toUid" — survives anchor inserts as
   // long as that pair stays adjacent. Map keeps render simple via lookup.
   const [transitions, setTransitions] = useState<
@@ -342,7 +340,8 @@ export function NewItineraryBrief({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchors]);
 
-  const canSubmit = anchors.every((a) => a.place != null);
+  const canSubmit =
+    anchors.length > 0 && anchors.every((a) => a.place != null);
 
   // Roll up feasibility flags across every adjacent pair the user
   // has actually committed to a mode for. Pairs left on "auto" or

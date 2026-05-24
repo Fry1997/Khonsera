@@ -50,7 +50,10 @@ export function JourneySpine({
   transportBookings?: BriefTransportBooking[];
   accommodationBookings?: BriefAccommodationBooking[];
 }) {
-  const haveAny = anchors.some((a) => a.place != null);
+  const haveAny =
+    anchors.some((a) => a.place != null) ||
+    (transportBookings ?? []).some((tb) => tb.mode != null) ||
+    (accommodationBookings ?? []).some((ab) => ab.hotel != null);
   if (!haveAny) {
     return (
       <div className="brief-preview-empty">
@@ -111,8 +114,66 @@ export function JourneySpine({
           sub={baseAddress || "Where your day begins"}
           dotKind="default"
         />
-        {sorted.map((a, i) => {
-          const earlier = sorted.slice(0, i);
+        {/* Build a unified timeline: anchors + transport bookings sorted by time */}
+        {(() => {
+          type TimelineEntry =
+            | { kind: "anchor"; anchor: (typeof sorted)[0]; index: number }
+            | { kind: "transport"; booking: BriefTransportBooking };
+          const entries: TimelineEntry[] = sorted.map((a, i) => ({
+            kind: "anchor" as const,
+            anchor: a,
+            index: i,
+          }));
+          for (const tb of transportBookings ?? []) {
+            if (tb.mode) entries.push({ kind: "transport", booking: tb });
+          }
+          entries.sort((a, b) => {
+            const aTime =
+              a.kind === "anchor"
+                ? `${a.anchor.date}T${a.anchor.time}`
+                : a.kind === "transport" && a.booking.date && a.booking.departTime
+                  ? `${a.booking.date}T${a.booking.departTime}`
+                  : "z";
+            const bTime =
+              b.kind === "anchor"
+                ? `${b.anchor.date}T${b.anchor.time}`
+                : b.kind === "transport" && b.booking.date && b.booking.departTime
+                  ? `${b.booking.date}T${b.booking.departTime}`
+                  : "z";
+            return aTime.localeCompare(bTime);
+          });
+          return entries.map((entry) => {
+            if (entry.kind === "transport") {
+              const tb = entry.booking;
+              const MIcon = TransportIcon[tb.mode!];
+              return (
+                <Fragment key={`tb-${tb.uid}`}>
+                  <div className="tl-time" />
+                  <div className="tl-rail">
+                    <div className="bones-via-tick" aria-hidden>
+                      <MIcon size={11} />
+                    </div>
+                  </div>
+                  <div className="tl-content" style={{ padding: "2px 0 8px" }}>
+                    <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
+                      Booked {tb.mode}
+                    </p>
+                    <p className="tl-sub" style={{ marginTop: 0 }}>
+                      {tb.departureHub?.label && tb.destinationHub?.label
+                        ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
+                        : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
+                      {tb.date ? ` · ${fmtShortDate(tb.date, timezone)}` : ""}
+                      {tb.serviceNumber ? ` · ${tb.serviceNumber}` : ""}
+                      {tb.departTime ? ` · ${tb.departTime}` : ""}
+                      {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
+                    </p>
+                  </div>
+                </Fragment>
+              );
+            }
+            const a = entry.anchor;
+            const i = entry.index;
+            const earlier = sorted.slice(0, i);
           const prev = sorted[i - 1];
           // The prev→this leg either:
           //   * has a stopover sitting between them → render the
@@ -227,35 +288,8 @@ export function JourneySpine({
               />
             </Fragment>
           );
-        })}
-        {transportBookings?.map((tb) => {
-          if (!tb.mode) return null;
-          const MIcon = TransportIcon[tb.mode];
-          return (
-            <Fragment key={tb.uid}>
-              <div className="tl-time" />
-              <div className="tl-rail">
-                <div className="bones-via-tick" aria-hidden>
-                  <MIcon size={11} />
-                </div>
-              </div>
-              <div className="tl-content" style={{ padding: "2px 0 8px" }}>
-                <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
-                  Booked {tb.mode}
-                </p>
-                <p className="tl-sub" style={{ marginTop: 0 }}>
-                  {tb.departureHub?.label && tb.destinationHub?.label
-                    ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
-                    : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
-                  {tb.date ? ` · ${fmtShortDate(tb.date, timezone)}` : ""}
-                  {tb.serviceNumber ? ` · ${tb.serviceNumber}` : ""}
-                  {tb.departTime ? ` · ${tb.departTime}` : ""}
-                  {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
-                </p>
-              </div>
-            </Fragment>
-          );
-        })}
+          });
+        })()}
         {accommodationBookings?.map((ab) => {
           if (!ab.hotel) return null;
           return (
