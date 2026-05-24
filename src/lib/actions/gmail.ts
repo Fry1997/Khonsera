@@ -11,7 +11,7 @@ import {
   extractMessageBody,
 } from "@/lib/google/gmail";
 import { detectAndParse } from "@/lib/gmail/parsers";
-import type { ParsedBooking } from "@/lib/gmail/types";
+import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
 
 const BOOKING_SENDERS = [
   "trainline",
@@ -131,13 +131,21 @@ export async function scanGmailForBookings(): Promise<
     }
   }
 
+  // Drop bookings where the travel date is in the past — users want
+  // present/future bookings, not historical trips.
+  const today = new Date().toISOString().slice(0, 10);
+  const futureBookings = bookings.filter((b) => {
+    const travelDate = getTravelDate(b);
+    return !travelDate || travelDate >= today;
+  });
+
   // Update last_scan_at
   await supabase
     .from("gmail_connections")
     .update({ last_scan_at: new Date().toISOString() })
     .eq("id", gmail.connectionId);
 
-  return ok({ bookings, scanned_count: scannedCount });
+  return ok({ bookings: futureBookings, scanned_count: scannedCount });
 }
 
 export async function markBookingImported(args: {

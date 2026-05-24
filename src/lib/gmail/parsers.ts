@@ -21,30 +21,44 @@ function stripHtml(html: string): string {
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
+    .replace(/&pound;/gi, "£")
+    .replace(/&euro;/gi, "€")
+    .replace(/&#163;/g, "£")
+    .replace(/&#8364;/g, "€")
+    .replace(/&#36;/g, "$")
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
+function parseAmount(raw: string): number {
+  return parseFloat(raw.replace(/,/g, ""));
+}
+
 function findPrice(text: string): { amount: number; currency: "GBP" | "EUR" | "USD" } | null {
-  const m =
-    text.match(/[£](\d+(?:\.\d{2})?)/) ??
-    text.match(/(\d+(?:\.\d{2})?)\s*GBP/) ??
-    text.match(/GBP\s*(\d+(?:\.\d{2})?)/) ??
-    text.match(/Total[:\s]*[£]?(\d+(?:\.\d{2})?)/i);
-  if (m) return { amount: parseFloat(m[1]), currency: "GBP" };
+  // Try total/amount lines first — most reliable (avoids grabbing per-item prices)
+  const totalLine =
+    text.match(/(?:total|amount|order\s*total|grand\s*total|you\s*paid|charge)[:\s]*[£]?([\d,]+(?:\.\d{2})?)/i) ??
+    text.match(/(?:total|amount|order\s*total|grand\s*total|you\s*paid|charge)[:\s]*[€]?([\d,]+(?:\.\d{2})?)/i);
+
+  const gbp =
+    totalLine ??
+    text.match(/[£]([\d,]+(?:\.\d{2})?)/) ??
+    text.match(/([\d,]+(?:\.\d{2})?)\s*GBP/i) ??
+    text.match(/GBP\s*([\d,]+(?:\.\d{2})?)/i);
+  if (gbp) return { amount: parseAmount(gbp[1]), currency: "GBP" };
 
   const eur =
-    text.match(/[€](\d+(?:\.\d{2})?)/) ??
-    text.match(/(\d+(?:\.\d{2})?)\s*EUR/) ??
-    text.match(/EUR\s*(\d+(?:\.\d{2})?)/);
-  if (eur) return { amount: parseFloat(eur[1]), currency: "EUR" };
+    text.match(/[€]([\d,]+(?:\.\d{2})?)/) ??
+    text.match(/([\d,]+(?:\.\d{2})?)\s*EUR/i) ??
+    text.match(/EUR\s*([\d,]+(?:\.\d{2})?)/i);
+  if (eur) return { amount: parseAmount(eur[1]), currency: "EUR" };
 
   const usd =
-    text.match(/\$(\d+(?:\.\d{2})?)/) ??
-    text.match(/(\d+(?:\.\d{2})?)\s*USD/) ??
-    text.match(/USD\s*(\d+(?:\.\d{2})?)/);
-  if (usd) return { amount: parseFloat(usd[1]), currency: "USD" };
+    text.match(/\$([\d,]+(?:\.\d{2})?)/) ??
+    text.match(/([\d,]+(?:\.\d{2})?)\s*USD/i) ??
+    text.match(/USD\s*([\d,]+(?:\.\d{2})?)/i);
+  if (usd) return { amount: parseAmount(usd[1]), currency: "USD" };
 
   return null;
 }

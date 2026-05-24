@@ -46,3 +46,10 @@ export type ParsedAccommodationBooking = {
 };
 
 export type ParsedBooking = ParsedTransportBooking | ParsedAccommodationBooking;
+
+export function getTravelDate(booking: ParsedBooking): string | null {
+  if (booking.type === "transport") {
+    return booking.segments[0]?.departure_date ?? null;
+  }
+  return booking.check_in_date ?? null;
+}
