@@ -515,7 +515,10 @@ export async function createItineraryFromBrief(
     | "accommodation"
     | "appointment"
     | "meal"
-    | "event";
+    | "event"
+    | "transit_departure"
+    | "transit_changeover"
+    | "transit_arrival";
   const stopRows: Array<{
     sequence: number;
     type: StopType;
@@ -676,7 +679,7 @@ export async function createItineraryFromBrief(
 
     stopRows.push({
       sequence: seq++,
-      type: "appointment",
+      type: "transit_departure",
       location_id: null,
       customer_id: null,
       customer_site_id: null,
@@ -711,7 +714,7 @@ export async function createItineraryFromBrief(
         : null;
       stopRows.push({
         sequence: seq++,
-        type: "appointment",
+        type: "transit_changeover",
         location_id: null,
         customer_id: null,
         customer_site_id: null,
@@ -734,7 +737,7 @@ export async function createItineraryFromBrief(
 
     stopRows.push({
       sequence: seq++,
-      type: "appointment",
+      type: "transit_arrival",
       location_id: null,
       customer_id: null,
       customer_site_id: null,
@@ -1181,12 +1184,16 @@ export async function createItineraryFromBrief(
           (toMeta?.kind === "transit_changeover" ||
             toMeta?.kind === "transit_arrival");
 
+        const transitMode = isTransitLeg
+          ? (fromMeta?.transport_mode as string) ?? "train"
+          : "mixed";
+
         newTransitions.push({
           itinerary_id: itinerary.id,
           workspace_id: ctx.workspaceId,
           from_stop_id: from.id as string,
           to_stop_id: to.id as string,
-          mode: isTransitLeg ? "train" : "mixed",
+          mode: transitMode,
           is_locked: isTransitLeg,
           computed_duration_minutes: null,
         });

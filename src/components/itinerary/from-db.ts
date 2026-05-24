@@ -213,7 +213,7 @@ const PLANNING_ANCHOR_TYPES = new Set([
   "other",
 ]);
 
-const TRANSIT_TYPES = new Set(["transit_departure", "transit_arrival"]);
+const TRANSIT_TYPES = new Set(["transit_departure", "transit_arrival", "transit_changeover"]);
 
 // Build the editor's anchor list from the loaded stop rows. Filters
 // out the implicit "home" start stop AND stopover stops — stopovers
