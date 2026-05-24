@@ -191,98 +191,30 @@ function isTrainlineMarketing(from: string, subject: string): boolean {
   const simpleRoutePattern =
     /^\s*([A-Z][A-Za-z\s&'.()-]{2,30})\s+to\s+([A-Z][A-Za-z\s&'.()-]{2,30})\s*$/gm;
 
-function parseTrainlineTrainTimesUrls(html: string): Array<{
-  from: string;
-  to: string;
-  date: string;
-  time: string;
-}> {
-  const results: Array<{ from: string; to: string; date: string; time: string }> = [];
-  const urlPattern = /\/train-times\/([a-z-]+)-to-([a-z-]+)\/(\d{1,2}-[A-Za-z]+-\d{4})\/(\d{4})/g;
+  const timeBlockPattern =
+    /(\d{1,2}:\d{2})\s*(?:→|->|to|–|-|➔)\s*(\d{1,2}:\d{2})/g;
+
+  const datePattern =
+    /(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+)?(\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\d{0,4})/gi;
+
   let m;
-  while ((m = urlPattern.exec(html)) !== null) {
-    const from = titleCase(m[1].replace(/-/g, " "));
-    const to = titleCase(m[2].replace(/-/g, " "));
-    const dateParts = m[3].split("-");
-    const dateStr = `${dateParts[0]} ${dateParts[1]} ${dateParts[2]}`;
-    const date = parseDate(dateStr) ?? "";
-    const time = `${m[4].slice(0, 2)}:${m[4].slice(2)}`;
-    results.push({ from, to, date, time });
+  const dates: string[] = [];
+  while ((m = datePattern.exec(text)) !== null) {
+    const d = parseDate(m[1]);
+    if (d) dates.push(d);
   }
-  // Deduplicate by from+to+time (same URL appears multiple times in email)
-  const seen = new Set<string>();
-  return results.filter((r) => {
-    const key = `${r.from}|${r.to}|${r.time}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
+  // Prefer future dates (travel dates) over past dates (email sent date).
+  const today = new Date().toISOString().slice(0, 10);
+  const futureDates = dates.filter((d) => d >= today);
+  const travelDate = futureDates[0] ?? dates[dates.length - 1] ?? today;
 
-function parseTrainlineSubjectTimes(subject: string): {
-  outboundDate: string | null;
-  outboundTime: string | null;
-  returnDate: string | null;
-  returnTime: string | null;
-} {
-  const m = subject.match(
-    /\((\d{1,2}\s+\w+)\s+at\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}\s+\w+)\s+at\s+(\d{1,2}:\d{2})\)/,
-  );
-  if (m) {
-    return {
-      outboundDate: parseDate(m[1]),
-      outboundTime: parseTime(m[2]),
-      returnDate: parseDate(m[3]),
-      returnTime: parseTime(m[4]),
-    };
-  }
-  const single = subject.match(/\((\d{1,2}\s+\w+)\s+at\s+(\d{1,2}:\d{2})\)/);
-  if (single) {
-    return {
-      outboundDate: parseDate(single[1]),
-      outboundTime: parseTime(single[2]),
-      returnDate: null,
-      returnTime: null,
-    };
-  }
-  return { outboundDate: null, outboundTime: null, returnDate: null, returnTime: null };
-}
-
-function parseTrainlineSubjectRoute(subject: string): {
-  from: string | null;
-  to: string | null;
-  isReturn: boolean;
-} {
-  const returnMatch = subject.match(
-    /(?:return\s+trip|round\s+trip)\s+(.+?)\s+to\s+(.+?)\s*\(/i,
-  );
-  if (returnMatch) {
-    return { from: returnMatch[1].trim(), to: returnMatch[2].trim(), isReturn: true };
-  }
-  const singleMatch = subject.match(
-    /(?:booking\s+confirmation\s+for\s+)(.+?)\s+to\s+(.+?)\s*\(/i,
-  );
-  if (singleMatch) {
-    return { from: singleMatch[1].trim(), to: singleMatch[2].trim(), isReturn: false };
-  }
-  return { from: null, to: null, isReturn: false };
-}
-
-function parseTrainline(html: string, text: string, subject: string): Partial<ParsedTransportBooking> | null {
-  // Booking confirmation emails are the best data source — subject line
-  // and embedded train-times URLs contain clean station names, dates, times.
-  const isBookingConfirmation = /booking\s*confirmation/i.test(subject);
-  const isEticket = /e-?tickets?\s+to\s/i.test(subject);
-
-  if (isBookingConfirmation) {
-    return parseTrainlineBookingConfirmation(html, text, subject);
-  }
-  if (isEticket) {
-    return parseTrainlineEticket(html, text, subject);
+  const stations: Array<[string, string]> = [];
+  while ((m = stationPairPattern.exec(text)) !== null) {
+    stations.push([m[1].trim(), m[2].trim()]);
   }
 
   if (stations.length === 0) {
-    // Trainline eticket: "Wellingborough to Derby" as a standalone line
+    // Trainline eticket: "Wellingborough to Derby" standalone or in running text
     let sm;
     while ((sm = simpleRoutePattern.exec(text)) !== null) {
       const from = sm[1].trim();
@@ -293,17 +225,44 @@ function parseTrainline(html: string, text: string, subject: string): Partial<Pa
     }
   }
   if (stations.length === 0) {
-    // Last fallback: look for station names on separate lines
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    for (let i = 0; i < lines.length - 1; i++) {
-      if (/depart/i.test(lines[i]) && /arriv/i.test(lines[i + 1])) {
-        const from = lines[i].replace(/^.*?:\s*/, "").trim();
-        const to = lines[i + 1].replace(/^.*?:\s*/, "").trim();
-        if (from.length > 2 && to.length > 2) {
-          stations.push([from, to]);
-        }
+    // Trainline eticket in stripped HTML: "Outbound Thursday 25 June Wellingborough to Derby"
+    // or "Return Thursday 25 June Derby to Wellingborough"
+    const outboundMatch = text.match(
+      /(?:Outbound|Return)\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+\d{1,2}\s+\w+\s+([A-Z][A-Za-z\s&'.()-]+?)\s+to\s+([A-Z][A-Za-z\s&'.()-]+?)(?:\s+Unique|\s+\d|$)/i,
+    );
+    if (outboundMatch) {
+      stations.push([outboundMatch[1].trim(), outboundMatch[2].trim()]);
+    }
+    const returnMatch = text.match(
+      /Return\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+\d{1,2}\s+\w+\s+([A-Z][A-Za-z\s&'.()-]+?)\s+to\s+([A-Z][A-Za-z\s&'.()-]+?)(?:\s+Unique|\s+\d|$)/i,
+    );
+    if (returnMatch && !(stations.length > 0 && stations[0][0] === returnMatch[1].trim())) {
+      stations.push([returnMatch[1].trim(), returnMatch[2].trim()]);
+    }
+  }
+  if (stations.length === 0) {
+    // Fallback: "StationA to StationB" anywhere with capitalised names
+    const inlineRoute = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+Street)?)\s+to\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+Street)?)/g;
+    let ir;
+    while ((ir = inlineRoute.exec(text)) !== null) {
+      const from = ir[1].trim();
+      const to = ir[2].trim();
+      if (
+        from.length > 3 &&
+        to.length > 3 &&
+        !/Outbound|Return|Adult|Unique|Ticket|How|Google|Android/i.test(from) &&
+        !/Outbound|Return|Adult|Unique|Ticket|How|Google|Android/i.test(to)
+      ) {
+        stations.push([from, to]);
       }
     }
+  }
+  // Extract changeover info from ticket numbers: "WEL to LEI", "LEI to DER"
+  const ticketLegs: Array<[string, string]> = [];
+  const ticketPattern = /([A-Z]{3})\s+to\s+([A-Z]{3})/g;
+  let tl;
+  while ((tl = ticketPattern.exec(text)) !== null) {
+    ticketLegs.push([tl[1], tl[2]]);
   }
 
   // Deduplicate by time+station
@@ -353,22 +312,11 @@ function parseTrainlineTextLegs(text: string): Array<{
     }
   }
 
-  // Pair consecutive time+station entries into legs (depart→arrive)
-  const legs: Array<{
-    depTime: string; depStation: string;
-    arrTime: string; arrStation: string;
-    operator: string | null;
-  }> = [];
-
-  for (let i = 0; i + 1 < timeStations.length; i += 2) {
-    const dep = timeStations[i];
-    const arr = timeStations[i + 1];
-    if (dep.station === arr.station) {
-      // Skip self-referencing pairs (same station depart+arrive = change marker)
-      i--;
-      timeStations.splice(i + 1, 1);
-      continue;
-    }
+  const trainNumbers: string[] = [];
+  const trainPattern = /(?:train|service)\s*(?:no\.?|number|#)?\s*:?\s*([A-Z0-9]{2,8})/gi;
+  while ((m = trainPattern.exec(text)) !== null) {
+    trainNumbers.push(m[1]);
+  }
 
     // Look for operator between these lines
     let operator: string | null = null;
@@ -382,20 +330,46 @@ function parseTrainlineTextLegs(text: string): Array<{
       if (operator) break;
     }
 
-  const count = Math.max(stations.length, times.length, 1);
-  for (let i = 0; i < count; i++) {
-    segments.push({
-      from_station: stations[i]?.[0] ?? "Unknown",
-      to_station: stations[i]?.[1] ?? "Unknown",
-      departure_date: travelDate,
-      departure_time: times[i]?.[0] ?? "",
-      arrival_date: dates[i + 1] ?? travelDate,
-      arrival_time: times[i]?.[1] ?? "",
-      service_number: trainNumbers[i] ?? null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: i === 0 ? seat : null,
-    });
+  // If we have ticket legs (WEL→LEI, LEI→DER), use those for segments
+  // as they reveal the changeover. Group by outbound/return using
+  // the stations array (index 0 = outbound, index 1 = return).
+  if (ticketLegs.length > 0 && stations.length > 0) {
+    // Find how many legs belong to outbound vs return.
+    // Outbound legs go FROM the first station's origin direction;
+    // return legs go the other way.
+    const outboundLegs = ticketLegs.slice(0, Math.ceil(ticketLegs.length / 2));
+    for (const [fromCode, toCode] of outboundLegs) {
+      segments.push({
+        from_station: fromCode,
+        to_station: toCode,
+        departure_date: travelDate,
+        departure_time: "",
+        arrival_date: travelDate,
+        arrival_time: "",
+        service_number: null,
+        platform_dep: null,
+        platform_arr: null,
+        seat: null,
+      });
+    }
+  }
+
+  if (segments.length === 0) {
+    const count = Math.max(stations.length, times.length, 1);
+    for (let i = 0; i < count; i++) {
+      segments.push({
+        from_station: stations[i]?.[0] ?? "Unknown",
+        to_station: stations[i]?.[1] ?? "Unknown",
+        departure_date: travelDate,
+        departure_time: times[i]?.[0] ?? "",
+        arrival_date: dates[i + 1] ?? travelDate,
+        arrival_time: times[i]?.[1] ?? "",
+        service_number: trainNumbers[i] ?? null,
+        platform_dep: null,
+        platform_arr: null,
+        seat: i === 0 ? seat : null,
+      });
+    }
   }
 
   return legs;
