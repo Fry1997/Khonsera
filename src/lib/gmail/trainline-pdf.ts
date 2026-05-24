@@ -308,16 +308,12 @@ export async function decodeAztecFromPdf(pdfBuffer: ArrayBuffer): Promise<string
         continue;
       }
 
-      const imageData = new ImageData(
-        new Uint8ClampedArray(rgbaData.buffer as ArrayBuffer),
-        img.width,
-        img.height,
+      // ImageData isn't available in Node.js/serverless — pass a plain
+      // object with the same shape. ZXing accepts this via its ImageData overload.
+      const results = await readBarcodes(
+        { data: rgbaData, width: img.width, height: img.height } as ImageData,
+        { formats: ["Aztec"], maxNumberOfSymbols: 1 },
       );
-
-      const results = await readBarcodes(imageData, {
-        formats: ["Aztec"],
-        maxNumberOfSymbols: 1,
-      });
 
       if (results.length > 0 && results[0].text) {
         return results[0].text;
