@@ -76,7 +76,7 @@ function isAmendmentEmail(subject: string, text: string): boolean {
 
 function findBookingRef(text: string): string | null {
   const patterns = [
-    /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?)\s*[:.]?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
+    /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?|transaction\s*ID)\s*[:.]?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
     /\b([A-Z]{2,4}\d{4,10})\b/,
   ];
   for (const p of patterns) {
@@ -182,9 +182,14 @@ function isTrainlineMarketing(from: string, subject: string): boolean {
   return false;
 }
 
-function titleCase(s: string): string {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
-}
+  // Trainline typically has patterns like:
+  // "London Euston" → "Manchester Piccadilly"
+  // "Departs: 14:30" / "Arrives: 16:45"
+  const stationPairPattern =
+    /(?:from|depart(?:s|ing)?(?:\s+from)?)\s*:?\s*([A-Za-z\s&'.()-]+?)(?:\s+to\s+|\s*→\s*|\s*->\s*|\s*➔\s*)([A-Za-z\s&'.()-]+?)(?:\n|<|,|\s{2})/gi;
+  // Trainline eticket format: "Wellingborough to Derby" on its own line
+  const simpleRoutePattern =
+    /^([A-Z][A-Za-z\s&'.()-]{2,30})\s+to\s+([A-Z][A-Za-z\s&'.()-]{2,30})$/gm;
 
 function parseTrainlineTrainTimesUrls(html: string): Array<{
   from: string;
@@ -276,77 +281,27 @@ function parseTrainline(html: string, text: string, subject: string): Partial<Pa
     return parseTrainlineEticket(html, text, subject);
   }
 
-  // Fallback: generic parse for other Trainline email types
-  return parseTrainlineGeneric(html, text, subject);
-}
-
-// Known UK rail operators and ticket types that pollute station names
-const TRAINLINE_NOISE = [
-  "East Midlands Railway",
-  "Avanti West Coast",
-  "CrossCountry",
-  "Great Western Railway",
-  "LNER",
-  "Northern",
-  "TransPennine Express",
-  "Southern",
-  "Southeastern",
-  "South Western Railway",
-  "ScotRail",
-  "Chiltern Railways",
-  "c2c",
-  "Greater Anglia",
-  "Thameslink",
-  "West Midlands Railway",
-  "London Northwestern Railway",
-  "Merseyrail",
-  "Advance Single",
-  "Advance Return",
-  "Off-Peak Single",
-  "Off-Peak Return",
-  "Off-Peak Day Single",
-  "Off-Peak Day Return",
-  "Anytime Single",
-  "Anytime Return",
-  "Anytime Day Single",
-  "Anytime Day Return",
-  "Super Off-Peak Single",
-  "Super Off-Peak Return",
-  "Advance",
-  "Single",
-  "Return",
-];
-
-function cleanStationName(raw: string): string {
-  let name = raw;
-  for (const noise of TRAINLINE_NOISE) {
-    name = name.replace(new RegExp(noise.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "");
+  if (stations.length === 0) {
+    // Trainline eticket: "Wellingborough to Derby" as a standalone line
+    let sm;
+    while ((sm = simpleRoutePattern.exec(text)) !== null) {
+      const from = sm[1].trim();
+      const to = sm[2].trim();
+      if (from.length > 2 && to.length > 2 && !/outbound|return|inbound/i.test(from)) {
+        stations.push([from, to]);
+      }
+    }
   }
-  return name.replace(/\s{2,}/g, " ").trim();
-}
-
-function parseTrainlineHtmlTimeStations(html: string): Array<{ time: string; station: string }> {
-  // Trainline MJML emails render times and station names as text nodes in
-  // adjacent table cells or spans. Find all times that appear as bare text
-  // inside tags, then look for the nearest station-like text.
-  const results: Array<{ time: string; station: string; pos: number }> = [];
-
-  // Match time values that appear as the main text content of an element
-  const pattern = />(\d{1,2}:\d{2})\s*</g;
-  let m;
-  while ((m = pattern.exec(html)) !== null) {
-    const time = parseTime(m[1]);
-    if (!time) continue;
-
-    // Look ahead up to 800 chars for a station name (capitalised words in a text node)
-    const after = html.slice(m.index + m[0].length, m.index + m[0].length + 800);
-    const stationMatch = after.match(
-      />([A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Street|Road|Central|Parkway|International|Lime|Junction|Cross|Bridge|upon|on|in|the|de|la))*)\s*</,
-    );
-    if (stationMatch) {
-      const station = cleanStationName(stationMatch[1]);
-      if (station.length > 2) {
-        results.push({ time, station, pos: m.index });
+  if (stations.length === 0) {
+    // Last fallback: look for station names on separate lines
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (let i = 0; i < lines.length - 1; i++) {
+      if (/depart/i.test(lines[i]) && /arriv/i.test(lines[i + 1])) {
+        const from = lines[i].replace(/^.*?:\s*/, "").trim();
+        const to = lines[i + 1].replace(/^.*?:\s*/, "").trim();
+        if (from.length > 2 && to.length > 2) {
+          stations.push([from, to]);
+        }
       }
     }
   }
@@ -427,12 +382,19 @@ function parseTrainlineTextLegs(text: string): Array<{
       if (operator) break;
     }
 
-    legs.push({
-      depTime: dep.time,
-      depStation: dep.station,
-      arrTime: arr.time,
-      arrStation: arr.station,
-      operator,
+  const count = Math.max(stations.length, times.length, 1);
+  for (let i = 0; i < count; i++) {
+    segments.push({
+      from_station: stations[i]?.[0] ?? "Unknown",
+      to_station: stations[i]?.[1] ?? "Unknown",
+      departure_date: travelDate,
+      departure_time: times[i]?.[0] ?? "",
+      arrival_date: dates[i + 1] ?? travelDate,
+      arrival_time: times[i]?.[1] ?? "",
+      service_number: trainNumbers[i] ?? null,
+      platform_dep: null,
+      platform_arr: null,
+      seat: i === 0 ? seat : null,
     });
   }
 
