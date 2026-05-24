@@ -78,6 +78,9 @@ export type BriefBooking = {
   arriveTime: string;
   seat: string;
   price: string;
+  // Station/airport hub for the destination — set via TransportHubPicker
+  // when the mode is station-based (train, flight, tube, bus).
+  destinationHub: { id: string | null; label: string | null };
 };
 
 export type LocalMode = "auto" | "walk" | "drive" | "taxi";

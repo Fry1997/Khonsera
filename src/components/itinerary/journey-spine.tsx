@@ -28,6 +28,8 @@ export function JourneySpine({
   railHubLabel,
   flightHubLabel,
   baseName,
+  baseAddress,
+  baseType,
   beHomeBy,
 }: {
   anchors: Anchor[];
@@ -38,6 +40,8 @@ export function JourneySpine({
   railHubLabel?: string | null;
   flightHubLabel?: string | null;
   baseName?: string;
+  baseAddress?: string | null;
+  baseType?: "home" | "office" | null;
   beHomeBy?: { date: string; time: string } | null;
 }) {
   const haveAny = anchors.some((a) => a.place != null);
@@ -96,9 +100,9 @@ export function JourneySpine({
       <div className="tl">
         <SpineStop
           time="—"
-          eyebrow="Start"
+          eyebrow={baseType === "office" ? "Office" : baseType === "home" ? "Home" : "Start"}
           title={baseName || "Home"}
-          sub="Where your day begins"
+          sub={baseAddress || "Where your day begins"}
           dotKind="default"
         />
         {sorted.map((a, i) => {
@@ -112,7 +116,7 @@ export function JourneySpine({
           // no booking exists — nothing meaningful to show yet.
           const sv = prev ? stopovers.get(transitionKey(prev.uid, a.uid)) : undefined;
           const showVia = (t?: BriefTransition) =>
-            !!t && (t.mode !== "auto" || t.booked || t.transportBooking != null);
+            !!t && (t.mode !== "auto" || t.booked);
           let viaRow: ReactNode = null;
           if (prev && sv) {
             const svUid = stopoverUid(prev.uid, a.uid);
@@ -223,7 +227,7 @@ export function JourneySpine({
             time={beHomeBy.time}
             eyebrow="Be home by"
             title={baseName || "Home"}
-            sub={fmtShortDate(beHomeBy.date, timezone)}
+            sub={baseAddress || fmtShortDate(beHomeBy.date, timezone)}
             dotKind="default"
           />
         ) : null}
@@ -255,26 +259,19 @@ function SpineVia({
           transition.mode === "bus"
         ? railHubLabel
         : null;
-  const tb = transition.transportBooking;
-  const sub = tb
-    ? `${tb.segments[0]?.service_number || "ticket"}${
-        tb.segments[0]?.departure_at
-          ? ` · ${new Date(tb.segments[0].departure_at).toTimeString().slice(0, 5)}`
+  const sub = transition.booked
+    ? `${transition.booking.serviceNumber || "ticket"}${
+        transition.booking.departTime && transition.booking.arriveTime
+          ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
           : ""
       }${
-        tb.segments[tb.segments.length - 1]?.arrival_at
-          ? ` → ${new Date(tb.segments[tb.segments.length - 1].arrival_at).toTimeString().slice(0, 5)}`
+        transition.booking.destinationHub?.label
+          ? ` · ${transition.booking.destinationHub.label}`
           : ""
       }`
-    : transition.booked
-      ? `${transition.booking.serviceNumber || "ticket"}${
-          transition.booking.departTime && transition.booking.arriveTime
-            ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
-            : ""
-        }`
-      : hubLabel
-        ? `from ${hubLabel}`
-        : "intent — Khonsera fills in distance + time";
+    : hubLabel
+      ? `from ${hubLabel}`
+      : "intent — Khonsera fills in distance + time";
   return (
     <>
       <div className="tl-time" />
@@ -286,7 +283,7 @@ function SpineVia({
       <div className="tl-content" style={{ padding: "2px 0 8px" }}>
         <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
           via {label}
-          {transition.booked || transition.transportBooking ? " · booked" : ""}
+          {transition.booked ? " · booked" : ""}
         </p>
         <p className="tl-sub" style={{ marginTop: 0 }}>
           {sub}

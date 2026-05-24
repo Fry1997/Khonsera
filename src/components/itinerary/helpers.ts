@@ -160,6 +160,7 @@ export function emptyTransition(): BriefTransition {
       arriveTime: "",
       seat: "",
       price: "",
+      destinationHub: { id: null, label: null },
     },
     transportBooking: null,
   };

@@ -410,39 +410,12 @@ export function NewItineraryBrief({
             toUid: string,
             t: BriefTransition,
           ) => {
-            const meaningful =
-              t.mode !== "auto" || t.booked || t.transportBooking != null;
+            const meaningful = t.mode !== "auto" || t.booked;
             if (!meaningful) return;
-
-            // Rich transport booking takes precedence over simple fields.
-            const tb = t.transportBooking;
-            const booking = tb
-              ? {
-                  provider: tb.provider || null,
-                  reference: tb.reference || null,
-                  service_number:
-                    tb.segments[0]?.service_number || null,
-                  depart_time:
-                    tb.segments[0]?.departure_at
-                      ? new Date(tb.segments[0].departure_at)
-                          .toTimeString()
-                          .slice(0, 5)
-                      : "",
-                  arrive_time:
-                    tb.segments[tb.segments.length - 1]?.arrival_at
-                      ? new Date(
-                          tb.segments[tb.segments.length - 1].arrival_at,
-                        )
-                          .toTimeString()
-                          .slice(0, 5)
-                      : "",
-                  seat: tb.seat || null,
-                  price: tb.price ? Number(tb.price) : null,
-                  currency: "GBP" as const,
-                }
-              : t.booked &&
-                  t.booking.departTime &&
-                  t.booking.arriveTime
+            const booking =
+              t.booked &&
+              t.booking.departTime &&
+              t.booking.arriveTime
                 ? {
                     provider: t.booking.provider || null,
                     reference: t.booking.reference || null,
@@ -459,7 +432,7 @@ export function NewItineraryBrief({
             out.push({
               from_client_id: fromUid,
               to_client_id: toUid,
-              mode: tb ? (tb.mode as TransitionMode) : t.mode,
+              mode: t.mode,
               local_before: t.localBefore,
               local_after: t.localAfter,
               booking,
@@ -588,9 +561,6 @@ export function NewItineraryBrief({
                     setTransition(HOME_UID, anchor.uid, patch)
                   }
                   fromVirtualLabel={baseName}
-                  customers={customers}
-                  customerSites={customerSites}
-                  locations={locations}
                 />
               ) : null}
               <AnchorCard
@@ -628,9 +598,6 @@ export function NewItineraryBrief({
                             onChange={(patch) =>
                               setTransition(anchor.uid, svUid, patch)
                             }
-                            customers={customers}
-                            customerSites={customerSites}
-                            locations={locations}
                           />
                           <StopoverCard
                             stopover={sv}
@@ -661,9 +628,6 @@ export function NewItineraryBrief({
                             onChange={(patch) =>
                               setTransition(svUid, next.uid, patch)
                             }
-                            customers={customers}
-                            customerSites={customerSites}
-                            locations={locations}
                           />
                         </>
                       );
@@ -685,9 +649,6 @@ export function NewItineraryBrief({
                           onChange={(patch) =>
                             setTransition(anchor.uid, next.uid, patch)
                           }
-                          customers={customers}
-                          customerSites={customerSites}
-                          locations={locations}
                         />
                         <button
                           type="button"
@@ -830,6 +791,8 @@ export function NewItineraryBrief({
           railHubLabel={railHubLabel ?? null}
           flightHubLabel={flightHubLabel ?? null}
           baseName={baseName}
+          baseAddress={selectedBase?.address}
+          baseType={selectedBase?.type}
           beHomeBy={beHomeBy}
         />
       </aside>
