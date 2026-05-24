@@ -329,6 +329,13 @@ const briefTransportBookingSchema = z.object({
   reference: z.string().max(200).nullable().optional(),
   seat: z.string().max(200).nullable().optional(),
   price: z.number().min(0).nullable().optional(),
+  operator: z.string().max(200).nullable().optional(),
+  ticket_type: z.string().max(200).nullable().optional(),
+  route_restriction: z.string().max(200).nullable().optional(),
+  barcodes: z.array(z.object({
+    ref: z.string().nullable(),
+    data: z.string().nullable(),
+  })).optional().default([]),
 });
 
 const briefAccommodationBookingSchema = z.object({
@@ -697,6 +704,11 @@ export async function createItineraryFromBrief(
         booking_reference: tb.reference,
         seat: tb.seat,
         price: tb.price,
+        operator: tb.operator,
+        ticket_type: tb.ticket_type,
+        route_restriction: tb.route_restriction,
+        barcode_ref: tb.barcodes[0]?.ref ?? null,
+        barcode_data: tb.barcodes[0]?.data ?? null,
         departure_hub_id: tb.departure_hub_id,
         destination_hub_id: tb.destination_hub_id,
       },

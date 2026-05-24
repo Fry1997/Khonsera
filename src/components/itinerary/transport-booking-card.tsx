@@ -31,6 +31,11 @@ export type TransportChangeover = {
   departTime: string;
 };
 
+export type SegmentBarcode = {
+  ref: string | null;
+  data: string | null;
+};
+
 export type BriefTransportBooking = {
   uid: string;
   mode: TransportBookingMode | null;
@@ -45,6 +50,10 @@ export type BriefTransportBooking = {
   seat: string;
   price: string;
   confirmed: boolean;
+  operator: string | null;
+  ticketType: string | null;
+  routeRestriction: string | null;
+  barcodes: SegmentBarcode[];
 };
 
 export function emptyTransportBookingItem(): BriefTransportBooking {
@@ -62,6 +71,10 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
     seat: "",
     price: "",
     confirmed: false,
+    operator: null,
+    ticketType: null,
+    routeRestriction: null,
+    barcodes: [],
   };
 }
 
@@ -83,6 +96,10 @@ export function returnTransportBooking(
     seat: "",
     price: "",
     confirmed: false,
+    operator: from.operator,
+    ticketType: from.ticketType,
+    routeRestriction: from.routeRestriction,
+    barcodes: [],
   };
 }
 

@@ -204,6 +204,13 @@ export function NewItineraryBrief({
           seat: first?.seat ?? "",
           price: b.price != null ? String(b.price) : "",
           confirmed: true,
+          operator: first?.operator ?? null,
+          ticketType: first?.ticket_type ?? null,
+          routeRestriction: first?.route_restriction ?? null,
+          barcodes: legs.map((seg) => ({
+            ref: seg.barcode_ref ?? null,
+            data: seg.barcode_data ?? null,
+          })),
         };
       };
 
@@ -659,6 +666,10 @@ export function NewItineraryBrief({
             reference: tb.reference || null,
             seat: tb.seat || null,
             price: tb.price ? Number(tb.price) : null,
+            operator: tb.operator || null,
+            ticket_type: tb.ticketType || null,
+            route_restriction: tb.routeRestriction || null,
+            barcodes: tb.barcodes,
           })),
         accommodation_bookings: accommodationBookings
           .filter((ab) => ab.hotel != null || ab.checkInDate)

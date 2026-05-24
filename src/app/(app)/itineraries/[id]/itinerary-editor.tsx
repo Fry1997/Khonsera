@@ -1300,13 +1300,13 @@ export function ItineraryEditor({
                           departure_date: item.stop.start_time?.slice(0, 10) ?? "",
                           departure_time: fmtT(item.stop.start_time),
                           arrival_time: fmtT(nextItem!.stop.start_time),
-                          operator: null,
-                          route_restriction: null,
-                          ticket_type: null,
+                          operator: (meta?.operator as string) ?? null,
+                          route_restriction: (meta?.route_restriction as string) ?? null,
+                          ticket_type: (meta?.ticket_type as string) ?? null,
                           coach: null,
                           seat: (meta?.seat as string) ?? null,
-                          barcode_ref: (meta?.booking_reference as string) ?? null,
-                          barcode_data: null,
+                          barcode_ref: (meta?.barcode_ref as string) ?? (meta?.booking_reference as string) ?? null,
+                          barcode_data: (meta?.barcode_data as string) ?? null,
                           price: (meta?.price as number) ?? null,
                         }
                       : null;
