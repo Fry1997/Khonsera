@@ -242,6 +242,10 @@ export async function scanGmailForBookings(): Promise<
 
   const toFetch = messageRefs.filter((ref) => !importedIds.has(ref.id));
 
+  // Debug: log what the search found so we can diagnose misses.
+  console.log("[gmail-scan] query:", buildSearchQuery());
+  console.log("[gmail-scan] messages found:", messageRefs.length, "to fetch:", toFetch.length);
+
   // Fetch messages in parallel batches of 10 to stay well under Gmail rate limits.
   const BATCH_SIZE = 10;
   const bookings: ParsedBooking[] = [];
@@ -261,8 +265,14 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
-        let parsed = detectAndParse(from, subject, html, text);
-        if (!parsed) return null;
+        console.log(`[gmail-scan] msg ${ref.id}: from="${from}" subject="${subject}"`);
+
+        const parsed = detectAndParse(from, subject, html, text);
+        if (!parsed) {
+          console.log(`[gmail-scan] msg ${ref.id}: no parse match`);
+          return null;
+        }
+        console.log(`[gmail-scan] msg ${ref.id}: parsed as ${parsed.type}`, JSON.stringify(parsed).slice(0, 200));
 
         // Enrich Trainline bookings with PDF attachment data (seat, coach, barcode)
         if (parsed.type === "transport" && /trainline/i.test(from)) {
@@ -309,8 +319,11 @@ export async function scanGmailForBookings(): Promise<
   const today = new Date().toISOString().slice(0, 10);
   const futureBookings = deduped.filter((b) => {
     const travelDate = getTravelDate(b);
-    return !travelDate || travelDate >= today;
+    const keep = !travelDate || travelDate >= today;
+    if (!keep) console.log(`[gmail-scan] dropped past booking: ${b.raw_subject} (travel date ${travelDate})`);
+    return keep;
   });
+  console.log(`[gmail-scan] total parsed: ${bookings.length}, after date filter: ${futureBookings.length}`);
 
   // Update last_scan_at
   await supabase
