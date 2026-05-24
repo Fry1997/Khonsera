@@ -330,15 +330,11 @@ function parseTrainlineTextLegs(text: string): Array<{
       if (operator) break;
     }
 
-  // If we have ticket legs (WEL→LEI, LEI→DER), use those for segments
-  // as they reveal the changeover. Group by outbound/return using
-  // the stations array (index 0 = outbound, index 1 = return).
-  if (ticketLegs.length > 0 && stations.length > 0) {
-    // Find how many legs belong to outbound vs return.
-    // Outbound legs go FROM the first station's origin direction;
-    // return legs go the other way.
-    const outboundLegs = ticketLegs.slice(0, Math.ceil(ticketLegs.length / 2));
-    for (const [fromCode, toCode] of outboundLegs) {
+  // If we have ticket legs (WEL→LEI, LEI→DER, DER→LEI, LEI→WEL),
+  // include ALL as segments. The import function splits outbound/return
+  // based on the direction reversal.
+  if (ticketLegs.length > 0) {
+    for (const [fromCode, toCode] of ticketLegs) {
       segments.push({
         from_station: fromCode,
         to_station: toCode,

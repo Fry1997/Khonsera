@@ -342,6 +342,7 @@ export async function scanGmailForBookings(): Promise<
               _debug_pdf_count: pdfAttachments.length,
               _debug_html_length: (html ?? "").length,
               _debug_raw_text_length: (text ?? "").length,
+              _debug_html_sample: (html ?? "").slice(0, 3000),
             },
             parse_failed: !parsed,
             imported: false,

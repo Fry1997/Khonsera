@@ -159,23 +159,44 @@ export function NewItineraryBrief({
 
   const importParsedBooking = (b: ParsedBooking) => {
     if (b.type === "transport") {
-      const first = b.segments[0];
-      const last = b.segments[b.segments.length - 1];
-      setTransportBookings((prev) => [
-        ...prev,
-        {
+      // Split outbound/return: detect where the direction reverses.
+      // E.g. WEL→LEI, LEI→DER, DER→LEI, LEI→WEL — the reversal is
+      // at index 2 (DER→LEI goes back toward WEL).
+      const segs = b.segments;
+      let splitAt = segs.length;
+      if (segs.length >= 4) {
+        for (let i = 1; i < segs.length; i++) {
+          if (segs[i].from_station === segs[i - 1].to_station &&
+              segs[i].to_station === segs[Math.max(0, i - 2)]?.from_station) {
+            splitAt = i;
+            break;
+          }
+        }
+        // Simpler heuristic: if first leg origin equals last leg destination,
+        // it's a return trip — split in half.
+        if (splitAt === segs.length && segs[0].from_station === segs[segs.length - 1].to_station) {
+          splitAt = Math.ceil(segs.length / 2);
+        }
+      }
+      const outbound = segs.slice(0, splitAt);
+      const returnSegs = segs.slice(splitAt);
+
+      const makeBooking = (legs: typeof segs) => {
+        const first = legs[0];
+        const last = legs[legs.length - 1];
+        return {
           ...emptyTransportBookingItem(),
-          mode: b.mode === "bus" ? "bus" : b.mode,
+          mode: (b.mode === "bus" ? "bus" : b.mode) as any,
           date: first?.departure_date ?? tripStartDate,
           departureHub: { id: null, label: first?.from_station ?? null },
           destinationHub: { id: null, label: last?.to_station ?? null },
           departTime: first?.departure_time ?? "",
           arriveTime: last?.arrival_time ?? "",
-          changeovers: b.segments.length > 1
-            ? b.segments.slice(0, -1).map((seg, i) => ({
+          changeovers: legs.length > 1
+            ? legs.slice(0, -1).map((seg, i) => ({
                 hub: { id: null, label: seg.to_station },
                 arriveTime: seg.arrival_time,
-                departTime: b.segments[i + 1]?.departure_time ?? "",
+                departTime: legs[i + 1]?.departure_time ?? "",
               }))
             : [],
           serviceNumber: first?.service_number ?? "",
@@ -183,8 +204,14 @@ export function NewItineraryBrief({
           seat: first?.seat ?? "",
           price: b.price != null ? String(b.price) : "",
           confirmed: true,
-        },
-      ]);
+        };
+      };
+
+      setTransportBookings((prev) => {
+        const next = [...prev, makeBooking(outbound)];
+        if (returnSegs.length > 0) next.push(makeBooking(returnSegs));
+        return next;
+      });
     } else {
       setAccommodationBookings((prev) => [
         ...prev,
