@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import bwipjs from "bwip-js";
+import { toBuffer } from "bwip-js/node";
 
 export async function GET(req: NextRequest) {
   const data = req.nextUrl.searchParams.get("data");
@@ -11,14 +11,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const png = await bwipjs.toBuffer({
+    const png = await toBuffer({
       bcid: format,
       text: data,
       scale,
-      padding: 4,
+      paddingwidth: 4,
+      paddingheight: 4,
     });
 
-    return new NextResponse(png, {
+    return new NextResponse(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=31536000, immutable",
