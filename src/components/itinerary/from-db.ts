@@ -215,6 +215,20 @@ const PLANNING_ANCHOR_TYPES = new Set([
 
 const TRANSIT_TYPES = new Set(["transit_departure", "transit_arrival", "transit_changeover"]);
 
+function isTransitStop(s: DbStop): boolean {
+  if (TRANSIT_TYPES.has(s.type)) return true;
+  const meta = s.metadata as Record<string, unknown> | null;
+  const kind = meta?.kind as string | undefined;
+  return kind === "transit_departure" || kind === "transit_arrival" || kind === "transit_changeover";
+}
+
+function transitDirection(s: DbStop): "departure" | "arrival" {
+  if (s.type === "transit_departure") return "departure";
+  if (s.type === "transit_arrival") return "arrival";
+  const meta = s.metadata as Record<string, unknown> | null;
+  return (meta?.kind as string) === "transit_departure" ? "departure" : "arrival";
+}
+
 // Build the editor's anchor list from the loaded stop rows. Filters
 // out the implicit "home" start stop AND stopover stops — stopovers
 // are surfaced separately via `timelineFromStops`, so the editor can
@@ -224,7 +238,7 @@ export function anchorsFromStops(
   timezone: string,
 ): Anchor[] {
   return stops
-    .filter((s) => PLANNING_ANCHOR_TYPES.has(s.type))
+    .filter((s) => PLANNING_ANCHOR_TYPES.has(s.type) && !isTransitStop(s))
     .sort((a, b) => a.sequence - b.sequence)
     .map((s) => anchorFromStop(s, timezone));
 }
@@ -246,7 +260,7 @@ export function timelineFromStops(
       (s) =>
         PLANNING_ANCHOR_TYPES.has(s.type) ||
         s.type === "stopover" ||
-        TRANSIT_TYPES.has(s.type),
+        isTransitStop(s),
     )
     .sort((a, b) => a.sequence - b.sequence)
     .map<EditorTimelineItem>((s) => {
@@ -261,11 +275,11 @@ export function timelineFromStops(
           stop: s,
         };
       }
-      if (TRANSIT_TYPES.has(s.type)) {
+      if (isTransitStop(s)) {
         return {
           kind: "transit",
           stop: s,
-          transitDirection: s.type === "transit_departure" ? "departure" : "arrival",
+          transitDirection: transitDirection(s),
         };
       }
       return {

@@ -1279,74 +1279,56 @@ export function ItineraryEditor({
                     const legs = transitTransition
                       ? legsByTransition.get(transitTransition.id) ?? []
                       : [];
-                    const fmtTime = (iso: string | null) =>
+                    const fmtT = (iso: string | null) =>
                       iso
                         ? new Intl.DateTimeFormat("en-GB", {
                             hour: "2-digit", minute: "2-digit",
                             hour12: false, timeZone: timezone,
                           }).format(new Date(iso))
                         : "";
-                    const fmtDate = (iso: string | null) =>
-                      iso ? iso.slice(0, 10) : "";
+
+                    // Build a ticket card from stop → next stop when
+                    // no journey legs exist (brief-submitted bookings)
+                    const showTicket =
+                      nextItem?.kind === "transit" && transitTransition?.is_locked;
+                    const ticketSeg: TicketSegment | null = showTicket
+                      ? {
+                          from_station: item.stop.title ?? "?",
+                          to_station: nextItem!.stop.title ?? "?",
+                          from_station_code: null,
+                          to_station_code: null,
+                          departure_date: item.stop.start_time?.slice(0, 10) ?? "",
+                          departure_time: fmtT(item.stop.start_time),
+                          arrival_time: fmtT(nextItem!.stop.start_time),
+                          operator: null,
+                          route_restriction: null,
+                          ticket_type: null,
+                          coach: null,
+                          seat: (meta?.seat as string) ?? null,
+                          barcode_ref: (meta?.booking_reference as string) ?? null,
+                          barcode_data: null,
+                          price: (meta?.price as number) ?? null,
+                        }
+                      : null;
 
                     return (
-                      <li key={item.stop.id} className="flex flex-col" style={{ gap: 6 }}>
+                      <li key={item.stop.id} className="flex flex-col" style={{ gap: 4 }}>
                         {item.transitDirection === "departure" && (
-                          <div style={{ padding: "4px 0" }}>
+                          <div style={{ padding: "4px 0 2px" }}>
                             <span className="uc" style={{ fontSize: 10, color: "var(--gold-2)" }}>
                               Booked {(meta?.transport_mode as string) ?? "transport"}
                             </span>
                           </div>
                         )}
-                        <TransitStopCard
-                          stop={item.stop}
-                          direction={item.transitDirection}
-                          timezone={timezone}
-                          onRemove={() => handleDelete(item.stop.id)}
-                        />
-                        {legs.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 0 4px" }}>
-                            {legs.map((leg) => (
-                              <TrainTicketCard
-                                key={leg.id}
-                                compact
-                                segment={{
-                                  from_station: leg.start_location_name ?? "?",
-                                  to_station: leg.end_location_name ?? "?",
-                                  from_station_code: null,
-                                  to_station_code: null,
-                                  departure_date: fmtDate(item.stop.start_time),
-                                  departure_time: fmtTime(item.stop.start_time),
-                                  arrival_time: leg.duration_minutes
-                                    ? `${leg.duration_minutes} min`
-                                    : "",
-                                  operator: null,
-                                  route_restriction: null,
-                                  ticket_type: null,
-                                  coach: null,
-                                  seat: null,
-                                  barcode_ref: leg.service_number,
-                                  barcode_data: null,
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                        {legs.length === 0 && transitTransition && (
-                          <div
-                            style={{
-                              padding: "6px 10px",
-                              fontSize: 11,
-                              color: "var(--ink-dim)",
-                              borderLeft: "2px solid var(--gold-200)",
-                              marginLeft: 8,
-                            }}
-                          >
-                            {(meta?.transport_mode as string) === "train" ? "Train" : "Transport"} to{" "}
-                            {nextItem?.kind === "transit"
-                              ? (nextItem.stop.title ?? "next station")
-                              : "destination"}
-                          </div>
+                        {ticketSeg ? (
+                          <TrainTicketCard segment={ticketSeg} compact />
+                        ) : (
+                          <TransitStopCard
+                            stop={item.stop}
+                            direction={item.transitDirection}
+                            timezone={timezone}
+                            onRemove={() => handleDelete(item.stop.id)}
+                          />
                         )}
                       </li>
                     );
