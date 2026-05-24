@@ -112,15 +112,51 @@ export async function searchTransportHubs(
     return { ok: true, value: (data ?? []) as TransportHubHit[] };
   }
 
-  const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
-  const { data } = await supabase
+  const prefix = `${q.replace(/[%_\\]/g, "\\$&")}%`;
+  // Code matches first — "WLB" resolves a station instantly.
+  const { data: codeHits } = await supabase
     .from("transport_hubs")
     .select("id, kind, code, name, city, country")
     .eq("kind", parsed.value.kind)
-    .or(`name.ilike.${like},code.ilike.${like},city.ilike.${like}`)
+    .ilike("code", prefix)
     .order("name")
-    .limit(20);
-  return { ok: true, value: (data ?? []) as TransportHubHit[] };
+    .limit(5);
+  // Prefix match on name — "Wel" finds "Wellingborough" before "Abbey Well".
+  const { data: prefixHits } = await supabase
+    .from("transport_hubs")
+    .select("id, kind, code, name, city, country")
+    .eq("kind", parsed.value.kind)
+    .ilike("name", prefix)
+    .order("name")
+    .limit(15);
+  // Merge: code first, then prefix. Both are strong matches.
+  const seen = new Set<string>();
+  const merged: TransportHubHit[] = [];
+  for (const h of [...(codeHits ?? []), ...(prefixHits ?? [])]) {
+    if (!seen.has(h.id)) {
+      seen.add(h.id);
+      merged.push(h as TransportHubHit);
+    }
+  }
+  // Substring fallback only when prefix found very little — avoids
+  // "Abbey Well" outranking "Wellingborough" for "wel".
+  if (merged.length < 3 && q.length >= 3) {
+    const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
+    const { data: subHits } = await supabase
+      .from("transport_hubs")
+      .select("id, kind, code, name, city, country")
+      .eq("kind", parsed.value.kind)
+      .or(`name.ilike.${like},city.ilike.${like}`)
+      .order("name")
+      .limit(10);
+    for (const h of subHits ?? []) {
+      if (!seen.has(h.id)) {
+        seen.add(h.id);
+        merged.push(h as TransportHubHit);
+      }
+    }
+  }
+  return { ok: true, value: merged.slice(0, 20) };
 }
 
 // Lookup a single hub by id — used by the settings page so it can

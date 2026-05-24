@@ -310,6 +310,40 @@ const briefStopoverSchema = z.object({
   duration_minutes: z.number().int().positive().max(24 * 60).default(30),
 });
 
+const briefTransportBookingSchema = z.object({
+  mode: z.enum(["train", "flight", "taxi", "bus", "tube", "drive"]),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  departure_hub_id: z.string().uuid().nullable().optional(),
+  departure_label: z.string().nullable().optional(),
+  destination_hub_id: z.string().uuid().nullable().optional(),
+  destination_label: z.string().nullable().optional(),
+  depart_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  arrive_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  changeovers: z.array(z.object({
+    hub_id: z.string().uuid().nullable().optional(),
+    hub_label: z.string().nullable().optional(),
+    arrive_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+    depart_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  })).optional().default([]),
+  service_number: z.string().max(100).nullable().optional(),
+  reference: z.string().max(200).nullable().optional(),
+  seat: z.string().max(200).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
+});
+
+const briefAccommodationBookingSchema = z.object({
+  hotel_location_id: z.string().uuid().nullable().optional(),
+  hotel_label: z.string().max(200).nullable().optional(),
+  check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  check_in_time: z.string().regex(/^\d{2}:\d{2}$/).default("15:00"),
+  check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  check_out_time: z.string().regex(/^\d{2}:\d{2}$/).default("11:00"),
+  provider: z.string().max(200).nullable().optional(),
+  reference: z.string().max(200).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
+  room: z.string().max(400).nullable().optional(),
+});
+
 const briefSchema = z.object({
   anchors: z.array(anchorInputSchema).min(1),
   transitions: z.array(briefTransitionSchema).optional().default([]),
@@ -317,6 +351,13 @@ const briefSchema = z.object({
   title: z.string().trim().max(200).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
   timezone: z.string().min(1).max(80),
+  base_location_id: z.string().uuid().nullable().optional(),
+  be_home_by: z
+    .object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) })
+    .nullable()
+    .optional(),
+  transport_bookings: z.array(briefTransportBookingSchema).optional().default([]),
+  accommodation_bookings: z.array(briefAccommodationBookingSchema).optional().default([]),
 });
 
 type BriefTransitionInput = z.infer<typeof briefTransitionSchema>;
@@ -450,19 +491,24 @@ export async function createItineraryFromBrief(
     after: itinerary,
   });
 
-  const { data: profile } = await supabase
-    .from("travel_profiles")
-    .select(
-      "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
-    )
-    .eq("user_id", ctx.userId)
-    .eq("workspace_id", ctx.workspaceId)
-    .maybeSingle();
-  const homeId =
-    profile?.default_drive_origin_location_id ??
-    profile?.default_rail_origin_location_id ??
-    profile?.default_return_location_id ??
-    null;
+  // Use the explicit base_location_id from the brief when provided;
+  // fall back to the travel profile for backward compat.
+  let homeId = parsed.value.base_location_id ?? null;
+  if (!homeId) {
+    const { data: profile } = await supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle();
+    homeId =
+      profile?.default_drive_origin_location_id ??
+      profile?.default_rail_origin_location_id ??
+      profile?.default_return_location_id ??
+      null;
+  }
 
   type StopType =
     | "start"
@@ -476,6 +522,7 @@ export async function createItineraryFromBrief(
     location_id: string | null;
     customer_id: string | null;
     customer_site_id: string | null;
+    transport_hub_id?: string | null;
     title: string | null;
     start_time: string | null;
     end_time: string | null;
@@ -612,6 +659,199 @@ export async function createItineraryFromBrief(
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
+  }
+
+  // Transport bookings → departure + arrival stops with a locked
+  // transition between them. The booking data is stored in metadata
+  // so the planning page can display it.
+  for (const tb of parsed.value.transport_bookings) {
+    const dateForBooking =
+      tb.date ?? parsed.value.anchors[0]?.date ?? new Date().toISOString().slice(0, 10);
+    const departIso = tb.depart_time
+      ? isoFromLocal(dateForBooking, tb.depart_time, tz)
+      : null;
+    const arriveIso = tb.arrive_time
+      ? isoFromLocal(dateForBooking, tb.arrive_time, tz)
+      : null;
+
+    stopRows.push({
+      sequence: seq++,
+      type: "appointment",
+      location_id: null,
+      customer_id: null,
+      customer_site_id: null,
+      transport_hub_id: tb.departure_hub_id ?? null,
+      title: tb.departure_label ?? `${tb.mode} departure`,
+      start_time: departIso,
+      end_time: departIso,
+      duration_minutes: 0,
+      is_time_fixed: !!departIso,
+      notes: null,
+      metadata: {
+        kind: "transit_departure",
+        transport_mode: tb.mode,
+        service_number: tb.service_number,
+        booking_reference: tb.reference,
+        seat: tb.seat,
+        price: tb.price,
+        departure_hub_id: tb.departure_hub_id,
+        destination_hub_id: tb.destination_hub_id,
+      },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+
+    // Changeover stops — intermediate stations between departure and arrival.
+    for (const co of tb.changeovers) {
+      const coArrIso = co.arrive_time
+        ? isoFromLocal(dateForBooking, co.arrive_time, tz)
+        : null;
+      const coDepIso = co.depart_time
+        ? isoFromLocal(dateForBooking, co.depart_time, tz)
+        : null;
+      stopRows.push({
+        sequence: seq++,
+        type: "appointment",
+        location_id: null,
+        customer_id: null,
+        customer_site_id: null,
+        transport_hub_id: co.hub_id ?? null,
+        title: co.hub_label ?? "Changeover",
+        start_time: coArrIso,
+        end_time: coDepIso,
+        duration_minutes: null,
+        is_time_fixed: !!coArrIso,
+        notes: null,
+        metadata: {
+          kind: "transit_changeover",
+          transport_mode: tb.mode,
+          hub_id: co.hub_id,
+        },
+        itinerary_id: itinerary.id,
+        workspace_id: ctx.workspaceId,
+      });
+    }
+
+    stopRows.push({
+      sequence: seq++,
+      type: "appointment",
+      location_id: null,
+      customer_id: null,
+      customer_site_id: null,
+      transport_hub_id: tb.destination_hub_id ?? null,
+      title: tb.destination_label ?? `${tb.mode} arrival`,
+      start_time: arriveIso,
+      end_time: arriveIso,
+      duration_minutes: 0,
+      is_time_fixed: !!arriveIso,
+      notes: null,
+      metadata: {
+        kind: "transit_arrival",
+        transport_mode: tb.mode,
+        service_number: tb.service_number,
+        destination_hub_id: tb.destination_hub_id,
+      },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+  }
+
+  // Accommodation bookings → stored as reference data. The planning
+  // page surfaces check-in/check-out as constraints, not fixed stops.
+  // The user places hotel stops on the timeline as needed.
+  for (const ab of parsed.value.accommodation_bookings) {
+    if (!ab.check_in_date) continue;
+    const ciIso = isoFromLocal(
+      ab.check_in_date,
+      ab.check_in_time ?? "15:00",
+      tz,
+    );
+    const coIso = ab.check_out_date
+      ? isoFromLocal(
+          ab.check_out_date,
+          ab.check_out_time ?? "11:00",
+          tz,
+        )
+      : null;
+    stopRows.push({
+      sequence: seq++,
+      type: "accommodation",
+      location_id: ab.hotel_location_id ?? null,
+      customer_id: null,
+      customer_site_id: null,
+      title: ab.hotel_label ?? "Hotel",
+      start_time: ciIso,
+      end_time: coIso,
+      duration_minutes: null,
+      is_time_fixed: false,
+      notes: null,
+      metadata: {
+        kind: "accommodation_booking",
+        provider: ab.provider,
+        booking_reference: ab.reference,
+        price: ab.price,
+        room: ab.room,
+        check_in_from: ab.check_in_time ?? "15:00",
+        check_out_by: ab.check_out_time ?? "11:00",
+      },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+  }
+
+  // "Be home by" constraint → an end stop at the base location.
+  if (parsed.value.be_home_by && homeId) {
+    const bhb = parsed.value.be_home_by;
+    const endTime = isoFromLocal(bhb.date, bhb.time, tz);
+    stopRows.push({
+      sequence: seq++,
+      type: "start",
+      location_id: homeId,
+      customer_id: null,
+      customer_site_id: null,
+      title: null,
+      start_time: endTime,
+      end_time: null,
+      duration_minutes: null,
+      is_time_fixed: true,
+      notes: null,
+      metadata: { kind: "be_home_by" },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+  }
+
+  // Tag each row with its clientId before sorting (object identity survives sort).
+  type RowRef = (typeof stopRows)[0];
+  const rowClientId = new Map<RowRef, string>();
+  for (const [origSeq, cid] of clientIdBySeq.entries()) {
+    const row = stopRows.find((r) => r.sequence === origSeq);
+    if (row) rowClientId.set(row, cid);
+  }
+
+  // Sort all stops chronologically by start_time. Home stays first,
+  // be_home_by stays last, everything else by time.
+  stopRows.sort((a, b) => {
+    const aIsHome = a.type === "start" && !(a.metadata && "kind" in a.metadata && (a.metadata as Record<string, unknown>).kind === "be_home_by");
+    const bIsHome = b.type === "start" && !(b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by");
+    if (aIsHome && !bIsHome) return -1;
+    if (bIsHome && !aIsHome) return 1;
+    const aIsBhb = a.metadata && "kind" in a.metadata && (a.metadata as Record<string, unknown>).kind === "be_home_by";
+    const bIsBhb = b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by";
+    if (aIsBhb && !bIsBhb) return 1;
+    if (bIsBhb && !aIsBhb) return -1;
+    if (!a.start_time && !b.start_time) return 0;
+    if (!a.start_time) return 1;
+    if (!b.start_time) return -1;
+    return a.start_time.localeCompare(b.start_time);
+  });
+
+  // Reassign sequences and rebuild the clientId map.
+  clientIdBySeq.clear();
+  for (let i = 0; i < stopRows.length; i++) {
+    stopRows[i].sequence = i;
+    const cid = rowClientId.get(stopRows[i]);
+    if (cid) clientIdBySeq.set(i, cid);
   }
 
   if (stopRows.length > 0) {
@@ -890,6 +1130,76 @@ export async function createItineraryFromBrief(
       }
     }
   }
+
+  // ── Create transitions for ALL adjacent stop pairs ──────────────
+  // Ensures the planning page shows mode pickers between every stop,
+  // not just user-specified anchor pairs. Transport booking legs get
+  // locked transitions; everything else gets mode=auto.
+  {
+    const { data: allStops } = await supabase
+      .from("stops")
+      .select("id, sequence, metadata")
+      .eq("itinerary_id", itinerary.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .order("sequence");
+    if (allStops && allStops.length > 1) {
+      // Collect existing transitions to avoid duplicates.
+      const { data: existingTrans } = await supabase
+        .from("transitions")
+        .select("from_stop_id, to_stop_id")
+        .eq("itinerary_id", itinerary.id)
+        .eq("workspace_id", ctx.workspaceId);
+      const existingKeys = new Set(
+        (existingTrans ?? []).map(
+          (t) => `${t.from_stop_id}::${t.to_stop_id}`,
+        ),
+      );
+
+      const newTransitions: Array<{
+        itinerary_id: string;
+        workspace_id: string;
+        from_stop_id: string;
+        to_stop_id: string;
+        mode: string;
+        is_locked: boolean;
+        computed_duration_minutes: number | null;
+      }> = [];
+
+      for (let i = 0; i < allStops.length - 1; i++) {
+        const from = allStops[i];
+        const to = allStops[i + 1];
+        const key = `${from.id}::${to.id}`;
+        if (existingKeys.has(key)) continue;
+
+        // Transport booking legs (departure → changeover → arrival)
+        // get locked transitions.
+        const fromMeta = from.metadata as Record<string, unknown> | null;
+        const toMeta = to.metadata as Record<string, unknown> | null;
+        const isTransitLeg =
+          (fromMeta?.kind === "transit_departure" ||
+            fromMeta?.kind === "transit_changeover") &&
+          (toMeta?.kind === "transit_changeover" ||
+            toMeta?.kind === "transit_arrival");
+
+        newTransitions.push({
+          itinerary_id: itinerary.id,
+          workspace_id: ctx.workspaceId,
+          from_stop_id: from.id as string,
+          to_stop_id: to.id as string,
+          mode: isTransitLeg ? "train" : "mixed",
+          is_locked: isTransitLeg,
+          computed_duration_minutes: null,
+        });
+      }
+
+      if (newTransitions.length > 0) {
+        await supabase.from("transitions").insert(newTransitions);
+      }
+    }
+  }
+
+  // ── Run the solver to propagate times ──────────────────────────
+  await resolveItineraryTimes(itinerary.id);
 
   return ok({ id: itinerary.id });
 }

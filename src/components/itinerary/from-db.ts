@@ -193,6 +193,8 @@ export function anchorFromStop(stop: DbStop, timezone: string): Anchor {
     durationMins: stop.duration_minutes ?? 60,
     checkOutDate: kind === "stay" ? co.date : "",
     checkOutTime: kind === "stay" ? co.time : "",
+    notes: stop.notes ?? null,
+    accommodation: null,
   };
 }
 

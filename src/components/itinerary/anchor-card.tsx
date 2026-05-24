@@ -8,6 +8,11 @@ import {
   type PlacePickerLocation,
 } from "@/components/place-picker";
 import { TransportIcon } from "@/components/icons";
+import {
+  AccommodationBookingFields,
+  emptyAccommodationBooking,
+  type AccommodationBookingValue,
+} from "@/components/accommodation-booking-fields";
 import type { LocationType } from "@/lib/types/domain";
 import { updateLocationType } from "@/lib/actions/locations";
 import { DurationRow } from "./duration-row";
@@ -219,7 +224,197 @@ export function AnchorCard({
           kind={kind}
         />
       )}
+
+      {/* Notes — collapsible, same field as planning's per-stop notes */}
+      {anchor.notes != null ? (
+        <div style={{ marginTop: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 4,
+            }}
+          >
+            <span className="uc" style={{ fontSize: 10.5 }}>
+              Notes
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange({ notes: null })}
+              style={{ fontSize: 11, color: "var(--rust)" }}
+            >
+              Remove
+            </button>
+          </div>
+          <textarea
+            className="field"
+            rows={2}
+            value={anchor.notes ?? ""}
+            onChange={(e) => onChange({ notes: e.target.value })}
+            placeholder="Anything about this stop — contact, dress code, parking…"
+            maxLength={4000}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ alignSelf: "flex-start", marginTop: 6, fontSize: 12 }}
+          onClick={() => onChange({ notes: "" })}
+        >
+          + Notes
+        </button>
+      )}
     </section>
+  );
+}
+
+function AccommodationBookingSection({
+  anchor,
+  customers,
+  customerSites,
+  locations,
+  onChange,
+}: {
+  anchor: Anchor;
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
+  onChange: (patch: Partial<Anchor>) => void;
+}) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const acc = anchor.accommodation;
+
+  return (
+    <>
+      {acc ? (
+        <div
+          className="brief-subcard"
+          style={{ marginTop: 8, padding: "8px 12px" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span className="uc" style={{ fontSize: 10.5 }}>
+              Hotel booking
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
+                style={{ fontSize: 11, color: "var(--ink-dim)" }}
+                onClick={() => setModalOpen(true)}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                style={{ fontSize: 11, color: "var(--rust)" }}
+                onClick={() => onChange({ accommodation: null })}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+          <p className="brief-helper" style={{ margin: "4px 0 0" }}>
+            {acc.hotel?.label ?? acc.hotelName ?? "Hotel"}
+            {acc.reference ? ` · ${acc.reference}` : ""}
+            {acc.price ? ` · £${acc.price}` : ""}
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ alignSelf: "flex-start", marginTop: 6, fontSize: 12 }}
+          onClick={() => setModalOpen(true)}
+        >
+          + Add hotel booking
+        </button>
+      )}
+
+      {modalOpen ? (
+        <div
+          className="booking-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setModalOpen(false);
+          }}
+        >
+          <div className="booking-modal" role="dialog">
+            <header style={{ marginBottom: 12 }}>
+              <p className="uc">Accommodation booking</p>
+              <h3 className="h2" style={{ marginTop: 4 }}>
+                Hotel stay
+              </h3>
+            </header>
+            <AccommodationBookingModal
+              initial={acc}
+              customers={customers}
+              customerSites={customerSites}
+              locations={locations}
+              onConfirm={(val) => {
+                onChange({ accommodation: val });
+                setModalOpen(false);
+              }}
+              onCancel={() => setModalOpen(false)}
+            />
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function AccommodationBookingModal({
+  initial,
+  customers,
+  customerSites,
+  locations,
+  onConfirm,
+  onCancel,
+}: {
+  initial: AccommodationBookingValue | null;
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
+  onConfirm: (val: AccommodationBookingValue) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState<AccommodationBookingValue>(
+    initial ?? emptyAccommodationBooking(),
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <AccommodationBookingFields
+        value={value}
+        onChange={setValue}
+        customers={customers}
+        customerSites={customerSites}
+        locations={locations}
+        idPrefix="brief-acc"
+      />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          type="button"
+          className="btn btn-gold btn-sm"
+          onClick={() => onConfirm(value)}
+        >
+          Confirm
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

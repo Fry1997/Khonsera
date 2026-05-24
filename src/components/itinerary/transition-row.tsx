@@ -11,7 +11,6 @@ import {
 } from "./helpers";
 import type {
   Anchor,
-  BriefBooking,
   BriefTransition,
   LocalMode,
   TransitionMode,
@@ -39,17 +38,8 @@ export function TransitionRow({
   to,
   transition,
   onChange,
-  // Optional label for the from-anchor when it isn't a real anchor —
-  // e.g. the implicit "home" leg before the first anchor.
   fromVirtualLabel,
-  // Per-mode duration hints. When provided, each mode pill in the
-  // popover renders a tiny "12m" / "—" tail. Callers (the editor)
-  // wire this via the useRoutePreviews hook; the brief leaves it
-  // undefined so no hints appear.
   modePreviews,
-  // Fires when the popover opens, so the consumer can prefetch
-  // previews for any modes it hasn't seen yet. Optional — without
-  // it the popover stays silent (which is fine for the brief).
   onOpenChange,
 }: {
   from: Anchor | null;
@@ -287,39 +277,6 @@ export function TransitionRow({
             </div>
           ) : null}
 
-          <label className="transition-booked-toggle">
-            <input
-              type="checkbox"
-              checked={transition.booked}
-              onChange={(e) =>
-                onChange({
-                  booked: e.target.checked,
-                  // Default ticket mode to non-auto when toggling on.
-                  ...(e.target.checked && transition.mode === "auto"
-                    ? { mode: "train" as TransitionMode }
-                    : {}),
-                })
-              }
-            />
-            <span>This is already booked</span>
-            <span className="brief-helper" style={{ margin: 0, fontSize: 12 }}>
-              Adds the ticket to Bookings and locks the editor onto these times.
-            </span>
-          </label>
-
-          {transition.booked ? (
-            <BookedFields
-              fromAnchor={from}
-              toAnchor={to}
-              booking={transition.booking}
-              onChange={(patch) =>
-                onChange({
-                  booking: { ...transition.booking, ...patch },
-                })
-              }
-            />
-          ) : null}
-
           <div className="transition-pop-foot">
             <button
               type="button"
@@ -347,6 +304,7 @@ export function TransitionRow({
           </div>
         </div>
       ) : null}
+
     </div>
   );
 }
@@ -414,93 +372,3 @@ function feasibilityForMode(
   });
 }
 
-function BookedFields({
-  fromAnchor,
-  toAnchor,
-  booking,
-  onChange,
-}: {
-  fromAnchor: Anchor | null;
-  toAnchor: Anchor;
-  booking: BriefBooking;
-  onChange: (patch: Partial<BriefBooking>) => void;
-}) {
-  // Sensible defaults so the user only types what they actually know.
-  const departDefault =
-    fromAnchor && fromAnchor.timingMode === "leave_by"
-      ? fromAnchor.time
-      : "";
-  const arriveDefault =
-    toAnchor.timingMode === "arrive_by" ? toAnchor.time : "";
-
-  return (
-    <div className="transition-booked-fields">
-      <div className="brief-when-row">
-        <label className="brief-field">
-          <span className="uc">Depart</span>
-          <input
-            type="time"
-            className="field"
-            value={booking.departTime || departDefault}
-            onChange={(e) => onChange({ departTime: e.target.value })}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arrive</span>
-          <input
-            type="time"
-            className="field"
-            value={booking.arriveTime || arriveDefault}
-            onChange={(e) => onChange({ arriveTime: e.target.value })}
-          />
-        </label>
-      </div>
-      <div className="brief-when-row">
-        <label className="brief-field">
-          <span className="uc">Service no.</span>
-          <input
-            type="text"
-            className="field"
-            placeholder="9M14 / BA245 / Bus 24"
-            value={booking.serviceNumber}
-            onChange={(e) => onChange({ serviceNumber: e.target.value })}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Booking ref.</span>
-          <input
-            type="text"
-            className="field"
-            placeholder="ABC123"
-            value={booking.reference}
-            onChange={(e) => onChange({ reference: e.target.value })}
-          />
-        </label>
-      </div>
-      <div className="brief-when-row">
-        <label className="brief-field">
-          <span className="uc">Seat / row</span>
-          <input
-            type="text"
-            className="field"
-            placeholder="Coach E, Seat 32"
-            value={booking.seat}
-            onChange={(e) => onChange({ seat: e.target.value })}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Price (£)</span>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className="field"
-            placeholder="148.50"
-            value={booking.price}
-            onChange={(e) => onChange({ price: e.target.value })}
-          />
-        </label>
-      </div>
-    </div>
-  );
-}

@@ -20,6 +20,17 @@ export {
 export { StopoverCard, type StopoverBackCalc } from "./stopover-card";
 export { JourneySpine } from "./journey-spine";
 export {
+  TransportBookingCard,
+  emptyTransportBookingItem,
+  returnTransportBooking,
+  type BriefTransportBooking,
+} from "./transport-booking-card";
+export {
+  AccommodationBookingCard,
+  emptyAccommodationBookingItem,
+  type BriefAccommodationBooking,
+} from "./accommodation-booking-card";
+export {
   anchorFromStop,
   anchorsFromStops,
   timelineFromStops,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { TransportIcon } from "@/components/icons";
 import {
   TRANSITION_OPTIONS,
@@ -15,6 +15,8 @@ import {
   transitionKey,
 } from "./helpers";
 import type { Anchor, BriefTransition, Stopover } from "./types";
+import type { BriefTransportBooking } from "./transport-booking-card";
+import type { BriefAccommodationBooking } from "./accommodation-booking-card";
 
 // JourneySpine — the live read-only "what we'll build" timeline on
 // the right side of the brief. Reused on the editor in summary mode
@@ -25,12 +27,14 @@ export function JourneySpine({
   stopovers,
   titleOverride,
   timezone,
-  // Labels for the user's default rail station / airport. When the
-  // leg is by train / tube / flight we tag the via row with
-  // "via {hub}" so the spine shows the station even before a real
-  // transit_departure stop has been inserted into the itinerary.
   railHubLabel,
   flightHubLabel,
+  baseName,
+  baseAddress,
+  baseType,
+  beHomeBy,
+  transportBookings,
+  accommodationBookings,
 }: {
   anchors: Anchor[];
   transitions: Map<string, BriefTransition>;
@@ -39,8 +43,17 @@ export function JourneySpine({
   timezone: string;
   railHubLabel?: string | null;
   flightHubLabel?: string | null;
+  baseName?: string;
+  baseAddress?: string | null;
+  baseType?: "home" | "office" | null;
+  beHomeBy?: { date: string; time: string } | null;
+  transportBookings?: BriefTransportBooking[];
+  accommodationBookings?: BriefAccommodationBooking[];
 }) {
-  const haveAny = anchors.some((a) => a.place != null);
+  const haveAny =
+    anchors.some((a) => a.place != null) ||
+    (transportBookings ?? []).some((tb) => tb.mode != null) ||
+    (accommodationBookings ?? []).some((ab) => ab.hotel != null);
   if (!haveAny) {
     return (
       <div className="brief-preview-empty">
@@ -96,13 +109,54 @@ export function JourneySpine({
       <div className="tl">
         <SpineStop
           time="—"
-          eyebrow="Start"
-          title="Home"
-          sub="From your travel profile"
+          eyebrow={baseType === "office" ? "Office" : baseType === "home" ? "Home" : "Start"}
+          title={baseName || "Home"}
+          sub={baseAddress || "Where your day begins"}
           dotKind="default"
         />
-        {sorted.map((a, i) => {
-          const earlier = sorted.slice(0, i);
+        {/* Build a unified timeline: anchors + transport bookings sorted by time */}
+        {(() => {
+          type TimelineEntry =
+            | { kind: "anchor"; anchor: (typeof sorted)[0]; index: number }
+            | { kind: "transport"; booking: BriefTransportBooking };
+          const entries: TimelineEntry[] = sorted.map((a, i) => ({
+            kind: "anchor" as const,
+            anchor: a,
+            index: i,
+          }));
+          for (const tb of transportBookings ?? []) {
+            if (tb.mode) entries.push({ kind: "transport", booking: tb });
+          }
+          entries.sort((a, b) => {
+            const aTime =
+              a.kind === "anchor"
+                ? `${a.anchor.date}T${a.anchor.time}`
+                : a.kind === "transport" && a.booking.date && a.booking.departTime
+                  ? `${a.booking.date}T${a.booking.departTime}`
+                  : "z";
+            const bTime =
+              b.kind === "anchor"
+                ? `${b.anchor.date}T${b.anchor.time}`
+                : b.kind === "transport" && b.booking.date && b.booking.departTime
+                  ? `${b.booking.date}T${b.booking.departTime}`
+                  : "z";
+            return aTime.localeCompare(bTime);
+          });
+          return entries.map((entry) => {
+            if (entry.kind === "transport") {
+              const tb = entry.booking;
+              const MIcon = TransportIcon[tb.mode!];
+              return (
+                <SpineTransportBooking
+                  key={`tb-${tb.uid}`}
+                  booking={tb}
+                  timezone={timezone}
+                />
+              );
+            }
+            const a = entry.anchor;
+            const i = entry.index;
+            const earlier = sorted.slice(0, i);
           const prev = sorted[i - 1];
           // The prev→this leg either:
           //   * has a stopover sitting between them → render the
@@ -175,6 +229,10 @@ export function JourneySpine({
                           a.checkOutTime || "11:00"
                         }`
                       : ""
+                  }${
+                    a.accommodation?.reference
+                      ? ` · ref ${a.accommodation.reference}`
+                      : ""
                   }`}
                   dotKind="default"
                 />
@@ -213,7 +271,50 @@ export function JourneySpine({
               />
             </Fragment>
           );
+          });
+        })()}
+        {accommodationBookings?.map((ab) => {
+          if (!ab.hotel) return null;
+          return (
+            <Fragment key={ab.uid}>
+              <div className="tl-time" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                {ab.checkInTime || "—"}
+              </div>
+              <div className="tl-rail">
+                <div
+                  className="tl-dot"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    border: "1.5px dashed var(--ink-faint)",
+                    background: "transparent",
+                  }}
+                />
+              </div>
+              <div className="tl-content" style={{ padding: "4px 0 10px" }}>
+                <p
+                  className="tl-eyebrow"
+                  style={{ marginBottom: 1, color: "var(--ink-faint)", fontSize: 10.5 }}
+                >
+                  Check-in from
+                </p>
+                <p className="tl-sub" style={{ marginTop: 0, fontSize: 12 }}>
+                  {ab.hotel.label}
+                  {ab.checkInDate ? ` · ${fmtShortDate(ab.checkInDate, timezone)}` : ""}
+                </p>
+              </div>
+            </Fragment>
+          );
         })}
+        {beHomeBy ? (
+          <SpineStop
+            time={beHomeBy.time}
+            eyebrow="Be home by"
+            title={baseName || "Home"}
+            sub={baseAddress || fmtShortDate(beHomeBy.date, timezone)}
+            dotKind="default"
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -246,6 +347,10 @@ function SpineVia({
     ? `${transition.booking.serviceNumber || "ticket"}${
         transition.booking.departTime && transition.booking.arriveTime
           ? ` · ${transition.booking.departTime} → ${transition.booking.arriveTime}`
+          : ""
+      }${
+        transition.booking.destinationHub?.label
+          ? ` · ${transition.booking.destinationHub.label}`
           : ""
       }`
     : hubLabel
@@ -299,6 +404,91 @@ function SpineStop({
           {dotKind === "gold" ? <em>{title}</em> : title}
         </h3>
         <p className="tl-sub">{sub}</p>
+      </div>
+    </>
+  );
+}
+
+function SpineTransportBooking({
+  booking: tb,
+  timezone,
+}: {
+  booking: BriefTransportBooking;
+  timezone: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const MIcon = TransportIcon[tb.mode!];
+  const modeLabel = tb.mode === "train" ? "Train" : tb.mode === "flight" ? "Flight" : tb.mode ?? "";
+
+  return (
+    <>
+      <div className="tl-time" style={{ fontSize: 11 }}>
+        {tb.departTime || ""}
+      </div>
+      <div className="tl-rail">
+        <div className="bones-via-tick" aria-hidden>
+          <MIcon size={11} />
+        </div>
+      </div>
+      <div className="tl-content" style={{ padding: "2px 0 8px" }}>
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            all: "unset",
+            cursor: "pointer",
+            display: "block",
+            width: "100%",
+          }}
+        >
+          <p className="tl-eyebrow" style={{ marginBottom: 2 }}>
+            Booked {modeLabel}
+            <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.6 }}>
+              {expanded ? "collapse" : "details"}
+            </span>
+          </p>
+          <p className="tl-sub" style={{ marginTop: 0 }}>
+            {tb.departureHub?.label && tb.destinationHub?.label
+              ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
+              : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
+            {tb.date ? ` · ${fmtShortDate(tb.date, timezone)}` : ""}
+            {tb.departTime ? ` · ${tb.departTime}` : ""}
+            {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
+          </p>
+        </button>
+        {expanded ? (
+          <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink-dim)" }}>
+            {tb.changeovers.length > 0 ? (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontWeight: 500, color: "var(--ink)" }}>Route: </span>
+                {tb.departureHub?.label ?? "?"}
+                {tb.changeovers.map((co, i) => (
+                  <span key={i}>
+                    {" → "}
+                    {co.hub?.label ?? "?"}
+                    {co.arriveTime || co.departTime
+                      ? ` (${co.arriveTime}${co.departTime ? `–${co.departTime}` : ""})`
+                      : ""}
+                  </span>
+                ))}
+                {" → "}
+                {tb.destinationHub?.label ?? "?"}
+              </div>
+            ) : null}
+            {tb.serviceNumber ? (
+              <div>Service: {tb.serviceNumber}</div>
+            ) : null}
+            {tb.reference ? (
+              <div>Ref: {tb.reference}</div>
+            ) : null}
+            {tb.seat ? (
+              <div>Seat: {tb.seat}</div>
+            ) : null}
+            {tb.price ? (
+              <div>Price: {tb.price}</div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   );

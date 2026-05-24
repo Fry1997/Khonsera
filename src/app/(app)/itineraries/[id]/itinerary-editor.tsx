@@ -275,6 +275,9 @@ export function ItineraryEditor({
     existingStopId?: string;
   } | null>(null);
   const [gmailImportOpen, setGmailImportOpen] = useState(false);
+  // Standalone "add booking" — not tied to an existing stop.
+  const [showAddTransport, setShowAddTransport] = useState(false);
+  const [showAddAccommodation, setShowAddAccommodation] = useState(false);
 
   // Transitions keyed by from_stop_id for fast lookup.
   const transitionByFrom = useMemo(() => {
@@ -1088,6 +1091,22 @@ export function ItineraryEditor({
           <span className={`sb ${STATUS_SB[itinerary.status]}`}>
             {STATUS_LABEL[itinerary.status]}
           </span>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ fontSize: 13 }}
+            onClick={() => setShowAddTransport(true)}
+          >
+            + Transport
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ fontSize: 13 }}
+            onClick={() => setShowAddAccommodation(true)}
+          >
+            + Accommodation
+          </button>
           {gmailConnected ? (
             <button
               type="button"
@@ -1590,30 +1609,10 @@ export function ItineraryEditor({
                                 <button
                                   type="button"
                                   className="brief-add-stop-trigger"
-                                  onClick={() =>
-                                    setTransitFormFor({
-                                      beforeStopId: stop.id,
-                                      afterStopId: nextItem.stop.id,
-                                      mode: "train",
-                                    })
-                                  }
-                                  title="Add a train journey between these"
+                                  onClick={() => setShowAddTransport(true)}
+                                  title="Add a booked transport leg"
                                 >
-                                  + Train
-                                </button>
-                                <button
-                                  type="button"
-                                  className="brief-add-stop-trigger"
-                                  onClick={() =>
-                                    setTransitFormFor({
-                                      beforeStopId: stop.id,
-                                      afterStopId: nextItem.stop.id,
-                                      mode: "flight",
-                                    })
-                                  }
-                                  title="Add a flight between these"
-                                >
-                                  + Flight
+                                  + Transport
                                 </button>
                               </>
                             ) : null}
@@ -1809,6 +1808,53 @@ export function ItineraryEditor({
             onClose={() => setGmailImportOpen(false)}
             onImported={() => router.refresh()}
           />
+        ) : null}
+
+        {/* Standalone transport booking — same card as the brief */}
+        {showAddTransport ? (
+          <div
+            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAddTransport(false);
+            }}
+          >
+            <div className="my-8 w-full max-w-2xl">
+              <PlanningTransportBookingModal
+                itineraryId={itinerary.id}
+                lastStopId={sortedStops[sortedStops.length - 1]?.id ?? null}
+                onDone={() => {
+                  setShowAddTransport(false);
+                  router.refresh();
+                }}
+                onCancel={() => setShowAddTransport(false)}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {/* Standalone accommodation booking */}
+        {showAddAccommodation ? (
+          <div
+            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAddAccommodation(false);
+            }}
+          >
+            <div className="my-8 w-full max-w-2xl">
+              <AddAccommodationBookingForm
+                afterStopId={sortedStops[sortedStops.length - 1]?.id}
+                afterStopLabel="end of timeline"
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                onCancel={() => setShowAddAccommodation(false)}
+                onDone={() => {
+                  setShowAddAccommodation(false);
+                  router.refresh();
+                }}
+              />
+            </div>
+          </div>
         ) : null}
       </div>
     </div>
@@ -2577,4 +2623,201 @@ function buildClientStaticMapUrl(spec: {
     .replace(/\//g, "_")
     .replace(/=+$/, "");
   return `/api/maps/static?s=${b64}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PlanningTransportBookingModal — the planning-page equivalent of the
+// brief's TransportBookingCard. Uses TransportHubPicker for both
+// departure and arrival, full datetime fields, and calls
+// insertTransitLeg to create the stop pair + locked transition.
+// ─────────────────────────────────────────────────────────────────────
+function PlanningTransportBookingModal({
+  itineraryId,
+  lastStopId,
+  onDone,
+  onCancel,
+}: {
+  itineraryId: string;
+  lastStopId: string | null;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const modeOptions: Array<{ value: "train" | "flight"; label: string }> = [
+    { value: "train", label: "Train" },
+    { value: "flight", label: "Flight" },
+  ];
+  const [mode, setMode] = useState<"train" | "flight" | null>(null);
+  const [departHub, setDepartHub] = useState<{
+    id: string | null;
+    label: string | null;
+  }>({ id: null, label: null });
+  const [arriveHub, setArriveHub] = useState<{
+    id: string | null;
+    label: string | null;
+  }>({ id: null, label: null });
+  const [departTime, setDepartTime] = useState("");
+  const [arriveTime, setArriveTime] = useState("");
+  const [serviceNumber, setServiceNumber] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const hubKind = mode === "flight" ? "airport" : "rail_station";
+  const noun = mode === "flight" ? "airport" : "station";
+
+  const ready =
+    mode != null &&
+    departHub.id != null &&
+    arriveHub.id != null &&
+    departHub.label != null &&
+    arriveHub.label != null &&
+    departTime !== "" &&
+    arriveTime !== "";
+
+  const submit = () => {
+    if (!ready || !lastStopId) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await insertTransitLeg({
+        itinerary_id: itineraryId,
+        before_stop_id: lastStopId,
+        after_stop_id: null,
+        mode: mode!,
+        depart_hub_id: departHub.id!,
+        depart_label: departHub.label!,
+        depart_time: new Date(departTime).toISOString(),
+        arrive_hub_id: arriveHub.id!,
+        arrive_label: arriveHub.label!,
+        arrive_time: new Date(arriveTime).toISOString(),
+        service_number: serviceNumber.trim() || null,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      onDone();
+    });
+  };
+
+  if (!mode) {
+    return (
+      <div className="k-card flex flex-col gap-4 p-5" role="dialog">
+        <header>
+          <p className="uc">Add booked transport</p>
+          <h3 className="h2" style={{ marginTop: 4 }}>
+            What kind of ticket?
+          </h3>
+        </header>
+        <div className="flex flex-wrap gap-2">
+          {modeOptions.map((o) => {
+            const Ic =
+              o.value === "train" ? TransportIcon.train : TransportIcon.flight;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                className="pill brief-pill"
+                onClick={() => setMode(o.value)}
+              >
+                <Ic size={13} />
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn-ghost self-start"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  const MIcon =
+    mode === "train" ? TransportIcon.train : TransportIcon.flight;
+
+  return (
+    <div className="k-card flex flex-col gap-4 p-5" role="dialog">
+      <header>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <MIcon size={14} />
+          <p className="uc">{mode === "train" ? "Train" : "Flight"} booking</p>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="brief-field">
+          <span className="uc">Departing {noun}</span>
+          <TransportHubPicker
+            kind={hubKind}
+            name="depart_hub"
+            value={departHub}
+            onChange={setDepartHub}
+            placeholder={`Pick a ${noun}`}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Departure time</span>
+          <input
+            type="datetime-local"
+            className="field"
+            value={departTime}
+            onChange={(e) => setDepartTime(e.target.value)}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Arriving {noun}</span>
+          <TransportHubPicker
+            kind={hubKind}
+            name="arrive_hub"
+            value={arriveHub}
+            onChange={setArriveHub}
+            placeholder={`Pick a ${noun}`}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc">Arrival time</span>
+          <input
+            type="datetime-local"
+            className="field"
+            value={arriveTime}
+            onChange={(e) => setArriveTime(e.target.value)}
+          />
+        </label>
+        <label className="brief-field" style={{ gridColumn: "1 / -1" }}>
+          <span className="uc">Service / flight number (optional)</span>
+          <input
+            type="text"
+            className="field"
+            value={serviceNumber}
+            onChange={(e) => setServiceNumber(e.target.value)}
+            placeholder={mode === "train" ? "1A45" : "BA245"}
+          />
+        </label>
+      </div>
+
+      {error ? <p className="text-xs text-rust">{error}</p> : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn btn-gold"
+          disabled={!ready || pending}
+          onClick={submit}
+        >
+          {pending ? "Adding…" : `Add ${mode}`}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn-ghost"
+          disabled={pending}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -39,6 +39,14 @@ export default async function NewItineraryPage() {
       .maybeSingle(),
   ]);
 
+  const { data: gmailConn } = await supabase
+    .from("gmail_connections")
+    .select("id")
+    .eq("user_id", ctx.userId)
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("status", "active")
+    .maybeSingle();
+
   // Resolve the home label so the brief can show "from Home" (or the
   // actual name) on the implicit first transition.
   const homeId =
@@ -50,6 +58,15 @@ export default async function NewItineraryPage() {
     homeId != null
       ? (locations ?? []).find((l) => l.id === homeId) ?? null
       : null;
+
+  // Base locations — home/office locations the user can pick as their
+  // starting point. Shown in the BaseLocationCard at the top of the brief.
+  const baseLocations = (locations ?? [])
+    .filter((l): l is typeof l & { type: "home" | "office" } =>
+      l.type === "home" || l.type === "office",
+    )
+    .map((l) => ({ id: l.id, name: l.name, type: l.type, address: l.address }));
+  const defaultBaseId = homeId;
 
   // Surface the user's default rail station / airport so the brief
   // can render a "via {station}" hint inside train / tube / flight
@@ -95,7 +112,7 @@ export default async function NewItineraryPage() {
           className="desk-h1"
           style={{ marginTop: 6, fontSize: "clamp(28px, 4vw, 42px)" }}
         >
-          Anchor your <em>day.</em>
+          Plan your <em>day.</em>
         </h1>
         <p
           className="serif-i"
@@ -107,9 +124,9 @@ export default async function NewItineraryPage() {
             lineHeight: 1.55,
           }}
         >
-          The first thing Khonsera needs is the appointment that fixes
-          everything else. <em>Where</em>, <em>when</em>, and what for. Then
-          we&rsquo;ll build the rest backwards from it.
+          Tell Khonsera what you already know &mdash; where you&rsquo;re
+          starting, what&rsquo;s already booked, when you need to be back
+          &mdash; and we&rsquo;ll work out the rest.
         </p>
       </header>
 
@@ -121,6 +138,9 @@ export default async function NewItineraryPage() {
         homeLabel={home?.name ?? null}
         railHubLabel={railHubLabel}
         flightHubLabel={flightHubLabel}
+        baseLocations={baseLocations}
+        defaultBaseId={defaultBaseId}
+        gmailConnected={!!gmailConn}
       />
     </div>
   );

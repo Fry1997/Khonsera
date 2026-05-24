@@ -69,9 +69,10 @@ export async function upsertTransition(
     .from("stops")
     .select(
       `id, start_time, end_time, location_id,
-       customer_site_id,
+       customer_site_id, transport_hub_id,
        location:locations(latitude, longitude, name, address),
-       customer_site:customer_sites(latitude, longitude, name, address)`,
+       customer_site:customer_sites(latitude, longitude, name, address),
+       transport_hub:transport_hubs(latitude, longitude, name)`,
     )
     .in("id", [parsed.value.from_stop_id, parsed.value.to_stop_id])
     .eq("workspace_id", ctx.workspaceId);
@@ -328,7 +329,8 @@ export async function previewRoute(
     .select(
       `id, location_id, customer_site_id,
        location:locations(latitude, longitude),
-       customer_site:customer_sites(latitude, longitude)`,
+       customer_site:customer_sites(latitude, longitude),
+       transport_hub:transport_hubs(latitude, longitude)`,
     )
     .in("id", [parsed.value.from_stop_id, parsed.value.to_stop_id])
     .eq("workspace_id", ctx.workspaceId);
@@ -618,7 +620,7 @@ export async function insertTransitLeg(
 
 function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   const s = first(stop) as
-    | { location?: unknown; customer_site?: unknown }
+    | { location?: unknown; customer_site?: unknown; transport_hub?: unknown }
     | null;
   if (!s) return null;
   const cs = first(s.customer_site) as
@@ -627,9 +629,14 @@ function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   const loc = first(s.location) as
     | { latitude?: number | null; longitude?: number | null }
     | null;
+  const hub = first(s.transport_hub) as
+    | { latitude?: number | null; longitude?: number | null }
+    | null;
   if (cs?.latitude != null && cs?.longitude != null)
     return { lat: cs.latitude, lng: cs.longitude };
   if (loc?.latitude != null && loc?.longitude != null)
     return { lat: loc.latitude, lng: loc.longitude };
+  if (hub?.latitude != null && hub?.longitude != null)
+    return { lat: hub.latitude, lng: hub.longitude };
   return null;
 }

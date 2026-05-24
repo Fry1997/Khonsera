@@ -55,7 +55,7 @@ export function TransportHubPicker({
       const result = await searchTransportHubs({ query, kind });
       if (result.ok) setHits(result.value);
       setLoading(false);
-    }, 200);
+    }, 350);
     return () => clearTimeout(timer);
   }, [open, query, kind]);
 
