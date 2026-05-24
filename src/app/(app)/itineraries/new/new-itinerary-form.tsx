@@ -1403,7 +1403,17 @@ function BriefGmailImport({
                 >
                   <span style={{ fontWeight: 500, flex: 1 }}>
                     {b.type === "transport"
-                      ? `${b.mode === "train" ? "Train" : b.mode === "flight" ? "Flight" : "Bus"}: ${b.segments[0]?.from_station ?? ""} to ${b.segments[b.segments.length - 1]?.to_station ?? ""}`
+                      ? (() => {
+                          const first = b.segments[0];
+                          const last = b.segments[b.segments.length - 1];
+                          const modeLabel = b.mode === "train" ? "Train" : b.mode === "flight" ? "Flight" : "Bus";
+                          // Round trip: first origin = last destination
+                          if (b.segments.length >= 4 && first?.from_station === last?.to_station) {
+                            const mid = b.segments[Math.floor(b.segments.length / 2) - 1];
+                            return `${modeLabel}: ${first?.from_station ?? ""} to ${mid?.to_station ?? ""} (return)`;
+                          }
+                          return `${modeLabel}: ${first?.from_station ?? ""} to ${last?.to_station ?? ""}`;
+                        })()
                       : `Hotel: ${b.hotel_name}`}
                   </span>
                   <span style={{ fontSize: 12, color: "var(--ink-dim)" }}>
