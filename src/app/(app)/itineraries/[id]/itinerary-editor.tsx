@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
+import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
 import {
   createStop,
   deleteStop,
@@ -1273,19 +1274,80 @@ export function ItineraryEditor({
                     : null;
 
                   if (item.kind === "transit") {
-                    // Compact card for transit_departure /
-                    // transit_arrival stops. Not editable in the same
-                    // way an anchor is — the train/flight leg between
-                    // them is the editable thing; the stops are
-                    // facts of the journey.
+                    const meta = item.stop.metadata as Record<string, unknown> | null;
+                    const transitTransition = transitionByFrom.get(item.stop.id);
+                    const legs = transitTransition
+                      ? legsByTransition.get(transitTransition.id) ?? []
+                      : [];
+                    const fmtTime = (iso: string | null) =>
+                      iso
+                        ? new Intl.DateTimeFormat("en-GB", {
+                            hour: "2-digit", minute: "2-digit",
+                            hour12: false, timeZone: timezone,
+                          }).format(new Date(iso))
+                        : "";
+                    const fmtDate = (iso: string | null) =>
+                      iso ? iso.slice(0, 10) : "";
+
                     return (
-                      <li key={item.stop.id} className="flex flex-col">
+                      <li key={item.stop.id} className="flex flex-col" style={{ gap: 6 }}>
+                        {item.transitDirection === "departure" && (
+                          <div style={{ padding: "4px 0" }}>
+                            <span className="uc" style={{ fontSize: 10, color: "var(--gold-2)" }}>
+                              Booked {(meta?.transport_mode as string) ?? "transport"}
+                            </span>
+                          </div>
+                        )}
                         <TransitStopCard
                           stop={item.stop}
                           direction={item.transitDirection}
                           timezone={timezone}
                           onRemove={() => handleDelete(item.stop.id)}
                         />
+                        {legs.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 0 4px" }}>
+                            {legs.map((leg) => (
+                              <TrainTicketCard
+                                key={leg.id}
+                                compact
+                                segment={{
+                                  from_station: leg.start_location_name ?? "?",
+                                  to_station: leg.end_location_name ?? "?",
+                                  from_station_code: null,
+                                  to_station_code: null,
+                                  departure_date: fmtDate(item.stop.start_time),
+                                  departure_time: fmtTime(item.stop.start_time),
+                                  arrival_time: leg.duration_minutes
+                                    ? `${leg.duration_minutes} min`
+                                    : "",
+                                  operator: null,
+                                  route_restriction: null,
+                                  ticket_type: null,
+                                  coach: null,
+                                  seat: null,
+                                  barcode_ref: leg.service_number,
+                                  barcode_data: null,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {legs.length === 0 && transitTransition && (
+                          <div
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 11,
+                              color: "var(--ink-dim)",
+                              borderLeft: "2px solid var(--gold-200)",
+                              marginLeft: 8,
+                            }}
+                          >
+                            {(meta?.transport_mode as string) === "train" ? "Train" : "Transport"} to{" "}
+                            {nextItem?.kind === "transit"
+                              ? (nextItem.stop.title ?? "next station")
+                              : "destination"}
+                          </div>
+                        )}
                       </li>
                     );
                   }
