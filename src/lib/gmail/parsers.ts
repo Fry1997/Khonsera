@@ -76,7 +76,7 @@ function isAmendmentEmail(subject: string, text: string): boolean {
 
 function findBookingRef(text: string): string | null {
   const patterns = [
-    /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?|transaction\s*ID)\s*[:.]?\s*\n?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
+    /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?)\s*[:.]?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
     /\b([A-Z]{2,4}\d{4,10})\b/,
   ];
   for (const p of patterns) {
@@ -182,94 +182,173 @@ function isTrainlineMarketing(from: string, subject: string): boolean {
   return false;
 }
 
-  // Trainline typically has patterns like:
-  // "London Euston" → "Manchester Piccadilly"
-  // "Departs: 14:30" / "Arrives: 16:45"
-  const stationPairPattern =
-    /(?:from|depart(?:s|ing)?(?:\s+from)?)\s*:?\s*([A-Za-z\s&'.()-]+?)(?:\s+to\s+|\s*→\s*|\s*->\s*|\s*➔\s*)([A-Za-z\s&'.()-]+?)(?:\n|<|,|\s{2})/gi;
-  // Trainline eticket format: "Wellingborough to Derby" on its own line
-  const simpleRoutePattern =
-    /^\s*([A-Z][A-Za-z\s&'.()-]{2,30})\s+to\s+([A-Z][A-Za-z\s&'.()-]{2,30})\s*$/gm;
+function titleCase(s: string): string {
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-  const timeBlockPattern =
-    /(\d{1,2}:\d{2})\s*(?:→|->|to|–|-|➔)\s*(\d{1,2}:\d{2})/g;
-
-  const datePattern =
-    /(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+)?(\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\d{0,4})/gi;
-
+function parseTrainlineTrainTimesUrls(html: string): Array<{
+  from: string;
+  to: string;
+  date: string;
+  time: string;
+}> {
+  const results: Array<{ from: string; to: string; date: string; time: string }> = [];
+  const urlPattern = /\/train-times\/([a-z-]+)-to-([a-z-]+)\/(\d{1,2}-[A-Za-z]+-\d{4})\/(\d{4})/g;
   let m;
-  const dates: string[] = [];
-  while ((m = datePattern.exec(text)) !== null) {
-    const d = parseDate(m[1]);
-    if (d) dates.push(d);
+  while ((m = urlPattern.exec(html)) !== null) {
+    const from = titleCase(m[1].replace(/-/g, " "));
+    const to = titleCase(m[2].replace(/-/g, " "));
+    const dateParts = m[3].split("-");
+    const dateStr = `${dateParts[0]} ${dateParts[1]} ${dateParts[2]}`;
+    const date = parseDate(dateStr) ?? "";
+    const time = `${m[4].slice(0, 2)}:${m[4].slice(2)}`;
+    results.push({ from, to, date, time });
   }
-  // Prefer future dates (travel dates) over past dates (email sent date).
-  const today = new Date().toISOString().slice(0, 10);
-  const futureDates = dates.filter((d) => d >= today);
-  const travelDate = futureDates[0] ?? dates[dates.length - 1] ?? today;
+  // Deduplicate by from+to+time (same URL appears multiple times in email)
+  const seen = new Set<string>();
+  return results.filter((r) => {
+    const key = `${r.from}|${r.to}|${r.time}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
-  const stations: Array<[string, string]> = [];
-  while ((m = stationPairPattern.exec(text)) !== null) {
-    stations.push([m[1].trim(), m[2].trim()]);
-  }
-
-  if (stations.length === 0) {
-    // Trainline eticket: "Wellingborough to Derby" standalone or in running text
-    let sm;
-    while ((sm = simpleRoutePattern.exec(text)) !== null) {
-      const from = sm[1].trim();
-      const to = sm[2].trim();
-      if (from.length > 2 && to.length > 2 && !/outbound|return|inbound/i.test(from)) {
-        stations.push([from, to]);
-      }
-    }
-  }
-  if (stations.length === 0) {
-    // Trainline eticket in stripped HTML: "Outbound Thursday 25 June Wellingborough to Derby"
-    // or "Return Thursday 25 June Derby to Wellingborough"
-    const outboundMatch = text.match(
-      /(?:Outbound|Return)\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+\d{1,2}\s+\w+\s+([A-Z][A-Za-z\s&'.()-]+?)\s+to\s+([A-Z][A-Za-z\s&'.()-]+?)(?:\s+Unique|\s+\d|$)/i,
-    );
-    if (outboundMatch) {
-      stations.push([outboundMatch[1].trim(), outboundMatch[2].trim()]);
-    }
-    const returnMatch = text.match(
-      /Return\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+\d{1,2}\s+\w+\s+([A-Z][A-Za-z\s&'.()-]+?)\s+to\s+([A-Z][A-Za-z\s&'.()-]+?)(?:\s+Unique|\s+\d|$)/i,
-    );
-    if (returnMatch && !(stations.length > 0 && stations[0][0] === returnMatch[1].trim())) {
-      stations.push([returnMatch[1].trim(), returnMatch[2].trim()]);
-    }
-  }
-  if (stations.length === 0) {
-    // Fallback: "StationA to StationB" anywhere with capitalised names
-    const inlineRoute = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+Street)?)\s+to\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+Street)?)/g;
-    let ir;
-    while ((ir = inlineRoute.exec(text)) !== null) {
-      const from = ir[1].trim();
-      const to = ir[2].trim();
-      if (
-        from.length > 3 &&
-        to.length > 3 &&
-        !/Outbound|Return|Adult|Unique|Ticket|How|Google|Android/i.test(from) &&
-        !/Outbound|Return|Adult|Unique|Ticket|How|Google|Android/i.test(to)
-      ) {
-        stations.push([from, to]);
-      }
-    }
-  }
-  // Extract Trainline API deep link if present — contains order data with times.
-  const deepLinkMatch = text.match(
-    /api\.thetrainline\.com\/mobile\/op\/orderhistory\/deeplink\?[^"\s<>]+/i,
-  ) ?? html?.match(
-    /api\.thetrainline\.com\/mobile\/op\/orderhistory\/deeplink\?[^"\s<>]+/i,
+function parseTrainlineSubjectTimes(subject: string): {
+  outboundDate: string | null;
+  outboundTime: string | null;
+  returnDate: string | null;
+  returnTime: string | null;
+} {
+  const m = subject.match(
+    /\((\d{1,2}\s+\w+)\s+at\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}\s+\w+)\s+at\s+(\d{1,2}:\d{2})\)/,
   );
+  if (m) {
+    return {
+      outboundDate: parseDate(m[1]),
+      outboundTime: parseTime(m[2]),
+      returnDate: parseDate(m[3]),
+      returnTime: parseTime(m[4]),
+    };
+  }
+  const single = subject.match(/\((\d{1,2}\s+\w+)\s+at\s+(\d{1,2}:\d{2})\)/);
+  if (single) {
+    return {
+      outboundDate: parseDate(single[1]),
+      outboundTime: parseTime(single[2]),
+      returnDate: null,
+      returnTime: null,
+    };
+  }
+  return { outboundDate: null, outboundTime: null, returnDate: null, returnTime: null };
+}
 
-  // Extract changeover info from ticket numbers: "WEL to LEI", "LEI to DER"
-  const ticketLegs: Array<[string, string]> = [];
-  const ticketPattern = /([A-Z]{3})\s+to\s+([A-Z]{3})/g;
-  let tl;
-  while ((tl = ticketPattern.exec(text)) !== null) {
-    ticketLegs.push([tl[1], tl[2]]);
+function parseTrainlineSubjectRoute(subject: string): {
+  from: string | null;
+  to: string | null;
+  isReturn: boolean;
+} {
+  const returnMatch = subject.match(
+    /(?:return\s+trip|round\s+trip)\s+(.+?)\s+to\s+(.+?)\s*\(/i,
+  );
+  if (returnMatch) {
+    return { from: returnMatch[1].trim(), to: returnMatch[2].trim(), isReturn: true };
+  }
+  const singleMatch = subject.match(
+    /(?:booking\s+confirmation\s+for\s+)(.+?)\s+to\s+(.+?)\s*\(/i,
+  );
+  if (singleMatch) {
+    return { from: singleMatch[1].trim(), to: singleMatch[2].trim(), isReturn: false };
+  }
+  return { from: null, to: null, isReturn: false };
+}
+
+function parseTrainline(html: string, text: string, subject: string): Partial<ParsedTransportBooking> | null {
+  // Booking confirmation emails are the best data source — subject line
+  // and embedded train-times URLs contain clean station names, dates, times.
+  const isBookingConfirmation = /booking\s*confirmation/i.test(subject);
+  const isEticket = /e-?tickets?\s+to\s/i.test(subject);
+
+  if (isBookingConfirmation) {
+    return parseTrainlineBookingConfirmation(html, text, subject);
+  }
+  if (isEticket) {
+    return parseTrainlineEticket(html, text, subject);
+  }
+
+  // Fallback: generic parse for other Trainline email types
+  return parseTrainlineGeneric(html, text, subject);
+}
+
+// Known UK rail operators and ticket types that pollute station names
+const TRAINLINE_NOISE = [
+  "East Midlands Railway",
+  "Avanti West Coast",
+  "CrossCountry",
+  "Great Western Railway",
+  "LNER",
+  "Northern",
+  "TransPennine Express",
+  "Southern",
+  "Southeastern",
+  "South Western Railway",
+  "ScotRail",
+  "Chiltern Railways",
+  "c2c",
+  "Greater Anglia",
+  "Thameslink",
+  "West Midlands Railway",
+  "London Northwestern Railway",
+  "Merseyrail",
+  "Advance Single",
+  "Advance Return",
+  "Off-Peak Single",
+  "Off-Peak Return",
+  "Off-Peak Day Single",
+  "Off-Peak Day Return",
+  "Anytime Single",
+  "Anytime Return",
+  "Anytime Day Single",
+  "Anytime Day Return",
+  "Super Off-Peak Single",
+  "Super Off-Peak Return",
+  "Advance",
+  "Single",
+  "Return",
+];
+
+function cleanStationName(raw: string): string {
+  let name = raw;
+  for (const noise of TRAINLINE_NOISE) {
+    name = name.replace(new RegExp(noise.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "");
+  }
+  return name.replace(/\s{2,}/g, " ").trim();
+}
+
+function parseTrainlineHtmlTimeStations(html: string): Array<{ time: string; station: string }> {
+  // Trainline MJML emails render times and station names as text nodes in
+  // adjacent table cells or spans. Find all times that appear as bare text
+  // inside tags, then look for the nearest station-like text.
+  const results: Array<{ time: string; station: string; pos: number }> = [];
+
+  // Match time values that appear as the main text content of an element
+  const pattern = />(\d{1,2}:\d{2})\s*</g;
+  let m;
+  while ((m = pattern.exec(html)) !== null) {
+    const time = parseTime(m[1]);
+    if (!time) continue;
+
+    // Look ahead up to 800 chars for a station name (capitalised words in a text node)
+    const after = html.slice(m.index + m[0].length, m.index + m[0].length + 800);
+    const stationMatch = after.match(
+      />([A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Street|Road|Central|Parkway|International|Lime|Junction|Cross|Bridge|upon|on|in|the|de|la))*)\s*</,
+    );
+    if (stationMatch) {
+      const station = cleanStationName(stationMatch[1]);
+      if (station.length > 2) {
+        results.push({ time, station, pos: m.index });
+      }
+    }
   }
 
   // Deduplicate by time+station
@@ -319,11 +398,22 @@ function parseTrainlineTextLegs(text: string): Array<{
     }
   }
 
-  const trainNumbers: string[] = [];
-  const trainPattern = /(?:train|service)\s*(?:no\.?|number|#)?\s*:?\s*([A-Z0-9]{2,8})/gi;
-  while ((m = trainPattern.exec(text)) !== null) {
-    trainNumbers.push(m[1]);
-  }
+  // Pair consecutive time+station entries into legs (depart→arrive)
+  const legs: Array<{
+    depTime: string; depStation: string;
+    arrTime: string; arrStation: string;
+    operator: string | null;
+  }> = [];
+
+  for (let i = 0; i + 1 < timeStations.length; i += 2) {
+    const dep = timeStations[i];
+    const arr = timeStations[i + 1];
+    if (dep.station === arr.station) {
+      // Skip self-referencing pairs (same station depart+arrive = change marker)
+      i--;
+      timeStations.splice(i + 1, 1);
+      continue;
+    }
 
     // Look for operator between these lines
     let operator: string | null = null;
@@ -337,42 +427,13 @@ function parseTrainlineTextLegs(text: string): Array<{
       if (operator) break;
     }
 
-  // If we have ticket legs (WEL→LEI, LEI→DER, DER→LEI, LEI→WEL),
-  // include ALL as segments. The import function splits outbound/return
-  // based on the direction reversal.
-  if (ticketLegs.length > 0) {
-    for (const [fromCode, toCode] of ticketLegs) {
-      segments.push({
-        from_station: fromCode,
-        to_station: toCode,
-        departure_date: travelDate,
-        departure_time: "",
-        arrival_date: travelDate,
-        arrival_time: "",
-        service_number: null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: null,
-      });
-    }
-  }
-
-  if (segments.length === 0) {
-    const count = Math.max(stations.length, times.length, 1);
-    for (let i = 0; i < count; i++) {
-      segments.push({
-        from_station: stations[i]?.[0] ?? "Unknown",
-        to_station: stations[i]?.[1] ?? "Unknown",
-        departure_date: travelDate,
-        departure_time: times[i]?.[0] ?? "",
-        arrival_date: dates[i + 1] ?? travelDate,
-        arrival_time: times[i]?.[1] ?? "",
-        service_number: trainNumbers[i] ?? null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: i === 0 ? seat : null,
-      });
-    }
+    legs.push({
+      depTime: dep.time,
+      depStation: dep.station,
+      arrTime: arr.time,
+      arrStation: arr.station,
+      operator,
+    });
   }
 
   return legs;
@@ -482,10 +543,7 @@ function parseTrainlineBookingConfirmation(
     price: price?.amount ?? null,
     currency: price?.currency ?? "GBP",
     segments,
-    _trainline_deeplink: deepLinkMatch
-      ? `https://${deepLinkMatch[0].replace(/&amp;/g, "&")}`
-      : undefined,
-  } as Partial<ParsedTransportBooking>;
+  };
 }
 
 function parseTrainlineEticket(
@@ -981,17 +1039,12 @@ export function detectAndParse(
   const text = plainText ?? (html ? stripHtml(html) : "");
   const htmlContent = html ?? "";
 
-  // Skip obvious marketing / promotional emails (subject only).
-  if (/unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo/i.test(subject)) {
-    return null;
-  }
-
   // Only process confirmation-like or amendment emails
   const isRelevant =
-    /confirm|booking|tickets?|itinerary|receipt|reservation|e-?tickets?|amend|changed|updated|modification|revised|rescheduled/i.test(
+    /confirm|booking|ticket|itinerary|receipt|reservation|e-?ticket|amend|changed|updated|modification|revised|rescheduled/i.test(
       subject,
     ) ||
-    /confirm|booking\s*(?:confirm|detail)|your\s*tickets?|e-?tickets?|reservation/i.test(
+    /confirm|booking\s*(?:confirm|detail)|your\s*ticket|e-?ticket|reservation/i.test(
       text.slice(0, 500),
     );
   if (!isRelevant) return null;
@@ -1014,27 +1067,6 @@ export function detectAndParse(
       result = parseFlightBooking(htmlContent, text, "Airline");
     } else if (/hotel|accommodation|stay|check[\s-]?in/i.test(subject)) {
       result = parseAccommodation(htmlContent, text, "Hotel");
-    }
-  }
-
-  // Forwarded emails: the original sender is in the body, not the
-  // From header. Check body content for known providers — but only
-  // if the body also looks like a real booking (has times, stations,
-  // or booking references), not just a marketing mention.
-  if (!result) {
-    const bodySnippet = text.slice(0, 3000).toLowerCase();
-    const looksLikeBooking =
-      /\d{2}:\d{2}/.test(bodySnippet) ||
-      /booking ref|confirmation|your trip|your journey|e-?ticket/i.test(bodySnippet);
-    if (looksLikeBooking) {
-      if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
-        result = parseTrainline(htmlContent, text);
-        if (!result) result = parseUkRail(htmlContent, text, "Trainline");
-      } else if (/easyjet|ryanair|british airways|jet2|wizz air|vueling|klm|lufthansa|emirates|virgin atlantic/i.test(bodySnippet)) {
-        result = parseFlightBooking(htmlContent, text, "Airline");
-      } else if (/booking\.com|hotels\.com|expedia|airbnb/i.test(bodySnippet)) {
-        result = parseAccommodation(htmlContent, text, "Hotel");
-      }
     }
   }
 

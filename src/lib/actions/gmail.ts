@@ -4,12 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { err, errors, ok, type Result } from "@/lib/errors";
 import { getValidGmailAccessToken } from "@/lib/google/gmail-client";
-import { extractText } from "unpdf";
 import {
   gmailSearchMessages,
   gmailGetMessage,
   gmailGetAttachment,
-  findAttachments,
   getHeader,
   extractMessageBody,
   extractAttachments,
@@ -187,21 +185,14 @@ async function enrichTrainlineFromPdfs(
 
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
-  // Also match forwarded emails: the original sender won't be in `from:`,
-  // but booking keywords + provider names will be in the body/subject.
-  const bodyProviders = BOOKING_SENDERS.map((s) => `"${s}"`).join(" OR ");
   const subjectTerms =
-    "(subject:confirmation OR subject:booking OR subject:ticket OR subject:tickets OR subject:eticket OR subject:etickets OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification OR subject:trip)";
+    "(subject:confirmation OR subject:booking OR subject:ticket OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification)";
   // Search the last 3 months — flights and hotels are often booked well
   // in advance. The post-parse date filter drops anything where the
   // travel/check-in date has already passed.
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const after = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, "0")}/${String(cutoff.getDate()).padStart(2, "0")}`;
-  // Match either: (1) direct from a known sender, OR (2) any email
-  // with booking keywords in the subject that mentions a provider in
-  // the body (catches forwarded emails), OR (3) any email that just
-  // mentions a known provider name anywhere (broadest net).
-  return `((${senderClauses}) OR (${subjectTerms} (${bodyProviders})) OR (${bodyProviders})) after:${after}`;
+  return `(${senderClauses}) ${subjectTerms} after:${after}`;
 }
 
 export async function scanGmailForBookings(): Promise<
@@ -242,28 +233,7 @@ export async function scanGmailForBookings(): Promise<
     );
   }
 
-  // Check which messages we've already scanned (skip re-fetching).
-  const { data: alreadyScanned } = await supabase
-    .from("gmail_scanned_emails")
-    .select("gmail_message_id, parsed_type, parsed_data, parse_failed, imported")
-    .eq("workspace_id", ctx.workspaceId)
-    .eq("user_id", ctx.userId);
-  const scannedMap = new Map(
-    (alreadyScanned ?? []).map((r) => [r.gmail_message_id, r]),
-  );
-
-  const toFetch = messageRefs.filter(
-    (ref) => {
-      if (importedIds.has(ref.id)) return false;
-      const prev = scannedMap.get(ref.id);
-      if (!prev) return true;
-      if (prev.parse_failed) return true;
-      return false;
-    },
-  );
-
-  console.log("[gmail-scan] query:", buildSearchQuery());
-  console.log("[gmail-scan] messages found:", messageRefs.length, "already scanned:", scannedMap.size, "to fetch:", toFetch.length);
+  const toFetch = messageRefs.filter((ref) => !importedIds.has(ref.id));
 
   // Fetch messages in parallel batches of 10 to stay well under Gmail rate limits.
   const BATCH_SIZE = 10;
@@ -284,58 +254,7 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
-        // Extract text from PDF attachments (etickets have the actual
-        // train times, service numbers, and seat assignments).
-        let pdfText = "";
-        const attachments = findAttachments(msg);
-        const pdfAttachments = attachments.filter(
-          (a) =>
-            a.mimeType === "application/pdf" ||
-            a.filename.toLowerCase().endsWith(".pdf"),
-        );
-        for (const att of pdfAttachments) {
-          try {
-            const buf = await gmailGetAttachment({
-              accessToken: gmail.accessToken,
-              messageId: ref.id,
-              attachmentId: att.attachmentId,
-            });
-            const pdfData = await extractText(buf);
-            pdfText += "\n" + pdfData.text;
-          } catch (e) {
-            console.warn(`[gmail-scan] failed to parse PDF ${att.filename}:`, e);
-          }
-        }
-
-        // Combine email body + PDF text for parsing. When there's no
-        // plain text part (common with forwarded HTML emails), strip
-        // the HTML so the parser's regex patterns have text to work with.
-        const plainFromHtml = !text && html
-          ? html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim()
-          : null;
-        const combinedText = (text ?? plainFromHtml ?? "") + pdfText;
-        const combinedHtml = html ?? "";
-
-        const parsed = detectAndParse(from, subject, combinedHtml, combinedText);
-
-        // Persist to gmail_scanned_emails for cache.
-        await supabase.from("gmail_scanned_emails").upsert(
-          {
-            workspace_id: ctx.workspaceId,
-            user_id: ctx.userId,
-            gmail_message_id: ref.id,
-            sender: from.slice(0, 500),
-            subject: subject.slice(0, 500),
-            parsed_type: parsed?.type ?? null,
-            parsed_data: parsed
-              ? (parsed as unknown as Record<string, unknown>)
-              : null,
-            parse_failed: !parsed,
-            imported: false,
-          },
-          { onConflict: "workspace_id,user_id,gmail_message_id" },
-        );
-
+        let parsed = detectAndParse(from, subject, html, text);
         if (!parsed) return null;
 
         // Enrich Trainline bookings with PDF attachment data (seat, coach, barcode)
@@ -373,24 +292,18 @@ export async function scanGmailForBookings(): Promise<
     }
   }
 
-  // Also include previously-scanned-but-not-imported bookings so
-  // the user can still pick them up later.
-  for (const [msgId, row] of scannedMap) {
-    if (row.imported || row.parse_failed || !row.parsed_data) continue;
-    if (importedIds.has(msgId)) continue;
-    bookings.push({
-      ...(row.parsed_data as unknown as ParsedBooking),
-      gmail_message_id: msgId,
-    });
-  }
+  // Deduplicate: when Trainline sends both a booking confirmation and an
+  // eticket for the same trip, keep only the booking confirmation (it has
+  // times and price; the eticket just has station codes).
+  const deduped = deduplicateTrainlineBookings(bookings);
 
-  // Drop bookings where the travel date is in the past.
+  // Drop bookings where the travel date is in the past — users want
+  // present/future bookings, not historical trips.
   const today = new Date().toISOString().slice(0, 10);
   const futureBookings = deduped.filter((b) => {
     const travelDate = getTravelDate(b);
     return !travelDate || travelDate >= today;
   });
-  console.log(`[gmail-scan] total: ${bookings.length}, future: ${futureBookings.length}`);
 
   // Update last_scan_at
   await supabase
