@@ -1001,20 +1001,25 @@ export function detectAndParse(
   const text = plainText ?? (html ? stripHtml(html) : "");
   const htmlContent = html ?? "";
 
-  // Skip obvious marketing / promotional emails.
+  // Skip obvious marketing / promotional emails (subject only).
   if (/unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo/i.test(subject)) {
+    console.log(`[parser] rejected as marketing: "${subject}"`);
     return null;
   }
 
   // Only process confirmation-like or amendment emails
   const isRelevant =
-    /confirm|booking|ticket|itinerary|receipt|reservation|e-?ticket|amend|changed|updated|modification|revised|rescheduled/i.test(
+    /confirm|booking|tickets?|itinerary|receipt|reservation|e-?tickets?|amend|changed|updated|modification|revised|rescheduled/i.test(
       subject,
     ) ||
-    /confirm|booking\s*(?:confirm|detail)|your\s*ticket|e-?ticket|reservation/i.test(
+    /confirm|booking\s*(?:confirm|detail)|your\s*tickets?|e-?tickets?|reservation/i.test(
       text.slice(0, 500),
     );
-  if (!isRelevant) return null;
+  if (!isRelevant) {
+    console.log(`[parser] not relevant: "${subject}" | text start: "${text.slice(0, 100)}"`);
+    return null;
+  }
+  console.log(`[parser] relevant: "${subject}" | text length: ${text.length}`);
 
   const amendment = isAmendmentEmail(subject, text);
 
@@ -1042,10 +1047,13 @@ export function detectAndParse(
   // if the body also looks like a real booking (has times, stations,
   // or booking references), not just a marketing mention.
   if (!result) {
+    console.log(`[parser] no sender/subject match, trying body fallback`);
     const bodySnippet = text.slice(0, 3000).toLowerCase();
     const looksLikeBooking =
       /\d{2}:\d{2}/.test(bodySnippet) ||
       /booking ref|confirmation|your trip|your journey|e-?ticket/i.test(bodySnippet);
+    const hasTrainline = bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com");
+    console.log(`[parser] body fallback: looksLikeBooking=${looksLikeBooking}, hasTrainline=${hasTrainline}, snippet="${bodySnippet.slice(0, 150)}"`);
     if (looksLikeBooking) {
       if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
         result = parseUkRail(htmlContent, text, "Trainline");
