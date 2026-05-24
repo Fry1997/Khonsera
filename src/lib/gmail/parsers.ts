@@ -1070,6 +1070,19 @@ export function detectAndParse(
     }
   }
 
+  // Forwarded emails: the original sender is in the body, not the
+  // From header. Check body content for known providers.
+  if (!result) {
+    const bodySnippet = text.slice(0, 3000).toLowerCase();
+    if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
+      result = parseUkRail(htmlContent, text, "Trainline");
+    } else if (/easyjet|ryanair|british airways|jet2|wizz air|vueling|klm|lufthansa|emirates|virgin atlantic/i.test(bodySnippet)) {
+      result = parseFlightBooking(htmlContent, text, "Airline");
+    } else if (/booking\.com|hotels\.com|expedia|airbnb/i.test(bodySnippet)) {
+      result = parseAccommodation(htmlContent, text, "Hotel");
+    }
+  }
+
   if (result) {
     (result as { is_amendment: boolean }).is_amendment = amendment;
   }
