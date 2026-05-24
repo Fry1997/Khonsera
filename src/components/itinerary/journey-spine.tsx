@@ -2,6 +2,7 @@
 
 import { Fragment, useState, type ReactNode } from "react";
 import { TransportIcon } from "@/components/icons";
+import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
 import {
   TRANSITION_OPTIONS,
   effectiveKind,
@@ -457,39 +458,63 @@ function SpineTransportBooking({
           </p>
         </button>
         {expanded ? (
-          <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink-dim)" }}>
-            {tb.changeovers.length > 0 ? (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ fontWeight: 500, color: "var(--ink)" }}>Route: </span>
-                {tb.departureHub?.label ?? "?"}
-                {tb.changeovers.map((co, i) => (
-                  <span key={i}>
-                    {" → "}
-                    {co.hub?.label ?? "?"}
-                    {co.arriveTime || co.departTime
-                      ? ` (${co.arriveTime}${co.departTime ? `–${co.departTime}` : ""})`
-                      : ""}
-                  </span>
-                ))}
-                {" → "}
-                {tb.destinationHub?.label ?? "?"}
-              </div>
-            ) : null}
-            {tb.serviceNumber ? (
-              <div>Service: {tb.serviceNumber}</div>
-            ) : null}
-            {tb.reference ? (
-              <div>Ref: {tb.reference}</div>
-            ) : null}
-            {tb.seat ? (
-              <div>Seat: {tb.seat}</div>
-            ) : null}
-            {tb.price ? (
-              <div>Price: {tb.price}</div>
-            ) : null}
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+            {buildSpineTicketSegments(tb).map((seg, i) => (
+              <TrainTicketCard key={i} segment={seg} compact />
+            ))}
           </div>
         ) : null}
       </div>
     </>
   );
+}
+
+function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
+  if (tb.changeovers.length === 0) {
+    return [{
+      from_station: tb.departureHub?.label ?? "?",
+      to_station: tb.destinationHub?.label ?? "?",
+      from_station_code: null,
+      to_station_code: null,
+      departure_date: tb.date || new Date().toISOString().slice(0, 10),
+      departure_time: tb.departTime || "",
+      arrival_time: tb.arriveTime || "",
+      operator: null,
+      route_restriction: null,
+      ticket_type: null,
+      coach: null,
+      seat: tb.seat || null,
+      barcode_ref: tb.reference || null,
+      barcode_data: null,
+      price: tb.price ? Number(tb.price) : null,
+    }];
+  }
+
+  const segments: TicketSegment[] = [];
+  const date = tb.date || new Date().toISOString().slice(0, 10);
+  const stops = [
+    { label: tb.departureHub?.label ?? "?", time: tb.departTime || "" },
+    ...tb.changeovers.map((co) => ({ label: co.hub?.label ?? "?", time: co.departTime || "" })),
+    { label: tb.destinationHub?.label ?? "?", time: tb.arriveTime || "" },
+  ];
+  for (let i = 0; i < stops.length - 1; i++) {
+    segments.push({
+      from_station: stops[i].label,
+      to_station: stops[i + 1].label,
+      from_station_code: null,
+      to_station_code: null,
+      departure_date: date,
+      departure_time: stops[i].time,
+      arrival_time: i < stops.length - 2 ? (tb.changeovers[i]?.arriveTime || "") : (tb.arriveTime || ""),
+      operator: null,
+      route_restriction: null,
+      ticket_type: null,
+      coach: null,
+      seat: i === 0 ? (tb.seat || null) : null,
+      barcode_ref: i === 0 ? (tb.reference || null) : null,
+      barcode_data: null,
+      price: i === 0 && tb.price ? Number(tb.price) : null,
+    });
+  }
+  return segments;
 }
