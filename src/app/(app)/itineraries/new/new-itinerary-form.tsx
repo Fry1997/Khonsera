@@ -32,6 +32,7 @@ import {
   emptyStopover,
   emptyTransition,
   emptyTransportBookingItem,
+  returnTransportBooking,
   emptyAccommodationBookingItem,
   samePlace,
   sortAnchorsByTime,
@@ -544,6 +545,7 @@ export function NewItineraryBrief({
           .filter((tb) => tb.mode != null)
           .map((tb) => ({
             mode: tb.mode!,
+            date: tb.date || null,
             departure_hub_id: tb.departureHub.id,
             departure_label: tb.departureHub.label,
             destination_hub_id: tb.destinationHub.id,
@@ -665,6 +667,11 @@ export function NewItineraryBrief({
                             ? ` from ${tb.departureHub.label}`
                             : ""}
                     </span>
+                    {tb.date ? (
+                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                        {tb.date}
+                      </span>
+                    ) : null}
                     {tb.departTime && tb.arriveTime ? (
                       <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
                         {tb.departTime} → {tb.arriveTime}
@@ -678,6 +685,18 @@ export function NewItineraryBrief({
                     <button
                       type="button"
                       style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
+                      onClick={() =>
+                        setTransportBookings((prev) => [
+                          ...prev,
+                          returnTransportBooking(tb),
+                        ])
+                      }
+                    >
+                      + Return
+                    </button>
+                    <button
+                      type="button"
+                      style={{ fontSize: 11, color: "var(--ink-dim)" }}
                       onClick={() =>
                         updateTransportBooking(tb.uid, { confirmed: false })
                       }

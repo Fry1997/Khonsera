@@ -247,6 +247,7 @@ export function JourneySpine({
                   {tb.departureHub?.label && tb.destinationHub?.label
                     ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
                     : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
+                  {tb.date ? ` · ${fmtShortDate(tb.date, timezone)}` : ""}
                   {tb.serviceNumber ? ` · ${tb.serviceNumber}` : ""}
                   {tb.departTime ? ` · ${tb.departTime}` : ""}
                   {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}

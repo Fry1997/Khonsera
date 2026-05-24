@@ -28,6 +28,7 @@ const MODE_OPTIONS: Array<{
 export type BriefTransportBooking = {
   uid: string;
   mode: TransportBookingMode | null;
+  date: string;
   departureHub: { id: string | null; label: string | null };
   destinationHub: { id: string | null; label: string | null };
   departTime: string;
@@ -43,8 +44,28 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
   return {
     uid: cryptoUid(),
     mode: null,
+    date: "",
     departureHub: { id: null, label: null },
     destinationHub: { id: null, label: null },
+    departTime: "",
+    arriveTime: "",
+    serviceNumber: "",
+    reference: "",
+    seat: "",
+    price: "",
+    confirmed: false,
+  };
+}
+
+export function returnTransportBooking(
+  from: BriefTransportBooking,
+): BriefTransportBooking {
+  return {
+    uid: cryptoUid(),
+    mode: from.mode,
+    date: "",
+    departureHub: { ...from.destinationHub },
+    destinationHub: { ...from.departureHub },
     departTime: "",
     arriveTime: "",
     serviceNumber: "",
@@ -153,6 +174,16 @@ export function TransportBookingCard({
           Remove
         </button>
       </header>
+
+      <label className="brief-field" style={{ marginBottom: 8 }}>
+        <span className="uc">Date</span>
+        <input
+          type="date"
+          className="field"
+          value={booking.date}
+          onChange={(e) => onChange({ date: e.target.value })}
+        />
+      </label>
 
       {stationBased ? (
         <div className="brief-when-row">

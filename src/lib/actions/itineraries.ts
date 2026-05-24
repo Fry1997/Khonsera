@@ -312,6 +312,7 @@ const briefStopoverSchema = z.object({
 
 const briefTransportBookingSchema = z.object({
   mode: z.enum(["train", "flight", "taxi", "bus", "tube", "drive"]),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   departure_hub_id: z.string().uuid().nullable().optional(),
   departure_label: z.string().nullable().optional(),
   destination_hub_id: z.string().uuid().nullable().optional(),
@@ -657,7 +658,8 @@ export async function createItineraryFromBrief(
   // transition between them. The booking data is stored in metadata
   // so the planning page can display it.
   for (const tb of parsed.value.transport_bookings) {
-    const dateForBooking = parsed.value.anchors[0]?.date ?? new Date().toISOString().slice(0, 10);
+    const dateForBooking =
+      tb.date ?? parsed.value.anchors[0]?.date ?? new Date().toISOString().slice(0, 10);
     const departIso = tb.depart_time
       ? isoFromLocal(dateForBooking, tb.depart_time, tz)
       : null;

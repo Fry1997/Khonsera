@@ -22,6 +22,7 @@ export { JourneySpine } from "./journey-spine";
 export {
   TransportBookingCard,
   emptyTransportBookingItem,
+  returnTransportBooking,
   type BriefTransportBooking,
 } from "./transport-booking-card";
 export {
