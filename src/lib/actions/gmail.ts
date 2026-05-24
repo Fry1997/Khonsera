@@ -189,7 +189,7 @@ function buildSearchQuery(): string {
   // but booking keywords + provider names will be in the body/subject.
   const bodyProviders = BOOKING_SENDERS.map((s) => `"${s}"`).join(" OR ");
   const subjectTerms =
-    "(subject:confirmation OR subject:booking OR subject:ticket OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification)";
+    "(subject:confirmation OR subject:booking OR subject:ticket OR subject:tickets OR subject:eticket OR subject:etickets OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification OR subject:trip)";
   // Search the last 3 months — flights and hotels are often booked well
   // in advance. The post-parse date filter drops anything where the
   // travel/check-in date has already passed.
@@ -197,8 +197,9 @@ function buildSearchQuery(): string {
   const after = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, "0")}/${String(cutoff.getDate()).padStart(2, "0")}`;
   // Match either: (1) direct from a known sender, OR (2) any email
   // with booking keywords in the subject that mentions a provider in
-  // the body (catches forwarded confirmation emails).
-  return `((${senderClauses}) OR (${subjectTerms} (${bodyProviders}))) after:${after}`;
+  // the body (catches forwarded emails), OR (3) any email that just
+  // mentions a known provider name anywhere (broadest net).
+  return `((${senderClauses}) OR (${subjectTerms} (${bodyProviders})) OR (${bodyProviders})) after:${after}`;
 }
 
 export async function scanGmailForBookings(): Promise<
