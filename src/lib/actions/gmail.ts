@@ -335,9 +335,14 @@ export async function scanGmailForBookings(): Promise<
             sender: from.slice(0, 500),
             subject: subject.slice(0, 500),
             parsed_type: parsed?.type ?? null,
-            parsed_data: parsed
-              ? (parsed as unknown as Record<string, unknown>)
-              : { _debug_text_length: combinedText.length, _debug_text_start: combinedText.slice(0, 500), _debug_pdf_count: pdfAttachments.length, _debug_attachments: attachments.map(a => a.filename), _debug_html_length: (html ?? "").length, _debug_raw_text_length: (text ?? "").length, _debug_mime: describeParts(msg.payload) },
+            parsed_data: {
+              ...(parsed ? (parsed as unknown as Record<string, unknown>) : {}),
+              _debug_text_length: combinedText.length,
+              _debug_text_start: combinedText.slice(0, 2000),
+              _debug_pdf_count: pdfAttachments.length,
+              _debug_html_length: (html ?? "").length,
+              _debug_raw_text_length: (text ?? "").length,
+            },
             parse_failed: !parsed,
             imported: false,
           },
