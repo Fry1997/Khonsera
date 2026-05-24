@@ -32,6 +32,7 @@ import {
   type TransportBookingMode,
 } from "./add-transport-booking-form";
 import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
+import { GmailImportPanel } from "./gmail-import-panel";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 import { TransportIcon, StopIcon } from "@/components/icons";
 import {
@@ -233,6 +234,7 @@ export function ItineraryEditor({
   timezone,
   totals,
   initialPreviewCache,
+  gmailConnected,
 }: {
   itinerary: {
     id: string;
@@ -256,6 +258,7 @@ export function ItineraryEditor({
   // mode). Seeded into the route-preview hook on mount so the picker
   // renders resolved pills on first paint instead of grey-pending.
   initialPreviewCache: InitialPreviewSeed[];
+  gmailConnected?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -271,6 +274,7 @@ export function ItineraryEditor({
     afterStopLabel?: string;
     existingStopId?: string;
   } | null>(null);
+  const [gmailImportOpen, setGmailImportOpen] = useState(false);
 
   // Transitions keyed by from_stop_id for fast lookup.
   const transitionByFrom = useMemo(() => {
@@ -1084,6 +1088,18 @@ export function ItineraryEditor({
           <span className={`sb ${STATUS_SB[itinerary.status]}`}>
             {STATUS_LABEL[itinerary.status]}
           </span>
+          {gmailConnected ? (
+            <button
+              type="button"
+              className="btn-ghost"
+              style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+              onClick={() => setGmailImportOpen(true)}
+              disabled={pending}
+            >
+              {Icon.ticket}
+              Import from Gmail
+            </button>
+          ) : null}
           <span style={{ marginLeft: "auto" }}>
             <DeleteItineraryButton
               id={itinerary.id}
@@ -1774,6 +1790,25 @@ export function ItineraryEditor({
               />
             </div>
           </div>
+        ) : null}
+
+        {/* Gmail import panel */}
+        {gmailImportOpen ? (
+          <GmailImportPanel
+            itineraryId={itinerary.id}
+            lastStopId={
+              stops.length > 0 ? stops[stops.length - 1].id : null
+            }
+            lastStopLabel={
+              stops.length > 0
+                ? (stops[stops.length - 1].location?.name ??
+                  stops[stops.length - 1].title ??
+                  "last stop")
+                : "itinerary"
+            }
+            onClose={() => setGmailImportOpen(false)}
+            onImported={() => router.refresh()}
+          />
         ) : null}
       </div>
     </div>
