@@ -261,106 +261,135 @@ export function GmailImportPanel({
     });
   };
 
-  const handleImportTransport = (booking: ParsedTransportBooking) => {
-    if (!lastStopId) {
-      setError("Add at least one stop to the itinerary before importing bookings.");
+  const doImportTransport = async (
+    booking: ParsedTransportBooking,
+    stopId: string,
+  ): Promise<boolean> => {
+    const first = booking.segments[0];
+    const last = booking.segments[booking.segments.length - 1];
+
+    const segments = booking.segments.map((seg) => ({
+      from_location_name: seg.from_station,
+      to_location_name: seg.to_station,
+      departure_at: new Date(
+        `${seg.departure_date}T${seg.departure_time}:00`,
+      ).toISOString(),
+      arrival_at: new Date(
+        `${seg.arrival_date}T${seg.arrival_time}:00`,
+      ).toISOString(),
+      service_number: seg.service_number ?? null,
+      platform_dep: seg.platform_dep ?? null,
+      platform_arr: seg.platform_arr ?? null,
+    }));
+
+    const result = await attachTransportBookingToStop({
+      from_stop_id: stopId,
+      mode: booking.mode,
+      provider: booking.provider,
+      arrival_location_id: null,
+      arrival_location_name: last?.to_station ?? "Unknown",
+      arrival_location_type: "station",
+      booking_reference: booking.booking_reference,
+      actual_price: booking.price,
+      currency: booking.currency,
+      seat_reservation: first?.seat ?? null,
+      segments,
+    });
+
+    if (!result.ok) {
+      setError(feedbackFromError(result.error).message);
+      return false;
+    }
+
+    await markBookingImported({
+      gmail_message_id: booking.gmail_message_id,
+      booking_type: "transport",
+      travel_booking_id: result.value.travel_booking_id,
+    });
+
+    setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+    return true;
+  };
+
+  const doImportAccommodation = async (
+    booking: ParsedAccommodationBooking,
+  ): Promise<boolean> => {
+    const checkIn = booking.check_in_time
+      ? new Date(
+          `${booking.check_in_date}T${booking.check_in_time}:00`,
+        ).toISOString()
+      : new Date(`${booking.check_in_date}T15:00:00`).toISOString();
+    const checkOut = booking.check_out_time
+      ? new Date(
+          `${booking.check_out_date}T${booking.check_out_time}:00`,
+        ).toISOString()
+      : new Date(`${booking.check_out_date}T11:00:00`).toISOString();
+
+    const result = await attachAccommodationBooking({
+      stop_id: null,
+      after_stop_id: lastStopId,
+      hotel_location_id: null,
+      hotel_name: booking.hotel_name,
+      check_in: checkIn,
+      check_out: checkOut,
+      provider: booking.provider,
+      booking_reference: booking.booking_reference,
+      actual_price: booking.price,
+      currency: booking.currency,
+      room_details: booking.room_details,
+    });
+
+    if (!result.ok) {
+      setError(feedbackFromError(result.error).message);
+      return false;
+    }
+
+    await markBookingImported({
+      gmail_message_id: booking.gmail_message_id,
+      booking_type: "accommodation",
+      travel_booking_id: result.value.travel_booking_id,
+    });
+
+    setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+    return true;
+  };
+
+  const handleImportOne = (booking: ParsedBooking) => {
+    if (booking.type === "transport" && !lastStopId) {
+      setError("Add at least one stop to the itinerary before importing transport bookings.");
       return;
     }
     setImportingId(booking.gmail_message_id);
     startImport(async () => {
-      const first = booking.segments[0];
-      const last = booking.segments[booking.segments.length - 1];
-
-      const segments = booking.segments.map((seg) => ({
-        from_location_name: seg.from_station,
-        to_location_name: seg.to_station,
-        departure_at: new Date(
-          `${seg.departure_date}T${seg.departure_time}:00`,
-        ).toISOString(),
-        arrival_at: new Date(
-          `${seg.arrival_date}T${seg.arrival_time}:00`,
-        ).toISOString(),
-        service_number: seg.service_number ?? null,
-        platform_dep: seg.platform_dep ?? null,
-        platform_arr: seg.platform_arr ?? null,
-      }));
-
-      const result = await attachTransportBookingToStop({
-        from_stop_id: lastStopId,
-        mode: booking.mode,
-        provider: booking.provider,
-        arrival_location_id: null,
-        arrival_location_name: last?.to_station ?? "Unknown",
-        arrival_location_type:
-          booking.mode === "flight" ? "station" : "station",
-        booking_reference: booking.booking_reference,
-        actual_price: booking.price,
-        currency: booking.currency,
-        seat_reservation: first?.seat ?? null,
-        segments,
-      });
-
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        setImportingId(null);
-        return;
-      }
-
-      await markBookingImported({
-        gmail_message_id: booking.gmail_message_id,
-        booking_type: "transport",
-        travel_booking_id: result.value.travel_booking_id,
-      });
-
-      setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+      const ok =
+        booking.type === "transport"
+          ? await doImportTransport(booking, lastStopId!)
+          : await doImportAccommodation(booking);
       setImportingId(null);
-      onImported();
+      if (ok) onImported();
     });
   };
 
-  const handleImportAccommodation = (booking: ParsedAccommodationBooking) => {
-    setImportingId(booking.gmail_message_id);
+  const handleImportAll = () => {
+    if (!pending || pending.length === 0) return;
+    const hasTransport = pending.some((b) => b.type === "transport");
+    if (hasTransport && !lastStopId) {
+      setError("Add at least one stop to the itinerary before importing transport bookings.");
+      return;
+    }
+    setImportingId("__all__");
     startImport(async () => {
-      const checkIn = booking.check_in_time
-        ? new Date(
-            `${booking.check_in_date}T${booking.check_in_time}:00`,
-          ).toISOString()
-        : new Date(`${booking.check_in_date}T15:00:00`).toISOString();
-      const checkOut = booking.check_out_time
-        ? new Date(
-            `${booking.check_out_date}T${booking.check_out_time}:00`,
-          ).toISOString()
-        : new Date(`${booking.check_out_date}T11:00:00`).toISOString();
-
-      const result = await attachAccommodationBooking({
-        stop_id: null,
-        after_stop_id: lastStopId,
-        hotel_location_id: null,
-        hotel_name: booking.hotel_name,
-        check_in: checkIn,
-        check_out: checkOut,
-        provider: booking.provider,
-        booking_reference: booking.booking_reference,
-        actual_price: booking.price,
-        currency: booking.currency,
-        room_details: booking.room_details,
-      });
-
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        setImportingId(null);
-        return;
+      let imported = 0;
+      for (const booking of pending) {
+        const ok =
+          booking.type === "transport"
+            ? await doImportTransport(booking, lastStopId!)
+            : await doImportAccommodation(booking);
+        if (ok) imported++;
+        else break;
       }
-
-      await markBookingImported({
-        gmail_message_id: booking.gmail_message_id,
-        booking_type: "accommodation",
-        travel_booking_id: result.value.travel_booking_id,
-      });
-
-      setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
       setImportingId(null);
-      onImported();
+      if (imported > 0) onImported();
     });
   };
 
@@ -383,7 +412,7 @@ export function GmailImportPanel({
           <div>
             <h2 className="h3">Import from Gmail</h2>
             <p className="small mt-0.5" style={{ color: "var(--ink-dim)" }}>
-              Scan for booking confirmations from the last 6 months
+              Scan for upcoming booking confirmations
             </p>
           </div>
           <button
@@ -400,9 +429,9 @@ export function GmailImportPanel({
           {!bookings ? (
             <div className="flex flex-col items-center gap-3 py-8">
               <p className="small text-center" style={{ color: "var(--ink-dim)" }}>
-                Scans your Gmail for confirmation emails from Trainline, LNER,
-                Avanti, GWR, airlines, Booking.com, Hotels.com, Airbnb, and
-                more.
+                Scans your Gmail for upcoming booking confirmations from
+                Trainline, LNER, Avanti, GWR, airlines, Booking.com,
+                Hotels.com, Airbnb, and more. Past trips are excluded.
               </p>
               <SubmitButton
                 pending={scanning}
@@ -414,48 +443,65 @@ export function GmailImportPanel({
             </div>
           ) : pending && pending.length > 0 ? (
             <>
-              <p className="small" style={{ color: "var(--ink-dim)" }}>
-                Found {bookings.length} booking
-                {bookings.length !== 1 ? "s" : ""} across{" "}
-                {scannedCount} email{scannedCount !== 1 ? "s" : ""}
-                {importedIds.size > 0
-                  ? ` · ${importedIds.size} imported`
-                  : ""}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="small" style={{ color: "var(--ink-dim)" }}>
+                  {pending.length} upcoming booking
+                  {pending.length !== 1 ? "s" : ""} found
+                  {importedIds.size > 0
+                    ? ` · ${importedIds.size} imported`
+                    : ""}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ padding: "4px 10px", fontSize: 12 }}
+                    onClick={doScan}
+                    disabled={scanning || importing}
+                  >
+                    {scanning ? "Rescanning..." : "Rescan"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-terra"
+                    style={{ padding: "4px 12px", fontSize: 12 }}
+                    onClick={handleImportAll}
+                    disabled={importing || pending.length === 0}
+                  >
+                    {importingId === "__all__"
+                      ? "Importing..."
+                      : `Import all (${pending.length})`}
+                  </button>
+                </div>
+              </div>
               {pending.map((booking) => {
-                const isImporting = importingId === booking.gmail_message_id;
+                const isImporting =
+                  importingId === booking.gmail_message_id ||
+                  importingId === "__all__";
                 return booking.type === "transport" ? (
                   <TransportBookingCard
                     key={booking.gmail_message_id}
                     booking={booking}
-                    onImport={() => handleImportTransport(booking)}
+                    onImport={() => handleImportOne(booking)}
                     importing={isImporting}
                   />
                 ) : (
                   <AccommodationBookingCard
                     key={booking.gmail_message_id}
                     booking={booking}
-                    onImport={() => handleImportAccommodation(booking)}
+                    onImport={() => handleImportOne(booking)}
                     importing={isImporting}
                   />
                 );
               })}
-              <button
-                type="button"
-                className="btn-ghost self-center"
-                style={{ fontSize: 12 }}
-                onClick={doScan}
-                disabled={scanning}
-              >
-                {scanning ? "Rescanning..." : "Rescan"}
-              </button>
             </>
           ) : (
             <div className="flex flex-col items-center gap-3 py-8">
               {bookings.length === 0 ? (
                 <p className="small text-center" style={{ color: "var(--ink-dim)" }}>
-                  No booking emails found in the last 6 months. Make sure
-                  your booking confirmations are in the connected Gmail account.
+                  No upcoming bookings found. Past trips are excluded
+                  automatically. Make sure your booking confirmations are in
+                  the connected Gmail account.
                 </p>
               ) : (
                 <p className="small text-center" style={{ color: "var(--sage)" }}>

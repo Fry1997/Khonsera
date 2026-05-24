@@ -42,10 +42,10 @@ function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
   const subjectTerms =
     "(subject:confirmation OR subject:booking OR subject:ticket OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification)";
-  // Search emails from the last 5 weeks only. Most bookings are confirmed
-  // days-to-weeks before travel, so this window catches upcoming trips
-  // without fetching months of historical confirmations.
-  const cutoff = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
+  // Search the last 3 months — flights and hotels are often booked well
+  // in advance. The post-parse date filter drops anything where the
+  // travel/check-in date has already passed.
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const after = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, "0")}/${String(cutoff.getDate()).padStart(2, "0")}`;
   return `(${senderClauses}) ${subjectTerms} after:${after}`;
 }
@@ -76,7 +76,7 @@ export async function scanGmailForBookings(): Promise<
     messageRefs = await gmailSearchMessages({
       accessToken: gmail.accessToken,
       query: buildSearchQuery(),
-      maxResults: 30,
+      maxResults: 50,
     });
   } catch (e) {
     console.error("gmail scan failed", e);
