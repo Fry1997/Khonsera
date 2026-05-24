@@ -112,9 +112,8 @@ export async function searchTransportHubs(
     return { ok: true, value: (data ?? []) as TransportHubHit[] };
   }
 
-  const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
   const prefix = `${q.replace(/[%_\\]/g, "\\$&")}%`;
-  // Try exact code match first — fastest path for station shortcodes.
+  // Code matches first — "WLB" resolves a station instantly.
   const { data: codeHits } = await supabase
     .from("transport_hubs")
     .select("id, kind, code, name, city, country")
@@ -122,7 +121,7 @@ export async function searchTransportHubs(
     .ilike("code", prefix)
     .order("name")
     .limit(5);
-  // Then prefix match on name — can use an index.
+  // Prefix match on name — "Wel" finds "Wellingborough" before "Abbey Well".
   const { data: prefixHits } = await supabase
     .from("transport_hubs")
     .select("id, kind, code, name, city, country")
@@ -130,7 +129,7 @@ export async function searchTransportHubs(
     .ilike("name", prefix)
     .order("name")
     .limit(15);
-  // Dedupe and merge, code matches first.
+  // Merge: code first, then prefix. Both are strong matches.
   const seen = new Set<string>();
   const merged: TransportHubHit[] = [];
   for (const h of [...(codeHits ?? []), ...(prefixHits ?? [])]) {
@@ -139,8 +138,10 @@ export async function searchTransportHubs(
       merged.push(h as TransportHubHit);
     }
   }
-  // If prefix didn't find enough, fall back to substring match.
-  if (merged.length < 5) {
+  // Substring fallback only when prefix found very little — avoids
+  // "Abbey Well" outranking "Wellingborough" for "wel".
+  if (merged.length < 3 && q.length >= 3) {
+    const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
     const { data: subHits } = await supabase
       .from("transport_hubs")
       .select("id, kind, code, name, city, country")
