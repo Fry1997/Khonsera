@@ -2,6 +2,14 @@
 
 **Every session must read this before making changes. Update it before ending.**
 
+## Known Bugs (as of 2026-05-24)
+
+### Planning page after brief submit
+- Transport booking stops show as "(no place yet)" — they're created with `location_id: null` and title from hub label (often just station codes like "WEL"). Need to resolve hub IDs to proper location records with names and coordinates.
+- "via undefined" on transitions — mode not set properly on auto-created transitions between transport booking stops.
+- PR #11 restored the old "+ Train" / "+ Flight" inline buttons in the editor — these should be replaced with the single "+ Transport" button. The editor file needs the inline button replacement re-applied after the rebase.
+- Transport booking stops created as `type: "appointment"` — should use a more appropriate type or have metadata that the editor recognises as transit stops.
+
 ## Architecture
 
 - **Next.js App Router** + **Supabase** (Postgres) + **Server Actions**
