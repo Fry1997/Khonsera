@@ -983,7 +983,6 @@ export function detectAndParse(
 
   // Skip obvious marketing / promotional emails (subject only).
   if (/unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo/i.test(subject)) {
-    console.log(`[parser] rejected as marketing: "${subject}"`);
     return null;
   }
 
@@ -995,11 +994,7 @@ export function detectAndParse(
     /confirm|booking\s*(?:confirm|detail)|your\s*tickets?|e-?tickets?|reservation/i.test(
       text.slice(0, 500),
     );
-  if (!isRelevant) {
-    console.log(`[parser] not relevant: "${subject}" | text start: "${text.slice(0, 100)}"`);
-    return null;
-  }
-  console.log(`[parser] relevant: "${subject}" | text length: ${text.length}`);
+  if (!isRelevant) return null;
 
   const amendment = isAmendmentEmail(subject, text);
 
@@ -1027,18 +1022,14 @@ export function detectAndParse(
   // if the body also looks like a real booking (has times, stations,
   // or booking references), not just a marketing mention.
   if (!result) {
-    console.log(`[parser] no sender/subject match, trying body fallback`);
     const bodySnippet = text.slice(0, 3000).toLowerCase();
     const looksLikeBooking =
       /\d{2}:\d{2}/.test(bodySnippet) ||
       /booking ref|confirmation|your trip|your journey|e-?ticket/i.test(bodySnippet);
-    const hasTrainline = bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com");
-    console.log(`[parser] body fallback: looksLikeBooking=${looksLikeBooking}, hasTrainline=${hasTrainline}, snippet="${bodySnippet.slice(0, 150)}"`);
     if (looksLikeBooking) {
       if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
         result = parseTrainline(htmlContent, text);
         if (!result) result = parseUkRail(htmlContent, text, "Trainline");
-        console.log(`[parser] trainline body fallback result:`, result ? "success" : "null");
       } else if (/easyjet|ryanair|british airways|jet2|wizz air|vueling|klm|lufthansa|emirates|virgin atlantic/i.test(bodySnippet)) {
         result = parseFlightBooking(htmlContent, text, "Airline");
       } else if (/booking\.com|hotels\.com|expedia|airbnb/i.test(bodySnippet)) {
