@@ -39,6 +39,14 @@ export default async function NewItineraryPage() {
       .maybeSingle(),
   ]);
 
+  const { data: gmailConn } = await supabase
+    .from("gmail_connections")
+    .select("id")
+    .eq("user_id", ctx.userId)
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("status", "active")
+    .maybeSingle();
+
   // Resolve the home label so the brief can show "from Home" (or the
   // actual name) on the implicit first transition.
   const homeId =
@@ -132,6 +140,7 @@ export default async function NewItineraryPage() {
         flightHubLabel={flightHubLabel}
         baseLocations={baseLocations}
         defaultBaseId={defaultBaseId}
+        gmailConnected={!!gmailConn}
       />
     </div>
   );

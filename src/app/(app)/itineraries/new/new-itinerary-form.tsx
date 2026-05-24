@@ -51,6 +51,8 @@ import {
 } from "@/components/itinerary";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { TransportIcon } from "@/components/icons";
+import { scanGmailForBookings } from "@/lib/actions/gmail";
+import type { ParsedBooking } from "@/lib/gmail/types";
 import type { PlaceSelection } from "@/components/place-picker";
 
 const MODE_OPTIONS_MAP: Record<string, string> = {
@@ -77,6 +79,7 @@ export function NewItineraryBrief({
   flightHubLabel,
   baseLocations,
   defaultBaseId,
+  gmailConnected,
 }: {
   customers: PlacePickerCustomer[];
   customerSites: PlacePickerCustomerSite[];
@@ -87,6 +90,7 @@ export function NewItineraryBrief({
   flightHubLabel?: string | null;
   baseLocations: BaseLocation[];
   defaultBaseId: string | null;
+  gmailConnected?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -150,6 +154,56 @@ export function NewItineraryBrief({
     );
   const removeAccommodationBooking = (uid: string) =>
     setAccommodationBookings((prev) => prev.filter((b) => b.uid !== uid));
+
+  const [gmailImportOpen, setGmailImportOpen] = useState(false);
+
+  const importParsedBooking = (b: ParsedBooking) => {
+    if (b.type === "transport") {
+      const first = b.segments[0];
+      const last = b.segments[b.segments.length - 1];
+      setTransportBookings((prev) => [
+        ...prev,
+        {
+          ...emptyTransportBookingItem(),
+          mode: b.mode === "bus" ? "bus" : b.mode,
+          date: first?.departure_date ?? tripStartDate,
+          departureHub: { id: null, label: first?.from_station ?? null },
+          destinationHub: { id: null, label: last?.to_station ?? null },
+          departTime: first?.departure_time ?? "",
+          arriveTime: last?.arrival_time ?? "",
+          changeovers: b.segments.length > 1
+            ? b.segments.slice(0, -1).map((seg, i) => ({
+                hub: { id: null, label: seg.to_station },
+                arriveTime: seg.arrival_time,
+                departTime: b.segments[i + 1]?.departure_time ?? "",
+              }))
+            : [],
+          serviceNumber: first?.service_number ?? "",
+          reference: b.booking_reference ?? "",
+          seat: first?.seat ?? "",
+          price: b.price != null ? String(b.price) : "",
+          confirmed: true,
+        },
+      ]);
+    } else {
+      setAccommodationBookings((prev) => [
+        ...prev,
+        {
+          ...emptyAccommodationBookingItem(),
+          hotel: null,
+          checkInDate: b.check_in_date,
+          checkInTime: b.check_in_time ?? "15:00",
+          checkOutDate: b.check_out_date,
+          checkOutTime: b.check_out_time ?? "11:00",
+          provider: b.provider,
+          reference: b.booking_reference ?? "",
+          price: b.price != null ? String(b.price) : "",
+          room: b.room_details ?? "",
+          confirmed: true,
+        },
+      ]);
+    }
+  };
 
   const getTransition = (fromUid: string, toUid: string): BriefTransition =>
     transitions.get(transitionKey(fromUid, toUid)) ?? emptyTransition();
@@ -683,6 +737,15 @@ export function NewItineraryBrief({
           >
             + Accommodation
           </button>
+          {gmailConnected ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setGmailImportOpen(true)}
+            >
+              Import from Gmail
+            </button>
+          ) : null}
         </div>
 
         {/* ── Confirmed reservations (condensed chips) ────────────── */}
@@ -1178,6 +1241,14 @@ export function NewItineraryBrief({
         </div>
       </div>
 
+      {/* Gmail import panel */}
+      {gmailImportOpen ? (
+        <BriefGmailImport
+          onImport={importParsedBooking}
+          onClose={() => setGmailImportOpen(false)}
+        />
+      ) : null}
+
       {/* Right — live spine preview */}
       <aside className="brief-preview" aria-label="What Khonsera will build">
         <div className="flank left">
@@ -1220,5 +1291,128 @@ function Arrow() {
     >
       <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
+  );
+}
+
+function BriefGmailImport({
+  onImport,
+  onClose,
+}: {
+  onImport: (booking: ParsedBooking) => void;
+  onClose: () => void;
+}) {
+  const [scanning, startScan] = useTransition();
+  const [bookings, setBookings] = useState<ParsedBooking[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+
+  const doScan = () => {
+    setError(null);
+    startScan(async () => {
+      const result = await scanGmailForBookings();
+      if (!result.ok) {
+        setError("Failed to scan Gmail");
+        return;
+      }
+      setBookings(result.value.bookings);
+    });
+  };
+
+  return (
+    <div
+      className="booking-modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="booking-modal" role="dialog">
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
+          <div>
+            <span className="uc">Import from Gmail</span>
+            <p
+              className="brief-helper"
+              style={{ margin: "4px 0 0", fontSize: 13 }}
+            >
+              Scan your inbox for train, flight, and hotel confirmations.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ fontSize: 12, color: "var(--ink-dim)" }}
+          >
+            Close
+          </button>
+        </header>
+
+        {!bookings ? (
+          <button
+            type="button"
+            className="btn btn-gold btn-sm"
+            onClick={doScan}
+            disabled={scanning}
+          >
+            {scanning ? "Scanning..." : "Scan inbox"}
+          </button>
+        ) : bookings.length === 0 ? (
+          <p className="brief-helper">No booking emails found.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {bookings.map((b) => {
+              const id = b.gmail_message_id;
+              const imported = importedIds.has(id);
+              return (
+                <div
+                  key={id}
+                  className="brief-reservation-chip"
+                  style={{ opacity: imported ? 0.5 : 1 }}
+                >
+                  <span style={{ fontWeight: 500, flex: 1 }}>
+                    {b.type === "transport"
+                      ? `${b.mode === "train" ? "Train" : b.mode === "flight" ? "Flight" : "Bus"}: ${b.segments[0]?.from_station ?? ""} to ${b.segments[b.segments.length - 1]?.to_station ?? ""}`
+                      : `Hotel: ${b.hotel_name}`}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                    {b.type === "transport"
+                      ? `${b.segments[0]?.departure_date ?? ""} ${b.segments[0]?.departure_time ?? ""}`
+                      : b.check_in_date}
+                  </span>
+                  {b.booking_reference ? (
+                    <span style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                      ref {b.booking_reference}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={imported}
+                    onClick={() => {
+                      onImport(b);
+                      setImportedIds((prev) => new Set([...prev, id]));
+                    }}
+                    style={{ marginLeft: "auto", fontSize: 11 }}
+                  >
+                    {imported ? "Added" : "Add to trip"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {error ? (
+          <p style={{ color: "var(--rust)", fontSize: 12, marginTop: 8 }}>
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
