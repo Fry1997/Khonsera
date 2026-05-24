@@ -234,6 +234,7 @@ export async function scanGmailForBookings(): Promise<
   }
 
   const toFetch = messageRefs.filter((ref) => !importedIds.has(ref.id));
+  console.log("[gmail-scan] found:", messageRefs.length, "to fetch:", toFetch.length);
 
   // Fetch messages in parallel batches of 10 to stay well under Gmail rate limits.
   const BATCH_SIZE = 10;
@@ -295,15 +296,20 @@ export async function scanGmailForBookings(): Promise<
   // Deduplicate: when Trainline sends both a booking confirmation and an
   // eticket for the same trip, keep only the booking confirmation (it has
   // times and price; the eticket just has station codes).
+  console.log("[gmail-scan] parsed:", bookings.length, bookings.map(b => `${b.type}:${b.raw_subject?.slice(0,40)}`));
   const deduped = deduplicateTrainlineBookings(bookings);
+  console.log("[gmail-scan] after dedup:", deduped.length);
 
   // Drop bookings where the travel date is in the past — users want
   // present/future bookings, not historical trips.
   const today = new Date().toISOString().slice(0, 10);
   const futureBookings = deduped.filter((b) => {
     const travelDate = getTravelDate(b);
-    return !travelDate || travelDate >= today;
+    const keep = !travelDate || travelDate >= today;
+    if (!keep) console.log("[gmail-scan] dropped past:", b.raw_subject, "date:", travelDate);
+    return keep;
   });
+  console.log("[gmail-scan] after date filter:", futureBookings.length);
 
   // Update last_scan_at
   await supabase
