@@ -310,6 +310,31 @@ const briefStopoverSchema = z.object({
   duration_minutes: z.number().int().positive().max(24 * 60).default(30),
 });
 
+const briefTransportBookingSchema = z.object({
+  mode: z.enum(["train", "flight", "taxi", "bus", "tube", "drive"]),
+  destination_hub_id: z.string().uuid().nullable().optional(),
+  destination_label: z.string().nullable().optional(),
+  depart_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  arrive_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  service_number: z.string().max(100).nullable().optional(),
+  reference: z.string().max(200).nullable().optional(),
+  seat: z.string().max(200).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
+});
+
+const briefAccommodationBookingSchema = z.object({
+  hotel_location_id: z.string().uuid().nullable().optional(),
+  hotel_label: z.string().max(200).nullable().optional(),
+  check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  check_in_time: z.string().regex(/^\d{2}:\d{2}$/).default("15:00"),
+  check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  check_out_time: z.string().regex(/^\d{2}:\d{2}$/).default("11:00"),
+  provider: z.string().max(200).nullable().optional(),
+  reference: z.string().max(200).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
+  room: z.string().max(400).nullable().optional(),
+});
+
 const briefSchema = z.object({
   anchors: z.array(anchorInputSchema).min(1),
   transitions: z.array(briefTransitionSchema).optional().default([]),
@@ -322,6 +347,8 @@ const briefSchema = z.object({
     .object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) })
     .nullable()
     .optional(),
+  transport_bookings: z.array(briefTransportBookingSchema).optional().default([]),
+  accommodation_bookings: z.array(briefAccommodationBookingSchema).optional().default([]),
 });
 
 type BriefTransitionInput = z.infer<typeof briefTransitionSchema>;
@@ -618,6 +645,111 @@ export async function createItineraryFromBrief(
         kind: a.kind,
         role: a.role ?? null,
         timing_mode: a.timing_mode,
+      },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+  }
+
+  // Transport bookings → departure + arrival stops with a locked
+  // transition between them. The booking data is stored in metadata
+  // so the planning page can display it.
+  for (const tb of parsed.value.transport_bookings) {
+    const dateForBooking = parsed.value.anchors[0]?.date ?? new Date().toISOString().slice(0, 10);
+    const departIso = tb.depart_time
+      ? isoFromLocal(dateForBooking, tb.depart_time, tz)
+      : null;
+    const arriveIso = tb.arrive_time
+      ? isoFromLocal(dateForBooking, tb.arrive_time, tz)
+      : null;
+
+    stopRows.push({
+      sequence: seq++,
+      type: "appointment",
+      location_id: null,
+      customer_id: null,
+      customer_site_id: null,
+      title: tb.destination_label
+        ? `Depart for ${tb.destination_label}`
+        : `${tb.mode} departure`,
+      start_time: departIso,
+      end_time: departIso,
+      duration_minutes: 0,
+      is_time_fixed: !!departIso,
+      notes: null,
+      metadata: {
+        kind: "transit_departure",
+        transport_mode: tb.mode,
+        service_number: tb.service_number,
+        booking_reference: tb.reference,
+        seat: tb.seat,
+        price: tb.price,
+        destination_hub_id: tb.destination_hub_id,
+      },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+
+    stopRows.push({
+      sequence: seq++,
+      type: "appointment",
+      location_id: null,
+      customer_id: null,
+      customer_site_id: null,
+      title: tb.destination_label ?? `${tb.mode} arrival`,
+      start_time: arriveIso,
+      end_time: arriveIso,
+      duration_minutes: 0,
+      is_time_fixed: !!arriveIso,
+      notes: null,
+      metadata: {
+        kind: "transit_arrival",
+        transport_mode: tb.mode,
+        service_number: tb.service_number,
+        destination_hub_id: tb.destination_hub_id,
+      },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
+  }
+
+  // Accommodation bookings → stored as reference data. The planning
+  // page surfaces check-in/check-out as constraints, not fixed stops.
+  // The user places hotel stops on the timeline as needed.
+  for (const ab of parsed.value.accommodation_bookings) {
+    if (!ab.check_in_date) continue;
+    const ciIso = isoFromLocal(
+      ab.check_in_date,
+      ab.check_in_time ?? "15:00",
+      tz,
+    );
+    const coIso = ab.check_out_date
+      ? isoFromLocal(
+          ab.check_out_date,
+          ab.check_out_time ?? "11:00",
+          tz,
+        )
+      : null;
+    stopRows.push({
+      sequence: seq++,
+      type: "accommodation",
+      location_id: ab.hotel_location_id ?? null,
+      customer_id: null,
+      customer_site_id: null,
+      title: ab.hotel_label ?? "Hotel",
+      start_time: ciIso,
+      end_time: coIso,
+      duration_minutes: null,
+      is_time_fixed: false,
+      notes: null,
+      metadata: {
+        kind: "accommodation_booking",
+        provider: ab.provider,
+        booking_reference: ab.reference,
+        price: ab.price,
+        room: ab.room,
+        check_in_from: ab.check_in_time ?? "15:00",
+        check_out_by: ab.check_out_time ?? "11:00",
       },
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,

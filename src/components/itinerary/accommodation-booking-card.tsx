@@ -13,7 +13,9 @@ export type BriefAccommodationBooking = {
   uid: string;
   hotel: PlaceSelection | null;
   checkInDate: string;
+  checkInTime: string;
   checkOutDate: string;
+  checkOutTime: string;
   provider: string;
   reference: string;
   price: string;
@@ -25,7 +27,9 @@ export function emptyAccommodationBookingItem(): BriefAccommodationBooking {
     uid: cryptoUid(),
     hotel: null,
     checkInDate: "",
+    checkInTime: "15:00",
     checkOutDate: "",
+    checkOutTime: "11:00",
     provider: "",
     reference: "",
     price: "",
@@ -89,7 +93,7 @@ export function AccommodationBookingCard({
 
       <div className="brief-when-row">
         <label className="brief-field">
-          <span className="uc">Check-in date</span>
+          <span className="uc">Check-in from</span>
           <input
             type="date"
             className="field"
@@ -98,12 +102,32 @@ export function AccommodationBookingCard({
           />
         </label>
         <label className="brief-field">
-          <span className="uc">Check-out date</span>
+          <span className="uc" style={{ opacity: 0 }}>Time</span>
+          <input
+            type="time"
+            className="field"
+            value={booking.checkInTime}
+            onChange={(e) => onChange({ checkInTime: e.target.value })}
+          />
+        </label>
+      </div>
+      <div className="brief-when-row">
+        <label className="brief-field">
+          <span className="uc">Check-out by</span>
           <input
             type="date"
             className="field"
             value={booking.checkOutDate}
             onChange={(e) => onChange({ checkOutDate: e.target.value })}
+          />
+        </label>
+        <label className="brief-field">
+          <span className="uc" style={{ opacity: 0 }}>Time</span>
+          <input
+            type="time"
+            className="field"
+            value={booking.checkOutTime}
+            onChange={(e) => onChange({ checkOutTime: e.target.value })}
           />
         </label>
       </div>

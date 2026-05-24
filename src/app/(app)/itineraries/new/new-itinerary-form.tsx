@@ -540,6 +540,34 @@ export function NewItineraryBrief({
         timezone,
         base_location_id: selectedBaseId,
         be_home_by: beHomeBy,
+        transport_bookings: transportBookings
+          .filter((tb) => tb.mode != null)
+          .map((tb) => ({
+            mode: tb.mode!,
+            destination_hub_id: tb.destinationHub.id,
+            destination_label: tb.destinationHub.label,
+            depart_time: tb.departTime || null,
+            arrive_time: tb.arriveTime || null,
+            service_number: tb.serviceNumber || null,
+            reference: tb.reference || null,
+            seat: tb.seat || null,
+            price: tb.price ? Number(tb.price) : null,
+          })),
+        accommodation_bookings: accommodationBookings
+          .filter((ab) => ab.hotel != null || ab.checkInDate)
+          .map((ab) => ({
+            hotel_location_id:
+              ab.hotel?.kind === "location" ? ab.hotel.location_id : null,
+            hotel_label: ab.hotel?.label ?? null,
+            check_in_date: ab.checkInDate || null,
+            check_in_time: ab.checkInTime || "15:00",
+            check_out_date: ab.checkOutDate || null,
+            check_out_time: ab.checkOutTime || "11:00",
+            provider: ab.provider || null,
+            reference: ab.reference || null,
+            price: ab.price ? Number(ab.price) : null,
+            room: ab.room || null,
+          })),
       });
 
       if (!result.ok) {
