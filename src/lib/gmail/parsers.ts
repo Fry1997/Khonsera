@@ -76,7 +76,7 @@ function isAmendmentEmail(subject: string, text: string): boolean {
 
 function findBookingRef(text: string): string | null {
   const patterns = [
-    /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?|transaction\s*ID)\s*[:.]?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
+    /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?|transaction\s*ID)\s*[:.]?\s*\n?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
     /\b([A-Z]{2,4}\d{4,10})\b/,
   ];
   for (const p of patterns) {
@@ -189,7 +189,7 @@ function isTrainlineMarketing(from: string, subject: string): boolean {
     /(?:from|depart(?:s|ing)?(?:\s+from)?)\s*:?\s*([A-Za-z\s&'.()-]+?)(?:\s+to\s+|\s*→\s*|\s*->\s*|\s*➔\s*)([A-Za-z\s&'.()-]+?)(?:\n|<|,|\s{2})/gi;
   // Trainline eticket format: "Wellingborough to Derby" on its own line
   const simpleRoutePattern =
-    /^([A-Z][A-Za-z\s&'.()-]{2,30})\s+to\s+([A-Z][A-Za-z\s&'.()-]{2,30})$/gm;
+    /^\s*([A-Z][A-Za-z\s&'.()-]{2,30})\s+to\s+([A-Z][A-Za-z\s&'.()-]{2,30})\s*$/gm;
 
 function parseTrainlineTrainTimesUrls(html: string): Array<{
   from: string;
@@ -1056,7 +1056,9 @@ export function detectAndParse(
     console.log(`[parser] body fallback: looksLikeBooking=${looksLikeBooking}, hasTrainline=${hasTrainline}, snippet="${bodySnippet.slice(0, 150)}"`);
     if (looksLikeBooking) {
       if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
-        result = parseUkRail(htmlContent, text, "Trainline");
+        result = parseTrainline(htmlContent, text);
+        if (!result) result = parseUkRail(htmlContent, text, "Trainline");
+        console.log(`[parser] trainline body fallback result:`, result ? "success" : "null");
       } else if (/easyjet|ryanair|british airways|jet2|wizz air|vueling|klm|lufthansa|emirates|virgin atlantic/i.test(bodySnippet)) {
         result = parseFlightBooking(htmlContent, text, "Airline");
       } else if (/booking\.com|hotels\.com|expedia|airbnb/i.test(bodySnippet)) {
