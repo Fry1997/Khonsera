@@ -315,8 +315,13 @@ export async function scanGmailForBookings(): Promise<
           }
         }
 
-        // Combine email body + PDF text for parsing.
-        const combinedText = (text ?? "") + pdfText;
+        // Combine email body + PDF text for parsing. When there's no
+        // plain text part (common with forwarded HTML emails), strip
+        // the HTML so the parser's regex patterns have text to work with.
+        const plainFromHtml = !text && html
+          ? html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim()
+          : null;
+        const combinedText = (text ?? plainFromHtml ?? "") + pdfText;
         const combinedHtml = html ?? "";
 
         const parsed = detectAndParse(from, subject, combinedHtml, combinedText);
