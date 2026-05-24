@@ -10,7 +10,7 @@ import {
   getHeader,
   extractMessageBody,
 } from "@/lib/google/gmail";
-import { detectAndParse } from "@/lib/gmail/parsers";
+import { detectAndParse, stripHtmlPublic } from "@/lib/gmail/parsers";
 import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
 
 const BOOKING_SENDERS = [
@@ -253,4 +253,25 @@ export async function disconnectGmail(): Promise<Result<{ id: string }>> {
   if (error) return err(errors.unexpected(error.message));
 
   return ok({ id: existing.id });
+}
+
+export async function debugFetchEmail(messageId: string): Promise<
+  Result<{ subject: string; from: string; cleanedText: string; html: string | null; parsed: Partial<ParsedBooking> | null }>
+> {
+  await requireUserContext();
+  const gmail = await getValidGmailAccessToken();
+  if (!gmail) return err(errors.integration("gmail", "Gmail not connected."));
+
+  const msg = await gmailGetMessage({
+    accessToken: gmail.accessToken,
+    messageId,
+  });
+
+  const from = getHeader(msg.payload.headers, "From") ?? "";
+  const subject = getHeader(msg.payload.headers, "Subject") ?? "";
+  const { html, text } = extractMessageBody(msg);
+  const cleanedText = text ?? (html ? stripHtmlPublic(html) : "");
+  const parsed = detectAndParse(from, subject, html, text);
+
+  return ok({ subject, from, cleanedText, html, parsed });
 }

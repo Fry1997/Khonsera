@@ -12,6 +12,8 @@ import type {
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
+export { stripHtml as stripHtmlPublic };
+
 function stripHtml(html: string): string {
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -236,39 +238,257 @@ function parseTrainline(html: string, text: string, subject: string): Partial<Pa
   return parseTrainlineGeneric(html, text, subject);
 }
 
+// Known UK rail operators and ticket types that pollute station names
+const TRAINLINE_NOISE = [
+  "East Midlands Railway",
+  "Avanti West Coast",
+  "CrossCountry",
+  "Great Western Railway",
+  "LNER",
+  "Northern",
+  "TransPennine Express",
+  "Southern",
+  "Southeastern",
+  "South Western Railway",
+  "ScotRail",
+  "Chiltern Railways",
+  "c2c",
+  "Greater Anglia",
+  "Thameslink",
+  "West Midlands Railway",
+  "London Northwestern Railway",
+  "Merseyrail",
+  "Advance Single",
+  "Advance Return",
+  "Off-Peak Single",
+  "Off-Peak Return",
+  "Off-Peak Day Single",
+  "Off-Peak Day Return",
+  "Anytime Single",
+  "Anytime Return",
+  "Anytime Day Single",
+  "Anytime Day Return",
+  "Super Off-Peak Single",
+  "Super Off-Peak Return",
+  "Advance",
+  "Single",
+  "Return",
+];
+
+function cleanStationName(raw: string): string {
+  let name = raw;
+  for (const noise of TRAINLINE_NOISE) {
+    name = name.replace(new RegExp(noise.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "");
+  }
+  return name.replace(/\s{2,}/g, " ").trim();
+}
+
+function parseTrainlineHtmlTimeStations(html: string): Array<{ time: string; station: string }> {
+  // Trainline MJML emails render times and station names as text nodes in
+  // adjacent table cells or spans. Find all times that appear as bare text
+  // inside tags, then look for the nearest station-like text.
+  const results: Array<{ time: string; station: string; pos: number }> = [];
+
+  // Match time values that appear as the main text content of an element
+  const pattern = />(\d{1,2}:\d{2})\s*</g;
+  let m;
+  while ((m = pattern.exec(html)) !== null) {
+    const time = parseTime(m[1]);
+    if (!time) continue;
+
+    // Look ahead up to 800 chars for a station name (capitalised words in a text node)
+    const after = html.slice(m.index + m[0].length, m.index + m[0].length + 800);
+    const stationMatch = after.match(
+      />([A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Street|Road|Central|Parkway|International|Lime|Junction|Cross|Bridge|upon|on|in|the|de|la))*)\s*</,
+    );
+    if (stationMatch) {
+      const station = cleanStationName(stationMatch[1]);
+      if (station.length > 2) {
+        results.push({ time, station, pos: m.index });
+      }
+    }
+  }
+
+  // Deduplicate by time+station
+  const seen = new Set<string>();
+  return results.filter((r) => {
+    const key = `${r.time}|${r.station}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function parseTrainlineTextLegs(text: string): Array<{
+  depTime: string;
+  depStation: string;
+  arrTime: string;
+  arrStation: string;
+  operator: string | null;
+}> {
+  // After proper HTML stripping, the cleaned text contains time+station
+  // pairs on adjacent lines. Pair them up into departure→arrival legs.
+  const timeStations: Array<{ time: string; station: string; lineIdx: number }> = [];
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  for (let i = 0; i < lines.length; i++) {
+    const timeMatch = lines[i].match(/^(\d{1,2}:\d{2})$/);
+    if (timeMatch) {
+      // Station name is on the next non-empty, non-time line
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        if (/^\d{1,2}:\d{2}$/.test(lines[j])) break;
+        const cleaned = cleanStationName(lines[j]);
+        if (cleaned.length > 2 && /^[A-Z]/.test(cleaned) && !/change|total|paid|operator|ticket/i.test(cleaned)) {
+          timeStations.push({ time: parseTime(timeMatch[1]) ?? timeMatch[1], station: cleaned, lineIdx: i });
+          break;
+        }
+      }
+      continue;
+    }
+
+    // Also match "HH:MM StationName" on one line
+    const inlineMatch = lines[i].match(/^(\d{1,2}:\d{2})\s+([A-Z][a-z].{2,40})$/);
+    if (inlineMatch) {
+      const station = cleanStationName(inlineMatch[2]);
+      if (station.length > 2) {
+        timeStations.push({ time: parseTime(inlineMatch[1]) ?? inlineMatch[1], station, lineIdx: i });
+      }
+    }
+  }
+
+  // Pair consecutive time+station entries into legs (depart→arrive)
+  const legs: Array<{
+    depTime: string; depStation: string;
+    arrTime: string; arrStation: string;
+    operator: string | null;
+  }> = [];
+
+  for (let i = 0; i + 1 < timeStations.length; i += 2) {
+    const dep = timeStations[i];
+    const arr = timeStations[i + 1];
+    if (dep.station === arr.station) {
+      // Skip self-referencing pairs (same station depart+arrive = change marker)
+      i--;
+      timeStations.splice(i + 1, 1);
+      continue;
+    }
+
+    // Look for operator between these lines
+    let operator: string | null = null;
+    for (let j = dep.lineIdx; j <= Math.min(arr.lineIdx + 3, lines.length - 1); j++) {
+      for (const op of TRAINLINE_NOISE.slice(0, 17)) {
+        if (lines[j]?.includes(op)) {
+          operator = op;
+          break;
+        }
+      }
+      if (operator) break;
+    }
+
+    legs.push({
+      depTime: dep.time,
+      depStation: dep.station,
+      arrTime: arr.time,
+      arrStation: arr.station,
+      operator,
+    });
+  }
+
+  return legs;
+}
+
 function parseTrainlineBookingConfirmation(
   html: string,
   text: string,
   subject: string,
 ): Partial<ParsedTransportBooking> | null {
   const route = parseTrainlineSubjectRoute(subject);
-  const times = parseTrainlineSubjectTimes(subject);
+  const subjectTimes = parseTrainlineSubjectTimes(subject);
   const urlLegs = parseTrainlineTrainTimesUrls(html);
 
-  const segments: ParsedTransportSegment[] = [];
+  // Try to extract individual journey legs from the email body.
+  // Strategy 1: parse HTML for time+station pairs in tag text
+  const htmlTimeStations = parseTrainlineHtmlTimeStations(html);
+  // Strategy 2: parse cleaned text for time+station lines
+  const textLegs = parseTrainlineTextLegs(text);
 
-  if (urlLegs.length > 0) {
-    for (const leg of urlLegs) {
+  // Determine the travel date
+  const travelDate = subjectTimes.outboundDate ?? urlLegs[0]?.date ?? new Date().toISOString().slice(0, 10);
+  const returnDate = subjectTimes.returnDate ?? urlLegs[1]?.date ?? travelDate;
+
+  let segments: ParsedTransportSegment[] = [];
+
+  // Best case: text parsing found individual legs with times
+  if (textLegs.length > 0) {
+    // Split legs into outbound/return using the subject route info
+    const isReturn = route.isReturn;
+    let returnStartIdx = textLegs.length;
+    if (isReturn && route.to && route.from) {
+      for (let i = 1; i < textLegs.length; i++) {
+        if (textLegs[i].depStation.toLowerCase().includes(route.to.toLowerCase())) {
+          returnStartIdx = i;
+          break;
+        }
+      }
+    }
+
+    segments = textLegs.map((leg, i) => ({
+      from_station: leg.depStation,
+      to_station: leg.arrStation,
+      departure_date: i < returnStartIdx ? travelDate : returnDate,
+      departure_time: leg.depTime,
+      arrival_date: i < returnStartIdx ? travelDate : returnDate,
+      arrival_time: leg.arrTime,
+      service_number: null,
+      platform_dep: null,
+      platform_arr: null,
+      seat: null,
+    }));
+  }
+  // Fallback: HTML time+station pairs → pair into legs
+  else if (htmlTimeStations.length >= 4) {
+    const pairs = htmlTimeStations;
+    for (let i = 0; i + 1 < pairs.length; i += 2) {
+      const dep = pairs[i];
+      const arr = pairs[i + 1];
+      const isReturnLeg = route.to ? dep.station.toLowerCase().includes(route.to.toLowerCase()) : i >= pairs.length / 2;
       segments.push({
-        from_station: leg.from,
-        to_station: leg.to,
-        departure_date: leg.date,
-        departure_time: leg.time,
-        arrival_date: leg.date,
-        arrival_time: "",
+        from_station: dep.station,
+        to_station: arr.station,
+        departure_date: isReturnLeg ? returnDate : travelDate,
+        departure_time: dep.time,
+        arrival_date: isReturnLeg ? returnDate : travelDate,
+        arrival_time: arr.time,
         service_number: null,
         platform_dep: null,
         platform_arr: null,
         seat: null,
       });
     }
-  } else if (route.from && route.to) {
-    const outDate = times.outboundDate ?? new Date().toISOString().slice(0, 10);
+  }
+  // Fallback: use train-times URLs for summary legs
+  else if (urlLegs.length > 0) {
+    segments = urlLegs.map((leg) => ({
+      from_station: leg.from,
+      to_station: leg.to,
+      departure_date: leg.date,
+      departure_time: leg.time,
+      arrival_date: leg.date,
+      arrival_time: "",
+      service_number: null,
+      platform_dep: null,
+      platform_arr: null,
+      seat: null,
+    }));
+  }
+  // Last resort: subject line
+  else if (route.from && route.to) {
+    const outDate = subjectTimes.outboundDate ?? new Date().toISOString().slice(0, 10);
     segments.push({
       from_station: route.from,
       to_station: route.to,
       departure_date: outDate,
-      departure_time: times.outboundTime ?? "00:00",
+      departure_time: subjectTimes.outboundTime ?? "00:00",
       arrival_date: outDate,
       arrival_time: "",
       service_number: null,
@@ -276,13 +496,13 @@ function parseTrainlineBookingConfirmation(
       platform_arr: null,
       seat: null,
     });
-    if (route.isReturn && times.returnTime) {
-      const retDate = times.returnDate ?? outDate;
+    if (route.isReturn && subjectTimes.returnTime) {
+      const retDate = subjectTimes.returnDate ?? outDate;
       segments.push({
         from_station: route.to,
         to_station: route.from,
         departure_date: retDate,
-        departure_time: times.returnTime,
+        departure_time: subjectTimes.returnTime,
         arrival_date: retDate,
         arrival_time: "",
         service_number: null,
