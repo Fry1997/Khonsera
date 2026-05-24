@@ -41,7 +41,7 @@ const BOOKING_SENDERS = [
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
   const subjectTerms =
-    "(subject:confirmation OR subject:booking OR subject:ticket OR subject:e-ticket OR subject:itinerary OR subject:reservation)";
+    "(subject:confirmation OR subject:booking OR subject:ticket OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification)";
   return `(${senderClauses}) ${subjectTerms} newer_than:6m`;
 }
 
@@ -83,42 +83,51 @@ export async function scanGmailForBookings(): Promise<
     );
   }
 
+  const toFetch = messageRefs.filter((ref) => !importedIds.has(ref.id));
+
+  // Fetch messages in parallel batches of 10 to stay well under Gmail rate limits.
+  const BATCH_SIZE = 10;
   const bookings: ParsedBooking[] = [];
   let scannedCount = 0;
 
-  for (const ref of messageRefs) {
-    if (importedIds.has(ref.id)) continue;
+  for (let i = 0; i < toFetch.length; i += BATCH_SIZE) {
+    const batch = toFetch.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (ref) => {
+        const msg = await gmailGetMessage({
+          accessToken: gmail.accessToken,
+          messageId: ref.id,
+        });
 
-    try {
-      const msg = await gmailGetMessage({
-        accessToken: gmail.accessToken,
-        messageId: ref.id,
-      });
+        const from = getHeader(msg.payload.headers, "From") ?? "";
+        const subject = getHeader(msg.payload.headers, "Subject") ?? "";
+        const date = getHeader(msg.payload.headers, "Date") ?? "";
+        const { html, text } = extractMessageBody(msg);
+
+        const parsed = detectAndParse(from, subject, html, text);
+        if (!parsed) return null;
+
+        const emailDate =
+          date && !isNaN(Date.parse(date))
+            ? new Date(date).toISOString()
+            : new Date(parseInt(msg.internalDate)).toISOString();
+
+        return {
+          ...parsed,
+          raw_subject: subject,
+          gmail_message_id: ref.id,
+          email_date: emailDate,
+        } as ParsedBooking;
+      }),
+    );
+
+    for (const r of results) {
       scannedCount++;
-
-      const from = getHeader(msg.payload.headers, "From") ?? "";
-      const subject = getHeader(msg.payload.headers, "Subject") ?? "";
-      const date = getHeader(msg.payload.headers, "Date") ?? "";
-      const { html, text } = extractMessageBody(msg);
-
-      const parsed = detectAndParse(from, subject, html, text);
-      if (!parsed) continue;
-
-      const emailDate =
-        date && !isNaN(Date.parse(date))
-          ? new Date(date).toISOString()
-          : new Date(parseInt(msg.internalDate)).toISOString();
-
-      const booking: ParsedBooking = {
-        ...parsed,
-        raw_subject: subject,
-        gmail_message_id: ref.id,
-        email_date: emailDate,
-      } as ParsedBooking;
-
-      bookings.push(booking);
-    } catch (e) {
-      console.warn(`gmail: failed to fetch/parse message ${ref.id}`, e);
+      if (r.status === "fulfilled" && r.value) {
+        bookings.push(r.value);
+      } else if (r.status === "rejected") {
+        console.warn("gmail: failed to fetch/parse message", r.reason);
+      }
     }
   }
 

@@ -21,6 +21,7 @@ export type ParsedTransportBooking = {
   price: number | null;
   currency: "GBP" | "EUR" | "USD";
   segments: ParsedTransportSegment[];
+  is_amendment: boolean;
   raw_subject: string;
   gmail_message_id: string;
   email_date: string;
@@ -38,6 +39,7 @@ export type ParsedAccommodationBooking = {
   price: number | null;
   currency: "GBP" | "EUR" | "USD";
   room_details: string | null;
+  is_amendment: boolean;
   raw_subject: string;
   gmail_message_id: string;
   email_date: string;

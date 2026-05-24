@@ -50,6 +50,14 @@ function TransportBookingCard({
           <span className="text-xs" style={{ color: "var(--ink-dim)" }}>
             {booking.provider}
           </span>
+          {booking.is_amendment ? (
+            <span
+              className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+              style={{ background: "var(--rust)", color: "var(--card)" }}
+            >
+              Amendment
+            </span>
+          ) : null}
         </div>
         <span className="text-xs" style={{ color: "var(--ink-dim)" }}>
           {new Date(booking.email_date).toLocaleDateString("en-GB", {
@@ -149,6 +157,14 @@ function AccommodationBookingCard({
           <span className="text-xs" style={{ color: "var(--ink-dim)" }}>
             {booking.provider}
           </span>
+          {booking.is_amendment ? (
+            <span
+              className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+              style={{ background: "var(--rust)", color: "var(--card)" }}
+            >
+              Amendment
+            </span>
+          ) : null}
         </div>
         <span className="text-xs" style={{ color: "var(--ink-dim)" }}>
           {new Date(booking.email_date).toLocaleDateString("en-GB", {

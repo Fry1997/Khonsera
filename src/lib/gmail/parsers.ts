@@ -49,6 +49,12 @@ function findPrice(text: string): { amount: number; currency: "GBP" | "EUR" | "U
   return null;
 }
 
+function isAmendmentEmail(subject: string, text: string): boolean {
+  return /amend|changed|updated|modification|revised|new\s*time|rescheduled|altered/i.test(
+    subject + " " + text.slice(0, 300),
+  );
+}
+
 function findBookingRef(text: string): string | null {
   const patterns = [
     /(?:booking\s*(?:ref(?:erence)?|ID|number|#)|confirmation\s*(?:number|#|code)|ref(?:erence)?\s*(?:number|#)?)\s*[:.]?\s*([A-Z0-9][-A-Z0-9]{3,20})/i,
@@ -553,32 +559,40 @@ export function detectAndParse(
   const text = plainText ?? (html ? stripHtml(html) : "");
   const htmlContent = html ?? "";
 
-  // Only process confirmation-like emails
-  const isConfirmation =
-    /confirm|booking|ticket|itinerary|receipt|reservation|e-?ticket/i.test(
+  // Only process confirmation-like or amendment emails
+  const isRelevant =
+    /confirm|booking|ticket|itinerary|receipt|reservation|e-?ticket|amend|changed|updated|modification|revised|rescheduled/i.test(
       subject,
     ) ||
     /confirm|booking\s*(?:confirm|detail)|your\s*ticket|e-?ticket|reservation/i.test(
       text.slice(0, 500),
     );
-  if (!isConfirmation) return null;
+  if (!isRelevant) return null;
+
+  const amendment = isAmendmentEmail(subject, text);
+
+  let result: Partial<ParsedBooking> | null = null;
 
   for (const config of SENDER_CONFIGS) {
     if (config.match(senderEmail, subject)) {
-      return config.parse(htmlContent, text);
+      result = config.parse(htmlContent, text);
+      break;
     }
   }
 
-  // Generic fallback: if subject mentions train/flight + confirmation
-  if (/train|rail/i.test(subject)) {
-    return parseUkRail(htmlContent, text, "Rail");
-  }
-  if (/flight|air/i.test(subject)) {
-    return parseFlightBooking(htmlContent, text, "Airline");
-  }
-  if (/hotel|accommodation|stay|check[\s-]?in/i.test(subject)) {
-    return parseAccommodation(htmlContent, text, "Hotel");
+  if (!result) {
+    if (/train|rail/i.test(subject)) {
+      result = parseUkRail(htmlContent, text, "Rail");
+    } else if (/flight|air/i.test(subject)) {
+      result = parseFlightBooking(htmlContent, text, "Airline");
+    } else if (/hotel|accommodation|stay|check[\s-]?in/i.test(subject)) {
+      result = parseAccommodation(htmlContent, text, "Hotel");
+    }
   }
 
-  return null;
+  if (result) {
+    (result as { is_amendment: boolean }).is_amendment = amendment;
+  }
+
+  return result;
 }
