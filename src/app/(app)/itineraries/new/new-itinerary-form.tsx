@@ -630,47 +630,70 @@ export function NewItineraryBrief({
           </button>
         </div>
 
-        {/* ── Reservations: condensed completed bookings ──────────── */}
-        {(transportBookings.some((tb) => tb.mode != null) ||
-          accommodationBookings.some((ab) => ab.hotel != null)) ? (
+        {/* ── Confirmed reservations (condensed chips) ────────────── */}
+        {(transportBookings.some((tb) => tb.confirmed) ||
+          accommodationBookings.some((ab) => ab.confirmed)) ? (
           <div className="brief-reservations">
             {transportBookings
-              .filter((tb) => tb.mode != null)
-              .map((tb) => (
-                <div key={tb.uid} className="brief-reservation-chip">
-                  <span style={{ fontWeight: 500 }}>
-                    {tb.mode === "train"
-                      ? "🚆"
-                      : tb.mode === "flight"
-                        ? "✈️"
-                        : "🚗"}{" "}
-                    {tb.destinationHub?.label ?? tb.mode}
-                  </span>
-                  {tb.departTime && tb.arriveTime ? (
-                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                      {tb.departTime} → {tb.arriveTime}
+              .filter((tb) => tb.confirmed)
+              .map((tb) => {
+                const modeLabel =
+                  tb.mode === "train"
+                    ? "Train"
+                    : tb.mode === "flight"
+                      ? "Flight"
+                      : tb.mode === "taxi"
+                        ? "Taxi"
+                        : tb.mode === "bus"
+                          ? "Bus"
+                          : tb.mode === "tube"
+                            ? "Tube"
+                            : tb.mode === "drive"
+                              ? "Car hire"
+                              : "";
+                return (
+                  <div key={tb.uid} className="brief-reservation-chip">
+                    <span style={{ fontWeight: 500 }}>
+                      {modeLabel}
+                      {tb.destinationHub?.label
+                        ? ` to ${tb.destinationHub.label}`
+                        : ""}
                     </span>
-                  ) : null}
-                  {tb.serviceNumber ? (
-                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                      · {tb.serviceNumber}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: "var(--rust)", marginLeft: 4 }}
-                    onClick={() => removeTransportBooking(tb.uid)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    {tb.departTime && tb.arriveTime ? (
+                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                        {tb.departTime} → {tb.arriveTime}
+                      </span>
+                    ) : null}
+                    {tb.serviceNumber ? (
+                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                        · {tb.serviceNumber}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
+                      onClick={() =>
+                        updateTransportBooking(tb.uid, { confirmed: false })
+                      }
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      style={{ fontSize: 11, color: "var(--rust)" }}
+                      onClick={() => removeTransportBooking(tb.uid)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
             {accommodationBookings
-              .filter((ab) => ab.hotel != null)
+              .filter((ab) => ab.confirmed)
               .map((ab) => (
                 <div key={ab.uid} className="brief-reservation-chip">
                   <span style={{ fontWeight: 500 }}>
-                    🏨 {ab.hotel?.label ?? "Hotel"}
+                    {ab.hotel?.label ?? "Hotel"}
                   </span>
                   {ab.checkInDate ? (
                     <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
@@ -684,35 +707,28 @@ export function NewItineraryBrief({
                   ) : null}
                   <button
                     type="button"
-                    style={{ fontSize: 11, color: "var(--rust)", marginLeft: 4 }}
+                    style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
+                    onClick={() =>
+                      updateAccommodationBooking(ab.uid, { confirmed: false })
+                    }
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    style={{ fontSize: 11, color: "var(--rust)" }}
                     onClick={() => removeAccommodationBooking(ab.uid)}
                   >
-                    ×
+                    Remove
                   </button>
                 </div>
               ))}
           </div>
         ) : null}
 
-        {/* ── Active booking forms (expand when adding) ───────────── */}
+        {/* ── Active booking forms (not yet confirmed) ───────────── */}
         {transportBookings
-          .filter((tb) => tb.mode == null)
-          .map((tb) => (
-            <TransportBookingCard
-              key={tb.uid}
-              booking={tb}
-              onChange={(patch) => updateTransportBooking(tb.uid, patch)}
-              onRemove={() => removeTransportBooking(tb.uid)}
-            />
-          ))}
-        {transportBookings
-          .filter(
-            (tb) =>
-              tb.mode != null &&
-              !tb.departTime &&
-              !tb.arriveTime &&
-              !tb.destinationHub?.id,
-          )
+          .filter((tb) => !tb.confirmed)
           .map((tb) => (
             <TransportBookingCard
               key={tb.uid}
@@ -722,7 +738,7 @@ export function NewItineraryBrief({
             />
           ))}
         {accommodationBookings
-          .filter((ab) => ab.hotel == null)
+          .filter((ab) => !ab.confirmed)
           .map((ab) => (
             <AccommodationBookingCard
               key={ab.uid}

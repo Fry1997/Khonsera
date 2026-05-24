@@ -35,6 +35,7 @@ export type BriefTransportBooking = {
   reference: string;
   seat: string;
   price: string;
+  confirmed: boolean;
 };
 
 export function emptyTransportBookingItem(): BriefTransportBooking {
@@ -48,6 +49,7 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
     reference: "",
     seat: "",
     price: "",
+    confirmed: false,
   };
 }
 
@@ -236,6 +238,16 @@ export function TransportBookingCard({
             onChange={(e) => onChange({ price: e.target.value })}
           />
         </label>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button
+          type="button"
+          className="btn btn-gold btn-sm"
+          onClick={() => onChange({ confirmed: true })}
+        >
+          Done
+        </button>
       </div>
     </section>
   );

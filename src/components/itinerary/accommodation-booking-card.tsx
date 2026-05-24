@@ -20,6 +20,7 @@ export type BriefAccommodationBooking = {
   reference: string;
   price: string;
   room: string;
+  confirmed: boolean;
 };
 
 export function emptyAccommodationBookingItem(): BriefAccommodationBooking {
@@ -34,6 +35,7 @@ export function emptyAccommodationBookingItem(): BriefAccommodationBooking {
     reference: "",
     price: "",
     room: "",
+    confirmed: false,
   };
 }
 
@@ -178,6 +180,16 @@ export function AccommodationBookingCard({
             onChange={(e) => onChange({ room: e.target.value })}
           />
         </label>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button
+          type="button"
+          className="btn btn-gold btn-sm"
+          onClick={() => onChange({ confirmed: true })}
+        >
+          Done
+        </button>
       </div>
     </section>
   );

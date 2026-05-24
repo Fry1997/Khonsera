@@ -113,14 +113,49 @@ export async function searchTransportHubs(
   }
 
   const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
-  const { data } = await supabase
+  const prefix = `${q.replace(/[%_\\]/g, "\\$&")}%`;
+  // Try exact code match first — fastest path for station shortcodes.
+  const { data: codeHits } = await supabase
     .from("transport_hubs")
     .select("id, kind, code, name, city, country")
     .eq("kind", parsed.value.kind)
-    .or(`name.ilike.${like},code.ilike.${like},city.ilike.${like}`)
+    .ilike("code", prefix)
     .order("name")
-    .limit(20);
-  return { ok: true, value: (data ?? []) as TransportHubHit[] };
+    .limit(5);
+  // Then prefix match on name — can use an index.
+  const { data: prefixHits } = await supabase
+    .from("transport_hubs")
+    .select("id, kind, code, name, city, country")
+    .eq("kind", parsed.value.kind)
+    .ilike("name", prefix)
+    .order("name")
+    .limit(15);
+  // Dedupe and merge, code matches first.
+  const seen = new Set<string>();
+  const merged: TransportHubHit[] = [];
+  for (const h of [...(codeHits ?? []), ...(prefixHits ?? [])]) {
+    if (!seen.has(h.id)) {
+      seen.add(h.id);
+      merged.push(h as TransportHubHit);
+    }
+  }
+  // If prefix didn't find enough, fall back to substring match.
+  if (merged.length < 5) {
+    const { data: subHits } = await supabase
+      .from("transport_hubs")
+      .select("id, kind, code, name, city, country")
+      .eq("kind", parsed.value.kind)
+      .or(`name.ilike.${like},city.ilike.${like}`)
+      .order("name")
+      .limit(10);
+    for (const h of subHits ?? []) {
+      if (!seen.has(h.id)) {
+        seen.add(h.id);
+        merged.push(h as TransportHubHit);
+      }
+    }
+  }
+  return { ok: true, value: merged.slice(0, 20) };
 }
 
 // Lookup a single hub by id — used by the settings page so it can
