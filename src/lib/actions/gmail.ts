@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { err, errors, ok, type Result } from "@/lib/errors";
 import { getValidGmailAccessToken } from "@/lib/google/gmail-client";
-import * as pdfParse from "pdf-parse";
+import { extractText } from "unpdf";
 import {
   gmailSearchMessages,
   gmailGetMessage,
@@ -294,7 +294,7 @@ export async function scanGmailForBookings(): Promise<
               messageId: ref.id,
               attachmentId: att.attachmentId,
             });
-            const pdfData = await (pdfParse as unknown as (buf: Buffer) => Promise<{ text: string }>)(buf);
+            const pdfData = await extractText(buf);
             pdfText += "\n" + pdfData.text;
           } catch (e) {
             console.warn(`[gmail-scan] failed to parse PDF ${att.filename}:`, e);
