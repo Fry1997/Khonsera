@@ -1,5 +1,6 @@
 // Parse text extracted from Trainline eticket PDF attachments.
 // Each PDF represents one ticket (one leg of the journey).
+// Also extracts Aztec barcode data from PDF images using ZXing WASM.
 
 import type { ParsedTransportSegment } from "./types";
 
@@ -271,6 +272,62 @@ export async function tryDownloadPkpass(downloadUrl: string): Promise<Buffer | n
     }
   }
   return null;
+}
+
+export async function decodeAztecFromPdf(pdfBuffer: ArrayBuffer): Promise<string | null> {
+  try {
+    const { extractImages } = await import("unpdf");
+    const images = await extractImages(pdfBuffer, 1);
+    if (!images || images.length === 0) return null;
+
+    const { readBarcodes } = await import("zxing-wasm/reader");
+
+    // Try each image — the Aztec code is usually the first/largest
+    for (const img of images) {
+      // Convert to RGBA ImageData format that zxing-wasm expects
+      let rgbaData: Uint8ClampedArray;
+      if (img.channels === 4) {
+        rgbaData = img.data;
+      } else if (img.channels === 3) {
+        rgbaData = new Uint8ClampedArray(img.width * img.height * 4);
+        for (let i = 0; i < img.width * img.height; i++) {
+          rgbaData[i * 4] = img.data[i * 3];
+          rgbaData[i * 4 + 1] = img.data[i * 3 + 1];
+          rgbaData[i * 4 + 2] = img.data[i * 3 + 2];
+          rgbaData[i * 4 + 3] = 255;
+        }
+      } else if (img.channels === 1) {
+        rgbaData = new Uint8ClampedArray(img.width * img.height * 4);
+        for (let i = 0; i < img.width * img.height; i++) {
+          rgbaData[i * 4] = img.data[i];
+          rgbaData[i * 4 + 1] = img.data[i];
+          rgbaData[i * 4 + 2] = img.data[i];
+          rgbaData[i * 4 + 3] = 255;
+        }
+      } else {
+        continue;
+      }
+
+      const imageData = new ImageData(
+        new Uint8ClampedArray(rgbaData.buffer as ArrayBuffer),
+        img.width,
+        img.height,
+      );
+
+      const results = await readBarcodes(imageData, {
+        formats: ["Aztec"],
+        maxNumberOfSymbols: 1,
+      });
+
+      if (results.length > 0 && results[0].text) {
+        return results[0].text;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.warn("Aztec barcode decoding failed", e);
+    return null;
+  }
 }
 
 export function pdfTicketsToSegments(

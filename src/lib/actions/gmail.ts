@@ -17,6 +17,7 @@ import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
 import {
   parseTrainlinePdfText,
   pdfTicketsToSegments,
+  decodeAztecFromPdf,
   tryDownloadPkpass,
   extractBarcodeFromPkpass,
 } from "@/lib/gmail/trainline-pdf";
@@ -106,13 +107,26 @@ async function enrichTrainlineFromPdfs(
   if (pdfs.length === 0) return parsed;
   if (parsed.type !== "transport") return parsed;
 
-  const tickets = await Promise.all(
+  // Fetch all PDF buffers first (needed for both text + barcode extraction)
+  const pdfBuffers = await Promise.all(
     pdfs.map(async (pdf) => {
       try {
-        const { extractText } = await import("unpdf");
-        const buf = await gmailGetAttachment({
+        return await gmailGetAttachment({
           accessToken, messageId, attachmentId: pdf.attachmentId,
         });
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const { extractText } = await import("unpdf").catch(() => ({ extractText: null }));
+  if (!extractText) return parsed;
+
+  const tickets = await Promise.all(
+    pdfBuffers.map(async (buf) => {
+      if (!buf) return null;
+      try {
         const result = await extractText(new Uint8Array(buf).buffer);
         const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
         return parseTrainlinePdfText(pdfText);
@@ -124,6 +138,19 @@ async function enrichTrainlineFromPdfs(
 
   const validTickets = tickets.filter((t): t is NonNullable<typeof t> => t !== null);
   if (validTickets.length === 0) return parsed;
+
+  // Decode Aztec barcodes from PDF images
+  for (let i = 0; i < validTickets.length; i++) {
+    if (validTickets[i].barcode_data) continue;
+    const buf = pdfBuffers[i];
+    if (!buf) continue;
+    try {
+      const barcodeData = await decodeAztecFromPdf(new Uint8Array(buf).buffer);
+      if (barcodeData) validTickets[i].barcode_data = barcodeData;
+    } catch {
+      // Barcode decoding is best-effort
+    }
+  }
 
   const fallbackDate = parsed.segments?.[0]?.departure_date ?? new Date().toISOString().slice(0, 10);
   const pdfSegments = pdfTicketsToSegments(validTickets, fallbackDate);
@@ -141,35 +168,6 @@ async function enrichTrainlineFromPdfs(
       );
       if (match && (!match.departure_time || match.departure_time === "00:00")) {
         match.departure_time = existing.departure_time;
-      }
-    }
-  }
-
-  // If PDF segments lack barcode_data, try .pkpass downloads from email HTML
-  const needsBarcodeData = pdfSegments.some((s) => !s.barcode_data);
-  if (needsBarcodeData) {
-    const { html } = extractMessageBody(msg);
-    if (html) {
-      const pkpassUrls: string[] = [];
-      const urlPattern = /https:\/\/download\.thetrainline\.com\/resource#[A-F0-9]{64}/gi;
-      let urlMatch;
-      while ((urlMatch = urlPattern.exec(html)) !== null) {
-        pkpassUrls.push(urlMatch[0]);
-      }
-
-      for (let i = 0; i < Math.min(pkpassUrls.length, pdfSegments.length); i++) {
-        if (pdfSegments[i].barcode_data) continue;
-        try {
-          const pkpassBuf = await tryDownloadPkpass(pkpassUrls[i]);
-          if (pkpassBuf) {
-            const barcodeData = await extractBarcodeFromPkpass(pkpassBuf);
-            if (barcodeData) {
-              pdfSegments[i].barcode_data = barcodeData;
-            }
-          }
-        } catch {
-          // .pkpass download is best-effort
-        }
       }
     }
   }
