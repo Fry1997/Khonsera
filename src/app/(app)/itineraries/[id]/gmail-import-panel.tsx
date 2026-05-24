@@ -7,6 +7,7 @@ import { attachTransportBookingToStop } from "@/lib/actions/bookings";
 import { attachAccommodationBooking } from "@/lib/actions/bookings";
 import { feedbackFromError } from "@/lib/actions/_form";
 import { SubmitButton } from "@/components/ui/form";
+import { TrainTicketGroup, type TicketSegment } from "@/components/train-ticket-card";
 import type {
   ParsedBooking,
   ParsedTransportBooking,
@@ -37,9 +38,26 @@ function TransportBookingCard({
         ? "var(--terra)"
         : "var(--sage)";
 
+  const ticketSegments: TicketSegment[] = booking.segments.map((seg) => ({
+    from_station: seg.from_station,
+    to_station: seg.to_station,
+    from_station_code: seg.from_station_code,
+    to_station_code: seg.to_station_code,
+    departure_date: seg.departure_date,
+    departure_time: seg.departure_time,
+    arrival_time: seg.arrival_time,
+    operator: seg.operator,
+    route_restriction: seg.route_restriction,
+    ticket_type: seg.ticket_type,
+    coach: seg.coach,
+    seat: seg.seat,
+    barcode_ref: seg.barcode_ref,
+    barcode_data: seg.barcode_data,
+  }));
+
   return (
-    <div className="j-card flex flex-col gap-2 p-4">
-      <div className="flex items-start justify-between gap-2">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
             className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
@@ -59,88 +77,22 @@ function TransportBookingCard({
             </span>
           ) : null}
         </div>
-        <span className="text-xs" style={{ color: "var(--ink-dim)" }}>
-          {new Date(booking.email_date).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-          })}
-        </span>
-      </div>
-
-      <div>
-        <p className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-          {first?.from_station ?? "?"} {"→"} {last?.to_station ?? "?"}
-        </p>
-        <p className="text-xs" style={{ color: "var(--ink-dim)" }}>
-          {first?.departure_date} {first?.departure_time}
-          {" – "}
-          {last?.arrival_time}
-          {booking.segments.length > 1
-            ? ` (${booking.segments.length} segments)`
-            : ""}
-        </p>
-      </div>
-
-      {booking.segments.length > 1 ? (
-        <div
-          className="flex flex-col gap-1 rounded border border-rule/50 p-2"
-          style={{ background: "var(--card-2)", fontSize: 11 }}
-        >
-          {booking.segments.map((seg, i) => (
-            <div key={i} className="flex flex-col gap-0.5">
-              <div className="flex justify-between gap-2">
-                <span>
-                  {seg.from_station_code ?? ""}{seg.from_station_code ? " " : ""}{seg.from_station} {"→"} {seg.to_station}{seg.to_station_code ? ` ${seg.to_station_code}` : ""}
-                </span>
-                <span style={{ color: "var(--ink-dim)" }}>
-                  {seg.departure_time}{seg.arrival_time ? ` – ${seg.arrival_time}` : ""}
-                </span>
-              </div>
-              {(seg.operator || seg.ticket_type || seg.coach || seg.seat) && (
-                <div style={{ color: "var(--ink-dim)", fontSize: 10 }}>
-                  {seg.operator}{seg.ticket_type ? ` · ${seg.ticket_type}` : ""}
-                  {seg.coach ? ` · Coach ${seg.coach}` : ""}
-                  {seg.seat ? ` Seat ${seg.seat}` : ""}
-                  {seg.barcode_ref ? ` · ${seg.barcode_ref}` : ""}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : first?.service_number ? (
-        <p className="text-xs" style={{ color: "var(--ink-dim)" }}>
-          Service: {first.service_number}
-          {first.coach ? ` · Coach ${first.coach}` : ""}
-          {first.seat ? ` Seat ${first.seat}` : ""}
-        </p>
-      ) : null}
-
-      <div className="flex items-center justify-between">
-        <div className="flex gap-3 text-xs" style={{ color: "var(--ink-dim)" }}>
-          {booking.booking_reference ? (
-            <span>Ref: {booking.booking_reference}</span>
-          ) : null}
-          {booking.price != null ? (
-            <span>
-              {booking.currency === "GBP"
-                ? "£"
-                : booking.currency === "EUR"
-                  ? "€"
-                  : "$"}
-              {booking.price.toFixed(2)}
-            </span>
-          ) : null}
-        </div>
         <button
           type="button"
           className="btn-terra"
-          style={{ padding: "4px 12px", fontSize: 12 }}
+          style={{ padding: "4px 12px", fontSize: 12, borderRadius: 8 }}
           onClick={onImport}
           disabled={importing}
         >
           {importing ? "Importing..." : "Import"}
         </button>
       </div>
+
+      <TrainTicketGroup
+        segments={ticketSegments}
+        bookingRef={booking.booking_reference}
+        totalPrice={booking.price}
+      />
     </div>
   );
 }
