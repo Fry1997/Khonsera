@@ -7,11 +7,19 @@ import { getValidGmailAccessToken } from "@/lib/google/gmail-client";
 import {
   gmailSearchMessages,
   gmailGetMessage,
+  gmailGetAttachment,
   getHeader,
   extractMessageBody,
+  extractAttachments,
 } from "@/lib/google/gmail";
-import { detectAndParse } from "@/lib/gmail/parsers";
+import { detectAndParse, stripHtmlPublic } from "@/lib/gmail/parsers";
 import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
+import {
+  parseTrainlinePdfText,
+  pdfTicketsToSegments,
+  tryDownloadPkpass,
+  extractBarcodeFromPkpass,
+} from "@/lib/gmail/trainline-pdf";
 
 const BOOKING_SENDERS = [
   "trainline",
@@ -37,6 +45,143 @@ const BOOKING_SENDERS = [
   "emirates",
   "virgin atlantic",
 ];
+
+function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedBooking[] {
+  const trainline: ParsedBooking[] = [];
+  const rest: ParsedBooking[] = [];
+
+  for (const b of bookings) {
+    if (b.type === "transport" && b.provider === "Trainline") {
+      trainline.push(b);
+    } else {
+      rest.push(b);
+    }
+  }
+
+  if (trainline.length <= 1) return bookings;
+
+  // Group by travel date — bookings on the same date are likely duplicates
+  const byDate = new Map<string, ParsedBooking[]>();
+  for (const b of trainline) {
+    const date = getTravelDate(b) ?? "unknown";
+    const group = byDate.get(date) ?? [];
+    group.push(b);
+    byDate.set(date, group);
+  }
+
+  const kept: ParsedBooking[] = [];
+  for (const group of byDate.values()) {
+    if (group.length === 1) {
+      kept.push(group[0]);
+      continue;
+    }
+    // Prefer booking confirmation (has departure times != "00:00") over eticket
+    const scored = group.map((b) => {
+      let score = 0;
+      if (b.type === "transport") {
+        if (/booking\s*confirmation/i.test(b.raw_subject)) score += 10;
+        if (b.price != null) score += 3;
+        const hasTimes = b.segments.some((s) => s.departure_time && s.departure_time !== "00:00");
+        if (hasTimes) score += 5;
+      }
+      return { booking: b, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    kept.push(scored[0].booking);
+  }
+
+  return [...rest, ...kept];
+}
+
+async function enrichTrainlineFromPdfs(
+  accessToken: string,
+  messageId: string,
+  msg: Awaited<ReturnType<typeof gmailGetMessage>>,
+  parsed: Partial<ParsedBooking>,
+): Promise<Partial<ParsedBooking>> {
+  const attachments = extractAttachments(msg);
+  const pdfs = attachments.filter(
+    (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+  );
+  if (pdfs.length === 0) return parsed;
+  if (parsed.type !== "transport") return parsed;
+
+  let PDFParse: typeof import("pdf-parse").PDFParse;
+  try {
+    PDFParse = (await import("pdf-parse")).PDFParse;
+  } catch {
+    return parsed;
+  }
+
+  const tickets = await Promise.all(
+    pdfs.map(async (pdf) => {
+      const buf = await gmailGetAttachment({
+        accessToken, messageId, attachmentId: pdf.attachmentId,
+      });
+      const parser = new PDFParse({ data: new Uint8Array(buf) });
+      const result = await parser.getText();
+      await parser.destroy();
+      return parseTrainlinePdfText(result.text);
+    }),
+  );
+
+  const validTickets = tickets.filter((t): t is NonNullable<typeof t> => t !== null);
+  if (validTickets.length === 0) return parsed;
+
+  const fallbackDate = parsed.segments?.[0]?.departure_date ?? new Date().toISOString().slice(0, 10);
+  const pdfSegments = pdfTicketsToSegments(validTickets, fallbackDate);
+
+  // If existing segments have departure times from the booking confirmation
+  // subject, merge those times onto matching PDF segments
+  const existingSegments = parsed.segments ?? [];
+  if (existingSegments.length > 0 && pdfSegments.length > 0) {
+    for (const existing of existingSegments) {
+      if (!existing.departure_time || existing.departure_time === "00:00") continue;
+      const match = pdfSegments.find(
+        (ps) =>
+          ps.from_station.toLowerCase().includes(existing.from_station.toLowerCase()) ||
+          (ps.from_station_code && existing.from_station.toLowerCase().includes(ps.from_station_code.toLowerCase())),
+      );
+      if (match && (!match.departure_time || match.departure_time === "00:00")) {
+        match.departure_time = existing.departure_time;
+      }
+    }
+  }
+
+  // If PDF segments lack barcode_data, try .pkpass downloads from email HTML
+  const needsBarcodeData = pdfSegments.some((s) => !s.barcode_data);
+  if (needsBarcodeData) {
+    const { html } = extractMessageBody(msg);
+    if (html) {
+      const pkpassUrls: string[] = [];
+      const urlPattern = /https:\/\/download\.thetrainline\.com\/resource#[A-F0-9]{64}/gi;
+      let urlMatch;
+      while ((urlMatch = urlPattern.exec(html)) !== null) {
+        pkpassUrls.push(urlMatch[0]);
+      }
+
+      for (let i = 0; i < Math.min(pkpassUrls.length, pdfSegments.length); i++) {
+        if (pdfSegments[i].barcode_data) continue;
+        try {
+          const pkpassBuf = await tryDownloadPkpass(pkpassUrls[i]);
+          if (pkpassBuf) {
+            const barcodeData = await extractBarcodeFromPkpass(pkpassBuf);
+            if (barcodeData) {
+              pdfSegments[i].barcode_data = barcodeData;
+            }
+          }
+        } catch {
+          // .pkpass download is best-effort
+        }
+      }
+    }
+  }
+
+  return {
+    ...parsed,
+    segments: pdfSegments.length >= existingSegments.length ? pdfSegments : existingSegments,
+  };
+}
 
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
@@ -109,8 +254,19 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
-        const parsed = detectAndParse(from, subject, html, text);
+        let parsed = detectAndParse(from, subject, html, text);
         if (!parsed) return null;
+
+        // Enrich Trainline bookings with PDF attachment data (seat, coach, barcode)
+        if (parsed.type === "transport" && /trainline/i.test(from)) {
+          try {
+            parsed = await enrichTrainlineFromPdfs(
+              gmail.accessToken, ref.id, msg, parsed,
+            );
+          } catch (e) {
+            console.warn("gmail: PDF enrichment failed", ref.id, e);
+          }
+        }
 
         const emailDate =
           date && !isNaN(Date.parse(date))
@@ -136,10 +292,15 @@ export async function scanGmailForBookings(): Promise<
     }
   }
 
+  // Deduplicate: when Trainline sends both a booking confirmation and an
+  // eticket for the same trip, keep only the booking confirmation (it has
+  // times and price; the eticket just has station codes).
+  const deduped = deduplicateTrainlineBookings(bookings);
+
   // Drop bookings where the travel date is in the past — users want
   // present/future bookings, not historical trips.
   const today = new Date().toISOString().slice(0, 10);
-  const futureBookings = bookings.filter((b) => {
+  const futureBookings = deduped.filter((b) => {
     const travelDate = getTravelDate(b);
     return !travelDate || travelDate >= today;
   });
@@ -201,4 +362,76 @@ export async function disconnectGmail(): Promise<Result<{ id: string }>> {
   if (error) return err(errors.unexpected(error.message));
 
   return ok({ id: existing.id });
+}
+
+export async function debugFetchEmail(messageId: string): Promise<
+  Result<{
+    subject: string;
+    from: string;
+    cleanedText: string;
+    html: string | null;
+    attachments: Array<{ filename: string; mimeType: string; size: number }>;
+    pdfTexts: string[];
+    parsed: Partial<ParsedBooking> | null;
+  }>
+> {
+  await requireUserContext();
+  const gmail = await getValidGmailAccessToken();
+  if (!gmail) return err(errors.integration("gmail", "Gmail not connected."));
+
+  const msg = await gmailGetMessage({
+    accessToken: gmail.accessToken,
+    messageId,
+  });
+
+  const from = getHeader(msg.payload.headers, "From") ?? "";
+  const subject = getHeader(msg.payload.headers, "Subject") ?? "";
+  const { html, text } = extractMessageBody(msg);
+  const cleanedText = text ?? (html ? stripHtmlPublic(html) : "");
+
+  const attachmentList = extractAttachments(msg);
+  const pdfAttachments = attachmentList.filter(
+    (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+  );
+
+  const pdfTexts: string[] = [];
+  try {
+    const { PDFParse } = await import("pdf-parse");
+    for (const pdf of pdfAttachments) {
+      const buf = await gmailGetAttachment({
+        accessToken: gmail.accessToken,
+        messageId,
+        attachmentId: pdf.attachmentId,
+      });
+      const parser = new PDFParse({ data: new Uint8Array(buf) });
+      const result = await parser.getText();
+      pdfTexts.push(result.text);
+      await parser.destroy();
+    }
+  } catch (e) {
+    console.warn("PDF extraction failed in debug", e);
+  }
+
+  let parsed = detectAndParse(from, subject, html, text);
+  if (parsed?.type === "transport" && /trainline/i.test(from)) {
+    try {
+      parsed = await enrichTrainlineFromPdfs(
+        gmail.accessToken, messageId, msg, parsed,
+      );
+    } catch (e) {
+      console.warn("PDF enrichment failed in debug", e);
+    }
+  }
+
+  return ok({
+    subject,
+    from,
+    cleanedText,
+    html,
+    attachments: attachmentList.map((a) => ({
+      filename: a.filename, mimeType: a.mimeType, size: a.size,
+    })),
+    pdfTexts,
+    parsed,
+  });
 }
