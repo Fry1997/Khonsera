@@ -544,6 +544,8 @@ export function NewItineraryBrief({
           .filter((tb) => tb.mode != null)
           .map((tb) => ({
             mode: tb.mode!,
+            departure_hub_id: tb.departureHub.id,
+            departure_label: tb.departureHub.label,
             destination_hub_id: tb.destinationHub.id,
             destination_label: tb.destinationHub.label,
             depart_time: tb.departTime || null,
@@ -655,9 +657,13 @@ export function NewItineraryBrief({
                   <div key={tb.uid} className="brief-reservation-chip">
                     <span style={{ fontWeight: 500 }}>
                       {modeLabel}
-                      {tb.destinationHub?.label
-                        ? ` to ${tb.destinationHub.label}`
-                        : ""}
+                      {tb.departureHub?.label && tb.destinationHub?.label
+                        ? ` ${tb.departureHub.label} to ${tb.destinationHub.label}`
+                        : tb.destinationHub?.label
+                          ? ` to ${tb.destinationHub.label}`
+                          : tb.departureHub?.label
+                            ? ` from ${tb.departureHub.label}`
+                            : ""}
                     </span>
                     {tb.departTime && tb.arriveTime ? (
                       <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>

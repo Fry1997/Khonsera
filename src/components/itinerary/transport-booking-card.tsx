@@ -28,6 +28,7 @@ const MODE_OPTIONS: Array<{
 export type BriefTransportBooking = {
   uid: string;
   mode: TransportBookingMode | null;
+  departureHub: { id: string | null; label: string | null };
   destinationHub: { id: string | null; label: string | null };
   departTime: string;
   arriveTime: string;
@@ -42,6 +43,7 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
   return {
     uid: cryptoUid(),
     mode: null,
+    departureHub: { id: null, label: null },
     destinationHub: { id: null, label: null },
     departTime: "",
     arriveTime: "",
@@ -153,21 +155,39 @@ export function TransportBookingCard({
       </header>
 
       {stationBased ? (
-        <div className="brief-field" style={{ marginBottom: 8 }}>
-          <span className="uc">
-            {mode === "flight" ? "Destination airport" : "Destination station"}
-          </span>
-          <TransportHubPicker
-            kind={hubKind}
-            value={booking.destinationHub}
-            onChange={(hub) => onChange({ destinationHub: hub })}
-            name={`hub-${booking.uid}`}
-            placeholder={
-              mode === "flight"
-                ? "LHR, Manchester…"
-                : "WLB, Kings Cross…"
-            }
-          />
+        <div className="brief-when-row">
+          <div className="brief-field">
+            <span className="uc">
+              {mode === "flight" ? "From airport" : "From station"}
+            </span>
+            <TransportHubPicker
+              kind={hubKind}
+              value={booking.departureHub}
+              onChange={(hub) => onChange({ departureHub: hub })}
+              name={`dep-hub-${booking.uid}`}
+              placeholder={
+                mode === "flight"
+                  ? "LHR, East Midlands…"
+                  : "WLB, Milton Keynes…"
+              }
+            />
+          </div>
+          <div className="brief-field">
+            <span className="uc">
+              {mode === "flight" ? "To airport" : "To station"}
+            </span>
+            <TransportHubPicker
+              kind={hubKind}
+              value={booking.destinationHub}
+              onChange={(hub) => onChange({ destinationHub: hub })}
+              name={`arr-hub-${booking.uid}`}
+              placeholder={
+                mode === "flight"
+                  ? "Manchester, JFK…"
+                  : "Liverpool, Euston…"
+              }
+            />
+          </div>
         </div>
       ) : null}
 

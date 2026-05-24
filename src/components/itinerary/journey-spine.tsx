@@ -244,7 +244,9 @@ export function JourneySpine({
                   Booked {tb.mode}
                 </p>
                 <p className="tl-sub" style={{ marginTop: 0 }}>
-                  {tb.destinationHub?.label ?? "Destination TBC"}
+                  {tb.departureHub?.label && tb.destinationHub?.label
+                    ? `${tb.departureHub.label} → ${tb.destinationHub.label}`
+                    : tb.destinationHub?.label ?? tb.departureHub?.label ?? "TBC"}
                   {tb.serviceNumber ? ` · ${tb.serviceNumber}` : ""}
                   {tb.departTime ? ` · ${tb.departTime}` : ""}
                   {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}

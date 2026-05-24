@@ -312,6 +312,8 @@ const briefStopoverSchema = z.object({
 
 const briefTransportBookingSchema = z.object({
   mode: z.enum(["train", "flight", "taxi", "bus", "tube", "drive"]),
+  departure_hub_id: z.string().uuid().nullable().optional(),
+  departure_label: z.string().nullable().optional(),
   destination_hub_id: z.string().uuid().nullable().optional(),
   destination_label: z.string().nullable().optional(),
   depart_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
@@ -669,9 +671,7 @@ export async function createItineraryFromBrief(
       location_id: null,
       customer_id: null,
       customer_site_id: null,
-      title: tb.destination_label
-        ? `Depart for ${tb.destination_label}`
-        : `${tb.mode} departure`,
+      title: tb.departure_label ?? `${tb.mode} departure`,
       start_time: departIso,
       end_time: departIso,
       duration_minutes: 0,
@@ -684,6 +684,7 @@ export async function createItineraryFromBrief(
         booking_reference: tb.reference,
         seat: tb.seat,
         price: tb.price,
+        departure_hub_id: tb.departure_hub_id,
         destination_hub_id: tb.destination_hub_id,
       },
       itinerary_id: itinerary.id,
