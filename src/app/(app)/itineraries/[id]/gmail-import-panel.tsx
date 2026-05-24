@@ -87,21 +87,31 @@ function TransportBookingCard({
           style={{ background: "var(--card-2)", fontSize: 11 }}
         >
           {booking.segments.map((seg, i) => (
-            <div key={i} className="flex justify-between gap-2">
-              <span>
-                {seg.from_station} {"→"} {seg.to_station}
-              </span>
-              <span style={{ color: "var(--ink-dim)" }}>
-                {seg.departure_time} {"–"} {seg.arrival_time}
-                {seg.service_number ? ` (${seg.service_number})` : ""}
-              </span>
+            <div key={i} className="flex flex-col gap-0.5">
+              <div className="flex justify-between gap-2">
+                <span>
+                  {seg.from_station_code ?? ""}{seg.from_station_code ? " " : ""}{seg.from_station} {"→"} {seg.to_station}{seg.to_station_code ? ` ${seg.to_station_code}` : ""}
+                </span>
+                <span style={{ color: "var(--ink-dim)" }}>
+                  {seg.departure_time}{seg.arrival_time ? ` – ${seg.arrival_time}` : ""}
+                </span>
+              </div>
+              {(seg.operator || seg.ticket_type || seg.coach || seg.seat) && (
+                <div style={{ color: "var(--ink-dim)", fontSize: 10 }}>
+                  {seg.operator}{seg.ticket_type ? ` · ${seg.ticket_type}` : ""}
+                  {seg.coach ? ` · Coach ${seg.coach}` : ""}
+                  {seg.seat ? ` Seat ${seg.seat}` : ""}
+                  {seg.barcode_ref ? ` · ${seg.barcode_ref}` : ""}
+                </div>
+              )}
             </div>
           ))}
         </div>
       ) : first?.service_number ? (
         <p className="text-xs" style={{ color: "var(--ink-dim)" }}>
           Service: {first.service_number}
-          {first.seat ? ` · Seat: ${first.seat}` : ""}
+          {first.coach ? ` · Coach ${first.coach}` : ""}
+          {first.seat ? ` Seat ${first.seat}` : ""}
         </p>
       ) : null}
 

@@ -131,6 +131,46 @@ function parseTime(timeStr: string): string | null {
   return null;
 }
 
+function makeSegment(partial: {
+  from_station: string;
+  to_station: string;
+  departure_date: string;
+  departure_time: string;
+  arrival_date?: string;
+  arrival_time?: string;
+  from_station_code?: string | null;
+  to_station_code?: string | null;
+  service_number?: string | null;
+  operator?: string | null;
+  route_restriction?: string | null;
+  ticket_type?: string | null;
+  platform_dep?: string | null;
+  platform_arr?: string | null;
+  coach?: string | null;
+  seat?: string | null;
+  barcode_ref?: string | null;
+}): ParsedTransportSegment {
+  return {
+    from_station: partial.from_station,
+    to_station: partial.to_station,
+    from_station_code: partial.from_station_code ?? null,
+    to_station_code: partial.to_station_code ?? null,
+    departure_date: partial.departure_date,
+    departure_time: partial.departure_time,
+    arrival_date: partial.arrival_date ?? partial.departure_date,
+    arrival_time: partial.arrival_time ?? "",
+    service_number: partial.service_number ?? null,
+    operator: partial.operator ?? null,
+    route_restriction: partial.route_restriction ?? null,
+    ticket_type: partial.ticket_type ?? null,
+    platform_dep: partial.platform_dep ?? null,
+    platform_arr: partial.platform_arr ?? null,
+    coach: partial.coach ?? null,
+    seat: partial.seat ?? null,
+    barcode_ref: partial.barcode_ref ?? null,
+  };
+}
+
 // ── Trainline ──────────────────────────────────────────────────────────
 
 function isTrainlineMarketing(from: string, subject: string): boolean {
@@ -432,17 +472,14 @@ function parseTrainlineBookingConfirmation(
       }
     }
 
-    segments = textLegs.map((leg, i) => ({
+    segments = textLegs.map((leg, i) => makeSegment({
       from_station: leg.depStation,
       to_station: leg.arrStation,
       departure_date: i < returnStartIdx ? travelDate : returnDate,
       departure_time: leg.depTime,
       arrival_date: i < returnStartIdx ? travelDate : returnDate,
       arrival_time: leg.arrTime,
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
+      operator: leg.operator,
     }));
   }
   // Fallback: HTML time+station pairs → pair into legs
@@ -452,64 +489,42 @@ function parseTrainlineBookingConfirmation(
       const dep = pairs[i];
       const arr = pairs[i + 1];
       const isReturnLeg = route.to ? dep.station.toLowerCase().includes(route.to.toLowerCase()) : i >= pairs.length / 2;
-      segments.push({
+      segments.push(makeSegment({
         from_station: dep.station,
         to_station: arr.station,
         departure_date: isReturnLeg ? returnDate : travelDate,
         departure_time: dep.time,
         arrival_date: isReturnLeg ? returnDate : travelDate,
         arrival_time: arr.time,
-        service_number: null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: null,
-      });
+      }));
     }
   }
   // Fallback: use train-times URLs for summary legs
   else if (urlLegs.length > 0) {
-    segments = urlLegs.map((leg) => ({
+    segments = urlLegs.map((leg) => makeSegment({
       from_station: leg.from,
       to_station: leg.to,
       departure_date: leg.date,
       departure_time: leg.time,
-      arrival_date: leg.date,
-      arrival_time: "",
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
     }));
   }
   // Last resort: subject line
   else if (route.from && route.to) {
     const outDate = subjectTimes.outboundDate ?? new Date().toISOString().slice(0, 10);
-    segments.push({
+    segments.push(makeSegment({
       from_station: route.from,
       to_station: route.to,
       departure_date: outDate,
       departure_time: subjectTimes.outboundTime ?? "00:00",
-      arrival_date: outDate,
-      arrival_time: "",
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
-    });
+    }));
     if (route.isReturn && subjectTimes.returnTime) {
       const retDate = subjectTimes.returnDate ?? outDate;
-      segments.push({
+      segments.push(makeSegment({
         from_station: route.to,
         to_station: route.from,
         departure_date: retDate,
         departure_time: subjectTimes.returnTime,
-        arrival_date: retDate,
-        arrival_time: "",
-        service_number: null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: null,
-      });
+      }));
     }
   }
 
@@ -543,28 +558,15 @@ function parseTrainlineEticket(
   // Check train-times URLs for structured data
   const urlLegs = parseTrainlineTrainTimesUrls(html);
   if (urlLegs.length > 0) {
-    const segments: ParsedTransportSegment[] = urlLegs.map((leg) => ({
-      from_station: leg.from,
-      to_station: leg.to,
-      departure_date: leg.date,
-      departure_time: leg.time,
-      arrival_date: leg.date,
-      arrival_time: "",
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
+    const segments = urlLegs.map((leg) => makeSegment({
+      from_station: leg.from, to_station: leg.to,
+      departure_date: leg.date, departure_time: leg.time,
     }));
-
-    const price = findPrice(text);
-    const ref = findTrainlineBookingRef(text);
     return {
-      type: "transport",
-      mode: "train",
-      provider: "Trainline",
-      booking_reference: ref,
-      price: price?.amount ?? null,
-      currency: price?.currency ?? "GBP",
+      type: "transport", mode: "train", provider: "Trainline",
+      booking_reference: findTrainlineBookingRef(text),
+      price: findPrice(text)?.amount ?? null,
+      currency: findPrice(text)?.currency ?? "GBP",
       segments,
     };
   }
@@ -580,23 +582,13 @@ function parseTrainlineEticket(
   const date = travelDate ?? new Date().toISOString().slice(0, 10);
 
   if (codePairs.length > 0) {
-    const segments: ParsedTransportSegment[] = codePairs.map(([from, to]) => ({
-      from_station: from,
-      to_station: to,
-      departure_date: date,
-      departure_time: "00:00",
-      arrival_date: date,
-      arrival_time: "",
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
+    const segments = codePairs.map(([fc, tc]) => makeSegment({
+      from_station: fc, to_station: tc,
+      from_station_code: fc, to_station_code: tc,
+      departure_date: date, departure_time: "00:00",
     }));
-
     return {
-      type: "transport",
-      mode: "train",
-      provider: "Trainline",
+      type: "transport", mode: "train", provider: "Trainline",
       booking_reference: findTrainlineBookingRef(text),
       price: findPrice(text)?.amount ?? null,
       currency: findPrice(text)?.currency ?? "GBP",
@@ -606,24 +598,14 @@ function parseTrainlineEticket(
 
   if (destination) {
     return {
-      type: "transport",
-      mode: "train",
-      provider: "Trainline",
+      type: "transport", mode: "train", provider: "Trainline",
       booking_reference: findTrainlineBookingRef(text),
       price: findPrice(text)?.amount ?? null,
       currency: findPrice(text)?.currency ?? "GBP",
-      segments: [{
-        from_station: "Unknown",
-        to_station: destination,
-        departure_date: date,
-        departure_time: "00:00",
-        arrival_date: date,
-        arrival_time: "",
-        service_number: null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: null,
-      }],
+      segments: [makeSegment({
+        from_station: "Unknown", to_station: destination,
+        departure_date: date, departure_time: "00:00",
+      })],
     };
   }
 
@@ -635,26 +617,14 @@ function parseTrainlineGeneric(
   text: string,
   subject: string,
 ): Partial<ParsedTransportBooking> | null {
-  // Try train-times URLs first
   const urlLegs = parseTrainlineTrainTimesUrls(html);
   if (urlLegs.length > 0) {
-    const segments: ParsedTransportSegment[] = urlLegs.map((leg) => ({
-      from_station: leg.from,
-      to_station: leg.to,
-      departure_date: leg.date,
-      departure_time: leg.time,
-      arrival_date: leg.date,
-      arrival_time: "",
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
+    const segments = urlLegs.map((leg) => makeSegment({
+      from_station: leg.from, to_station: leg.to,
+      departure_date: leg.date, departure_time: leg.time,
     }));
-
     return {
-      type: "transport",
-      mode: "train",
-      provider: "Trainline",
+      type: "transport", mode: "train", provider: "Trainline",
       booking_reference: findTrainlineBookingRef(text),
       price: findPrice(text)?.amount ?? null,
       currency: findPrice(text)?.currency ?? "GBP",
@@ -693,18 +663,14 @@ function parseTrainlineGeneric(
   const segments: ParsedTransportSegment[] = [];
   const count = Math.max(stations.length, timePairs.length, 1);
   for (let i = 0; i < count; i++) {
-    segments.push({
+    segments.push(makeSegment({
       from_station: stations[i]?.[0] ?? "Unknown",
       to_station: stations[i]?.[1] ?? "Unknown",
       departure_date: travelDate,
       departure_time: timePairs[i]?.[0] ?? "00:00",
       arrival_date: dates[i + 1] ?? travelDate,
       arrival_time: timePairs[i]?.[1] ?? "00:00",
-      service_number: null,
-      platform_dep: null,
-      platform_arr: null,
-      seat: null,
-    });
+    }));
   }
 
   if (segments.length === 0) return null;
@@ -760,18 +726,11 @@ function parseUkRail(
     const arrTime = parseTime(m[3]);
     const to = m[4].trim();
     if (depTime && arrTime && from.length > 2 && to.length > 2) {
-      segments.push({
-        from_station: from,
-        to_station: to,
-        departure_date: travelDate,
-        departure_time: depTime,
-        arrival_date: travelDate,
+      segments.push(makeSegment({
+        from_station: from, to_station: to,
+        departure_date: travelDate, departure_time: depTime,
         arrival_time: arrTime,
-        service_number: null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: null,
-      });
+      }));
     }
   }
 
@@ -798,18 +757,11 @@ function parseUkRail(
     }
 
     if (stationNames.length > 0 && destNames.length > 0 && allTimes.length >= 2) {
-      segments.push({
-        from_station: stationNames[0],
-        to_station: destNames[0],
-        departure_date: travelDate,
-        departure_time: allTimes[0],
-        arrival_date: travelDate,
+      segments.push(makeSegment({
+        from_station: stationNames[0], to_station: destNames[0],
+        departure_date: travelDate, departure_time: allTimes[0],
         arrival_time: allTimes[1],
-        service_number: null,
-        platform_dep: null,
-        platform_arr: null,
-        seat: null,
-      });
+      }));
     }
   }
 
@@ -891,18 +843,17 @@ function parseFlightBooking(
 
   const count = Math.max(routes.length, 1);
   for (let i = 0; i < count; i++) {
-    segments.push({
+    segments.push(makeSegment({
       from_station: routes[i]?.[0] ?? "Unknown",
       to_station: routes[i]?.[1] ?? "Unknown",
       departure_date: dates[i] ?? travelDate,
       departure_time: allTimes[i * 2] ?? "00:00",
-      arrival_date: dates[i] ?? travelDate,
       arrival_time: allTimes[i * 2 + 1] ?? "00:00",
       service_number: flights[i] ?? null,
       platform_dep: terminals[0] ?? null,
       platform_arr: terminals[1] ?? null,
       seat: i === 0 ? seatMatch?.[1] ?? null : null,
-    });
+    }));
   }
 
   if (segments.length === 0) return null;

@@ -3,14 +3,21 @@
 export type ParsedTransportSegment = {
   from_station: string;
   to_station: string;
+  from_station_code: string | null;
+  to_station_code: string | null;
   departure_date: string; // YYYY-MM-DD
   departure_time: string; // HH:MM
   arrival_date: string; // YYYY-MM-DD
   arrival_time: string; // HH:MM
   service_number: string | null;
+  operator: string | null;
+  route_restriction: string | null;
+  ticket_type: string | null;
   platform_dep: string | null;
   platform_arr: string | null;
+  coach: string | null;
   seat: string | null;
+  barcode_ref: string | null;
 };
 
 export type ParsedTransportBooking = {

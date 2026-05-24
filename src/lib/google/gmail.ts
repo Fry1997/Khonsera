@@ -9,8 +9,9 @@ type GmailMessageHeader = {
 
 type GmailMessagePart = {
   mimeType: string;
+  filename?: string;
   headers?: GmailMessageHeader[];
-  body?: { data?: string; size?: number };
+  body?: { data?: string; size?: number; attachmentId?: string };
   parts?: GmailMessagePart[];
 };
 
@@ -97,6 +98,58 @@ function extractPartsRecursive(
   if (part.parts) {
     for (const child of part.parts) {
       results.push(...extractPartsRecursive(child, mimeType));
+    }
+  }
+  return results;
+}
+
+export async function gmailGetAttachment(args: {
+  accessToken: string;
+  messageId: string;
+  attachmentId: string;
+}): Promise<Buffer> {
+  const res = await fetch(
+    `${BASE}/messages/${args.messageId}/attachments/${args.attachmentId}`,
+    { headers: { Authorization: `Bearer ${args.accessToken}` } },
+  );
+  if (!res.ok) {
+    throw new Error(`Gmail get attachment failed: ${res.status}`);
+  }
+  const data = (await res.json()) as { data: string; size: number };
+  const base64 = data.data.replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(base64, "base64");
+}
+
+export type EmailAttachment = {
+  filename: string;
+  mimeType: string;
+  attachmentId: string;
+  size: number;
+};
+
+function findAttachmentsRecursive(part: GmailMessagePart): EmailAttachment[] {
+  const results: EmailAttachment[] = [];
+  if (part.body?.attachmentId && part.filename) {
+    results.push({
+      filename: part.filename,
+      mimeType: part.mimeType,
+      attachmentId: part.body.attachmentId,
+      size: part.body.size ?? 0,
+    });
+  }
+  if (part.parts) {
+    for (const child of part.parts) {
+      results.push(...findAttachmentsRecursive(child));
+    }
+  }
+  return results;
+}
+
+export function extractAttachments(msg: GmailMessage): EmailAttachment[] {
+  const results: EmailAttachment[] = [];
+  if (msg.payload.parts) {
+    for (const part of msg.payload.parts) {
+      results.push(...findAttachmentsRecursive(part));
     }
   }
   return results;

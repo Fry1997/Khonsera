@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
     cleanedTextLength: result.value.cleanedText.length,
     cleanedText: result.value.cleanedText,
     htmlLength: result.value.html?.length ?? 0,
+    attachments: result.value.attachments,
+    pdfTexts: result.value.pdfTexts,
     parsed: result.value.parsed,
   });
 }

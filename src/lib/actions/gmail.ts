@@ -7,11 +7,17 @@ import { getValidGmailAccessToken } from "@/lib/google/gmail-client";
 import {
   gmailSearchMessages,
   gmailGetMessage,
+  gmailGetAttachment,
   getHeader,
   extractMessageBody,
+  extractAttachments,
 } from "@/lib/google/gmail";
 import { detectAndParse, stripHtmlPublic } from "@/lib/gmail/parsers";
 import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
+import {
+  parseTrainlinePdfText,
+  pdfTicketsToSegments,
+} from "@/lib/gmail/trainline-pdf";
 
 const BOOKING_SENDERS = [
   "trainline",
@@ -85,6 +91,69 @@ function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedBooking[
   return [...rest, ...kept];
 }
 
+async function enrichTrainlineFromPdfs(
+  accessToken: string,
+  messageId: string,
+  msg: Awaited<ReturnType<typeof gmailGetMessage>>,
+  parsed: Partial<ParsedBooking>,
+): Promise<Partial<ParsedBooking>> {
+  const attachments = extractAttachments(msg);
+  const pdfs = attachments.filter(
+    (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+  );
+  if (pdfs.length === 0) return parsed;
+
+  let PDFParse: typeof import("pdf-parse").PDFParse;
+  try {
+    PDFParse = (await import("pdf-parse")).PDFParse;
+  } catch {
+    return parsed;
+  }
+
+  const tickets = await Promise.all(
+    pdfs.map(async (pdf) => {
+      const buf = await gmailGetAttachment({
+        accessToken, messageId, attachmentId: pdf.attachmentId,
+      });
+      const parser = new PDFParse({ data: new Uint8Array(buf) });
+      const result = await parser.getText();
+      await parser.destroy();
+      return parseTrainlinePdfText(result.text);
+    }),
+  );
+
+  const validTickets = tickets.filter((t): t is NonNullable<typeof t> => t !== null);
+  if (validTickets.length === 0) return parsed;
+
+  if (parsed.type !== "transport") return parsed;
+
+  const fallbackDate = parsed.segments?.[0]?.departure_date ?? new Date().toISOString().slice(0, 10);
+  const pdfSegments = pdfTicketsToSegments(validTickets, fallbackDate);
+
+  // If existing segments have departure times from the booking confirmation
+  // subject, merge those times onto matching PDF segments
+  const existingSegments = parsed.segments ?? [];
+  if (existingSegments.length > 0 && pdfSegments.length > 0) {
+    for (const existing of existingSegments) {
+      if (!existing.departure_time || existing.departure_time === "00:00") continue;
+      // Find a PDF segment with matching station and enrich it
+      const match = pdfSegments.find(
+        (ps) =>
+          ps.from_station.toLowerCase().includes(existing.from_station.toLowerCase()) ||
+          (ps.from_station_code && existing.from_station.toLowerCase().includes(ps.from_station_code.toLowerCase())),
+      );
+      if (match && (!match.departure_time || match.departure_time === "00:00")) {
+        match.departure_time = existing.departure_time;
+      }
+    }
+  }
+
+  return {
+    ...parsed,
+    segments: pdfSegments.length >= existingSegments.length ? pdfSegments : existingSegments,
+  };
+}
+
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
   const subjectTerms =
@@ -156,8 +225,19 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
-        const parsed = detectAndParse(from, subject, html, text);
+        let parsed = detectAndParse(from, subject, html, text);
         if (!parsed) return null;
+
+        // Enrich Trainline bookings with PDF attachment data (seat, coach, barcode)
+        if (parsed.type === "transport" && /trainline/i.test(from)) {
+          try {
+            parsed = await enrichTrainlineFromPdfs(
+              gmail.accessToken, ref.id, msg, parsed,
+            );
+          } catch (e) {
+            console.warn("gmail: PDF enrichment failed", ref.id, e);
+          }
+        }
 
         const emailDate =
           date && !isNaN(Date.parse(date))
@@ -256,7 +336,15 @@ export async function disconnectGmail(): Promise<Result<{ id: string }>> {
 }
 
 export async function debugFetchEmail(messageId: string): Promise<
-  Result<{ subject: string; from: string; cleanedText: string; html: string | null; parsed: Partial<ParsedBooking> | null }>
+  Result<{
+    subject: string;
+    from: string;
+    cleanedText: string;
+    html: string | null;
+    attachments: Array<{ filename: string; mimeType: string; size: number }>;
+    pdfTexts: string[];
+    parsed: Partial<ParsedBooking> | null;
+  }>
 > {
   await requireUserContext();
   const gmail = await getValidGmailAccessToken();
@@ -271,7 +359,50 @@ export async function debugFetchEmail(messageId: string): Promise<
   const subject = getHeader(msg.payload.headers, "Subject") ?? "";
   const { html, text } = extractMessageBody(msg);
   const cleanedText = text ?? (html ? stripHtmlPublic(html) : "");
-  const parsed = detectAndParse(from, subject, html, text);
 
-  return ok({ subject, from, cleanedText, html, parsed });
+  const attachmentList = extractAttachments(msg);
+  const pdfAttachments = attachmentList.filter(
+    (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+  );
+
+  const pdfTexts: string[] = [];
+  try {
+    const { PDFParse } = await import("pdf-parse");
+    for (const pdf of pdfAttachments) {
+      const buf = await gmailGetAttachment({
+        accessToken: gmail.accessToken,
+        messageId,
+        attachmentId: pdf.attachmentId,
+      });
+      const parser = new PDFParse({ data: new Uint8Array(buf) });
+      const result = await parser.getText();
+      pdfTexts.push(result.text);
+      await parser.destroy();
+    }
+  } catch (e) {
+    console.warn("PDF extraction failed in debug", e);
+  }
+
+  let parsed = detectAndParse(from, subject, html, text);
+  if (parsed?.type === "transport" && /trainline/i.test(from)) {
+    try {
+      parsed = await enrichTrainlineFromPdfs(
+        gmail.accessToken, messageId, msg, parsed,
+      );
+    } catch (e) {
+      console.warn("PDF enrichment failed in debug", e);
+    }
+  }
+
+  return ok({
+    subject,
+    from,
+    cleanedText,
+    html,
+    attachments: attachmentList.map((a) => ({
+      filename: a.filename, mimeType: a.mimeType, size: a.size,
+    })),
+    pdfTexts,
+    parsed,
+  });
 }
