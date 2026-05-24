@@ -319,6 +319,12 @@ const briefTransportBookingSchema = z.object({
   destination_label: z.string().nullable().optional(),
   depart_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   arrive_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  changeovers: z.array(z.object({
+    hub_id: z.string().uuid().nullable().optional(),
+    hub_label: z.string().nullable().optional(),
+    arrive_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+    depart_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  })).optional().default([]),
   service_number: z.string().max(100).nullable().optional(),
   reference: z.string().max(200).nullable().optional(),
   seat: z.string().max(200).nullable().optional(),
@@ -692,6 +698,36 @@ export async function createItineraryFromBrief(
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
+
+    // Changeover stops — intermediate stations between departure and arrival.
+    for (const co of tb.changeovers) {
+      const coArrIso = co.arrive_time
+        ? isoFromLocal(dateForBooking, co.arrive_time, tz)
+        : null;
+      const coDepIso = co.depart_time
+        ? isoFromLocal(dateForBooking, co.depart_time, tz)
+        : null;
+      stopRows.push({
+        sequence: seq++,
+        type: "appointment",
+        location_id: null,
+        customer_id: null,
+        customer_site_id: null,
+        title: co.hub_label ?? "Changeover",
+        start_time: coArrIso,
+        end_time: coDepIso,
+        duration_minutes: null,
+        is_time_fixed: !!coArrIso,
+        notes: null,
+        metadata: {
+          kind: "transit_changeover",
+          transport_mode: tb.mode,
+          hub_id: co.hub_id,
+        },
+        itinerary_id: itinerary.id,
+        workspace_id: ctx.workspaceId,
+      });
+    }
 
     stopRows.push({
       sequence: seq++,

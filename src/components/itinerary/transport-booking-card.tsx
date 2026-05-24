@@ -25,6 +25,12 @@ const MODE_OPTIONS: Array<{
   { value: "drive", label: "Car hire" },
 ];
 
+export type TransportChangeover = {
+  hub: { id: string | null; label: string | null };
+  arriveTime: string;
+  departTime: string;
+};
+
 export type BriefTransportBooking = {
   uid: string;
   mode: TransportBookingMode | null;
@@ -33,6 +39,7 @@ export type BriefTransportBooking = {
   destinationHub: { id: string | null; label: string | null };
   departTime: string;
   arriveTime: string;
+  changeovers: TransportChangeover[];
   serviceNumber: string;
   reference: string;
   seat: string;
@@ -49,6 +56,7 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
     destinationHub: { id: null, label: null },
     departTime: "",
     arriveTime: "",
+    changeovers: [],
     serviceNumber: "",
     reference: "",
     seat: "",
@@ -69,6 +77,7 @@ export function returnTransportBooking(
     destinationHub: { ...from.departureHub },
     departTime: "",
     arriveTime: "",
+    changeovers: [],
     serviceNumber: "",
     reference: "",
     seat: "",
@@ -102,6 +111,8 @@ export function TransportBookingCard({
     mode === "flight" ||
     mode === "tube" ||
     mode === "bus";
+  const supportsChangeovers =
+    mode === "train" || mode === "flight" || mode === "tube";
 
   if (!mode) {
     return (
@@ -243,6 +254,121 @@ export function TransportBookingCard({
           />
         </label>
       </div>
+
+      {supportsChangeovers ? (
+        <>
+          {booking.changeovers.map((co, idx) => (
+            <div
+              key={idx}
+              className="brief-changeover"
+              style={{
+                borderLeft: "2px dashed var(--rule-2)",
+                paddingLeft: 12,
+                marginLeft: 8,
+                marginTop: 6,
+                marginBottom: 6,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 4,
+                }}
+              >
+                <span className="uc" style={{ fontSize: 10.5 }}>
+                  Change {idx + 1}
+                </span>
+                <button
+                  type="button"
+                  style={{ fontSize: 11, color: "var(--rust)" }}
+                  onClick={() =>
+                    onChange({
+                      changeovers: booking.changeovers.filter(
+                        (_, i) => i !== idx,
+                      ),
+                    })
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="brief-field" style={{ marginBottom: 4 }}>
+                <span className="uc" style={{ fontSize: 10.5 }}>
+                  {mode === "flight" ? "Via airport" : "Via station"}
+                </span>
+                <TransportHubPicker
+                  kind={hubKind}
+                  value={co.hub}
+                  onChange={(hub) => {
+                    const next = [...booking.changeovers];
+                    next[idx] = { ...next[idx], hub };
+                    onChange({ changeovers: next });
+                  }}
+                  name={`co-hub-${booking.uid}-${idx}`}
+                  placeholder={
+                    mode === "flight"
+                      ? "Transfer airport"
+                      : "Birmingham New St, Crewe..."
+                  }
+                />
+              </div>
+              <div className="brief-when-row">
+                <label className="brief-field">
+                  <span className="uc" style={{ fontSize: 10.5 }}>
+                    Arrive
+                  </span>
+                  <input
+                    type="time"
+                    className="field"
+                    value={co.arriveTime}
+                    onChange={(e) => {
+                      const next = [...booking.changeovers];
+                      next[idx] = { ...next[idx], arriveTime: e.target.value };
+                      onChange({ changeovers: next });
+                    }}
+                  />
+                </label>
+                <label className="brief-field">
+                  <span className="uc" style={{ fontSize: 10.5 }}>
+                    Depart
+                  </span>
+                  <input
+                    type="time"
+                    className="field"
+                    value={co.departTime}
+                    onChange={(e) => {
+                      const next = [...booking.changeovers];
+                      next[idx] = { ...next[idx], departTime: e.target.value };
+                      onChange({ changeovers: next });
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ alignSelf: "flex-start", fontSize: 12, marginTop: 2 }}
+            onClick={() =>
+              onChange({
+                changeovers: [
+                  ...booking.changeovers,
+                  {
+                    hub: { id: null, label: null },
+                    arriveTime: "",
+                    departTime: "",
+                  },
+                ],
+              })
+            }
+          >
+            + Add changeover
+          </button>
+        </>
+      ) : null}
 
       <div className="brief-when-row">
         <label className="brief-field">

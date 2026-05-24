@@ -50,7 +50,17 @@ import {
   type TransitionMode,
 } from "@/components/itinerary";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
+import { TransportIcon } from "@/components/icons";
 import type { PlaceSelection } from "@/components/place-picker";
+
+const MODE_OPTIONS_MAP: Record<string, string> = {
+  train: "Train",
+  flight: "Flight",
+  taxi: "Taxi",
+  bus: "Bus",
+  tube: "Tube",
+  drive: "Car hire",
+};
 import {
   BaseLocationCard,
   type BaseLocation,
@@ -557,6 +567,14 @@ export function NewItineraryBrief({
             destination_label: tb.destinationHub.label,
             depart_time: tb.departTime || null,
             arrive_time: tb.arriveTime || null,
+            changeovers: tb.changeovers
+              .filter((co) => co.hub.id || co.hub.label)
+              .map((co) => ({
+                hub_id: co.hub.id,
+                hub_label: co.hub.label,
+                arrive_time: co.arriveTime || null,
+                depart_time: co.departTime || null,
+              })),
             service_number: tb.serviceNumber || null,
             reference: tb.reference || null,
             seat: tb.seat || null,
@@ -817,6 +835,86 @@ export function NewItineraryBrief({
           </span>
         </header>
 
+        {/* Transport booking stops — read-only markers from confirmed bookings */}
+        {transportBookings
+          .filter((tb) => tb.confirmed && tb.mode)
+          .map((tb) => {
+            const modeLabel =
+              MODE_OPTIONS_MAP[tb.mode!] ?? tb.mode;
+            const Icon = TransportIcon[tb.mode!];
+            return (
+              <div
+                key={`tl-${tb.uid}`}
+                className="brief-card-soft"
+                style={{
+                  padding: "10px 14px",
+                  borderLeft: "3px solid var(--gold-2)",
+                  marginBottom: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon size={13} />
+                  <span className="uc" style={{ fontSize: 10.5 }}>
+                    Booked {modeLabel}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: "var(--ink)" }}>
+                  {tb.departureHub?.label ?? "Departure"}{" "}
+                  <span style={{ color: "var(--ink-dim)" }}>
+                    {tb.departTime || "—"}
+                  </span>
+                  {tb.changeovers.map((co, ci) => (
+                    <span key={ci} style={{ color: "var(--ink-dim)" }}>
+                      {" → "}{co.hub?.label ?? "Change"}{" "}
+                      {co.arriveTime && co.departTime
+                        ? `(${co.arriveTime}–${co.departTime})`
+                        : ""}
+                    </span>
+                  ))}
+                  {" → "}
+                  {tb.destinationHub?.label ?? "Arrival"}{" "}
+                  <span style={{ color: "var(--ink-dim)" }}>
+                    {tb.arriveTime || "—"}
+                  </span>
+                </div>
+                {tb.serviceNumber ? (
+                  <div
+                    style={{ fontSize: 12, color: "var(--ink-dim)" }}
+                  >
+                    {tb.serviceNumber}
+                    {tb.reference ? ` · ref ${tb.reference}` : ""}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+
+        {/* Accommodation constraint markers */}
+        {accommodationBookings
+          .filter((ab) => ab.confirmed && ab.hotel)
+          .map((ab) => (
+            <div
+              key={`tl-acc-${ab.uid}`}
+              style={{
+                padding: "8px 14px",
+                borderLeft: "2px dashed var(--ink-faint)",
+                marginBottom: 8,
+                fontSize: 12,
+                color: "var(--ink-dim)",
+              }}
+            >
+              <span className="uc" style={{ fontSize: 10 }}>
+                Check-in from {ab.checkInTime}
+              </span>
+              {" · "}
+              {ab.hotel?.label}
+              {ab.checkInDate ? ` · ${ab.checkInDate}` : ""}
+            </div>
+          ))}
+
         <AddBetween onAdd={() => insertAnchorAt(0)} />
 
         {anchors.map((anchor, i) => {
@@ -846,6 +944,39 @@ export function NewItineraryBrief({
                 onChange={(patch) => updateAnchor(anchor.uid, patch)}
                 onRemove={() => removeAnchor(anchor.uid)}
               />
+              {/* Link to accommodation booking if this anchor is a stay at the same hotel */}
+              {anchor.place &&
+                effectiveKind(anchor) === "stay" &&
+                (() => {
+                  const match = accommodationBookings.find(
+                    (ab) =>
+                      ab.confirmed &&
+                      ab.hotel &&
+                      anchor.place &&
+                      ab.hotel.label === anchor.place.label,
+                  );
+                  if (!match) return null;
+                  return (
+                    <div
+                      style={{
+                        padding: "6px 14px",
+                        borderLeft: "2px dashed var(--gold-2)",
+                        fontSize: 12,
+                        color: "var(--ink-dim)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Linked to booking: {match.hotel?.label}
+                      {match.checkInTime
+                        ? ` · check-in from ${match.checkInTime}`
+                        : ""}
+                      {match.checkOutTime
+                        ? ` · check-out by ${match.checkOutTime}`
+                        : ""}
+                      {match.reference ? ` · ref ${match.reference}` : ""}
+                    </div>
+                  );
+                })()}
               {next
                 ? (() => {
                     const sv = getStopover(anchor.uid, next.uid);
