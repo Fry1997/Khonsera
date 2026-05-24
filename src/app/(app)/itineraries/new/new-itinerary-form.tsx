@@ -118,6 +118,11 @@ export function NewItineraryBrief({
     BriefAccommodationBooking[]
   >([]);
 
+  // Trip date range — set explicitly by the user, used to default
+  // booking dates and anchor dates.
+  const [tripStartDate, setTripStartDate] = useState(defaultAnchorDate());
+  const [tripEndDate, setTripEndDate] = useState(defaultAnchorDate());
+
   const updateTransportBooking = (
     uid: string,
     patch: Partial<BriefTransportBooking>,
@@ -274,7 +279,7 @@ export function NewItineraryBrief({
   const insertAnchorAt = (index: number) => {
     const previous =
       anchors[Math.max(0, Math.min(index - 1, anchors.length - 1))];
-    const seed = emptyAnchor(previous?.date ?? defaultAnchorDate());
+    const seed = emptyAnchor(previous?.date ?? tripStartDate);
     setAnchors((prev) => {
       const copy = [...prev];
       copy.splice(index, 0, seed);
@@ -596,6 +601,31 @@ export function NewItineraryBrief({
           onSelect={setSelectedBaseId}
         />
 
+        {/* ── Trip dates ─────────────────────────────────────────── */}
+        <div className="brief-subcard">
+          <span className="uc">Trip dates</span>
+          <div className="brief-when-row" style={{ marginTop: 6 }}>
+            <label className="brief-field">
+              <span className="uc" style={{ fontSize: 10.5 }}>Start</span>
+              <input
+                type="date"
+                className="field"
+                value={tripStartDate}
+                onChange={(e) => setTripStartDate(e.target.value)}
+              />
+            </label>
+            <label className="brief-field">
+              <span className="uc" style={{ fontSize: 10.5 }}>End</span>
+              <input
+                type="date"
+                className="field"
+                value={tripEndDate}
+                onChange={(e) => setTripEndDate(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+
         {/* ── Bookings bar ─────────────────────────────────────────── */}
         <div
           style={{
@@ -614,7 +644,7 @@ export function NewItineraryBrief({
             onClick={() =>
               setTransportBookings((prev) => [
                 ...prev,
-                emptyTransportBookingItem(),
+                { ...emptyTransportBookingItem(), date: tripStartDate },
               ])
             }
           >
@@ -626,7 +656,11 @@ export function NewItineraryBrief({
             onClick={() =>
               setAccommodationBookings((prev) => [
                 ...prev,
-                emptyAccommodationBookingItem(),
+                {
+                  ...emptyAccommodationBookingItem(),
+                  checkInDate: tripStartDate,
+                  checkOutDate: tripEndDate,
+                },
               ])
             }
           >
@@ -688,7 +722,7 @@ export function NewItineraryBrief({
                       onClick={() =>
                         setTransportBookings((prev) => [
                           ...prev,
-                          returnTransportBooking(tb),
+                          returnTransportBooking(tb, tripEndDate),
                         ])
                       }
                     >

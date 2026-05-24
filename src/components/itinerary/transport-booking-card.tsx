@@ -59,11 +59,12 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
 
 export function returnTransportBooking(
   from: BriefTransportBooking,
+  defaultDate?: string,
 ): BriefTransportBooking {
   return {
     uid: cryptoUid(),
     mode: from.mode,
-    date: "",
+    date: defaultDate ?? "",
     departureHub: { ...from.destinationHub },
     destinationHub: { ...from.departureHub },
     departTime: "",
