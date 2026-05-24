@@ -592,23 +592,18 @@ export function NewItineraryBrief({
           onSelect={setSelectedBaseId}
         />
 
+        {/* ── Bookings bar ─────────────────────────────────────────── */}
         <div
-          className="brief-add-buttons"
           style={{
             display: "flex",
+            alignItems: "center",
             gap: 8,
             flexWrap: "wrap",
           }}
         >
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              insertAnchorAt(anchors.length)
-            }
-          >
-            + Anchor
-          </button>
+          <span className="uc" style={{ marginRight: 4 }}>
+            Bookings
+          </span>
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -635,11 +630,117 @@ export function NewItineraryBrief({
           </button>
         </div>
 
-        {anchors.length > 0 ? (
-          <header style={{ marginBottom: 4 }}>
-            <span className="uc">Anchors · {anchors.length}</span>
-          </header>
+        {/* ── Reservations: condensed completed bookings ──────────── */}
+        {(transportBookings.some((tb) => tb.mode != null) ||
+          accommodationBookings.some((ab) => ab.hotel != null)) ? (
+          <div className="brief-reservations">
+            {transportBookings
+              .filter((tb) => tb.mode != null)
+              .map((tb) => (
+                <div key={tb.uid} className="brief-reservation-chip">
+                  <span style={{ fontWeight: 500 }}>
+                    {tb.mode === "train"
+                      ? "🚆"
+                      : tb.mode === "flight"
+                        ? "✈️"
+                        : "🚗"}{" "}
+                    {tb.destinationHub?.label ?? tb.mode}
+                  </span>
+                  {tb.departTime && tb.arriveTime ? (
+                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                      {tb.departTime} → {tb.arriveTime}
+                    </span>
+                  ) : null}
+                  {tb.serviceNumber ? (
+                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                      · {tb.serviceNumber}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    style={{ fontSize: 11, color: "var(--rust)", marginLeft: 4 }}
+                    onClick={() => removeTransportBooking(tb.uid)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            {accommodationBookings
+              .filter((ab) => ab.hotel != null)
+              .map((ab) => (
+                <div key={ab.uid} className="brief-reservation-chip">
+                  <span style={{ fontWeight: 500 }}>
+                    🏨 {ab.hotel?.label ?? "Hotel"}
+                  </span>
+                  {ab.checkInDate ? (
+                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                      CI from {ab.checkInTime} · CO by {ab.checkOutTime}
+                    </span>
+                  ) : null}
+                  {ab.reference ? (
+                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
+                      · ref {ab.reference}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    style={{ fontSize: 11, color: "var(--rust)", marginLeft: 4 }}
+                    onClick={() => removeAccommodationBooking(ab.uid)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+          </div>
         ) : null}
+
+        {/* ── Active booking forms (expand when adding) ───────────── */}
+        {transportBookings
+          .filter((tb) => tb.mode == null)
+          .map((tb) => (
+            <TransportBookingCard
+              key={tb.uid}
+              booking={tb}
+              onChange={(patch) => updateTransportBooking(tb.uid, patch)}
+              onRemove={() => removeTransportBooking(tb.uid)}
+            />
+          ))}
+        {transportBookings
+          .filter(
+            (tb) =>
+              tb.mode != null &&
+              !tb.departTime &&
+              !tb.arriveTime &&
+              !tb.destinationHub?.id,
+          )
+          .map((tb) => (
+            <TransportBookingCard
+              key={tb.uid}
+              booking={tb}
+              onChange={(patch) => updateTransportBooking(tb.uid, patch)}
+              onRemove={() => removeTransportBooking(tb.uid)}
+            />
+          ))}
+        {accommodationBookings
+          .filter((ab) => ab.hotel == null)
+          .map((ab) => (
+            <AccommodationBookingCard
+              key={ab.uid}
+              booking={ab}
+              customers={customers}
+              customerSites={customerSites}
+              locations={locations}
+              onChange={(patch) => updateAccommodationBooking(ab.uid, patch)}
+              onRemove={() => removeAccommodationBooking(ab.uid)}
+            />
+          ))}
+
+        {/* ── Timeline ─────────────────────────────────────────────── */}
+        <header style={{ marginBottom: 4, marginTop: 6 }}>
+          <span className="uc">
+            Timeline{anchors.length > 0 ? ` · ${anchors.length} anchor${anchors.length === 1 ? "" : "s"}` : ""}
+          </span>
+        </header>
 
         <AddBetween onAdd={() => insertAnchorAt(0)} />
 
@@ -764,49 +865,6 @@ export function NewItineraryBrief({
             </div>
           );
         })}
-
-        {transportBookings.length > 0 ? (
-          <>
-            <header style={{ marginBottom: 4, marginTop: 6 }}>
-              <span className="uc">
-                Transport · {transportBookings.length}
-              </span>
-            </header>
-            {transportBookings.map((tb) => (
-              <TransportBookingCard
-                key={tb.uid}
-                booking={tb}
-                onChange={(patch) =>
-                  updateTransportBooking(tb.uid, patch)
-                }
-                onRemove={() => removeTransportBooking(tb.uid)}
-              />
-            ))}
-          </>
-        ) : null}
-
-        {accommodationBookings.length > 0 ? (
-          <>
-            <header style={{ marginBottom: 4, marginTop: 6 }}>
-              <span className="uc">
-                Accommodation · {accommodationBookings.length}
-              </span>
-            </header>
-            {accommodationBookings.map((ab) => (
-              <AccommodationBookingCard
-                key={ab.uid}
-                booking={ab}
-                customers={customers}
-                customerSites={customerSites}
-                locations={locations}
-                onChange={(patch) =>
-                  updateAccommodationBooking(ab.uid, patch)
-                }
-                onRemove={() => removeAccommodationBooking(ab.uid)}
-              />
-            ))}
-          </>
-        ) : null}
 
         <BeHomeByField
           value={beHomeBy}

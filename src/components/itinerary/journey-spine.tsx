@@ -256,20 +256,34 @@ export function JourneySpine({
         {accommodationBookings?.map((ab) => {
           if (!ab.hotel) return null;
           return (
-            <SpineStop
-              key={ab.uid}
-              time="—"
-              eyebrow="Hotel"
-              title={ab.hotel.label}
-              sub={
-                ab.checkInDate && ab.checkOutDate
-                  ? `${fmtShortDate(ab.checkInDate, timezone)} → ${fmtShortDate(ab.checkOutDate, timezone)}${ab.reference ? ` · ref ${ab.reference}` : ""}`
-                  : ab.reference
-                    ? `ref ${ab.reference}`
-                    : "Dates TBC"
-              }
-              dotKind="default"
-            />
+            <Fragment key={ab.uid}>
+              <div className="tl-time" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                {ab.checkInTime || "—"}
+              </div>
+              <div className="tl-rail">
+                <div
+                  className="tl-dot"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    border: "1.5px dashed var(--ink-faint)",
+                    background: "transparent",
+                  }}
+                />
+              </div>
+              <div className="tl-content" style={{ padding: "4px 0 10px" }}>
+                <p
+                  className="tl-eyebrow"
+                  style={{ marginBottom: 1, color: "var(--ink-faint)", fontSize: 10.5 }}
+                >
+                  Check-in from
+                </p>
+                <p className="tl-sub" style={{ marginTop: 0, fontSize: 12 }}>
+                  {ab.hotel.label}
+                  {ab.checkInDate ? ` · ${fmtShortDate(ab.checkInDate, timezone)}` : ""}
+                </p>
+              </div>
+            </Fragment>
           );
         })}
         {beHomeBy ? (

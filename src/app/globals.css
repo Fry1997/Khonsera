@@ -2216,6 +2216,22 @@
     border-radius: 12px;
     padding: 14px;
   }
+  .brief-reservations {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .brief-reservation-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--card-2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
   .brief-details {
     background: transparent;
     border: 1px solid var(--rule);
