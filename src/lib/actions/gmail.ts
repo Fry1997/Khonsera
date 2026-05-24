@@ -253,7 +253,13 @@ export async function scanGmailForBookings(): Promise<
   );
 
   const toFetch = messageRefs.filter(
-    (ref) => !importedIds.has(ref.id) && !scannedMap.has(ref.id),
+    (ref) => {
+      if (importedIds.has(ref.id)) return false;
+      const prev = scannedMap.get(ref.id);
+      if (!prev) return true;
+      if (prev.parse_failed) return true;
+      return false;
+    },
   );
 
   console.log("[gmail-scan] query:", buildSearchQuery());
