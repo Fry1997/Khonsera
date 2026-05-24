@@ -106,22 +106,19 @@ async function enrichTrainlineFromPdfs(
   if (pdfs.length === 0) return parsed;
   if (parsed.type !== "transport") return parsed;
 
-  let PDFParse: typeof import("pdf-parse").PDFParse;
-  try {
-    PDFParse = (await import("pdf-parse")).PDFParse;
-  } catch {
-    return parsed;
-  }
-
   const tickets = await Promise.all(
     pdfs.map(async (pdf) => {
-      const buf = await gmailGetAttachment({
-        accessToken, messageId, attachmentId: pdf.attachmentId,
-      });
-      const parser = new PDFParse({ data: new Uint8Array(buf) });
-      const result = await parser.getText();
-      await parser.destroy();
-      return parseTrainlinePdfText(result.text);
+      try {
+        const { extractText } = await import("unpdf");
+        const buf = await gmailGetAttachment({
+          accessToken, messageId, attachmentId: pdf.attachmentId,
+        });
+        const result = await extractText(new Uint8Array(buf).buffer);
+        const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
+        return parseTrainlinePdfText(pdfText);
+      } catch {
+        return null;
+      }
     }),
   );
 
@@ -400,17 +397,16 @@ export async function debugFetchEmail(messageId: string): Promise<
 
   const pdfTexts: string[] = [];
   try {
-    const { PDFParse } = await import("pdf-parse");
+    const { extractText } = await import("unpdf");
     for (const pdf of pdfAttachments) {
       const buf = await gmailGetAttachment({
         accessToken: gmail.accessToken,
         messageId,
         attachmentId: pdf.attachmentId,
       });
-      const parser = new PDFParse({ data: new Uint8Array(buf) });
-      const result = await parser.getText();
-      pdfTexts.push(result.text);
-      await parser.destroy();
+      const result = await extractText(new Uint8Array(buf).buffer);
+      const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
+      pdfTexts.push(pdfText);
     }
   } catch (e) {
     console.warn("PDF extraction failed in debug", e);
