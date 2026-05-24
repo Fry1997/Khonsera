@@ -17,6 +17,8 @@ import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
 import {
   parseTrainlinePdfText,
   pdfTicketsToSegments,
+  tryDownloadPkpass,
+  extractBarcodeFromPkpass,
 } from "@/lib/gmail/trainline-pdf";
 
 const BOOKING_SENDERS = [
@@ -102,6 +104,7 @@ async function enrichTrainlineFromPdfs(
     (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
   );
   if (pdfs.length === 0) return parsed;
+  if (parsed.type !== "transport") return parsed;
 
   let PDFParse: typeof import("pdf-parse").PDFParse;
   try {
@@ -125,8 +128,6 @@ async function enrichTrainlineFromPdfs(
   const validTickets = tickets.filter((t): t is NonNullable<typeof t> => t !== null);
   if (validTickets.length === 0) return parsed;
 
-  if (parsed.type !== "transport") return parsed;
-
   const fallbackDate = parsed.segments?.[0]?.departure_date ?? new Date().toISOString().slice(0, 10);
   const pdfSegments = pdfTicketsToSegments(validTickets, fallbackDate);
 
@@ -136,7 +137,6 @@ async function enrichTrainlineFromPdfs(
   if (existingSegments.length > 0 && pdfSegments.length > 0) {
     for (const existing of existingSegments) {
       if (!existing.departure_time || existing.departure_time === "00:00") continue;
-      // Find a PDF segment with matching station and enrich it
       const match = pdfSegments.find(
         (ps) =>
           ps.from_station.toLowerCase().includes(existing.from_station.toLowerCase()) ||
@@ -144,6 +144,35 @@ async function enrichTrainlineFromPdfs(
       );
       if (match && (!match.departure_time || match.departure_time === "00:00")) {
         match.departure_time = existing.departure_time;
+      }
+    }
+  }
+
+  // If PDF segments lack barcode_data, try .pkpass downloads from email HTML
+  const needsBarcodeData = pdfSegments.some((s) => !s.barcode_data);
+  if (needsBarcodeData) {
+    const { html } = extractMessageBody(msg);
+    if (html) {
+      const pkpassUrls: string[] = [];
+      const urlPattern = /https:\/\/download\.thetrainline\.com\/resource#[A-F0-9]{64}/gi;
+      let urlMatch;
+      while ((urlMatch = urlPattern.exec(html)) !== null) {
+        pkpassUrls.push(urlMatch[0]);
+      }
+
+      for (let i = 0; i < Math.min(pkpassUrls.length, pdfSegments.length); i++) {
+        if (pdfSegments[i].barcode_data) continue;
+        try {
+          const pkpassBuf = await tryDownloadPkpass(pkpassUrls[i]);
+          if (pkpassBuf) {
+            const barcodeData = await extractBarcodeFromPkpass(pkpassBuf);
+            if (barcodeData) {
+              pdfSegments[i].barcode_data = barcodeData;
+            }
+          }
+        } catch {
+          // .pkpass download is best-effort
+        }
       }
     }
   }

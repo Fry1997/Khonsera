@@ -65,6 +65,7 @@ export type TrainlinePdfTicket = {
   coach: string | null;
   seat: string | null;
   barcode_ref: string | null;
+  barcode_data: string | null;
 };
 
 export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | null {
@@ -146,10 +147,15 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
   const coach = coachMatch?.[1] ?? null;
   const seat = seatMatch?.[1] ?? null;
 
-  // Barcode reference: alphanumeric string near bottom, often 10-12 chars
-  const barcodeMatch = pdfText.match(/\b([A-Z0-9]{10,14})\b(?:\s*$)/m)
-    ?? pdfText.match(/\b(TT[A-Z0-9]{8,12})\b/);
+  // Barcode reference: display reference like TTBQEBVV49M
+  const barcodeMatch = pdfText.match(/\b(TT[A-Z0-9]{8,12})\b/)
+    ?? pdfText.match(/\b([A-Z0-9]{10,14})\b(?:\s*$)/m);
   const barcodeRef = barcodeMatch?.[1] ?? null;
+
+  // Full barcode data: RSP Aztec payload — starts with 2-digit version,
+  // then ticket ID, then encoded+signed journey data. ~200-300 chars.
+  const barcodeDataMatch = pdfText.match(/\b(\d{2}[A-Z0-9]{50,300})\b/);
+  const barcodeData = barcodeDataMatch?.[1] ?? null;
 
   if (!fromCode && !toCode && stationNames.length < 2) return null;
 
@@ -166,7 +172,93 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
     coach,
     seat,
     barcode_ref: barcodeRef,
+    barcode_data: barcodeData,
   };
+}
+
+// Extract barcode data from .pkpass wallet pass files.
+// A .pkpass is a ZIP containing pass.json with barcode info.
+export async function extractBarcodeFromPkpass(pkpassBuffer: Buffer): Promise<string | null> {
+  try {
+    const { Readable } = await import("stream");
+    const { createUnzip } = await import("zlib");
+    // Minimal ZIP parsing — find pass.json entry and extract it
+    const passJson = await extractFileFromZip(pkpassBuffer, "pass.json");
+    if (!passJson) return null;
+    const pass = JSON.parse(passJson);
+    // Apple Wallet pass format
+    const barcode = pass.barcodes?.[0] ?? pass.barcode;
+    return barcode?.message ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function extractFileFromZip(zipBuf: Buffer, filename: string): Promise<string | null> {
+  // Minimal ZIP parsing: find local file headers, locate the target file
+  let offset = 0;
+  while (offset < zipBuf.length - 4) {
+    const sig = zipBuf.readUInt32LE(offset);
+    if (sig !== 0x04034b50) break; // Local file header signature
+    const compMethod = zipBuf.readUInt16LE(offset + 8);
+    const compSize = zipBuf.readUInt32LE(offset + 18);
+    const uncompSize = zipBuf.readUInt32LE(offset + 22);
+    const nameLen = zipBuf.readUInt16LE(offset + 26);
+    const extraLen = zipBuf.readUInt16LE(offset + 28);
+    const name = zipBuf.toString("utf-8", offset + 30, offset + 30 + nameLen);
+    const dataStart = offset + 30 + nameLen + extraLen;
+
+    if (name === filename) {
+      if (compMethod === 0) {
+        return zipBuf.toString("utf-8", dataStart, dataStart + uncompSize);
+      }
+      if (compMethod === 8) {
+        const { inflateRawSync } = await import("zlib");
+        const compressed = zipBuf.subarray(dataStart, dataStart + compSize);
+        return inflateRawSync(compressed).toString("utf-8");
+      }
+      return null;
+    }
+    offset = dataStart + compSize;
+  }
+  return null;
+}
+
+// Try to download a .pkpass file from a Trainline download URL.
+// The URL format is https://download.thetrainline.com/resource#HASH
+// The hash might work as a direct path or query parameter.
+export async function tryDownloadPkpass(downloadUrl: string): Promise<Buffer | null> {
+  const hashMatch = downloadUrl.match(/#([A-F0-9]{64})/i);
+  if (!hashMatch) return null;
+  const hash = hashMatch[1];
+
+  const attempts = [
+    `https://download.thetrainline.com/resource/${hash}`,
+    `https://download.thetrainline.com/resource?token=${hash}`,
+  ];
+
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "Accept": "application/vnd.apple.pkpass, application/octet-stream, */*",
+          "User-Agent": "Mozilla/5.0",
+        },
+        redirect: "follow",
+      });
+      if (!res.ok) continue;
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("text/html")) continue;
+      const buf = Buffer.from(await res.arrayBuffer());
+      // Verify it's a ZIP (PKZip magic bytes)
+      if (buf.length > 4 && buf.readUInt32LE(0) === 0x04034b50) {
+        return buf;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 export function pdfTicketsToSegments(
@@ -191,5 +283,6 @@ export function pdfTicketsToSegments(
     coach: t.coach,
     seat: t.seat,
     barcode_ref: t.barcode_ref,
+    barcode_data: t.barcode_data,
   }));
 }

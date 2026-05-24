@@ -18,6 +18,7 @@ export type ParsedTransportSegment = {
   coach: string | null;
   seat: string | null;
   barcode_ref: string | null;
+  barcode_data: string | null; // Full Aztec/barcode payload for regeneration
 };
 
 export type ParsedTransportBooking = {
