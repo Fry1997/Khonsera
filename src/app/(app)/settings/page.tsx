@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { TravelProfileForm } from "./travel-profile-form";
 import { CalendarSection } from "./calendar-section";
+import { GmailSection } from "./gmail-section";
 import { ThemePicker } from "@/components/theme-picker";
 
 export default async function SettingsPage({
@@ -15,31 +16,42 @@ export default async function SettingsPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: locations }, { data: calendarConn }] =
-    await Promise.all([
-      supabase
-        .from("travel_profiles")
-        .select(
-          "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate, walking_threshold_minutes, minimum_buffer_minutes, max_taxi_fare_pence, luggage_default",
-        )
-        .eq("user_id", ctx.userId)
-        .eq("workspace_id", ctx.workspaceId)
-        .maybeSingle(),
-      supabase
-        .from("locations")
-        .select("id, name, type")
-        .eq("workspace_id", ctx.workspaceId)
-        .order("type")
-        .order("name"),
-      supabase
-        .from("calendar_connections")
-        .select("id, provider_account_email")
-        .eq("user_id", ctx.userId)
-        .eq("workspace_id", ctx.workspaceId)
-        .eq("provider", "google")
-        .eq("status", "active")
-        .maybeSingle(),
-    ]);
+  const [
+    { data: profile },
+    { data: locations },
+    { data: calendarConn },
+    { data: gmailConn },
+  ] = await Promise.all([
+    supabase
+      .from("travel_profiles")
+      .select(
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate, walking_threshold_minutes, minimum_buffer_minutes, max_taxi_fare_pence, luggage_default",
+      )
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle(),
+    supabase
+      .from("locations")
+      .select("id, name, type")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("type")
+      .order("name"),
+    supabase
+      .from("calendar_connections")
+      .select("id, provider_account_email")
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("provider", "google")
+      .eq("status", "active")
+      .maybeSingle(),
+    supabase
+      .from("gmail_connections")
+      .select("id, provider_account_email, last_scan_at")
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("status", "active")
+      .maybeSingle(),
+  ]);
 
   // Resolve the two hub defaults to their friendly labels so the
   // picker shows "Wellingborough (WLB)" on first paint rather than
@@ -82,6 +94,11 @@ export default async function SettingsPage({
           Google Calendar connected.
         </div>
       ) : null}
+      {sp.connected === "gmail" ? (
+        <div className="rounded-md border border-sage-2 bg-sage-2 px-3 py-2 text-sm text-sage">
+          Gmail connected. You can now scan for booking emails.
+        </div>
+      ) : null}
 
       <section className="grid gap-5 md:grid-cols-2">
         <div className="j-card p-5">
@@ -100,6 +117,18 @@ export default async function SettingsPage({
               ? {
                   id: calendarConn.id,
                   provider_account_email: calendarConn.provider_account_email,
+                }
+              : null
+          }
+        />
+
+        <GmailSection
+          connection={
+            gmailConn
+              ? {
+                  id: gmailConn.id,
+                  provider_account_email: gmailConn.provider_account_email,
+                  last_scan_at: gmailConn.last_scan_at,
                 }
               : null
           }

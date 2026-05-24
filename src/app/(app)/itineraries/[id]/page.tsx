@@ -57,6 +57,14 @@ export default async function ItineraryDetailPage({
     }
   }
 
+  const { data: gmailConn } = await supabase
+    .from("gmail_connections")
+    .select("id")
+    .eq("user_id", ctx.userId)
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("status", "active")
+    .maybeSingle();
+
   const [
     { data: stops },
     { data: transitions },
@@ -182,6 +190,7 @@ export default async function ItineraryDetailPage({
         durationMinutes: row.duration_minutes,
         distanceMiles: row.distance_miles,
       }))}
+      gmailConnected={!!gmailConn}
     />
   );
 }
