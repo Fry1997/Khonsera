@@ -5,10 +5,10 @@
 ## Known Bugs (as of 2026-05-24)
 
 ### Planning page after brief submit
-- Transport booking stops show as "(no place yet)" — they're created with `location_id: null` and title from hub label (often just station codes like "WEL"). Need to resolve hub IDs to proper location records with names and coordinates.
-- "via undefined" on transitions — mode not set properly on auto-created transitions between transport booking stops.
 - PR #11 restored the old "+ Train" / "+ Flight" inline buttons in the editor — these should be replaced with the single "+ Transport" button. The editor file needs the inline button replacement re-applied after the rebase.
-- Transport booking stops created as `type: "appointment"` — should use a more appropriate type or have metadata that the editor recognises as transit stops.
+- ~~Transport booking stops show as "(no place yet)"~~ FIXED: stops now use transit_departure/transit_changeover/transit_arrival types instead of "appointment"
+- ~~"via undefined" on transitions~~ FIXED: mode now reads transport_mode from stop metadata instead of hardcoding "train"
+- ~~Transport booking stops created as `type: "appointment"`~~ FIXED: migration 0022 adds transit_departure + transit_changeover to stop_type enum
 
 ## Architecture
 
@@ -50,7 +50,16 @@ Subject keywords MUST include: `eticket`, `etickets`, `tickets` (plural), `trip`
 - **Marketing filter**: Skip emails with `unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo` in the SUBJECT (not body). Trainline's email footer has "unsubscribe" in the body — checking the body would kill real bookings.
 - **Forwarded email detection**: When no SENDER_CONFIG matches, check the email BODY for known provider names ("trainline", "easyjet", etc.) AND booking-like content (HH:MM times, "booking ref", "e-ticket", etc.). This catches forwarded confirmation emails.
 - **HTML-only emails**: iPhone forwards often have only `text/html` and no `text/plain` MIME part. When there's no plain text, strip HTML tags to produce text for regex parsing. Without this, the parser receives empty text and fails silently.
-- **Trainline eticket format**: The email body has "Wellingborough to Derby" as station names but NO departure/arrival times. Times are only in the PDF attachments. The parser extracts stations + changeover codes (WEL→LEI, LEI→DER from ticket numbers) + date + booking ref. Times are left blank for manual entry.
+- **Trainline eticket format**: Two emails per booking (eticket + booking confirmation). The eticket is the richer source:
+  - Body text: "Adult 1, WEL to LEI: TTBQEBVV49M" patterns give station codes + ticket refs + outbound/return split
+  - PDF attachments (one per leg): departure/arrival times, operator, ticket type, route restriction, price, NRS booking ref, coach/seat
+  - PDF images: Aztec barcode decoded via unpdf extractImages + zxing-wasm → full RSP barcode payload for ticket regeneration
+  - Booking confirmation subject: departure times in "(DD Month at HH:MM - DD Month at HH:MM)" pattern
+  - Marketing filter: no-reply@comms.trainline.com + "Open this email for tickets" → skip
+  - Deduplication: booking confirmation preferred over eticket for same-date Trainline bookings
+- **Price extraction**: Trainline SAS footer contains "capital of 118 513.94 Euros" — `findTrainlinePrice` strips text after "Terms and Conditions" before searching
+- **PDF library**: Use `unpdf` (pure JS) NOT `pdf-parse` (native modules crash on Vercel serverless)
+- **Barcode decoding**: `zxing-wasm/reader` with `{formats: ["Aztec"]}` — pass plain `{data, width, height}` object, NOT `ImageData` constructor (unavailable in Node.js)
 
 ### Scan Cache (`gmail_scanned_emails` table)
 - Every scanned email is persisted with sender, subject, parsed data, and parse_failed flag
