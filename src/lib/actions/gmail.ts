@@ -343,6 +343,14 @@ export async function scanGmailForBookings(): Promise<
               _debug_html_length: (html ?? "").length,
               _debug_raw_text_length: (text ?? "").length,
               _debug_html_sample: (html ?? "").slice(0, 3000),
+              _debug_wallet_links: (() => {
+                const h = html ?? "";
+                const links: string[] = [];
+                const re = /href="([^"]*(?:wallet|pkpass|pass\.trainline|apple\.co|google(?:pay|wallet))[^"]*)"/gi;
+                let lm;
+                while ((lm = re.exec(h)) !== null) links.push(lm[1]);
+                return links;
+              })(),
             },
             parse_failed: !parsed,
             imported: false,
