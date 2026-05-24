@@ -174,9 +174,15 @@ async function enrichTrainlineFromPdfs(
     }
   }
 
+  // Sum per-ticket prices from PDFs
+  const totalPrice = validTickets.reduce((sum, t) => sum + (t.price ?? 0), 0);
+  const nrsRef = validTickets.find((t) => t.nrs_ref)?.nrs_ref;
+
   return {
     ...parsed,
     segments: pdfSegments.length >= existingSegments.length ? pdfSegments : existingSegments,
+    price: totalPrice > 0 ? totalPrice : (parsed as { price?: number | null }).price ?? null,
+    booking_reference: nrsRef ?? (parsed as { booking_reference?: string | null }).booking_reference ?? null,
   };
 }
 
