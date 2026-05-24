@@ -1039,6 +1039,11 @@ export function detectAndParse(
   const text = plainText ?? (html ? stripHtml(html) : "");
   const htmlContent = html ?? "";
 
+  // Skip obvious marketing / promotional emails.
+  if (/unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo/i.test(subject)) {
+    return null;
+  }
+
   // Only process confirmation-like or amendment emails
   const isRelevant =
     /confirm|booking|ticket|itinerary|receipt|reservation|e-?ticket|amend|changed|updated|modification|revised|rescheduled/i.test(
@@ -1071,15 +1076,22 @@ export function detectAndParse(
   }
 
   // Forwarded emails: the original sender is in the body, not the
-  // From header. Check body content for known providers.
+  // From header. Check body content for known providers — but only
+  // if the body also looks like a real booking (has times, stations,
+  // or booking references), not just a marketing mention.
   if (!result) {
     const bodySnippet = text.slice(0, 3000).toLowerCase();
-    if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
-      result = parseUkRail(htmlContent, text, "Trainline");
-    } else if (/easyjet|ryanair|british airways|jet2|wizz air|vueling|klm|lufthansa|emirates|virgin atlantic/i.test(bodySnippet)) {
-      result = parseFlightBooking(htmlContent, text, "Airline");
-    } else if (/booking\.com|hotels\.com|expedia|airbnb/i.test(bodySnippet)) {
-      result = parseAccommodation(htmlContent, text, "Hotel");
+    const looksLikeBooking =
+      /\d{2}:\d{2}/.test(bodySnippet) ||
+      /booking ref|confirmation|your trip|your journey|e-?ticket/i.test(bodySnippet);
+    if (looksLikeBooking) {
+      if (bodySnippet.includes("trainline") || bodySnippet.includes("thetrainline.com")) {
+        result = parseUkRail(htmlContent, text, "Trainline");
+      } else if (/easyjet|ryanair|british airways|jet2|wizz air|vueling|klm|lufthansa|emirates|virgin atlantic/i.test(bodySnippet)) {
+        result = parseFlightBooking(htmlContent, text, "Airline");
+      } else if (/booking\.com|hotels\.com|expedia|airbnb/i.test(bodySnippet)) {
+        result = parseAccommodation(htmlContent, text, "Hotel");
+      }
     }
   }
 
