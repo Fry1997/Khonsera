@@ -4,10 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { err, errors, ok, type Result } from "@/lib/errors";
 import { getValidGmailAccessToken } from "@/lib/google/gmail-client";
+import * as pdfParse from "pdf-parse";
 import {
   gmailSearchMessages,
   gmailGetMessage,
   gmailGetAttachment,
+  findAttachments,
   getHeader,
   extractMessageBody,
   extractAttachments,
@@ -276,7 +278,34 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
-        const parsed = detectAndParse(from, subject, html, text);
+        // Extract text from PDF attachments (etickets have the actual
+        // train times, service numbers, and seat assignments).
+        let pdfText = "";
+        const attachments = findAttachments(msg);
+        const pdfAttachments = attachments.filter(
+          (a) =>
+            a.mimeType === "application/pdf" ||
+            a.filename.toLowerCase().endsWith(".pdf"),
+        );
+        for (const att of pdfAttachments) {
+          try {
+            const buf = await gmailGetAttachment({
+              accessToken: gmail.accessToken,
+              messageId: ref.id,
+              attachmentId: att.attachmentId,
+            });
+            const pdfData = await (pdfParse as unknown as (buf: Buffer) => Promise<{ text: string }>)(buf);
+            pdfText += "\n" + pdfData.text;
+          } catch (e) {
+            console.warn(`[gmail-scan] failed to parse PDF ${att.filename}:`, e);
+          }
+        }
+
+        // Combine email body + PDF text for parsing.
+        const combinedText = (text ?? "") + pdfText;
+        const combinedHtml = html ?? "";
+
+        const parsed = detectAndParse(from, subject, combinedHtml, combinedText);
 
         // Persist to gmail_scanned_emails for debugging + cache.
         await supabase.from("gmail_scanned_emails").upsert(

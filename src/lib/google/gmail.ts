@@ -180,3 +180,61 @@ export function extractMessageBody(msg: GmailMessage): {
 
   return { html, text };
 }
+
+export type AttachmentInfo = {
+  attachmentId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+};
+
+export function findAttachments(msg: GmailMessage): AttachmentInfo[] {
+  const results: AttachmentInfo[] = [];
+  function walk(part: GmailMessagePart) {
+    if (
+      part.body?.size &&
+      part.body.size > 0 &&
+      !part.body.data &&
+      part.headers
+    ) {
+      const filename =
+        part.headers.find(
+          (h) => h.name.toLowerCase() === "content-disposition",
+        )?.value ?? "";
+      const nameMatch = filename.match(/filename="?([^";\n]+)"?/i);
+      const name = nameMatch?.[1] ?? part.mimeType;
+      if (part.body && "attachmentId" in (part.body as Record<string, unknown>)) {
+        results.push({
+          attachmentId: (part.body as Record<string, unknown>).attachmentId as string,
+          filename: name,
+          mimeType: part.mimeType,
+          size: part.body.size,
+        });
+      }
+    }
+    if (part.parts) {
+      for (const child of part.parts) walk(child);
+    }
+  }
+  if (msg.payload.parts) {
+    for (const part of msg.payload.parts) walk(part);
+  }
+  return results;
+}
+
+export async function gmailGetAttachment(args: {
+  accessToken: string;
+  messageId: string;
+  attachmentId: string;
+}): Promise<Buffer> {
+  const res = await fetch(
+    `${BASE}/messages/${args.messageId}/attachments/${args.attachmentId}`,
+    { headers: { Authorization: `Bearer ${args.accessToken}` } },
+  );
+  if (!res.ok) {
+    throw new Error(`Gmail attachment fetch failed: ${res.status}`);
+  }
+  const data = (await res.json()) as { data: string };
+  const base64 = data.data.replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(base64, "base64");
+}
