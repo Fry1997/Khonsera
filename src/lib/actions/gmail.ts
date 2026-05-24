@@ -240,11 +240,22 @@ export async function scanGmailForBookings(): Promise<
     );
   }
 
-  const toFetch = messageRefs.filter((ref) => !importedIds.has(ref.id));
+  // Check which messages we've already scanned (skip re-fetching).
+  const { data: alreadyScanned } = await supabase
+    .from("gmail_scanned_emails")
+    .select("gmail_message_id, parsed_type, parsed_data, parse_failed, imported")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("user_id", ctx.userId);
+  const scannedMap = new Map(
+    (alreadyScanned ?? []).map((r) => [r.gmail_message_id, r]),
+  );
 
-  // Debug: log what the search found so we can diagnose misses.
+  const toFetch = messageRefs.filter(
+    (ref) => !importedIds.has(ref.id) && !scannedMap.has(ref.id),
+  );
+
   console.log("[gmail-scan] query:", buildSearchQuery());
-  console.log("[gmail-scan] messages found:", messageRefs.length, "to fetch:", toFetch.length);
+  console.log("[gmail-scan] messages found:", messageRefs.length, "already scanned:", scannedMap.size, "to fetch:", toFetch.length);
 
   // Fetch messages in parallel batches of 10 to stay well under Gmail rate limits.
   const BATCH_SIZE = 10;
@@ -265,14 +276,25 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
-        console.log(`[gmail-scan] msg ${ref.id}: from="${from}" subject="${subject}"`);
-
         const parsed = detectAndParse(from, subject, html, text);
-        if (!parsed) {
-          console.log(`[gmail-scan] msg ${ref.id}: no parse match`);
-          return null;
-        }
-        console.log(`[gmail-scan] msg ${ref.id}: parsed as ${parsed.type}`, JSON.stringify(parsed).slice(0, 200));
+
+        // Persist to gmail_scanned_emails for debugging + cache.
+        await supabase.from("gmail_scanned_emails").upsert(
+          {
+            workspace_id: ctx.workspaceId,
+            user_id: ctx.userId,
+            gmail_message_id: ref.id,
+            sender: from.slice(0, 500),
+            subject: subject.slice(0, 500),
+            parsed_type: parsed?.type ?? null,
+            parsed_data: parsed ? (parsed as unknown as Record<string, unknown>) : null,
+            parse_failed: !parsed,
+            imported: false,
+          },
+          { onConflict: "workspace_id,user_id,gmail_message_id" },
+        );
+
+        if (!parsed) return null;
 
         // Enrich Trainline bookings with PDF attachment data (seat, coach, barcode)
         if (parsed.type === "transport" && /trainline/i.test(from)) {
@@ -309,21 +331,24 @@ export async function scanGmailForBookings(): Promise<
     }
   }
 
-  // Deduplicate: when Trainline sends both a booking confirmation and an
-  // eticket for the same trip, keep only the booking confirmation (it has
-  // times and price; the eticket just has station codes).
-  const deduped = deduplicateTrainlineBookings(bookings);
+  // Also include previously-scanned-but-not-imported bookings so
+  // the user can still pick them up later.
+  for (const [msgId, row] of scannedMap) {
+    if (row.imported || row.parse_failed || !row.parsed_data) continue;
+    if (importedIds.has(msgId)) continue;
+    bookings.push({
+      ...(row.parsed_data as unknown as ParsedBooking),
+      gmail_message_id: msgId,
+    });
+  }
 
-  // Drop bookings where the travel date is in the past — users want
-  // present/future bookings, not historical trips.
+  // Drop bookings where the travel date is in the past.
   const today = new Date().toISOString().slice(0, 10);
   const futureBookings = deduped.filter((b) => {
     const travelDate = getTravelDate(b);
-    const keep = !travelDate || travelDate >= today;
-    if (!keep) console.log(`[gmail-scan] dropped past booking: ${b.raw_subject} (travel date ${travelDate})`);
-    return keep;
+    return !travelDate || travelDate >= today;
   });
-  console.log(`[gmail-scan] total parsed: ${bookings.length}, after date filter: ${futureBookings.length}`);
+  console.log(`[gmail-scan] total: ${bookings.length}, future: ${futureBookings.length}`);
 
   // Update last_scan_at
   await supabase
