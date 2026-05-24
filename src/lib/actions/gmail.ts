@@ -185,6 +185,9 @@ async function enrichTrainlineFromPdfs(
 
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
+  // Also match forwarded emails: the original sender won't be in `from:`,
+  // but booking keywords + provider names will be in the body/subject.
+  const bodyProviders = BOOKING_SENDERS.map((s) => `"${s}"`).join(" OR ");
   const subjectTerms =
     "(subject:confirmation OR subject:booking OR subject:ticket OR subject:e-ticket OR subject:itinerary OR subject:reservation OR subject:amended OR subject:changed OR subject:updated OR subject:modification)";
   // Search the last 3 months — flights and hotels are often booked well
@@ -192,7 +195,10 @@ function buildSearchQuery(): string {
   // travel/check-in date has already passed.
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const after = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, "0")}/${String(cutoff.getDate()).padStart(2, "0")}`;
-  return `(${senderClauses}) ${subjectTerms} after:${after}`;
+  // Match either: (1) direct from a known sender, OR (2) any email
+  // with booking keywords in the subject that mentions a provider in
+  // the body (catches forwarded confirmation emails).
+  return `((${senderClauses}) OR (${subjectTerms} (${bodyProviders}))) after:${after}`;
 }
 
 export async function scanGmailForBookings(): Promise<
