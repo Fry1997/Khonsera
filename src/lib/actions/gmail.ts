@@ -324,7 +324,36 @@ export async function scanGmailForBookings(): Promise<
         const combinedText = (text ?? plainFromHtml ?? "") + pdfText;
         const combinedHtml = html ?? "";
 
-        const parsed = detectAndParse(from, subject, combinedHtml, combinedText);
+        let parsed = detectAndParse(from, subject, combinedHtml, combinedText);
+
+        // If the parser found a Trainline deep link, try fetching it
+        // for the full order data (departure/arrival times, service numbers).
+        if (parsed && (parsed as Record<string, unknown>)._trainline_deeplink) {
+          const deeplink = (parsed as Record<string, unknown>)._trainline_deeplink as string;
+          try {
+            const dlRes = await fetch(deeplink, {
+              headers: {
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X)",
+              },
+              redirect: "follow",
+            });
+            if (dlRes.ok) {
+              const dlText = await dlRes.text();
+              console.log(`[gmail-scan] trainline deeplink response (${dlRes.status}): ${dlText.slice(0, 500)}`);
+              // Store the response for debugging
+              (parsed as Record<string, unknown>)._trainline_deeplink_response = dlText.slice(0, 2000);
+              (parsed as Record<string, unknown>)._trainline_deeplink_status = dlRes.status;
+              (parsed as Record<string, unknown>)._trainline_deeplink_content_type = dlRes.headers.get("content-type");
+            } else {
+              console.log(`[gmail-scan] trainline deeplink failed: ${dlRes.status}`);
+              (parsed as Record<string, unknown>)._trainline_deeplink_status = dlRes.status;
+            }
+          } catch (e) {
+            console.warn(`[gmail-scan] trainline deeplink error:`, e);
+            (parsed as Record<string, unknown>)._trainline_deeplink_error = String(e);
+          }
+        }
 
         // Persist to gmail_scanned_emails for debugging + cache.
         await supabase.from("gmail_scanned_emails").upsert(

@@ -257,6 +257,13 @@ function isTrainlineMarketing(from: string, subject: string): boolean {
       }
     }
   }
+  // Extract Trainline API deep link if present — contains order data with times.
+  const deepLinkMatch = text.match(
+    /api\.thetrainline\.com\/mobile\/op\/orderhistory\/deeplink\?[^"\s<>]+/i,
+  ) ?? html?.match(
+    /api\.thetrainline\.com\/mobile\/op\/orderhistory\/deeplink\?[^"\s<>]+/i,
+  );
+
   // Extract changeover info from ticket numbers: "WEL to LEI", "LEI to DER"
   const ticketLegs: Array<[string, string]> = [];
   const ticketPattern = /([A-Z]{3})\s+to\s+([A-Z]{3})/g;
@@ -475,7 +482,10 @@ function parseTrainlineBookingConfirmation(
     price: price?.amount ?? null,
     currency: price?.currency ?? "GBP",
     segments,
-  };
+    _trainline_deeplink: deepLinkMatch
+      ? `https://${deepLinkMatch[0].replace(/&amp;/g, "&")}`
+      : undefined,
+  } as Partial<ParsedTransportBooking>;
 }
 
 function parseTrainlineEticket(
