@@ -17,6 +17,11 @@ After making changes to any itinerary page, the Gmail import pipeline, or the sh
 - ~~No "leave home by" time~~ FIXED: home stop shows earliest booked departure time; solver propagates backward once Home→Station transition has a duration
 - ~~Map missing transit stop markers~~ FIXED: page query joins transport_hubs for coordinates; map marker builder falls through to hub lat/lng
 - ~~Planning page hides anchor↔transit transitions~~ FIXED: PlanningTransitionRow renders between anchors and transit stops with mode pickers
+- ~~"auto" mode crashes transition inserts~~ FIXED: "auto" removed from UI + type; was never in DB enum, causing batch insert failures for ALL transitions
+- ~~Planning page has 5 redundant transport-add mechanisms~~ FIXED: consolidated to single TransportBookingCard (same as brief); removed PlanningTransportBookingModal, TransitLegForm, InlineAddsRow, StopBookingMenu, TransitionMeta (~840 lines removed)
+- ~~Brief transport modes lost on planning page~~ FIXED: createItineraryFromBrief defaults anchor↔transit transitions to "walk" instead of "auto"; buildPlanningTimeline uses GapModePicker (multi-badge walk/drive/taxi with times) for local connections
+- ~~Planning page missing context from brief~~ FIXED: buildPlanningTimeline now computes maximize-info (time window), home-return (arrival estimate), context-gaps ("You're in Derby for 6h"), free-time hints ("1h 30m free before your 15:08 departure")
+- ~~Map uses stock Google pins~~ FIXED: RouteMap component with styled HTML markers (bullseye home, outlined transit with station codes, solid gold site), serif italic headline, gold route line, branded card wrapper
 
 ## Architecture
 

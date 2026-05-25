@@ -139,8 +139,38 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     } else if (item.kind === "stopover") {
       buildStopoverEntry(result, item, i, planningTimeline, input);
     } else {
-      // Anchor
-      buildAnchorEntry(result, item, planningAnchors, input);
+      // Find the nearest transit arrival before and transit departure
+      // after this anchor — needed for maximize-info + free-time.
+      const prevTransitArrival = findNearestTransit(planningTimeline, i, "before");
+      const nextTransitDeparture = findNearestTransit(planningTimeline, i, "after");
+
+      buildAnchorEntry(result, item, planningAnchors, input,
+        prevTransitArrival, nextTransitDeparture);
+
+      // Free-time hint: if the anchor has a fixed end time and there's
+      // a departure coming, show how much free time the user has.
+      if (
+        item.anchor.timingMode !== "maximize" &&
+        item.anchor.time &&
+        item.anchor.durationMins &&
+        nextTransitDeparture
+      ) {
+        const [ah, am] = item.anchor.time.split(":").map(Number);
+        const endMin = ah * 60 + am + item.anchor.durationMins;
+        const departMin = isoToMinutes(nextTransitDeparture, timezone);
+        const freeMin = departMin - endMin;
+        if (freeMin > 60) {
+          const depTime = fmtTime(nextTransitDeparture, timezone);
+          const freeH = Math.floor(freeMin / 60);
+          const freeM = freeMin % 60;
+          result.push({
+            kind: "free-time",
+            durationLabel: `${freeH}h${freeM > 0 ? ` ${freeM}m` : ""}`,
+            beforeLabel: `before your ${depTime} departure`,
+            onAddStop: () => handlers.handleInsertAnchorAt(item.stop.sequence + 1),
+          });
+        }
+      }
     }
 
     // Transition to next item (if not a transit group — those handle their own)
@@ -221,7 +251,85 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     }
   }
 
+  // Context-gap: when two transport groups appear with a gap between
+  // them (e.g., arrive Derby 08:32, depart Derby 15:08), show "You're
+  // in Derby for 6h 36m" with a button to add a stop.
+  const transportEntries = result.filter((e) => e.kind === "transport");
+  for (let i = 0; i < transportEntries.length - 1; i++) {
+    const prev = transportEntries[i] as Extract<TimelineEntry, { kind: "transport" }>;
+    const next = transportEntries[i + 1] as Extract<TimelineEntry, { kind: "transport" }>;
+    const prevLegs = prev.legs;
+    const nextLegs = next.legs;
+    if (!prevLegs.length || !nextLegs.length) continue;
+    const arriveTime = prevLegs[prevLegs.length - 1].arrival_time;
+    const departTime = nextLegs[0].departure_time;
+    const location = prevLegs[prevLegs.length - 1].to_station;
+    if (!arriveTime || !departTime) continue;
+    const [ah, am] = arriveTime.split(":").map(Number);
+    const [dh, dm] = departTime.split(":").map(Number);
+    const gap = (dh * 60 + dm) - (ah * 60 + am);
+    if (gap <= 0) continue;
+    const gH = Math.floor(gap / 60);
+    const gM = gap % 60;
+    const label = gH > 0
+      ? `${gH}h${gM > 0 ? ` ${gM}m` : ""}`
+      : `${gM}m`;
+    const prevIdx = result.indexOf(prev);
+    const insertAt = prevIdx + 1;
+    result.splice(insertAt, 0, {
+      kind: "context-gap",
+      location,
+      durationLabel: label,
+      onAddStop: () => {
+        const nextStop = planningTimeline.find(
+          (it) => it.kind === "transit" && it.stop.title === nextLegs[0].from_station,
+        );
+        handlers.handleInsertAnchorAt(nextStop?.stop.sequence ?? 0);
+      },
+    });
+  }
+
+  // Home-return: show estimated home arrival after the last transport.
+  const lastTransitArr = planningTimeline
+    .filter((it) => it.kind === "transit")
+    .map((it) => it.stop)
+    .filter((s) => {
+      const meta = s.metadata as Record<string, unknown> | null;
+      return meta?.kind === "transit_arrival";
+    })
+    .pop();
+  if (lastTransitArr?.start_time) {
+    const arrMin = isoToMinutes(lastTransitArr.start_time, timezone);
+    const homeTransition = transitions.find((t) => t.from_stop_id === lastTransitArr.id);
+    const travelHome = homeTransition?.computed_duration_minutes ?? 0;
+    const homeMin = arrMin + travelHome;
+    result.push({
+      kind: "home-return",
+      arriveBy: travelHome > 0 ? minutesToHHMM(homeMin) : undefined,
+    });
+  }
+
   return result;
+}
+
+function findNearestTransit(
+  timeline: EditorTimelineItem[],
+  fromIdx: number,
+  direction: "before" | "after",
+): string | null {
+  const step = direction === "before" ? -1 : 1;
+  for (let j = fromIdx + step; j >= 0 && j < timeline.length; j += step) {
+    const it = timeline[j];
+    if (it.kind !== "transit") continue;
+    const meta = it.stop.metadata as Record<string, unknown> | null;
+    if (direction === "before" && meta?.kind === "transit_arrival") {
+      return it.stop.start_time;
+    }
+    if (direction === "after" && meta?.kind === "transit_departure") {
+      return it.stop.end_time ?? it.stop.start_time;
+    }
+  }
+  return null;
 }
 
 function buildTransitGroup(
@@ -376,12 +484,36 @@ function buildAnchorEntry(
   item: Extract<EditorTimelineItem, { kind: "anchor" }>,
   planningAnchors: Anchor[],
   input: PlanningTimelineInput,
+  prevTransitArrival: string | null,
+  nextTransitDeparture: string | null,
 ) {
-  const { expandedUids, editedAnchors, handlers } = input;
+  const { expandedUids, editedAnchors, transitions, timezone, handlers } = input;
   const anchor = item.anchor;
   const isExpanded = expandedUids.has(anchor.uid);
   const liveAnchor = editedAnchors.get(anchor.uid) ?? anchor;
   const anchorIdx = planningAnchors.findIndex((a) => a.uid === anchor.uid);
+
+  let maximizeInfo: { durationMins: number; arriveBy: string; leaveBy: string; travelNote?: string } | undefined = undefined;
+  if (liveAnchor.timingMode === "maximize" && prevTransitArrival && nextTransitDeparture) {
+    const arriveMin = isoToMinutes(prevTransitArrival, timezone);
+    const departMin = isoToMinutes(nextTransitDeparture, timezone);
+    const inTrans = findTransitionDuration(transitions, item.stop, "inbound");
+    const outTrans = findTransitionDuration(transitions, item.stop, "outbound");
+    const BUFFER = 10;
+    const effectiveArrive = arriveMin + inTrans;
+    const effectiveDepart = departMin - BUFFER - outTrans;
+    const maxDur = effectiveDepart - effectiveArrive;
+    if (maxDur > 0) {
+      maximizeInfo = {
+        durationMins: maxDur,
+        arriveBy: minutesToHHMM(effectiveArrive),
+        leaveBy: minutesToHHMM(effectiveDepart),
+        travelNote: inTrans || outTrans
+          ? `${inTrans}m in + ${outTrans}m out + ${BUFFER}m buffer`
+          : undefined,
+      };
+    }
+  }
 
   result.push({
     kind: "anchor",
@@ -389,6 +521,7 @@ function buildAnchorEntry(
     anchor: liveAnchor,
     earlier: planningAnchors.slice(0, anchorIdx >= 0 ? anchorIdx : 0),
     expanded: isExpanded,
+    maximizeInfo,
     onModeChange: (next) =>
       next === "expanded"
         ? handlers.handleAnchorExpand(anchor.uid)
@@ -396,4 +529,31 @@ function buildAnchorEntry(
     onChange: (patch) => handlers.handleAnchorPatch(anchor.uid, patch),
     onRemove: () => handlers.handleDelete(anchor.uid),
   });
+}
+
+function isoToMinutes(iso: string, tz: string): number {
+  const d = new Date(iso);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
+  }).formatToParts(d);
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return h * 60 + m;
+}
+
+function minutesToHHMM(mins: number): string {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function findTransitionDuration(
+  transitions: DbTransition[],
+  stop: DbStop,
+  direction: "inbound" | "outbound",
+): number {
+  const t = direction === "inbound"
+    ? transitions.find((tr) => tr.to_stop_id === stop.id)
+    : transitions.find((tr) => tr.from_stop_id === stop.id);
+  return t?.computed_duration_minutes ?? 0;
 }
