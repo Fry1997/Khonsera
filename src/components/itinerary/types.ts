@@ -65,7 +65,6 @@ export type Anchor = {
 // ─────────────────────────────────────────────────────────────────────
 
 export type TransitionMode =
-  | "auto"
   | "walk"
   | "drive"
   | "taxi"

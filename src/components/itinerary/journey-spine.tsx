@@ -161,7 +161,7 @@ export function JourneySpine({
             e.kind === "anchor" ? e.anchor.uid : null;
 
           const showVia = (t?: BriefTransition) =>
-            !!t && (t.mode !== "auto" || t.booked);
+            !!t && ((t.mode as string) !== "auto" || t.booked);
 
           return entries.map((entry, entryIdx) => {
             // Render transition from the previous entry → this entry

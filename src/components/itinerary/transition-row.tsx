@@ -94,7 +94,7 @@ export function TransitionRow({
   const showLocalHint =
     stationBased &&
     !isUnset &&
-    (transition.localBefore !== "auto" || transition.localAfter !== "auto");
+    (transition.localBefore !== "walk" || transition.localAfter !== "walk");
 
   return (
     <div ref={ref} className="transition-row">
@@ -257,9 +257,7 @@ export function TransitionRow({
                 />
               </div>
 
-              {transition.localBefore !== transition.localAfter &&
-              (transition.localBefore !== "auto" ||
-                transition.localAfter !== "auto") ? (
+              {transition.localBefore !== transition.localAfter ? (
                 <p
                   className="brief-helper"
                   style={{
@@ -282,15 +280,15 @@ export function TransitionRow({
             >
               Done
             </button>
-            {transition.mode !== "auto" || transition.booked ? (
+            {transition.booked ? (
               <button
                 type="button"
                 className="transition-pop-clear"
                 onClick={() => {
                   onChange({
-                    mode: "auto",
-                    localBefore: "auto",
-                    localAfter: "auto",
+                    mode: "walk",
+                    localBefore: "walk",
+                    localAfter: "walk",
                     booked: false,
                   });
                 }}

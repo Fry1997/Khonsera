@@ -441,7 +441,7 @@ export function NewItineraryBrief({
   ): ModePreviewMap => {
     const out: ModePreviewMap = {};
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       const entry = briefPreviews.get(from, to, opt.value);
       if (entry) out[opt.value] = entry;
     }
@@ -453,7 +453,7 @@ export function NewItineraryBrief({
   ) => {
     if (!from || !to) return;
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       briefPreviews.fetchPreview(from, to, opt.value);
     }
   };
@@ -467,7 +467,7 @@ export function NewItineraryBrief({
       const from = anchors[i].place;
       const to = anchors[i + 1].place;
       const t = transitions.get(transitionKey(anchors[i].uid, anchors[i + 1].uid));
-      if (!t || t.mode === "auto" || t.mode === "mixed") continue;
+      if (!t || t.mode === "mixed") continue;
       briefPreviews.fetchPreview(from, to, t.mode);
     }
     // briefPreviews is a stable hook; depending on anchors + transitions
@@ -557,7 +557,7 @@ export function NewItineraryBrief({
       const from = anchors[i];
       const to = anchors[i + 1];
       const t = transitions.get(transitionKey(from.uid, to.uid));
-      if (!t || t.mode === "auto" || t.mode === "mixed") continue;
+      if (!t || t.mode === "mixed") continue;
       const preview = briefPreviews.get(from.place, to.place, t.mode);
       if (!preview || preview === "pending") continue;
       const result = checkLegFeasibility({

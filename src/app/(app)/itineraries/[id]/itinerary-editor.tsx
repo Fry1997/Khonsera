@@ -352,7 +352,7 @@ export function ItineraryEditor({
   ): ModePreviewMap => {
     const out: ModePreviewMap = {};
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       const entry = routePreviews.get(fromStopId, toStopId, opt.value);
       if (entry) out[opt.value] = entry;
     }
@@ -360,9 +360,33 @@ export function ItineraryEditor({
   };
   const prefetchPair = (fromStopId: string, toStopId: string) => {
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       routePreviews.fetchPreview(fromStopId, toStopId, opt.value);
     }
+  };
+
+  const gapPreviewsForPair = (
+    fromStopId: string,
+    toStopId: string,
+  ): Partial<Record<import("@/components/gap-mode-picker").GapMode, import("@/components/gap-mode-picker").GapPreview>> => {
+    const out: Partial<Record<"walk" | "drive" | "taxi", import("@/components/gap-mode-picker").GapPreview>> = {};
+    for (const mode of ["walk", "drive", "taxi"] as const) {
+      const entry = routePreviews.get(fromStopId, toStopId, mode);
+      if (entry) out[mode] = entry === "pending" ? "pending" : entry;
+    }
+    return out;
+  };
+
+  const handleSetGapMode = (fromId: string, toId: string, mode: string) => {
+    startTransition(async () => {
+      await upsertTransition({
+        itinerary_id: itinerary.id,
+        from_stop_id: fromId,
+        to_stop_id: toId,
+        mode: mode as "walk" | "drive" | "taxi",
+      });
+      router.refresh();
+    });
   };
 
   // Track the most recently created stop so we can auto-expand it
@@ -753,7 +777,7 @@ export function ItineraryEditor({
       // a follow-up (see the booking-modal direction question).
       return;
     }
-    if (patch.mode === "auto" || patch.mode === "mixed") {
+    if (patch.mode === "mixed") {
       // User cleared the mode. If a transition row exists we can
       // either leave it as 'mixed' (the schema's catch-all) or no-op.
       // Pragmatic call: leave it untouched — clearing is rare and
@@ -1169,6 +1193,9 @@ export function ItineraryEditor({
                   editedStopovers: editedStopovers as Map<string, Stopover & { uid: string }>,
                   timezone,
                   previewsForPair,
+                  gapPreviewsForPair,
+                  onSetGapMode: (fromId: string, toId: string, mode: import("@/components/gap-mode-picker").GapMode) =>
+                    handleSetGapMode(fromId, toId, mode),
                   computeStopoverBackCalc,
                   computeFeasibility,
                   routePreviews,

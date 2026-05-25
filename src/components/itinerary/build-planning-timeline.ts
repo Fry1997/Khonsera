@@ -1,4 +1,5 @@
 import type { TicketSegment } from "@/components/train-ticket-card";
+import type { GapMode, GapPreview } from "@/components/gap-mode-picker";
 import type { ModePreviewMap } from "./transition-row";
 import type { Anchor, BriefTransition, Stopover, TimelineEntry } from "./types";
 import type { DbStop, DbTransition, EditorTimelineItem } from "./from-db";
@@ -17,6 +18,8 @@ export type PlanningTimelineInput = {
   editedStopovers: Map<string, Stopover & { uid: string }>;
   timezone: string;
   previewsForPair: (fromId: string, toId: string) => ModePreviewMap;
+  gapPreviewsForPair: (fromId: string, toId: string) => Partial<Record<GapMode, GapPreview>>;
+  onSetGapMode: (fromId: string, toId: string, mode: GapMode) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   computeStopoverBackCalc: (...args: any[]) => StopoverBackCalc;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,6 +72,8 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     editedStopovers,
     timezone,
     previewsForPair,
+    gapPreviewsForPair,
+    onSetGapMode,
     computeStopoverBackCalc,
     computeFeasibility,
     routePreviews,
@@ -157,33 +162,51 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
         transitionKey(stop.id, uidOf(nextItem)),
       ) ?? emptyTransition();
 
-      // When a transition between an anchor and a transit stop is
-      // still "auto", default to "walk" — stations imply walking to
-      // or from them unless the user says otherwise.
       if (
-        transition.mode === "auto" &&
+        (transition.mode as string) === "auto" &&
         !transition.booked &&
         nextItem.kind === "transit"
       ) {
         transition = { ...transition, mode: "walk" };
       }
 
-      result.push({
-        kind: "gap-transition",
-        from: fromAnchor,
-        to: toAnchor,
-        transition,
-        modePreviews: previewsForPair(stop.id, uidOf(nextItem)),
-        onChange: (patch) => handlers.handleTransitionPatch(stop.id, uidOf(nextItem), patch),
-        onOpenChange: (open) => {
-          if (open) handlers.prefetchPair(stop.id, uidOf(nextItem));
-        },
-        transitionMeta: transitionToNext ? {
-          durationMinutes: transitionToNext.computed_duration_minutes,
-          distanceMiles: transitionToNext.distance_miles ? Number(transitionToNext.distance_miles) : null,
-          feasibility: nextItem ? computeFeasibility(stop, nextItem.stop, transitionToNext) : null,
-        } : undefined,
-      });
+      // Local connections (anchor ↔ transit stop) get the multi-badge
+      // GapModePicker so the user sees walk/drive/taxi with times at a
+      // glance — same UX as the brief page.
+      if (nextItem.kind === "transit" && !transition.booked) {
+        const fromLabel = fromAnchor.place?.label ?? stop.title ?? "here";
+        const toLabel = nextItem.stop.title ?? "station";
+        const currentMode = transition.mode as GapMode | string;
+        const selectedGap: GapMode | null =
+          currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
+            ? currentMode
+            : null;
+        result.push({
+          kind: "gap-mode",
+          fromLabel,
+          toLabel,
+          selected: selectedGap,
+          previews: gapPreviewsForPair(stop.id, uidOf(nextItem)),
+          onSelect: (mode: GapMode) => onSetGapMode(stop.id, uidOf(nextItem), mode),
+        });
+      } else {
+        result.push({
+          kind: "gap-transition",
+          from: fromAnchor,
+          to: toAnchor,
+          transition,
+          modePreviews: previewsForPair(stop.id, uidOf(nextItem)),
+          onChange: (patch) => handlers.handleTransitionPatch(stop.id, uidOf(nextItem), patch),
+          onOpenChange: (open) => {
+            if (open) handlers.prefetchPair(stop.id, uidOf(nextItem));
+          },
+          transitionMeta: transitionToNext ? {
+            durationMinutes: transitionToNext.computed_duration_minutes,
+            distanceMiles: transitionToNext.distance_miles ? Number(transitionToNext.distance_miles) : null,
+            feasibility: nextItem ? computeFeasibility(stop, nextItem.stop, transitionToNext) : null,
+          } : undefined,
+        });
+      }
 
       // Inline adds between anchor pairs
       if (item.kind === "anchor" && nextItem) {
