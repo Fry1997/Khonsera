@@ -947,17 +947,23 @@ export function ItineraryEditor({
   // Map URL — markers from stops w/ coords + paths from transition polylines.
   // Coordinates come from customer_site → location.
   const mapUrl = useMemo(() => {
-    const markers: { lat: number; lng: number; label?: string }[] = [];
-    sortedStops.forEach((s, i) => {
+    const markers: { lat: number; lng: number; label?: string; size?: string; color?: string }[] = [];
+    sortedStops.forEach((s) => {
       const lat =
         s.customer_site?.latitude ?? s.location?.latitude ?? (s as any).transport_hub?.latitude ?? null;
       const lng =
         s.customer_site?.longitude ?? s.location?.longitude ?? (s as any).transport_hub?.longitude ?? null;
       if (lat != null && lng != null) {
+        const name = s.title ?? s.location?.name ?? (s as any).transport_hub?.name ?? "";
+        const isHome = s.type === "start" || s.type === "end";
+        const sType = s.type as string;
+        const isTransit = sType === "transit_departure" || sType === "transit_arrival" || sType === "transit_changeover";
         markers.push({
           lat: Number(lat),
           lng: Number(lng),
-          label: String(i + 1),
+          label: isHome ? "H" : isTransit ? "" : "",
+          size: "small",
+          color: isHome ? "936820" : isTransit ? "b8893f" : "c25c3a",
         });
       }
     });
@@ -1277,9 +1283,6 @@ export function ItineraryEditor({
                   if (item.kind === "transit") {
                     const meta = item.stop.metadata as Record<string, unknown> | null;
                     const transitTransition = transitionByFrom.get(item.stop.id);
-                    const legs = transitTransition
-                      ? legsByTransition.get(transitTransition.id) ?? []
-                      : [];
                     const fmtT = (iso: string | null) =>
                       iso
                         ? new Intl.DateTimeFormat("en-GB", {
@@ -1288,10 +1291,20 @@ export function ItineraryEditor({
                           }).format(new Date(iso))
                         : "";
 
-                    // Build a ticket card from stop → next stop when
-                    // no journey legs exist (brief-submitted bookings)
+                    // Build a ticket card from stop → next stop for locked legs
                     const showTicket =
                       nextItem?.kind === "transit" && transitTransition?.is_locked;
+
+                    // Arrival stops that follow a ticket card are redundant —
+                    // the ticket already shows the arrival station + time
+                    const prevIsTransitTicket =
+                      i > 0 &&
+                      planningTimeline[i - 1]?.kind === "transit" &&
+                      transitionByFrom.get(planningTimeline[i - 1]?.stop.id)?.is_locked;
+                    if (item.transitDirection === "arrival" && prevIsTransitTicket) {
+                      return null;
+                    }
+
                     const ticketSeg: TicketSegment | null = showTicket
                       ? {
                           from_station: item.stop.title ?? "?",
@@ -1323,14 +1336,14 @@ export function ItineraryEditor({
                         )}
                         {ticketSeg ? (
                           <TrainTicketCard segment={ticketSeg} compact />
-                        ) : (
+                        ) : item.transitDirection === "departure" ? (
                           <TransitStopCard
                             stop={item.stop}
                             direction={item.transitDirection}
                             timezone={timezone}
                             onRemove={() => handleDelete(item.stop.id)}
                           />
-                        )}
+                        ) : null}
                       </li>
                     );
                   }
@@ -2644,7 +2657,7 @@ function buildClientStaticMapUrl(spec: {
   height: number;
   zoom?: number;
   center?: { lat: number; lng: number };
-  markers?: { lat: number; lng: number; color?: string; label?: string }[];
+  markers?: { lat: number; lng: number; color?: string; label?: string; size?: string }[];
   paths?: { encoded: string; color?: string; weight?: number }[];
 }): string {
   const json = JSON.stringify({
