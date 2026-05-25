@@ -821,7 +821,17 @@ export function NewItineraryBrief({
     | { kind: "anchor"; anchor: Anchor; index: number }
     | { kind: "hotel"; booking: BriefAccommodationBooking };
 
-  const isMultiDay = tripStartDate !== tripEndDate || accommodationBookings.some((ab) => ab.confirmed);
+  const isMultiDay = useMemo(() => {
+    if (tripStartDate !== tripEndDate) return true;
+    if (accommodationBookings.some((ab) => ab.confirmed)) return true;
+    // Check if transport bookings span multiple dates
+    const dates = new Set(
+      transportBookings
+        .filter((tb) => tb.confirmed && tb.date)
+        .map((tb) => tb.date),
+    );
+    return dates.size > 1;
+  }, [tripStartDate, tripEndDate, accommodationBookings, transportBookings]);
 
   const timelineEntries = useMemo(() => {
     const entries: TimelineEntry[] = [];
