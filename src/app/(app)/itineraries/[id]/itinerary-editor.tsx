@@ -1118,7 +1118,7 @@ export function ItineraryEditor({
               disabled={pending}
             >
               {Icon.ticket}
-              Import from Gmail
+              Scan for tickets
             </button>
           ) : null}
           <span style={{ marginLeft: "auto" }}>
@@ -1453,7 +1453,7 @@ export function ItineraryEditor({
                           }
                           onRemove={() => handleDelete(stop.id)}
                         />
-                        {nextItem && nextItem.kind !== "transit" ? (
+                        {nextItem ? (
                           <>
                             <PlanningTransitionRow
                               from={
@@ -1466,10 +1466,12 @@ export function ItineraryEditor({
                               to={
                                 nextItem.kind === "anchor"
                                   ? nextItem.anchor
-                                  : stopoverAsAnchor(
-                                      nextItem.stopover,
-                                      nextItem.stopover.uid,
-                                    )
+                                  : nextItem.kind === "stopover"
+                                    ? stopoverAsAnchor(
+                                        nextItem.stopover,
+                                        nextItem.stopover.uid,
+                                      )
+                                    : transitStopAsAnchor(nextItem.stop)
                               }
                               transition={
                                 planningTransitions.get(
@@ -1547,7 +1549,7 @@ export function ItineraryEditor({
                         }
                         onRemove={() => handleDelete(anchor.uid)}
                       />
-                      {nextItem && (nextItem.kind !== "transit" || transitionToNext) ? (
+                      {nextItem ? (
                         <PlanningTransitionRow
                           from={anchor}
                           to={
@@ -1604,8 +1606,7 @@ export function ItineraryEditor({
                           (only when no stopover already exists for
                           the pair). Mirrors the brief's UI. */}
                       {nextItem &&
-                      item.kind === "anchor" &&
-                      nextItem.kind !== "transit" ? (
+                      item.kind === "anchor" ? (
                         transitFormFor &&
                         transitFormFor.beforeStopId === stop.id &&
                         transitFormFor.afterStopId === nextItem.stop.id ? (
