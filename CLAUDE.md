@@ -5,7 +5,7 @@
 ## Known Bugs (as of 2026-05-24)
 
 ### Planning page after brief submit
-- PR #11 restored the old "+ Train" / "+ Flight" inline buttons in the editor — these should be replaced with the single "+ Transport" button. The editor file needs the inline button replacement re-applied after the rebase.
+- ~~PR #11 restored the old "+ Train" / "+ Flight" inline buttons~~ FIXED: replaced with single "+ Transport" button
 - ~~Transport booking stops show as "(no place yet)"~~ FIXED: stops now use transit_departure/transit_changeover/transit_arrival types instead of "appointment"
 - ~~"via undefined" on transitions~~ FIXED: mode now reads transport_mode from stop metadata instead of hardcoding "train"
 - ~~Transport booking stops created as `type: "appointment"`~~ FIXED: migration 0022 adds transit_departure + transit_changeover to stop_type enum
