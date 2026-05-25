@@ -807,27 +807,17 @@ export function NewItineraryBrief({
         </p>
       </div>
 
-      {/* ── Date + Base (compact row) ───────────────────────────── */}
-      <div
-        className="card"
-        style={{
-          padding: "12px 16px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 16,
-        }}
-      >
-        <div>
+      {/* ── Date + Base ───────────────────────────────────────── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+        <div className="card" style={{ padding: "12px 16px" }}>
           <span className="uc" style={{ fontSize: 10 }}>Trip date</span>
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
             <input
               type="date"
               className="field"
               value={tripStartDate}
               onChange={(e) => setTripStartDate(e.target.value)}
-              style={{ maxWidth: 140, fontSize: 13 }}
+              style={{ flex: 1, minWidth: 130, fontSize: 13 }}
             />
             {tripStartDate !== tripEndDate && (
               <>
@@ -837,7 +827,7 @@ export function NewItineraryBrief({
                   className="field"
                   value={tripEndDate}
                   onChange={(e) => setTripEndDate(e.target.value)}
-                  style={{ maxWidth: 140, fontSize: 13 }}
+                  style={{ flex: 1, minWidth: 130, fontSize: 13 }}
                 />
               </>
             )}
@@ -854,7 +844,7 @@ export function NewItineraryBrief({
       {/* ══════════════════════════════════════════════════════════════
           THE TIMELINE — single chronological stream
           ════════════════════════════════════════════════════════════ */}
-      <div className="tl" style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 20 }}>
         {/* ── Home row ─────────────────────────────────────────── */}
         <div
           className="card"
