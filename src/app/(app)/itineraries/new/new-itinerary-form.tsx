@@ -883,12 +883,12 @@ export function NewItineraryBrief({
           THE TIMELINE
           ════════════════════════════════════════════════════════════ */}
       <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 20 }}>
-        {/* ── Starting point: home + date combined ─────────────── */}
+        {/* ── Starting point: home + date + be home by ──────── */}
         <div
           className="card"
           style={{
             padding: "12px 16px",
-            marginBottom: 12,
+            marginBottom: 8,
             borderLeft: "3px solid var(--ink-faint)",
           }}
         >
@@ -925,49 +925,61 @@ export function NewItineraryBrief({
                   Change
                 </button>
               ) : (
-                <a
-                  href="/profile"
-                  style={{ fontSize: 11, color: "var(--ink-faint)", textDecoration: "underline" }}
-                >
-                  Edit
-                </a>
+                <a href="/profile" style={{ fontSize: 11, color: "var(--ink-faint)", textDecoration: "underline" }}>Edit</a>
               )}
             </div>
           </div>
-          {firstDepartTime && (() => {
-            const BUFFER_MINS = 10;
-            const firstTb = transportBookings
-              .filter((tb) => tb.confirmed && tb.departTime)
-              .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))[0];
-            const hubId = firstTb?.departureHub?.id;
-            const homeGapKey = `home→hub:${hubId}`;
-            const homeToStationMode = gapModes.get(homeGapKey);
-            const preview = homeToStationMode && hubId
-              ? getGapPreview("home", `hub:${hubId}`, homeToStationMode)
-              : null;
-            const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
-
-            if (travelMins != null) {
-              const [h, m] = firstDepartTime.split(":").map(Number);
-              const totalMins = h * 60 + m - travelMins - BUFFER_MINS;
-              const leaveH = Math.floor(totalMins / 60);
-              const leaveM = totalMins % 60;
-              const leaveBy = `${String(leaveH).padStart(2, "0")}:${String(leaveM).padStart(2, "0")}`;
-              return (
-                <div className="mono" style={{ fontSize: 12, color: "var(--gold-2)", marginTop: 6, fontWeight: 500 }}>
-                  Leave by {leaveBy}
-                  <span style={{ fontWeight: 400, color: "var(--ink-dim)", marginLeft: 8, fontSize: 11 }}>
-                    {travelMins} min {homeToStationMode} + {BUFFER_MINS} min buffer
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--rule)" }}>
+            <div>
+              {firstDepartTime && (() => {
+                const BUFFER_MINS = 10;
+                const firstTb = transportBookings
+                  .filter((tb) => tb.confirmed && tb.departTime)
+                  .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))[0];
+                const hubId = firstTb?.departureHub?.id;
+                const homeGapKey = `home→hub:${hubId}`;
+                const homeToStationMode = gapModes.get(homeGapKey);
+                const preview = homeToStationMode && hubId
+                  ? getGapPreview("home", `hub:${hubId}`, homeToStationMode)
+                  : null;
+                const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
+                if (travelMins != null) {
+                  const [h, m] = firstDepartTime.split(":").map(Number);
+                  const totalMins = h * 60 + m - travelMins - BUFFER_MINS;
+                  return (
+                    <span className="mono" style={{ fontSize: 12, color: "var(--gold-2)", fontWeight: 500 }}>
+                      Leave by {String(Math.floor(totalMins / 60)).padStart(2, "0")}:{String(totalMins % 60).padStart(2, "0")}
+                    </span>
+                  );
+                }
+                return (
+                  <span className="mono" style={{ fontSize: 12, color: "var(--gold-2)", fontWeight: 500 }}>
+                    Catch the {firstDepartTime}
                   </span>
-                </div>
-              );
-            }
-            return (
-              <div className="mono" style={{ fontSize: 12, color: "var(--gold-2)", marginTop: 6, fontWeight: 500 }}>
-                Catch the {firstDepartTime} train
-              </div>
-            );
-          })()}
+                );
+              })()}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={beHomeBy != null}
+                  onChange={(e) => setBeHomeBy(e.target.checked ? { date: tripStartDate, time: "17:00" } : null)}
+                  style={{ accentColor: "var(--gold-2)" }}
+                />
+                <span className="uc" style={{ fontSize: 9 }}>Back by</span>
+              </label>
+              {beHomeBy && (
+                <input
+                  type="time"
+                  className="field"
+                  value={beHomeBy.time}
+                  onChange={(e) => setBeHomeBy({ ...beHomeBy, time: e.target.value })}
+                  style={{ width: 80, fontSize: 12, padding: "2px 6px" }}
+                />
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── Timeline entries ──────────────────────────────────── */}
@@ -1439,13 +1451,6 @@ export function NewItineraryBrief({
           </div>
         )}
 
-        {/* ── Be home by ──────────────────────────────────────── */}
-        <BeHomeByField
-          value={beHomeBy}
-          onChange={setBeHomeBy}
-          defaultDate={anchors[anchors.length - 1]?.date ?? tripStartDate}
-        />
-
         {/* ── Last transport → Home gap ──────────────────────── */}
         {(() => {
           const lastTb = [...transportBookings]
@@ -1477,92 +1482,54 @@ export function NewItineraryBrief({
                 fromLabel={fromLabel}
                 toLabel="Home"
               />
-              {arriveHome && (
-                <div className="mono" style={{ textAlign: "center", fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
-                  Home by ~{arriveHome}
-                </div>
-              )}
             </>
           );
         })()}
 
-        {/* ── Home return row ──────────────────────────────────── */}
-        {transportBookings.some((tb) => tb.confirmed) && (
+        {/* ── Home return ──────────────────────────────────── */}
+        {timelineEntries.length > 0 && (
           <div
-            className="card"
             style={{
-              padding: "12px 16px",
+              padding: "10px 16px",
               borderLeft: "3px solid var(--ink-faint)",
-              marginTop: 8,
-              opacity: 0.7,
+              marginTop: 4,
+              color: "var(--ink-dim)",
+              fontSize: 13,
             }}
           >
-            <span className="uc" style={{ fontSize: 10 }}>Home</span>
-            <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 14, color: "var(--ink)" }}>
-              Back home
-            </div>
+            {(() => {
+              const lastTb = [...transportBookings]
+                .filter((tb) => tb.confirmed && tb.arriveTime)
+                .sort((a, b) => `${b.date}T${b.arriveTime}`.localeCompare(`${a.date}T${a.arriveTime}`))[0];
+              const hubId = lastTb?.destinationHub?.id;
+              const gapKey = `hub:${hubId}→home`;
+              const mode = gapModes.get(gapKey);
+              const preview = mode && hubId ? getGapPreview(`hub:${hubId}`, "home", mode) : null;
+              const mins = preview && preview !== "pending" ? preview.durationMinutes : null;
+              if (mins != null && lastTb?.arriveTime) {
+                const [h, m] = lastTb.arriveTime.split(":").map(Number);
+                const total = h * 60 + m + mins;
+                const homeTime = `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+                return (
+                  <span className="mono" style={{ fontWeight: 500 }}>
+                    ~{homeTime} Home
+                  </span>
+                );
+              }
+              return <span>Home</span>;
+            })()}
           </div>
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════
-          BOTTOM ACTIONS
-          ════════════════════════════════════════════════════════════ */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          flexWrap: "wrap",
-          marginBottom: 16,
-          paddingTop: 8,
-          borderTop: "1px solid var(--rule)",
-        }}
-      >
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => insertAnchorAt(anchors.length)}
-        >
-          + Add a stop
-        </button>
+      {/* ── Compact toolbar ───────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12, paddingTop: 8 }}>
         {gmailConnected ? (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => setGmailImportOpen(true)}
-          >
-            Scan for tickets
-          </button>
+          <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setGmailImportOpen(true)}>Scan for tickets</button>
         ) : null}
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() =>
-            setTransportBookings((prev) => [
-              ...prev,
-              { ...emptyTransportBookingItem(), date: tripStartDate },
-            ])
-          }
-        >
-          + Transport
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() =>
-            setAccommodationBookings((prev) => [
-              ...prev,
-              {
-                ...emptyAccommodationBookingItem(),
-                checkInDate: tripStartDate,
-                checkOutDate: tripEndDate,
-              },
-            ])
-          }
-        >
-          + Hotel
-        </button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => insertAnchorAt(anchors.length)}>+ Stop</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setTransportBookings((prev) => [...prev, { ...emptyTransportBookingItem(), date: tripStartDate }])}>+ Transport</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setAccommodationBookings((prev) => [...prev, { ...emptyAccommodationBookingItem(), checkInDate: tripStartDate, checkOutDate: tripEndDate }])}>+ Hotel</button>
       </div>
 
       {/* Notes + title */}
