@@ -220,11 +220,18 @@ export function NewItineraryBrief({
         return next;
       });
 
-      // Auto-update trip dates to encompass the booking
+      // Auto-update trip dates to match the booking. If dates are still
+      // at the default (tomorrow), replace them entirely. Otherwise expand
+      // the range to encompass the booking.
       const bookingDate = outbound[0]?.departure_date;
+      const defaultDate = defaultAnchorDate();
       if (bookingDate) {
-        setTripStartDate((prev) => !prev || bookingDate < prev ? bookingDate : prev);
-        setTripEndDate((prev) => !prev || bookingDate > prev ? bookingDate : prev);
+        setTripStartDate((prev) =>
+          prev === defaultDate ? bookingDate : (bookingDate < prev ? bookingDate : prev),
+        );
+        setTripEndDate((prev) =>
+          prev === defaultDate ? bookingDate : (bookingDate > prev ? bookingDate : prev),
+        );
       }
     } else {
       setAccommodationBookings((prev) => [
