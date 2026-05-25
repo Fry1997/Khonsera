@@ -1295,13 +1295,14 @@ export function ItineraryEditor({
                     const showTicket =
                       nextItem?.kind === "transit" && transitTransition?.is_locked;
 
-                    // Arrival stops that follow a ticket card are redundant —
-                    // the ticket already shows the arrival station + time
+                    // Only hide actual transit_arrival stops (not changeovers)
+                    // that follow a ticket card — the ticket shows the arrival.
+                    const isActualArrival = (item.stop.type as string) === "transit_arrival";
                     const prevIsTransitTicket =
                       i > 0 &&
                       planningTimeline[i - 1]?.kind === "transit" &&
                       transitionByFrom.get(planningTimeline[i - 1]?.stop.id)?.is_locked;
-                    if (item.transitDirection === "arrival" && prevIsTransitTicket) {
+                    if (isActualArrival && prevIsTransitTicket) {
                       return null;
                     }
 

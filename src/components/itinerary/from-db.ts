@@ -225,6 +225,7 @@ function isTransitStop(s: DbStop): boolean {
 function transitDirection(s: DbStop): "departure" | "arrival" {
   if (s.type === "transit_departure") return "departure";
   if (s.type === "transit_arrival") return "arrival";
+  if ((s.type as string) === "transit_changeover") return "departure";
   const meta = s.metadata as Record<string, unknown> | null;
   return (meta?.kind as string) === "transit_departure" ? "departure" : "arrival";
 }
