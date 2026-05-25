@@ -2,13 +2,17 @@
 
 **Every session must read this before making changes. Update it before ending.**
 
-## Known Bugs (as of 2026-05-24)
+## Known Bugs (as of 2026-05-25)
 
 ### Planning page after brief submit
 - ~~PR #11 restored the old "+ Train" / "+ Flight" inline buttons~~ FIXED: replaced with single "+ Transport" button
 - ~~Transport booking stops show as "(no place yet)"~~ FIXED: stops now use transit_departure/transit_changeover/transit_arrival types instead of "appointment"
 - ~~"via undefined" on transitions~~ FIXED: mode now reads transport_mode from stop metadata instead of hardcoding "train"
 - ~~Transport booking stops created as `type: "appointment"`~~ FIXED: migration 0022 adds transit_departure + transit_changeover to stop_type enum
+- ~~Spine preview only connects adjacent anchors~~ FIXED: spine now renders transitions between ALL timeline entries (anchors + transport bookings)
+- ~~No "leave home by" time~~ FIXED: home stop shows earliest booked departure time; solver propagates backward once Home→Station transition has a duration
+- ~~Map missing transit stop markers~~ FIXED: page query joins transport_hubs for coordinates; map marker builder falls through to hub lat/lng
+- ~~Planning page hides anchor↔transit transitions~~ FIXED: PlanningTransitionRow renders between anchors and transit stops with mode pickers
 
 ## Architecture
 
