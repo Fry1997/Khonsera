@@ -711,346 +711,449 @@ export function NewItineraryBrief({
     });
   };
 
-  return (
-    <div className="brief-grid">
-      {/* Left — the anchor stack */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <FormError message={feedback?.message} />
+  // ── Build unified chronological timeline entries ──────────────────
+  type TimelineEntry =
+    | { kind: "transport"; booking: BriefTransportBooking }
+    | { kind: "anchor"; anchor: Anchor; index: number };
 
+  const timelineEntries = useMemo(() => {
+    const entries: TimelineEntry[] = [];
+    anchors.forEach((a, i) => entries.push({ kind: "anchor", anchor: a, index: i }));
+    transportBookings
+      .filter((tb) => tb.confirmed && tb.mode)
+      .forEach((tb) => entries.push({ kind: "transport", booking: tb }));
+    entries.sort((a, b) => {
+      const aTime =
+        a.kind === "anchor"
+          ? `${a.anchor.date}T${a.anchor.time}`
+          : `${a.booking.date}T${a.booking.departTime}`;
+      const bTime =
+        b.kind === "anchor"
+          ? `${b.anchor.date}T${b.anchor.time}`
+          : `${b.booking.date}T${b.booking.departTime}`;
+      return aTime.localeCompare(bTime);
+    });
+    return entries;
+  }, [anchors, transportBookings]);
+
+  // Find the first departure time for "leave by" display
+  const firstDepartTime = transportBookings
+    .filter((tb) => tb.confirmed && tb.departTime)
+    .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))
+    [0]?.departTime ?? null;
+
+  // Find contextual gaps between transport bookings
+  const findGapInfo = (
+    prevEntry: TimelineEntry | null,
+    nextEntry: TimelineEntry | null,
+  ): { location: string; from: string; to: string; gapMinutes: number } | null => {
+    if (!prevEntry || !nextEntry) return null;
+    // Gap between outbound arrival and return departure
+    if (prevEntry.kind === "transport" && nextEntry.kind === "transport") {
+      const arriveTime = prevEntry.booking.arriveTime;
+      const departTime = nextEntry.booking.departTime;
+      const dest = prevEntry.booking.destinationHub?.label;
+      if (arriveTime && departTime && dest) {
+        const [ah, am] = arriveTime.split(":").map(Number);
+        const [dh, dm] = departTime.split(":").map(Number);
+        const gap = (dh * 60 + dm) - (ah * 60 + am);
+        if (gap > 0) return { location: dest, from: arriveTime, to: departTime, gapMinutes: gap };
+      }
+    }
+    // Gap between transport arrival and anchor
+    if (prevEntry.kind === "transport" && nextEntry.kind === "anchor") {
+      const arriveTime = prevEntry.booking.arriveTime;
+      const dest = prevEntry.booking.destinationHub?.label;
+      if (arriveTime && dest) {
+        return { location: dest, from: arriveTime, to: nextEntry.anchor.time, gapMinutes: 0 };
+      }
+    }
+    return null;
+  };
+
+  return (
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 16px" }}>
+      <FormError message={feedback?.message} />
+
+      {/* ── Page header ──────────────────────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <span className="uc" style={{ color: "var(--gold-2)" }}>New brief</span>
+        <h1
+          className="display-i"
+          style={{
+            fontSize: 32,
+            fontWeight: 500,
+            margin: "4px 0 6px",
+            letterSpacing: "-0.02em",
+            color: "var(--ink)",
+          }}
+        >
+          Plan your <em style={{ color: "var(--gold)" }}>day.</em>
+        </h1>
+        <p className="serif-i" style={{ color: "var(--ink-dim)", fontSize: 14, margin: 0 }}>
+          Drop in what you know — bookings, appointments, when to be back — and
+          we&rsquo;ll piece together the rest.
+        </p>
+      </div>
+
+      {/* ── Date + Base (compact row) ───────────────────────────── */}
+      <div
+        className="card"
+        style={{
+          padding: "12px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <span className="uc" style={{ fontSize: 10 }}>Trip date</span>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <input
+              type="date"
+              className="field"
+              value={tripStartDate}
+              onChange={(e) => setTripStartDate(e.target.value)}
+              style={{ maxWidth: 140, fontSize: 13 }}
+            />
+            {tripStartDate !== tripEndDate && (
+              <>
+                <span style={{ color: "var(--ink-faint)", alignSelf: "center" }}>to</span>
+                <input
+                  type="date"
+                  className="field"
+                  value={tripEndDate}
+                  onChange={(e) => setTripEndDate(e.target.value)}
+                  style={{ maxWidth: 140, fontSize: 13 }}
+                />
+              </>
+            )}
+          </div>
+        </div>
         <BaseLocationCard
           baseLocations={baseLocations}
           defaultBaseId={defaultBaseId}
           selectedBaseId={selectedBaseId}
           onSelect={setSelectedBaseId}
         />
+      </div>
 
-        {/* ── Trip dates ─────────────────────────────────────────── */}
-        <div className="brief-subcard">
-          <span className="uc">Trip dates</span>
-          <div className="brief-when-row" style={{ marginTop: 6 }}>
-            <label className="brief-field">
-              <span className="uc" style={{ fontSize: 10.5 }}>Start</span>
-              <input
-                type="date"
-                className="field"
-                value={tripStartDate}
-                onChange={(e) => setTripStartDate(e.target.value)}
-              />
-            </label>
-            <label className="brief-field">
-              <span className="uc" style={{ fontSize: 10.5 }}>End</span>
-              <input
-                type="date"
-                className="field"
-                value={tripEndDate}
-                onChange={(e) => setTripEndDate(e.target.value)}
-              />
-            </label>
-          </div>
-        </div>
-
-        {/* ── Bookings bar ─────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════
+          THE TIMELINE — single chronological stream
+          ════════════════════════════════════════════════════════════ */}
+      <div className="tl" style={{ marginBottom: 20 }}>
+        {/* ── Home row ─────────────────────────────────────────── */}
         <div
+          className="card"
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
+            padding: "12px 16px",
+            marginBottom: 12,
+            borderLeft: "3px solid var(--ink-faint)",
           }}
         >
-          <span className="uc" style={{ marginRight: 4 }}>
-            Bookings
-          </span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              setTransportBookings((prev) => [
-                ...prev,
-                { ...emptyTransportBookingItem(), date: tripStartDate },
-              ])
-            }
-          >
-            + Transport
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              setAccommodationBookings((prev) => [
-                ...prev,
-                {
-                  ...emptyAccommodationBookingItem(),
-                  checkInDate: tripStartDate,
-                  checkOutDate: tripEndDate,
-                },
-              ])
-            }
-          >
-            + Accommodation
-          </button>
-          {gmailConnected ? (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setGmailImportOpen(true)}
-            >
-              Import from Gmail
-            </button>
-          ) : null}
+          <span className="uc" style={{ fontSize: 10 }}>Home</span>
+          <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 16, color: "var(--ink)", marginTop: 2 }}>
+            {baseName}
+          </div>
+          {selectedBase?.address && (
+            <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
+              {selectedBase.address}
+            </div>
+          )}
+          {firstDepartTime && (
+            <div className="mono" style={{ fontSize: 12, color: "var(--gold-2)", marginTop: 6, fontWeight: 500 }}>
+              Catch the {firstDepartTime} train
+            </div>
+          )}
         </div>
 
-        {/* ── Confirmed reservations (condensed chips) ────────────── */}
-        {(transportBookings.some((tb) => tb.confirmed) ||
-          accommodationBookings.some((ab) => ab.confirmed)) ? (
-          <div className="brief-reservations">
-            {transportBookings
-              .filter((tb) => tb.confirmed)
-              .map((tb) => {
-                const modeLabel =
-                  tb.mode === "train"
-                    ? "Train"
-                    : tb.mode === "flight"
-                      ? "Flight"
-                      : tb.mode === "taxi"
-                        ? "Taxi"
-                        : tb.mode === "bus"
-                          ? "Bus"
-                          : tb.mode === "tube"
-                            ? "Tube"
-                            : tb.mode === "drive"
-                              ? "Car hire"
-                              : "";
-                return (
-                  <div key={tb.uid} className="brief-reservation-chip">
-                    <span style={{ fontWeight: 500 }}>
-                      {modeLabel}
-                      {tb.departureHub?.label && tb.destinationHub?.label
-                        ? ` ${tb.departureHub.label} to ${tb.destinationHub.label}`
-                        : tb.destinationHub?.label
-                          ? ` to ${tb.destinationHub.label}`
-                          : tb.departureHub?.label
-                            ? ` from ${tb.departureHub.label}`
-                            : ""}
-                    </span>
-                    {tb.date ? (
-                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                        {tb.date}
-                      </span>
-                    ) : null}
-                    {tb.departTime && tb.arriveTime ? (
-                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                        {tb.departTime} → {tb.arriveTime}
-                      </span>
-                    ) : null}
-                    {tb.serviceNumber ? (
-                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                        · {tb.serviceNumber}
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
-                      onClick={() =>
-                        setTransportBookings((prev) => [
-                          ...prev,
-                          returnTransportBooking(tb, tripEndDate),
-                        ])
-                      }
-                    >
-                      + Return
-                    </button>
-                    <button
-                      type="button"
-                      style={{ fontSize: 11, color: "var(--ink-dim)" }}
-                      onClick={() =>
-                        updateTransportBooking(tb.uid, { confirmed: false })
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      style={{ fontSize: 11, color: "var(--rust)" }}
-                      onClick={() => removeTransportBooking(tb.uid)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              })}
-            {accommodationBookings
-              .filter((ab) => ab.confirmed)
-              .map((ab) => (
-                <div key={ab.uid} className="brief-reservation-chip">
-                  <span style={{ fontWeight: 500 }}>
-                    {ab.hotel?.label ?? "Hotel"}
-                  </span>
-                  {ab.checkInDate ? (
-                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                      CI from {ab.checkInTime} · CO by {ab.checkOutTime}
-                    </span>
-                  ) : null}
-                  {ab.reference ? (
-                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                      · ref {ab.reference}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
-                    onClick={() =>
-                      updateAccommodationBooking(ab.uid, { confirmed: false })
-                    }
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: "var(--rust)" }}
-                    onClick={() => removeAccommodationBooking(ab.uid)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+        {/* ── Timeline entries ──────────────────────────────────── */}
+        {timelineEntries.length === 0 && !transportBookings.some((tb) => !tb.confirmed) ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 16px",
+              color: "var(--ink-dim)",
+              fontSize: 14,
+            }}
+          >
+            <p style={{ margin: "0 0 12px" }}>
+              Start by adding your bookings or appointments.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+              {gmailConnected ? (
+                <button
+                  type="button"
+                  className="btn btn-gold btn-sm"
+                  onClick={() => setGmailImportOpen(true)}
+                >
+                  Scan for tickets
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() =>
+                  setTransportBookings((prev) => [
+                    ...prev,
+                    { ...emptyTransportBookingItem(), date: tripStartDate },
+                  ])
+                }
+              >
+                + Transport
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => insertAnchorAt(0)}
+              >
+                + Add a stop
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {/* ── Active booking forms (not yet confirmed) ───────────── */}
+        {/* Active (unconfirmed) booking forms */}
         {transportBookings
           .filter((tb) => !tb.confirmed)
           .map((tb) => (
-            <TransportBookingCard
-              key={tb.uid}
-              booking={tb}
-              onChange={(patch) => updateTransportBooking(tb.uid, patch)}
-              onRemove={() => removeTransportBooking(tb.uid)}
-            />
+            <div key={tb.uid} style={{ marginBottom: 12 }}>
+              <TransportBookingCard
+                booking={tb}
+                onChange={(patch) => updateTransportBooking(tb.uid, patch)}
+                onRemove={() => removeTransportBooking(tb.uid)}
+              />
+            </div>
           ))}
         {accommodationBookings
           .filter((ab) => !ab.confirmed)
           .map((ab) => (
-            <AccommodationBookingCard
-              key={ab.uid}
-              booking={ab}
-              customers={customers}
-              customerSites={customerSites}
-              locations={locations}
-              onChange={(patch) => updateAccommodationBooking(ab.uid, patch)}
-              onRemove={() => removeAccommodationBooking(ab.uid)}
-            />
-          ))}
-
-        {/* ── Timeline ─────────────────────────────────────────────── */}
-        <header style={{ marginBottom: 4, marginTop: 6 }}>
-          <span className="uc">
-            Timeline{anchors.length > 0 ? ` · ${anchors.length} anchor${anchors.length === 1 ? "" : "s"}` : ""}
-          </span>
-        </header>
-
-        {/* Transport booking stops — read-only markers from confirmed bookings */}
-        {transportBookings
-          .filter((tb) => tb.confirmed && tb.mode)
-          .map((tb) => {
-            const modeLabel =
-              MODE_OPTIONS_MAP[tb.mode!] ?? tb.mode;
-            const Icon = TransportIcon[tb.mode!];
-            return (
-              <div
-                key={`tl-${tb.uid}`}
-                className="brief-card-soft"
-                style={{
-                  padding: "10px 14px",
-                  borderLeft: "3px solid var(--gold-2)",
-                  marginBottom: 8,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Icon size={13} />
-                  <span className="uc" style={{ fontSize: 10.5 }}>
-                    Booked {modeLabel}
-                  </span>
-                </div>
-                <div style={{ fontSize: 13, color: "var(--ink)" }}>
-                  {tb.departureHub?.label ?? "Departure"}{" "}
-                  <span style={{ color: "var(--ink-dim)" }}>
-                    {tb.departTime || "—"}
-                  </span>
-                  {tb.changeovers.map((co, ci) => (
-                    <span key={ci} style={{ color: "var(--ink-dim)" }}>
-                      {" → "}{co.hub?.label ?? "Change"}{" "}
-                      {co.arriveTime && co.departTime
-                        ? `(${co.arriveTime}–${co.departTime})`
-                        : ""}
-                    </span>
-                  ))}
-                  {" → "}
-                  {tb.destinationHub?.label ?? "Arrival"}{" "}
-                  <span style={{ color: "var(--ink-dim)" }}>
-                    {tb.arriveTime || "—"}
-                  </span>
-                </div>
-                {tb.serviceNumber ? (
-                  <div
-                    style={{ fontSize: 12, color: "var(--ink-dim)" }}
-                  >
-                    {tb.serviceNumber}
-                    {tb.reference ? ` · ref ${tb.reference}` : ""}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-
-        {/* Accommodation constraint markers */}
-        {accommodationBookings
-          .filter((ab) => ab.confirmed && ab.hotel)
-          .map((ab) => (
-            <div
-              key={`tl-acc-${ab.uid}`}
-              style={{
-                padding: "8px 14px",
-                borderLeft: "2px dashed var(--ink-faint)",
-                marginBottom: 8,
-                fontSize: 12,
-                color: "var(--ink-dim)",
-              }}
-            >
-              <span className="uc" style={{ fontSize: 10 }}>
-                Check-in from {ab.checkInTime}
-              </span>
-              {" · "}
-              {ab.hotel?.label}
-              {ab.checkInDate ? ` · ${ab.checkInDate}` : ""}
+            <div key={ab.uid} style={{ marginBottom: 12 }}>
+              <AccommodationBookingCard
+                booking={ab}
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                onChange={(patch) => updateAccommodationBooking(ab.uid, patch)}
+                onRemove={() => removeAccommodationBooking(ab.uid)}
+              />
             </div>
           ))}
 
-        <AddBetween onAdd={() => insertAnchorAt(0)} />
+        {/* Render the unified timeline */}
+        {timelineEntries.map((entry, entryIdx) => {
+          const prevEntry = entryIdx > 0 ? timelineEntries[entryIdx - 1] : null;
+          const nextEntry = entryIdx < timelineEntries.length - 1 ? timelineEntries[entryIdx + 1] : null;
 
-        {anchors.map((anchor, i) => {
-          const next = anchors[i + 1];
-          return (
-            <div key={anchor.uid}>
-              {i === 0 ? (
+          // ── Mode picker gap before this entry ──
+          let gapBefore = null;
+          if (entryIdx === 0) {
+            // Home → first entry: show mode picker
+            const toAnchor = entry.kind === "anchor" ? entry.anchor : null;
+            if (toAnchor) {
+              gapBefore = (
                 <TransitionRow
                   from={null}
-                  to={anchor}
-                  transition={getTransition(HOME_UID, anchor.uid)}
-                  onChange={(patch) =>
-                    setTransition(HOME_UID, anchor.uid, patch)
-                  }
+                  to={toAnchor}
+                  transition={getTransition(HOME_UID, toAnchor.uid)}
+                  onChange={(patch) => setTransition(HOME_UID, toAnchor.uid, patch)}
                   fromVirtualLabel={baseName}
+                  modePreviews={briefPreviewsForPair(
+                    selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
+                    toAnchor.place,
+                  )}
+                  onOpenChange={(open) => {
+                    if (open && toAnchor.place) {
+                      briefPrefetchPair(
+                        selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
+                        toAnchor.place,
+                      );
+                    }
+                  }}
                 />
-              ) : null}
+              );
+            }
+          } else if (prevEntry?.kind === "transport" && entry.kind === "anchor") {
+            // Transport arrival → anchor: "How will you get to your appointment?"
+            // No transition key for transport→anchor yet, but show the gap
+          } else if (prevEntry?.kind === "anchor" && entry.kind === "transport") {
+            // Anchor → transport departure: mode picker to the station
+          } else if (prevEntry?.kind === "anchor" && entry.kind === "anchor") {
+            // Anchor → anchor: standard transition
+            const prev = prevEntry.anchor;
+            const cur = entry.anchor;
+            const sv = getStopover(prev.uid, cur.uid);
+            if (sv) {
+              const svUid = stopoverUid(prev.uid, cur.uid);
+              const svAnchor = stopoverAsAnchor(sv, svUid);
+              gapBefore = (
+                <>
+                  <TransitionRow
+                    from={prev}
+                    to={svAnchor}
+                    transition={getTransition(prev.uid, svUid)}
+                    modePreviews={briefPreviewsForPair(prev.place, sv.place)}
+                    onOpenChange={(open) => { if (open) briefPrefetchPair(prev.place, sv.place); }}
+                    onChange={(patch) => setTransition(prev.uid, svUid, patch)}
+                  />
+                  <StopoverCard
+                    stopover={sv}
+                    fromAnchor={prev}
+                    toAnchor={cur}
+                    customers={customers}
+                    customerSites={customerSites}
+                    locations={locations}
+                    onChange={(patch) => setStopoverPatch(prev.uid, cur.uid, patch)}
+                    onRemove={() => removeStopover(prev.uid, cur.uid)}
+                  />
+                  <TransitionRow
+                    from={svAnchor}
+                    to={cur}
+                    transition={getTransition(svUid, cur.uid)}
+                    modePreviews={briefPreviewsForPair(sv.place, cur.place)}
+                    onOpenChange={(open) => { if (open) briefPrefetchPair(sv.place, cur.place); }}
+                    onChange={(patch) => setTransition(svUid, cur.uid, patch)}
+                  />
+                </>
+              );
+            } else {
+              gapBefore = (
+                <TransitionRow
+                  from={prev}
+                  to={cur}
+                  transition={getTransition(prev.uid, cur.uid)}
+                  modePreviews={briefPreviewsForPair(prev.place, cur.place)}
+                  onOpenChange={(open) => { if (open) briefPrefetchPair(prev.place, cur.place); }}
+                  onChange={(patch) => setTransition(prev.uid, cur.uid, patch)}
+                />
+              );
+            }
+          }
+
+          // ── Contextual gap: "You're in Derby from 08:32 to 15:08" ──
+          let contextGap = null;
+          if (prevEntry?.kind === "transport" && entry.kind === "transport") {
+            const gap = findGapInfo(prevEntry, entry);
+            if (gap && gap.gapMinutes > 0 && !timelineEntries.some(
+              (e, j) => j > entryIdx - 1 && j < entryIdx && e.kind === "anchor"
+            )) {
+              // Check if there are any anchors BETWEEN the two transports
+              const anchorsBetween = timelineEntries.filter(
+                (e, j) => j > (entryIdx - 1) && j < entryIdx && e.kind === "anchor"
+              );
+              if (anchorsBetween.length === 0) {
+                const hours = Math.floor(gap.gapMinutes / 60);
+                const mins = gap.gapMinutes % 60;
+                const durLabel = hours > 0
+                  ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
+                  : `${mins}m`;
+                contextGap = (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "16px 12px",
+                      color: "var(--ink-dim)",
+                      fontSize: 13,
+                    }}
+                  >
+                    <p style={{ margin: "0 0 8px", fontStyle: "italic", fontFamily: "var(--serif)" }}>
+                      You&rsquo;re in {gap.location} from {gap.from} to {gap.to}
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => insertAnchorAt(anchors.length)}
+                    >
+                      What are you doing here?
+                    </button>
+                  </div>
+                );
+              }
+            }
+          }
+
+          // ── Render the entry ──
+          if (entry.kind === "transport") {
+            const tb = entry.booking;
+            const Icon = TransportIcon[tb.mode!];
+            return (
+              <div key={`tl-${tb.uid}`} style={{ marginBottom: 8 }}>
+                {gapBefore}
+                {contextGap}
+                <div
+                  className="card"
+                  style={{
+                    padding: "12px 16px",
+                    borderLeft: "3px solid var(--gold-2)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <Icon size={14} />
+                      <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--gold-2)" }}>
+                        {tb.departTime}
+                      </span>
+                      <span className="uc" style={{ fontSize: 10 }}>
+                        Train · {tb.departureHub?.label} to {tb.destinationHub?.label}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
+                      <button
+                        type="button"
+                        style={{ color: "var(--ink-dim)" }}
+                        onClick={() => updateTransportBooking(tb.uid, { confirmed: false })}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        style={{ color: "var(--rust)" }}
+                        onClick={() => removeTransportBooking(tb.uid)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--ink)" }}>
+                    {tb.departureHub?.label ?? "?"}{" "}
+                    <span className="mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>{tb.departTime}</span>
+                    {tb.changeovers.map((co, ci) => (
+                      <span key={ci}>
+                        {" → "}{co.hub?.label ?? "?"}{" "}
+                        <span className="mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>
+                          ({co.arriveTime}–{co.departTime})
+                        </span>
+                      </span>
+                    ))}
+                    {" → "}{tb.destinationHub?.label ?? "?"}{" "}
+                    <span className="mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>{tb.arriveTime}</span>
+                  </div>
+                  {tb.operator && (
+                    <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+                      {tb.operator}{tb.ticketType ? ` · ${tb.ticketType}` : ""}
+                      {tb.price ? ` · £${Number(tb.price).toFixed(2)}` : ""}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          // Anchor entry
+          const anchor = entry.anchor;
+          const anchorIdx = entry.index;
+          const next = anchors[anchorIdx + 1];
+          return (
+            <div key={anchor.uid} style={{ marginBottom: 8 }}>
+              {gapBefore}
+              {contextGap}
               <AnchorCard
                 anchor={anchor}
-                earlier={anchors.slice(0, i)}
-                first={i === 0}
-                canRemove={anchors.length > 1}
+                earlier={anchors.slice(0, anchorIdx)}
+                first={anchorIdx === 0}
+                canRemove={true}
                 customers={customers}
                 customerSites={customerSites}
                 locations={locations}
@@ -1058,270 +1161,167 @@ export function NewItineraryBrief({
                 onChange={(patch) => updateAnchor(anchor.uid, patch)}
                 onRemove={() => removeAnchor(anchor.uid)}
               />
-              {/* Link to accommodation booking if this anchor is a stay at the same hotel */}
-              {anchor.place &&
-                effectiveKind(anchor) === "stay" &&
-                (() => {
-                  const match = accommodationBookings.find(
-                    (ab) =>
-                      ab.confirmed &&
-                      ab.hotel &&
-                      anchor.place &&
-                      ab.hotel.label === anchor.place.label,
-                  );
-                  if (!match) return null;
-                  return (
-                    <div
-                      style={{
-                        padding: "6px 14px",
-                        borderLeft: "2px dashed var(--gold-2)",
-                        fontSize: 12,
-                        color: "var(--ink-dim)",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Linked to booking: {match.hotel?.label}
-                      {match.checkInTime
-                        ? ` · check-in from ${match.checkInTime}`
-                        : ""}
-                      {match.checkOutTime
-                        ? ` · check-out by ${match.checkOutTime}`
-                        : ""}
-                      {match.reference ? ` · ref ${match.reference}` : ""}
-                    </div>
-                  );
-                })()}
-              {next
-                ? (() => {
-                    const sv = getStopover(anchor.uid, next.uid);
-                    if (sv) {
-                      const svUid = stopoverUid(anchor.uid, next.uid);
-                      const svAnchor = stopoverAsAnchor(sv, svUid);
-                      return (
-                        <>
-                          <TransitionRow
-                            from={anchor}
-                            to={svAnchor}
-                            transition={getTransition(anchor.uid, svUid)}
-                            modePreviews={briefPreviewsForPair(
-                              anchor.place,
-                              sv.place,
-                            )}
-                            onOpenChange={(open) => {
-                              if (open)
-                                briefPrefetchPair(anchor.place, sv.place);
-                            }}
-                            onChange={(patch) =>
-                              setTransition(anchor.uid, svUid, patch)
-                            }
-                          />
-                          <StopoverCard
-                            stopover={sv}
-                            fromAnchor={anchor}
-                            toAnchor={next}
-                            customers={customers}
-                            customerSites={customerSites}
-                            locations={locations}
-                            onChange={(patch) =>
-                              setStopoverPatch(anchor.uid, next.uid, patch)
-                            }
-                            onRemove={() =>
-                              removeStopover(anchor.uid, next.uid)
-                            }
-                          />
-                          <TransitionRow
-                            from={svAnchor}
-                            to={next}
-                            transition={getTransition(svUid, next.uid)}
-                            modePreviews={briefPreviewsForPair(
-                              sv.place,
-                              next.place,
-                            )}
-                            onOpenChange={(open) => {
-                              if (open)
-                                briefPrefetchPair(sv.place, next.place);
-                            }}
-                            onChange={(patch) =>
-                              setTransition(svUid, next.uid, patch)
-                            }
-                          />
-                        </>
-                      );
-                    }
-                    return (
-                      <>
-                        <TransitionRow
-                          from={anchor}
-                          to={next}
-                          transition={getTransition(anchor.uid, next.uid)}
-                          modePreviews={briefPreviewsForPair(
-                            anchor.place,
-                            next.place,
-                          )}
-                          onOpenChange={(open) => {
-                            if (open)
-                              briefPrefetchPair(anchor.place, next.place);
-                          }}
-                          onChange={(patch) =>
-                            setTransition(anchor.uid, next.uid, patch)
-                          }
-                        />
-                        <button
-                          type="button"
-                          className="brief-add-stop-trigger"
-                          onClick={() => addStopover(anchor.uid, next.uid)}
-                          title="Drop in somewhere between these two anchors"
-                        >
-                          + Add a stop between these
-                        </button>
-                      </>
-                    );
-                  })()
-                : null}
-              <AddBetween
-                onAdd={() => insertAnchorAt(i + 1)}
-                between={i < anchors.length - 1}
-              />
+              {next && !timelineEntries.some(
+                (e) => e.kind === "transport" &&
+                  `${e.booking.date}T${e.booking.departTime}` > `${anchor.date}T${anchor.time}` &&
+                  `${e.booking.date}T${e.booking.departTime}` < `${next.date}T${next.time}`
+              ) ? (
+                <button
+                  type="button"
+                  className="brief-add-stop-trigger"
+                  onClick={() => addStopover(anchor.uid, next.uid)}
+                  title="Drop in somewhere between these two anchors"
+                  style={{ marginTop: 4 }}
+                >
+                  + Add a stop between these
+                </button>
+              ) : null}
             </div>
           );
         })}
 
+        {/* ── Be home by ──────────────────────────────────────── */}
         <BeHomeByField
           value={beHomeBy}
           onChange={setBeHomeBy}
-          defaultDate={anchors[anchors.length - 1]?.date ?? defaultAnchorDate()}
+          defaultDate={anchors[anchors.length - 1]?.date ?? tripStartDate}
         />
 
-        {/* Notes + title — collapsed, low-priority */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {!notesOn ? (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setNotesOn(true)}
-              style={{ alignSelf: "flex-start" }}
-            >
-              + Notes
-            </button>
-          ) : (
-            <div className="brief-subcard">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
-                <span className="uc">Trip notes</span>
-                <button
-                  type="button"
-                  onClick={() => setNotesOn(false)}
-                  style={{ fontSize: 11.5, color: "var(--rust)" }}
-                >
-                  Remove
-                </button>
-              </div>
-              <textarea
-                className="field"
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="The brief, dress code, who's expected — anything Khonsera should know."
-              />
-            </div>
-          )}
-
-          <details className="brief-details">
-            <summary className="brief-details-summary">
-              <span className="uc">Title override</span>
-              <span className="brief-details-hint">
-                {titleOverride
-                  ? `“${titleOverride}”`
-                  : "Khonsera will pick one for you"}
-              </span>
-            </summary>
-            <input
-              type="text"
-              className="field"
-              value={titleOverride}
-              onChange={(e) => setTitleOverride(e.target.value)}
-              placeholder="e.g. Belper site visit"
-              style={{ marginTop: 8 }}
-            />
-          </details>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginTop: 6,
-          }}
-        >
-          <button
-            type="button"
-            disabled={!canSubmit || pending}
-            onClick={submit}
-            className="btn btn-gold btn-lg"
+        {/* ── Home return row ──────────────────────────────────── */}
+        {transportBookings.some((tb) => tb.confirmed) && (
+          <div
+            className="card"
+            style={{
+              padding: "12px 16px",
+              borderLeft: "3px solid var(--ink-faint)",
+              marginTop: 8,
+              opacity: 0.7,
+            }}
           >
-            {pending ? "Building your day…" : "Build my day"}
-            <Arrow />
-          </button>
-          {!canSubmit ? (
-            <span className="brief-helper" style={{ margin: 0 }}>
-              Every anchor needs a place to continue.
-            </span>
-          ) : feasibilityRollup.late > 0 || feasibilityRollup.tight > 0 ? (
-            <span
-              className={
-                feasibilityRollup.late > 0
-                  ? "feasibility-flag feasibility-flag-bad"
-                  : "feasibility-flag feasibility-flag-tight"
-              }
-            >
-              {feasibilityRollup.late > 0
-                ? `${feasibilityRollup.late} leg${feasibilityRollup.late === 1 ? "" : "s"} arrive${feasibilityRollup.late === 1 ? "s" : ""} late`
-                : `${feasibilityRollup.tight} leg${feasibilityRollup.tight === 1 ? "" : "s"} tight`}
-              {feasibilityRollup.late > 0 && feasibilityRollup.tight > 0
-                ? `, ${feasibilityRollup.tight} tight`
-                : ""}
-            </span>
-          ) : null}
-        </div>
+            <span className="uc" style={{ fontSize: 10 }}>Home</span>
+            <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 14, color: "var(--ink)" }}>
+              Back home
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Gmail import panel */}
+      {/* ══════════════════════════════════════════════════════════════
+          BOTTOM ACTIONS
+          ════════════════════════════════════════════════════════════ */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+          marginBottom: 16,
+          paddingTop: 8,
+          borderTop: "1px solid var(--rule)",
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => insertAnchorAt(anchors.length)}
+        >
+          + Add a stop
+        </button>
+        {gmailConnected ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setGmailImportOpen(true)}
+          >
+            Scan for tickets
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() =>
+            setTransportBookings((prev) => [
+              ...prev,
+              { ...emptyTransportBookingItem(), date: tripStartDate },
+            ])
+          }
+        >
+          + Transport
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() =>
+            setAccommodationBookings((prev) => [
+              ...prev,
+              {
+                ...emptyAccommodationBookingItem(),
+                checkInDate: tripStartDate,
+                checkOutDate: tripEndDate,
+              },
+            ])
+          }
+        >
+          + Hotel
+        </button>
+      </div>
+
+      {/* Notes + title */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+        {!notesOn ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setNotesOn(true)}
+            style={{ alignSelf: "flex-start" }}
+          >
+            + Notes
+          </button>
+        ) : (
+          <div className="brief-subcard">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span className="uc">Trip notes</span>
+              <button type="button" onClick={() => setNotesOn(false)} style={{ fontSize: 11.5, color: "var(--rust)" }}>Remove</button>
+            </div>
+            <textarea className="field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="The brief, dress code, who's expected — anything Khonsera should know." />
+          </div>
+        )}
+        <details className="brief-details">
+          <summary className="brief-details-summary">
+            <span className="uc">Title override</span>
+            <span className="brief-details-hint">{titleOverride ? `"${titleOverride}"` : "Khonsera will pick one for you"}</span>
+          </summary>
+          <input type="text" className="field" value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="e.g. Belper site visit" style={{ marginTop: 8 }} />
+        </details>
+      </div>
+
+      {/* Build my day */}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 24 }}>
+        <button
+          type="button"
+          disabled={!canSubmit || pending}
+          onClick={submit}
+          className="btn btn-gold btn-lg"
+        >
+          {pending ? "Building your day..." : "Build my day"}
+          <Arrow />
+        </button>
+        {!canSubmit ? (
+          <span className="brief-helper" style={{ margin: 0 }}>Every anchor needs a place to continue.</span>
+        ) : feasibilityRollup.late > 0 || feasibilityRollup.tight > 0 ? (
+          <span className={feasibilityRollup.late > 0 ? "feasibility-flag feasibility-flag-bad" : "feasibility-flag feasibility-flag-tight"}>
+            {feasibilityRollup.late > 0 ? `${feasibilityRollup.late} leg${feasibilityRollup.late === 1 ? "" : "s"} arrive${feasibilityRollup.late === 1 ? "s" : ""} late` : `${feasibilityRollup.tight} leg${feasibilityRollup.tight === 1 ? "" : "s"} tight`}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Gmail import modal */}
       {gmailImportOpen ? (
         <BriefGmailImport
           onImport={importParsedBooking}
           onClose={() => setGmailImportOpen(false)}
         />
       ) : null}
-
-      {/* Right — live spine preview */}
-      <aside className="brief-preview" aria-label="What Khonsera will build">
-        <div className="flank left">
-          <span>What we&rsquo;ll build</span>
-        </div>
-        <JourneySpine
-          anchors={anchors}
-          transitions={transitions}
-          stopovers={stopovers}
-          titleOverride={titleOverride}
-          timezone={timezone}
-          railHubLabel={railHubLabel ?? null}
-          flightHubLabel={flightHubLabel ?? null}
-          baseName={baseName}
-          baseAddress={selectedBase?.address}
-          baseType={selectedBase?.type}
-          beHomeBy={beHomeBy}
-          transportBookings={transportBookings}
-          accommodationBookings={accommodationBookings}
-        />
-      </aside>
     </div>
   );
 }
