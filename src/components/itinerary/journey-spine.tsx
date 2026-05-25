@@ -108,13 +108,23 @@ export function JourneySpine({
       </div>
 
       <div className="tl">
-        <SpineStop
-          time="—"
-          eyebrow={baseType === "office" ? "Office" : baseType === "home" ? "Home" : "Start"}
-          title={baseName || "Home"}
-          sub={baseAddress || "Where your day begins"}
-          dotKind="default"
-        />
+        {(() => {
+          // Compute "leave by" from the first fixed departure time
+          const firstDepartTime = (transportBookings ?? [])
+            .filter((tb) => tb.mode && tb.departTime && tb.date)
+            .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))
+            [0]?.departTime;
+          const homeTime = firstDepartTime ? `Leave by ${firstDepartTime}` : "—";
+          return (
+            <SpineStop
+              time={homeTime}
+              eyebrow={baseType === "office" ? "Office" : baseType === "home" ? "Home" : "Start"}
+              title={baseName || "Home"}
+              sub={baseAddress || "Where your day begins"}
+              dotKind="default"
+            />
+          );
+        })()}
         {/* Build a unified timeline: anchors + transport bookings sorted by time */}
         {(() => {
           type TimelineEntry =
