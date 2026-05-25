@@ -103,15 +103,35 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     }
   }
 
+  // Pre-compute transit groups: consecutive transit stops → single transport entry
+  const transitGroupStart = new Map<number, number>(); // index → group end index (inclusive)
+  const consumedByGroup = new Set<number>();
+  for (let i = 0; i < planningTimeline.length; i++) {
+    if (planningTimeline[i].kind !== "transit" || consumedByGroup.has(i)) continue;
+    let end = i;
+    while (end + 1 < planningTimeline.length && planningTimeline[end + 1].kind === "transit") {
+      end++;
+    }
+    if (end > i) {
+      transitGroupStart.set(i, end);
+      for (let j = i + 1; j <= end; j++) consumedByGroup.add(j);
+    } else {
+      transitGroupStart.set(i, i);
+    }
+  }
+
   // Walk through timeline items
   for (let i = 0; i < planningTimeline.length; i++) {
+    if (consumedByGroup.has(i)) continue;
+
     const item = planningTimeline[i];
     const nextItem = planningTimeline[i + 1];
     const stop = item.stop;
     const transitionToNext = nextItem ? transitionByFrom.get(stop.id) : null;
 
     if (item.kind === "transit") {
-      buildTransitEntry(result, item, i, planningTimeline, transitionByFrom, timezone, handlers);
+      const groupEnd = transitGroupStart.get(i) ?? i;
+      buildTransitGroup(result, i, groupEnd, planningTimeline, transitionByFrom, timezone, handlers);
     } else if (item.kind === "stopover") {
       buildStopoverEntry(result, item, i, planningTimeline, input);
     } else {
@@ -176,108 +196,60 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
   return result;
 }
 
-function buildTransitEntry(
+function buildTransitGroup(
   result: TimelineEntry[],
-  item: Extract<EditorTimelineItem, { kind: "transit" }>,
-  i: number,
+  startIdx: number,
+  endIdx: number,
   planningTimeline: EditorTimelineItem[],
   transitionByFrom: Map<string, DbTransition>,
   timezone: string,
   handlers: PlanningTimelineInput["handlers"],
 ) {
-  const meta = item.stop.metadata as Record<string, unknown> | null;
-  const transitTransition = transitionByFrom.get(item.stop.id);
+  const groupStops = [];
+  for (let j = startIdx; j <= endIdx; j++) {
+    groupStops.push(planningTimeline[j]);
+  }
 
-  // Skip arrival stops that follow a locked ticket (the ticket shows arrival)
-  const isActualArrival = (item.stop.type as string) === "transit_arrival";
-  const prevItem = i > 0 ? planningTimeline[i - 1] : null;
-  const prevIsTransitTicket =
-    prevItem?.kind === "transit" &&
-    transitionByFrom.get(prevItem.stop.id)?.is_locked;
-  if (isActualArrival && prevIsTransitTicket) return;
-
-  const nextItem = planningTimeline[i + 1];
-  const showTicket =
-    nextItem?.kind === "transit" && transitTransition?.is_locked;
-
-  if (showTicket) {
-    const nextMeta = nextItem!.stop.metadata as Record<string, unknown> | null;
-    const ticketSeg: TicketSegment = {
-      from_station: item.stop.title ?? "?",
-      to_station: nextItem!.stop.title ?? "?",
+  // Build one ticket segment for each consecutive pair in the group
+  const legs: TicketSegment[] = [];
+  for (let j = 0; j < groupStops.length - 1; j++) {
+    const from = groupStops[j];
+    const to = groupStops[j + 1];
+    const fromMeta = from.stop.metadata as Record<string, unknown> | null;
+    legs.push({
+      from_station: from.stop.title ?? "?",
+      to_station: to.stop.title ?? "?",
       from_station_code: null,
       to_station_code: null,
-      departure_date: item.stop.start_time?.slice(0, 10) ?? "",
-      departure_time: fmtTime(item.stop.end_time ?? item.stop.start_time, timezone),
-      arrival_time: fmtTime(nextItem!.stop.start_time, timezone),
-      operator: (meta?.operator as string) ?? null,
-      route_restriction: (meta?.route_restriction as string) ?? null,
-      ticket_type: (meta?.ticket_type as string) ?? null,
+      departure_date: from.stop.start_time?.slice(0, 10) ?? "",
+      departure_time: fmtTime(from.stop.end_time ?? from.stop.start_time, timezone),
+      arrival_time: fmtTime(to.stop.start_time, timezone),
+      operator: (fromMeta?.operator as string) ?? null,
+      route_restriction: (fromMeta?.route_restriction as string) ?? null,
+      ticket_type: (fromMeta?.ticket_type as string) ?? null,
       coach: null,
-      seat: (meta?.seat as string) ?? null,
-      barcode_ref: (meta?.barcode_ref as string) ?? (meta?.booking_reference as string) ?? null,
-      barcode_data: (meta?.barcode_data as string) ?? null,
-      price: (meta?.price as number) ?? null,
-    };
-
-    // Only emit on the departure stop — collect all consecutive locked legs
-    if (item.transitDirection === "departure") {
-      const legs: TicketSegment[] = [ticketSeg];
-      // Look ahead for more chained legs
-      let j = i + 1;
-      while (j < planningTimeline.length - 1) {
-        const curr = planningTimeline[j];
-        const next = planningTimeline[j + 1];
-        if (curr?.kind !== "transit" || next?.kind !== "transit") break;
-        const t = transitionByFrom.get(curr.stop.id);
-        if (!t?.is_locked) break;
-        const currMeta = curr.stop.metadata as Record<string, unknown> | null;
-        legs.push({
-          from_station: curr.stop.title ?? "?",
-          to_station: next.stop.title ?? "?",
-          from_station_code: null,
-          to_station_code: null,
-          departure_date: curr.stop.start_time?.slice(0, 10) ?? "",
-          departure_time: fmtTime(curr.stop.end_time ?? curr.stop.start_time, timezone),
-          arrival_time: fmtTime(next.stop.start_time, timezone),
-          operator: (currMeta?.operator as string) ?? null,
-          route_restriction: (currMeta?.route_restriction as string) ?? null,
-          ticket_type: (currMeta?.ticket_type as string) ?? null,
-          coach: null,
-          seat: (currMeta?.seat as string) ?? null,
-          barcode_ref: (currMeta?.barcode_ref as string) ?? (currMeta?.booking_reference as string) ?? null,
-          barcode_data: (currMeta?.barcode_data as string) ?? null,
-          price: (currMeta?.price as number) ?? null,
-        });
-        j++;
-      }
-
-      const mode = (meta?.transport_mode as string) ?? "transport";
-      const depTime = fmtTime(item.stop.end_time ?? item.stop.start_time, timezone);
-      const dest = planningTimeline[i + legs.length]?.stop.title ?? "?";
-
-      result.push({
-        kind: "transport",
-        uid: item.stop.id,
-        label: `${depTime} ${mode} to ${dest}`,
-        mode,
-        legs,
-        onRemove: () => handlers.handleDelete(item.stop.id),
-      });
-    }
-  } else if (item.transitDirection === "departure") {
-    // A departure stop without a locked ticket — show as a simple transport label
-    const mode = (meta?.transport_mode as string) ?? "transport";
-    const depTime = fmtTime(item.stop.end_time ?? item.stop.start_time, timezone);
-    result.push({
-      kind: "transport",
-      uid: item.stop.id,
-      label: `Booked ${mode} from ${item.stop.title ?? "?"}`,
-      mode,
-      legs: [],
-      onRemove: () => handlers.handleDelete(item.stop.id),
+      seat: (fromMeta?.seat as string) ?? null,
+      barcode_ref: (fromMeta?.barcode_ref as string) ?? (fromMeta?.booking_reference as string) ?? null,
+      barcode_data: (fromMeta?.barcode_data as string) ?? null,
+      price: (fromMeta?.price as number) ?? null,
     });
   }
+
+  const first = groupStops[0];
+  const last = groupStops[groupStops.length - 1];
+  const firstMeta = first.stop.metadata as Record<string, unknown> | null;
+  const mode = (firstMeta?.transport_mode as string) ?? "train";
+  const depTime = fmtTime(first.stop.end_time ?? first.stop.start_time, timezone);
+  const dest = last.stop.title ?? "?";
+
+  result.push({
+    kind: "transport",
+    uid: first.stop.id,
+    label: `${depTime} ${mode} to ${dest}`,
+    mode,
+    legs,
+    onRemove: () => handlers.handleDelete(first.stop.id),
+  });
 }
 
 function buildStopoverEntry(
