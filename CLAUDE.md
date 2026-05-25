@@ -2,6 +2,10 @@
 
 **Every session must read this before making changes. Update it before ending.**
 
+## Mandatory: Keep docs/ updated
+
+After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.
+
 ## Known Bugs (as of 2026-05-25)
 
 ### Planning page after brief submit
