@@ -1062,41 +1062,38 @@ export function NewItineraryBrief({
           let contextGap = null;
           if (prevEntry?.kind === "transport" && entry.kind === "transport") {
             const gap = findGapInfo(prevEntry, entry);
-            if (gap && gap.gapMinutes > 0 && !timelineEntries.some(
-              (e, j) => j > entryIdx - 1 && j < entryIdx && e.kind === "anchor"
-            )) {
-              // Check if there are any anchors BETWEEN the two transports
-              const anchorsBetween = timelineEntries.filter(
-                (e, j) => j > (entryIdx - 1) && j < entryIdx && e.kind === "anchor"
-              );
-              if (anchorsBetween.length === 0) {
-                const hours = Math.floor(gap.gapMinutes / 60);
-                const mins = gap.gapMinutes % 60;
-                const durLabel = hours > 0
-                  ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
-                  : `${mins}m`;
-                contextGap = (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "16px 12px",
-                      color: "var(--ink-dim)",
-                      fontSize: 13,
-                    }}
+            if (gap && gap.gapMinutes > 0) {
+              const hours = Math.floor(gap.gapMinutes / 60);
+              const mins = gap.gapMinutes % 60;
+              const durLabel = hours > 0
+                ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
+                : `${mins}m`;
+              contextGap = (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "20px 12px",
+                    color: "var(--ink-dim)",
+                  }}
+                >
+                  <p
+                    className="serif-i"
+                    style={{ margin: "0 0 10px", fontSize: 14 }}
                   >
-                    <p style={{ margin: "0 0 8px", fontStyle: "italic", fontFamily: "var(--serif)" }}>
-                      You&rsquo;re in {gap.location} from {gap.from} to {gap.to}
-                    </p>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => insertAnchorAt(anchors.length)}
-                    >
-                      What are you doing here?
-                    </button>
-                  </div>
-                );
-              }
+                    You're in {gap.location} for {durLabel}
+                  </p>
+                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--ink-faint)" }}>
+                    {gap.from} to {gap.to}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => insertAnchorAt(anchors.length)}
+                  >
+                    What are you doing here?
+                  </button>
+                </div>
+              );
             }
           }
 
@@ -1187,11 +1184,34 @@ export function NewItineraryBrief({
                 onChange={(patch) => updateAnchor(anchor.uid, patch)}
                 onRemove={() => removeAnchor(anchor.uid)}
               />
-              {next && !timelineEntries.some(
-                (e) => e.kind === "transport" &&
-                  `${e.booking.date}T${e.booking.departTime}` > `${anchor.date}T${anchor.time}` &&
-                  `${e.booking.date}T${e.booking.departTime}` < `${next.date}T${next.time}`
-              ) ? (
+              {/* Show remaining free time if next entry is a transport booking */}
+              {nextEntry?.kind === "transport" && anchor.time && anchor.durationMins ? (() => {
+                const [h, m] = anchor.time.split(":").map(Number);
+                const endMin = h * 60 + m + anchor.durationMins;
+                const [dh, dm] = (nextEntry.booking.departTime || "").split(":").map(Number);
+                const departMin = dh * 60 + dm;
+                const freeMin = departMin - endMin;
+                if (freeMin > 60) {
+                  const freeH = Math.floor(freeMin / 60);
+                  const freeM = freeMin % 60;
+                  return (
+                    <div style={{ textAlign: "center", padding: "8px 0", fontSize: 12, color: "var(--ink-faint)" }}>
+                      {freeH}h{freeM > 0 ? ` ${freeM}m` : ""} free before your {nextEntry.booking.departTime} train
+                      <br />
+                      <button
+                        type="button"
+                        className="brief-add-stop-trigger"
+                        onClick={() => insertAnchorAt(anchors.length)}
+                        style={{ marginTop: 4 }}
+                      >
+                        + Add another stop
+                      </button>
+                    </div>
+                  );
+                }
+                return null;
+              })() : null}
+              {next && nextEntry?.kind !== "transport" ? (
                 <button
                   type="button"
                   className="brief-add-stop-trigger"
