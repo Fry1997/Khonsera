@@ -219,6 +219,13 @@ export function NewItineraryBrief({
         if (returnSegs.length > 0) next.push(makeBooking(returnSegs));
         return next;
       });
+
+      // Auto-update trip dates to encompass the booking
+      const bookingDate = outbound[0]?.departure_date;
+      if (bookingDate) {
+        setTripStartDate((prev) => !prev || bookingDate < prev ? bookingDate : prev);
+        setTripEndDate((prev) => !prev || bookingDate > prev ? bookingDate : prev);
+      }
     } else {
       setAccommodationBookings((prev) => [
         ...prev,

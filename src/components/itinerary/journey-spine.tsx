@@ -470,34 +470,40 @@ function SpineTransportBooking({
 }
 
 function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
+  const date = tb.date || new Date().toISOString().slice(0, 10);
+  const op = tb.operator ?? null;
+  const tt = tb.ticketType ?? null;
+  const rr = tb.routeRestriction ?? null;
+
   if (tb.changeovers.length === 0) {
+    const bc = tb.barcodes[0];
     return [{
       from_station: tb.departureHub?.label ?? "?",
       to_station: tb.destinationHub?.label ?? "?",
       from_station_code: null,
       to_station_code: null,
-      departure_date: tb.date || new Date().toISOString().slice(0, 10),
+      departure_date: date,
       departure_time: tb.departTime || "",
       arrival_time: tb.arriveTime || "",
-      operator: null,
-      route_restriction: null,
-      ticket_type: null,
+      operator: op,
+      route_restriction: rr,
+      ticket_type: tt,
       coach: null,
       seat: tb.seat || null,
-      barcode_ref: tb.reference || null,
-      barcode_data: null,
+      barcode_ref: bc?.ref ?? (tb.reference || null),
+      barcode_data: bc?.data ?? null,
       price: tb.price ? Number(tb.price) : null,
     }];
   }
 
   const segments: TicketSegment[] = [];
-  const date = tb.date || new Date().toISOString().slice(0, 10);
   const stops = [
     { label: tb.departureHub?.label ?? "?", time: tb.departTime || "" },
     ...tb.changeovers.map((co) => ({ label: co.hub?.label ?? "?", time: co.departTime || "" })),
     { label: tb.destinationHub?.label ?? "?", time: tb.arriveTime || "" },
   ];
   for (let i = 0; i < stops.length - 1; i++) {
+    const bc = tb.barcodes[i];
     segments.push({
       from_station: stops[i].label,
       to_station: stops[i + 1].label,
@@ -506,13 +512,13 @@ function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
       departure_date: date,
       departure_time: stops[i].time,
       arrival_time: i < stops.length - 2 ? (tb.changeovers[i]?.arriveTime || "") : (tb.arriveTime || ""),
-      operator: null,
-      route_restriction: null,
-      ticket_type: null,
+      operator: op,
+      route_restriction: rr,
+      ticket_type: tt,
       coach: null,
       seat: i === 0 ? (tb.seat || null) : null,
-      barcode_ref: i === 0 ? (tb.reference || null) : null,
-      barcode_data: null,
+      barcode_ref: bc?.ref ?? null,
+      barcode_data: bc?.data ?? null,
       price: i === 0 && tb.price ? Number(tb.price) : null,
     });
   }

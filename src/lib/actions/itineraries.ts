@@ -717,7 +717,11 @@ export async function createItineraryFromBrief(
     });
 
     // Changeover stops — intermediate stations between departure and arrival.
-    for (const co of tb.changeovers) {
+    // Each changeover starts a new ticket leg. barcodes[0] is on the departure
+    // stop; barcodes[i+1] goes on changeover[i].
+    for (let coIdx = 0; coIdx < tb.changeovers.length; coIdx++) {
+      const co = tb.changeovers[coIdx];
+      const coBarcode = tb.barcodes[coIdx + 1];
       const coArrIso = co.arrive_time
         ? isoFromLocal(dateForBooking, co.arrive_time, tz)
         : null;
@@ -741,6 +745,11 @@ export async function createItineraryFromBrief(
           kind: "transit_changeover",
           transport_mode: tb.mode,
           hub_id: co.hub_id,
+          operator: tb.operator,
+          ticket_type: tb.ticket_type,
+          route_restriction: tb.route_restriction,
+          barcode_ref: coBarcode?.ref ?? null,
+          barcode_data: coBarcode?.data ?? null,
         },
         itinerary_id: itinerary.id,
         workspace_id: ctx.workspaceId,
