@@ -2170,19 +2170,9 @@ function InlineAddsRow({
         onClick={() =>
           setTransitFormFor({ beforeStopId, afterStopId, mode: "train" })
         }
-        title="Add a train journey here"
+        title="Add booked transport here"
       >
-        + Train
-      </button>
-      <button
-        type="button"
-        className="brief-add-stop-trigger"
-        onClick={() =>
-          setTransitFormFor({ beforeStopId, afterStopId, mode: "flight" })
-        }
-        title="Add a flight here"
-      >
-        + Flight
+        + Transport
       </button>
     </div>
   );
