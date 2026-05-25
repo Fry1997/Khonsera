@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { FormError } from "@/components/ui/form";
-import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
 import {
   createStop,
   deleteStop,
@@ -38,8 +37,6 @@ import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 import { TransportIcon, StopIcon } from "@/components/icons";
 import {
   AddBetween,
-  AnchorCard,
-  StopoverCard,
   TRANSITION_OPTIONS,
   Timeline,
   TransitionRow as PlanningTransitionRow,

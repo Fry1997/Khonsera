@@ -11,14 +11,10 @@ import {
   type PlacePickerLocation,
 } from "@/components/place-picker";
 import {
-  AddBetween,
-  AnchorCard,
   HOME_UID,
   JourneySpine,
-  StopoverCard,
   TRANSITION_OPTIONS,
   Timeline,
-  TransitionRow,
   TransportBookingCard,
   AccommodationBookingCard,
   anchorEndDate,
@@ -52,9 +48,7 @@ import {
   type TransitionMode,
 } from "@/components/itinerary";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
-import { TransportIcon } from "@/components/icons";
-import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
-import { GapModePicker, type GapMode, type GapPreview } from "@/components/gap-mode-picker";
+import type { GapMode, GapPreview } from "@/components/gap-mode-picker";
 import { scanGmailForBookings } from "@/lib/actions/gmail";
 import { resolveHubByName } from "@/lib/actions/travel-profile";
 import type { ParsedBooking } from "@/lib/gmail/types";
