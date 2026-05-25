@@ -950,36 +950,62 @@ export function NewItineraryBrief({
           // ── Mode picker gap before this entry ──
           let gapBefore = null;
           if (entryIdx === 0) {
-            // Home → first entry: show mode picker
-            const toAnchor = entry.kind === "anchor" ? entry.anchor : null;
-            if (toAnchor) {
+            // Home → first entry
+            if (entry.kind === "anchor") {
               gapBefore = (
                 <TransitionRow
                   from={null}
-                  to={toAnchor}
-                  transition={getTransition(HOME_UID, toAnchor.uid)}
-                  onChange={(patch) => setTransition(HOME_UID, toAnchor.uid, patch)}
+                  to={entry.anchor}
+                  transition={getTransition(HOME_UID, entry.anchor.uid)}
+                  onChange={(patch) => setTransition(HOME_UID, entry.anchor.uid, patch)}
                   fromVirtualLabel={baseName}
                   modePreviews={briefPreviewsForPair(
                     selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
-                    toAnchor.place,
+                    entry.anchor.place,
                   )}
                   onOpenChange={(open) => {
-                    if (open && toAnchor.place) {
+                    if (open && entry.anchor.place) {
                       briefPrefetchPair(
                         selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
-                        toAnchor.place,
+                        entry.anchor.place,
                       );
                     }
                   }}
                 />
               );
+            } else {
+              // Home → transport departure
+              const stationLabel = entry.booking.departureHub?.label ?? "station";
+              gapBefore = (
+                <div style={{ padding: "8px 0", textAlign: "center" }}>
+                  <span className="uc" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
+                    To {stationLabel}
+                  </span>
+                </div>
+              );
             }
           } else if (prevEntry?.kind === "transport" && entry.kind === "anchor") {
-            // Transport arrival → anchor: "How will you get to your appointment?"
-            // No transition key for transport→anchor yet, but show the gap
+            // Transport arrival → anchor: "From [station] to your appointment"
+            const stationLabel = prevEntry.booking.destinationHub?.label ?? "station";
+            gapBefore = (
+              <div style={{ padding: "8px 0", textAlign: "center" }}>
+                <span className="uc" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
+                  From {stationLabel}
+                </span>
+              </div>
+            );
           } else if (prevEntry?.kind === "anchor" && entry.kind === "transport") {
-            // Anchor → transport departure: mode picker to the station
+            // Anchor → transport departure: "To [station]"
+            const stationLabel = entry.booking.departureHub?.label ?? "station";
+            gapBefore = (
+              <div style={{ padding: "8px 0", textAlign: "center" }}>
+                <span className="uc" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
+                  To {stationLabel}
+                </span>
+              </div>
+            );
+          } else if (prevEntry?.kind === "transport" && entry.kind === "transport") {
+            // Between two transport bookings — the contextual gap handles this
           } else if (prevEntry?.kind === "anchor" && entry.kind === "anchor") {
             // Anchor → anchor: standard transition
             const prev = prevEntry.anchor;
