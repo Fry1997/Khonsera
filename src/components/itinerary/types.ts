@@ -59,10 +59,9 @@ export type Anchor = {
 // ─────────────────────────────────────────────────────────────────────
 // Transitions
 //
-// Each pair of adjacent anchors can carry an intended travel mode and
-// optionally a pre-booked ticket. "auto" means "let the editor pick";
-// any other mode locks the editor onto that. Booking, when present,
-// also locks start/end times.
+// Each pair of adjacent anchors carries a travel mode. "auto" is a
+// legacy sentinel meaning "walk" — it is not selectable in the UI
+// and should never be written to new DB rows.
 // ─────────────────────────────────────────────────────────────────────
 
 export type TransitionMode =

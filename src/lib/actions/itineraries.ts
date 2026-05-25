@@ -1045,11 +1045,7 @@ export async function createItineraryFromBrief(
       if (!from || !to) continue;
 
       const isBooked = t.booking != null;
-      const mode = t.mode === "auto" ? null : t.mode;
-
-      // When the user has nothing to say (mode=auto, no booking), skip
-      // — the editor's solver will compute the transition itself.
-      if (!mode && !isBooked) continue;
+      const mode = t.mode === "auto" ? "walk" : t.mode;
 
       // Transport booking stops were inserted between these anchors,
       // so they're no longer adjacent. Save the mode info for the
@@ -1121,7 +1117,7 @@ export async function createItineraryFromBrief(
             workspace_id: ctx.workspaceId,
             from_stop_id: from.id,
             to_stop_id: to.id,
-            mode: mode ?? "mixed",
+            mode: mode,
             is_locked: isBooked,
             start_time: startIso,
             end_time: endIso,
@@ -1296,7 +1292,7 @@ export async function createItineraryFromBrief(
           workspace_id: ctx.workspaceId,
           from_stop_id: from.id as string,
           to_stop_id: to.id as string,
-          mode: transitMode,
+          mode: transitMode === "auto" ? "walk" : transitMode,
           is_locked: isTransitLeg,
           computed_duration_minutes: computedDuration,
         });

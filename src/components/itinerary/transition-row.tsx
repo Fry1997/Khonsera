@@ -73,13 +73,10 @@ export function TransitionRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Chip-face rendering — the executive picks the mode. When the
-  // transition mode is still the "auto" sentinel (the empty default),
-  // the chip invites them to set one rather than pretending Khonsera
-  // will figure it out.
-  const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode);
-  const Icon = opt ? TransportIcon[opt.icon] : TransportIcon.auto;
-  const isUnset = transition.mode === "auto" && !transition.booked;
+  const opt = TRANSITION_OPTIONS.find((o) => o.value === transition.mode)
+    ?? TRANSITION_OPTIONS[0];
+  const Icon = TransportIcon[opt.icon];
+  const isUnset = false;
   const stationBased = opt?.stationBased ?? false;
   const beforeOpt = LOCAL_MODES.find(
     (m) => m.value === transition.localBefore,

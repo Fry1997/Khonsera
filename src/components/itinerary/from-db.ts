@@ -305,14 +305,14 @@ export function transitionsFromDb(
     // the transitions.notes "khonsera:local_before=X;local_after=Y"
     // marker (createItineraryFromBrief writes it there because
     // transitions has no dedicated local-leg columns).
-    let localBefore: LocalMode = "auto";
-    let localAfter: LocalMode = "auto";
+    let localBefore: LocalMode = "walk";
+    let localAfter: LocalMode = "walk";
     const marker = t.notes ?? "";
     if (marker.startsWith("khonsera:")) {
       for (const part of marker.slice("khonsera:".length).split(";")) {
         const [k, v] = part.split("=");
-        if (k === "local_before") localBefore = (v as LocalMode) ?? "auto";
-        if (k === "local_after") localAfter = (v as LocalMode) ?? "auto";
+        if (k === "local_before") localBefore = (v as LocalMode) ?? "walk";
+        if (k === "local_after") localAfter = (v as LocalMode) ?? "walk";
       }
     }
     out.set(transitionKey(t.from_stop_id, t.to_stop_id), {

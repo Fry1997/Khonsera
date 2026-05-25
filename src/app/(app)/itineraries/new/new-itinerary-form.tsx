@@ -662,8 +662,7 @@ export function NewItineraryBrief({
             toUid: string,
             t: BriefTransition,
           ) => {
-            const meaningful = t.mode !== "auto" || t.booked;
-            if (!meaningful) return;
+            if (!t.mode && !t.booked) return;
             const booking =
               t.booked &&
               t.booking.departTime &&
