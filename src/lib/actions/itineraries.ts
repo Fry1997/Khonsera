@@ -187,7 +187,7 @@ const anchorInputSchema = z
     //              start/end times are written null and is_time_fixed
     //              is set to false.
     timing_mode: z
-      .enum(["arrive_by", "leave_by", "around_then"])
+      .enum(["arrive_by", "leave_by", "around_then", "maximize"])
       .default("arrive_by"),
     time: z
       .string()
@@ -629,9 +629,9 @@ export async function createItineraryFromBrief(
     let endIso: string | null;
     let isFixed = true;
 
-    if (a.timing_mode === "around_then") {
-      // Solver-resolved: no pinned times, just a duration. The editor
-      // will fit this between adjacent fixed anchors based on travel.
+    if (a.timing_mode === "around_then" || a.timing_mode === "maximize") {
+      // Solver-resolved: no pinned times. "maximize" means fill all
+      // available time between inbound arrival and outbound departure.
       startIso = null;
       endIso = null;
       isFixed = false;

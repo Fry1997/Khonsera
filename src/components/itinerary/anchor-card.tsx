@@ -793,7 +793,7 @@ function ReturnToRoom({
             onChange={(e) => onChange({ date: e.target.value })}
           />
         </label>
-        {mode !== "around_then" ? (
+        {mode !== "around_then" && mode !== "maximize" ? (
           <label className="brief-field">
             <span className="uc">{timeLabel}</span>
             <input
@@ -813,7 +813,7 @@ function ReturnToRoom({
               >
                 <TransportIcon.auto size={16} />
               </span>
-              <span>Khonsera fits between adjacent anchors</span>
+              <span>{mode === "maximize" ? "Maximize your time here" : "Khonsera fits between adjacent anchors"}</span>
             </div>
           </div>
         )}
@@ -875,7 +875,7 @@ function AppointmentTimes({
             onChange={(e) => onChange({ date: e.target.value })}
           />
         </label>
-        {mode !== "around_then" ? (
+        {mode !== "around_then" && mode !== "maximize" ? (
           <label className="brief-field">
             <span className="uc">{timeLabel}</span>
             <input
@@ -895,7 +895,7 @@ function AppointmentTimes({
               >
                 <TransportIcon.auto size={16} />
               </span>
-              <span>Khonsera fits between adjacent anchors</span>
+              <span>{mode === "maximize" ? "Maximize your time here" : "Khonsera fits between adjacent anchors"}</span>
             </div>
           </div>
         )}
@@ -989,6 +989,7 @@ function SummaryAnchorCard({
       return `${anchor.time}${co ? ` → ${co}` : ""}`;
     }
     if (mode === "around_then") return `~${fmtDur(anchor.durationMins)}`;
+    if (mode === "maximize") return "Maximize time";
     const prefix = mode === "leave_by" ? "by " : "";
     return `${prefix}${anchor.time} · ${fmtDur(anchor.durationMins)}`;
   })();

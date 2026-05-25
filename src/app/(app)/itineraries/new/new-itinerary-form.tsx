@@ -1235,6 +1235,19 @@ export function NewItineraryBrief({
           );
         })}
 
+        {/* Add a stop after the last entry */}
+        {timelineEntries.length > 0 && (
+          <div style={{ textAlign: "center", padding: "8px 0" }}>
+            <button
+              type="button"
+              className="brief-add-stop-trigger"
+              onClick={() => insertAnchorAt(anchors.length)}
+            >
+              + Add a stop
+            </button>
+          </div>
+        )}
+
         {/* ── Be home by ──────────────────────────────────────── */}
         <BeHomeByField
           value={beHomeBy}

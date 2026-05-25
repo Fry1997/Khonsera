@@ -32,7 +32,10 @@ export type RoleOption = { value: string; label: string };
 //                 a dinner to make). The arrival is derived backwards.
 //   around_then — you only know the duration; Khonsera fits the stop
 //                 between the adjacent anchors once travel is known.
-export type TimingMode = "arrive_by" | "leave_by" | "around_then";
+//   maximize    — spend as long as possible here. Khonsera computes
+//                 arrival from inbound transport + travel, departure
+//                 from outbound transport - travel - buffer.
+export type TimingMode = "arrive_by" | "leave_by" | "around_then" | "maximize";
 
 export type Anchor = {
   uid: string;
