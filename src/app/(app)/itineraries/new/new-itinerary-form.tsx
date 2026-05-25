@@ -1175,10 +1175,72 @@ export function NewItineraryBrief({
           const anchor = entry.anchor;
           const anchorIdx = entry.index;
           const next = anchors[anchorIdx + 1];
+
+          // Compute maximize window: find surrounding transport bookings
+          let maximizeInfo: { arriveBy: string; leaveBy: string; durationMins: number } | null = null;
+          if (anchor.timingMode === "maximize") {
+            const BUFFER = 10;
+            // Find the transport booking BEFORE this anchor
+            const prevTransport = (() => {
+              for (let j = entryIdx - 1; j >= 0; j--) {
+                const e = timelineEntries[j];
+                if (e.kind === "transport") return e.booking;
+              }
+              return null;
+            })();
+            const nextTransport = (() => {
+              for (let j = entryIdx + 1; j < timelineEntries.length; j++) {
+                const e = timelineEntries[j];
+                if (e.kind === "transport") return e.booking;
+              }
+              return null;
+            })();
+
+            if (prevTransport?.arriveTime && nextTransport?.departTime) {
+              const [ah, am] = prevTransport.arriveTime.split(":").map(Number);
+              const [dh, dm] = nextTransport.departTime.split(":").map(Number);
+              const arriveMin = ah * 60 + am;
+              const departMin = dh * 60 + dm - BUFFER;
+              const maxDuration = departMin - arriveMin;
+              if (maxDuration > 0) {
+                const arrH = Math.floor(arriveMin / 60);
+                const arrM = arriveMin % 60;
+                const depH = Math.floor(departMin / 60);
+                const depM = departMin % 60;
+                maximizeInfo = {
+                  arriveBy: `${String(arrH).padStart(2, "0")}:${String(arrM).padStart(2, "0")}`,
+                  leaveBy: `${String(depH).padStart(2, "0")}:${String(depM).padStart(2, "0")}`,
+                  durationMins: maxDuration,
+                };
+              }
+            }
+          }
+
           return (
             <div key={anchor.uid} style={{ marginBottom: 8 }}>
               {gapBefore}
               {contextGap}
+              {maximizeInfo && (
+                <div
+                  className="mono"
+                  style={{
+                    padding: "8px 14px",
+                    fontSize: 11,
+                    color: "var(--gold-2)",
+                    background: "var(--gold-tint)",
+                    borderRadius: 8,
+                    marginBottom: 6,
+                    textAlign: "center",
+                  }}
+                >
+                  {Math.floor(maximizeInfo.durationMins / 60)}h{" "}
+                  {maximizeInfo.durationMins % 60 > 0 ? `${maximizeInfo.durationMins % 60}m ` : ""}
+                  available · {maximizeInfo.arriveBy} to {maximizeInfo.leaveBy}
+                  <span style={{ display: "block", fontSize: 10, color: "var(--ink-dim)", fontFamily: "var(--sans)", marginTop: 2 }}>
+                    Includes {10} min buffer before departure
+                  </span>
+                </div>
+              )}
               <AnchorCard
                 anchor={anchor}
                 earlier={anchors.slice(0, anchorIdx)}

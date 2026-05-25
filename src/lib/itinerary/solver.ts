@@ -131,10 +131,15 @@ export function solveTimes(input: {
         break; // honour the user's anchor; don't overwrite.
       }
       if (!next.is_time_fixed) next.start_time = trEnd;
-      next.end_time = addMinutes(
-        next.start_time ?? trEnd,
-        stopDur(next),
-      );
+      // For maximize stops (duration_minutes null, not fixed), don't set
+      // end_time here — backward propagation from the next anchor will
+      // fill it, giving the full available window.
+      if (next.duration_minutes != null || next.is_time_fixed) {
+        next.end_time = addMinutes(
+          next.start_time ?? trEnd,
+          stopDur(next),
+        );
+      }
     }
 
     // Backward.
@@ -164,8 +169,12 @@ export function solveTimes(input: {
       tr.start_time = trStart;
 
       // Previous stop end = transition start; previous stop start = end - duration.
+      // For maximize stops (no duration), set end_time from the backward pass
+      // and keep start_time from the forward pass — this fills the full window.
       const prevEnd = trStart;
-      const prevStart = addMinutes(prevEnd, -stopDur(prev));
+      const prevStart = prev.duration_minutes != null
+        ? addMinutes(prevEnd, -stopDur(prev))
+        : prev.start_time ?? addMinutes(prevEnd, 0);
       if (prev.is_time_fixed && prev.start_time && prev.start_time !== prevStart) {
         conflicts.push({
           kind: "stop_anchor_mismatch",

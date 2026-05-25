@@ -611,12 +611,14 @@ export async function createItineraryFromBrief(
     }
 
     // Everything else picks a pinning side based on timing_mode.
-    const dur =
-      a.duration_minutes ??
-      (a.time && a.end_time
-        ? minutesBetweenLocal(a.time, a.end_time)
-        : null) ??
-      defaultDurationForKind(a.kind, a.role);
+    let dur: number | null =
+      a.timing_mode === "maximize"
+        ? null
+        : a.duration_minutes ??
+          (a.time && a.end_time
+            ? minutesBetweenLocal(a.time, a.end_time)
+            : null) ??
+          defaultDurationForKind(a.kind, a.role);
 
     const stopType: StopType =
       a.kind === "meal"
@@ -638,11 +640,11 @@ export async function createItineraryFromBrief(
     } else if (a.timing_mode === "leave_by" && a.time) {
       // Pin at the back end — user knows when they need to leave.
       endIso = isoFromLocal(a.date, a.time, tz);
-      startIso = addMinutesIso(endIso, -dur);
+      startIso = addMinutesIso(endIso, -(dur ?? 60));
     } else {
       // arrive_by — the original behaviour and our default.
       startIso = isoFromLocal(a.date, a.time ?? "09:00", tz);
-      endIso = addMinutesIso(startIso, dur);
+      endIso = addMinutesIso(startIso, dur ?? 60);
     }
 
     if (a.client_id) clientIdBySeq.set(seq, a.client_id);
