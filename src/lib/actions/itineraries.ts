@@ -632,9 +632,11 @@ export async function createItineraryFromBrief(
     let isFixed = true;
 
     if (a.timing_mode === "around_then" || a.timing_mode === "maximize") {
-      // Solver-resolved: no pinned times. "maximize" means fill all
-      // available time between inbound arrival and outbound departure.
-      startIso = null;
+      // Solver-resolved: no pinned times. But we need a provisional
+      // start_time for chronological sorting — use the anchor's date
+      // with a midday time so it sorts between morning departure and
+      // afternoon return transport bookings.
+      startIso = isoFromLocal(a.date, a.time || "12:00", tz);
       endIso = null;
       isFixed = false;
     } else if (a.timing_mode === "leave_by" && a.time) {
@@ -1164,7 +1166,7 @@ export async function createItineraryFromBrief(
   {
     const { data: allStops } = await supabase
       .from("stops")
-      .select("id, sequence, metadata")
+      .select("id, sequence, metadata, start_time")
       .eq("itinerary_id", itinerary.id)
       .eq("workspace_id", ctx.workspaceId)
       .order("sequence");
@@ -1211,6 +1213,16 @@ export async function createItineraryFromBrief(
           ? (fromMeta?.transport_mode as string) ?? "train"
           : "mixed";
 
+        // Compute duration from stop times for locked transit legs
+        let computedDuration: number | null = null;
+        if (isTransitLeg && from.start_time && to.start_time) {
+          computedDuration = Math.round(
+            (new Date(to.start_time as string).getTime() -
+              new Date(from.start_time as string).getTime()) /
+              60_000,
+          );
+        }
+
         newTransitions.push({
           itinerary_id: itinerary.id,
           workspace_id: ctx.workspaceId,
@@ -1218,7 +1230,7 @@ export async function createItineraryFromBrief(
           to_stop_id: to.id as string,
           mode: transitMode,
           is_locked: isTransitLeg,
-          computed_duration_minutes: null,
+          computed_duration_minutes: computedDuration,
         });
       }
 
