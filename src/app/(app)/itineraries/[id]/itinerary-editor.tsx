@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
+import { RouteMap } from "@/components/route-map";
 import { FormError } from "@/components/ui/form";
 import {
   createStop,
@@ -945,42 +946,38 @@ export function ItineraryEditor({
 
   // Map URL — markers from stops w/ coords + paths from transition polylines.
   // Coordinates come from customer_site → location.
-  const mapUrl = useMemo(() => {
-    const markers: { lat: number; lng: number; label?: string; size?: string; color?: string }[] = [];
+  const mapStops = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Array<{ lat: number; lng: number; label: string; code?: string; role: "home" | "transit" | "site" }> = [];
     sortedStops.forEach((s) => {
       const lat =
         s.customer_site?.latitude ?? s.location?.latitude ?? (s as any).transport_hub?.latitude ?? null;
       const lng =
         s.customer_site?.longitude ?? s.location?.longitude ?? (s as any).transport_hub?.longitude ?? null;
-      if (lat != null && lng != null) {
-        const name = s.title ?? s.location?.name ?? (s as any).transport_hub?.name ?? "";
-        const isHome = s.type === "start" || s.type === "end";
-        const sType = s.type as string;
-        const isTransit = sType === "transit_departure" || sType === "transit_arrival" || sType === "transit_changeover";
-        markers.push({
-          lat: Number(lat),
-          lng: Number(lng),
-          label: isHome ? "H" : isTransit ? "" : "",
-          size: "small",
-          color: isHome ? "936820" : isTransit ? "b8893f" : "c25c3a",
-        });
-      }
+      if (lat == null || lng == null) return;
+      const coordKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
+      if (seen.has(coordKey)) return;
+      seen.add(coordKey);
+      const name = s.title ?? s.location?.name ?? (s as any).transport_hub?.name ?? "";
+      const hubCode = (s as any).transport_hub?.code as string | undefined;
+      const isHome = s.type === "start" || s.type === "end";
+      const sType = s.type as string;
+      const isTransit = sType === "transit_departure" || sType === "transit_arrival" || sType === "transit_changeover";
+      out.push({
+        lat: Number(lat),
+        lng: Number(lng),
+        label: name,
+        code: isHome ? undefined : isTransit ? (hubCode ?? name.slice(0, 3).toUpperCase()) : "SITE",
+        role: isHome ? "home" : isTransit ? "transit" : "site",
+      });
     });
-    const paths = transitions
-      .filter((t) => t.overview_polyline)
-      .map((t) => ({
-        encoded: t.overview_polyline!,
-        color: "c25c3a",
-        weight: 3,
-      }));
-    if (markers.length === 0 && paths.length === 0) return null;
-    return buildClientStaticMapUrl({
-      width: 320,
-      height: 320,
-      markers,
-      paths,
-    });
-  }, [sortedStops, transitions]);
+    return out;
+  }, [sortedStops]);
+
+  const mapPolylines = useMemo(
+    () => transitions.filter((t) => t.overview_polyline).map((t) => t.overview_polyline!),
+    [transitions],
+  );
 
   const currentStatusIndex = STATUS_FLOW.indexOf(itinerary.status);
   const canAdvance =
@@ -1356,16 +1353,13 @@ export function ItineraryEditor({
 
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
-            {mapUrl ? (
-              <div className="overflow-hidden rounded-md border border-rule bg-card">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={mapUrl}
-                  alt="Route map"
-                  className="block w-full"
-                  style={{ aspectRatio: "1 / 1", objectFit: "cover" }}
-                />
-              </div>
+            {mapStops.length > 0 ? (
+              <RouteMap
+                stops={mapStops}
+                polylines={mapPolylines}
+                totalMiles={totalMiles}
+                totalMinutes={totalMinutes}
+              />
             ) : (
               <div
                 className="flex h-[320px] items-center justify-center rounded-md border border-dashed border-rule-2 bg-card-2 text-center"

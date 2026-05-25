@@ -3606,3 +3606,109 @@
      other surfaces use it we leave it untouched. The mobile main area
      uses ordinary padding from the page itself. */
 }
+
+/* ─── Route Map Card ─────────────────────────────────────────── */
+
+.route-map-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.route-map-header {
+  padding: 20px 22px 14px;
+}
+
+.route-map-eyebrow {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+
+.route-map-headline {
+  display: block;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 26px;
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.route-map-container {
+  background: var(--card-2, #f4f0e7);
+}
+
+.route-map-marker {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  z-index: 1;
+}
+
+.route-map-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: transparent;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.route-map-marker-home .route-map-dot {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ink);
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 2px transparent,
+    inset 0 0 0 3px var(--ink),
+    0 0 0 2px var(--card);
+}
+
+.route-map-marker-site .route-map-dot {
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--gold);
+  background: var(--gold);
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.route-map-marker-transit .route-map-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ink-dim);
+  background: var(--card);
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.route-map-code {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow:
+    -1px -1px 0 var(--card),
+    1px -1px 0 var(--card),
+    -1px 1px 0 var(--card),
+    1px 1px 0 var(--card),
+    0 -1px 0 var(--card),
+    0 1px 0 var(--card),
+    -1px 0 0 var(--card),
+    1px 0 0 var(--card);
+  white-space: nowrap;
+}
+
+.route-map-marker-site .route-map-code {
+  font-weight: 700;
+  color: var(--gold-2, var(--gold));
+}
