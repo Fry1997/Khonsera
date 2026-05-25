@@ -790,45 +790,11 @@ export function NewItineraryBrief({
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 16px" }}>
       <FormError message={feedback?.message} />
 
-      {/* ── Date + Base ───────────────────────────────────────── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-        <div className="card" style={{ padding: "12px 16px" }}>
-          <span className="uc" style={{ fontSize: 10 }}>Trip date</span>
-          <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-            <input
-              type="date"
-              className="field"
-              value={tripStartDate}
-              onChange={(e) => setTripStartDate(e.target.value)}
-              style={{ flex: 1, minWidth: 130, fontSize: 13 }}
-            />
-            {tripStartDate !== tripEndDate && (
-              <>
-                <span style={{ color: "var(--ink-faint)", alignSelf: "center" }}>to</span>
-                <input
-                  type="date"
-                  className="field"
-                  value={tripEndDate}
-                  onChange={(e) => setTripEndDate(e.target.value)}
-                  style={{ flex: 1, minWidth: 130, fontSize: 13 }}
-                />
-              </>
-            )}
-          </div>
-        </div>
-        <BaseLocationCard
-          baseLocations={baseLocations}
-          defaultBaseId={defaultBaseId}
-          selectedBaseId={selectedBaseId}
-          onSelect={setSelectedBaseId}
-        />
-      </div>
-
       {/* ══════════════════════════════════════════════════════════════
-          THE TIMELINE — single chronological stream
+          THE TIMELINE
           ════════════════════════════════════════════════════════════ */}
       <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 20 }}>
-        {/* ── Home row ─────────────────────────────────────────── */}
+        {/* ── Starting point: home + date combined ─────────────── */}
         <div
           className="card"
           style={{
@@ -837,15 +803,41 @@ export function NewItineraryBrief({
             borderLeft: "3px solid var(--ink-faint)",
           }}
         >
-          <span className="uc" style={{ fontSize: 10 }}>Home</span>
-          <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 16, color: "var(--ink)", marginTop: 2 }}>
-            {baseName}
-          </div>
-          {selectedBase?.address && (
-            <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
-              {selectedBase.address}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <span className="uc" style={{ fontSize: 10 }}>Starting from</span>
+              <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 16, color: "var(--ink)", marginTop: 2 }}>
+                {baseName}
+              </div>
+              {selectedBase?.address && (
+                <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
+                  {selectedBase.address}
+                </div>
+              )}
             </div>
-          )}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              <input
+                type="date"
+                className="field"
+                value={tripStartDate}
+                onChange={(e) => { setTripStartDate(e.target.value); setTripEndDate(e.target.value); }}
+                style={{ width: 130, fontSize: 12, padding: "4px 8px" }}
+              />
+              {baseLocations.length > 1 && (
+                <button
+                  type="button"
+                  style={{ fontSize: 11, color: "var(--gold-2)" }}
+                  onClick={() => {
+                    const next = baseLocations.findIndex((b) => b.id === selectedBaseId);
+                    const nextId = baseLocations[(next + 1) % baseLocations.length]?.id;
+                    if (nextId) setSelectedBaseId(nextId);
+                  }}
+                >
+                  Change
+                </button>
+              )}
+            </div>
+          </div>
           {firstDepartTime && (() => {
             const BUFFER_MINS = 10;
             // Check if user has set a mode for home→station gap
