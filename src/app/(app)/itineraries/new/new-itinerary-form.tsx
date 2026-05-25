@@ -1340,27 +1340,6 @@ export function NewItineraryBrief({
             <div key={anchor.uid} style={{ marginBottom: 8 }}>
               {gapBefore}
               {contextGap}
-              {maximizeInfo && (
-                <div
-                  className="mono"
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: 11,
-                    color: "var(--gold-2)",
-                    background: "var(--gold-tint)",
-                    borderRadius: 8,
-                    marginBottom: 6,
-                    textAlign: "center",
-                  }}
-                >
-                  {Math.floor(maximizeInfo.durationMins / 60)}h{" "}
-                  {maximizeInfo.durationMins % 60 > 0 ? `${maximizeInfo.durationMins % 60}m ` : ""}
-                  available · {maximizeInfo.arriveBy} to {maximizeInfo.leaveBy}
-                  <span style={{ display: "block", fontSize: 10, color: "var(--ink-dim)", fontFamily: "var(--sans)", marginTop: 2 }}>
-                    {maximizeInfo.travelNote ?? "Includes 10 min buffer before departure"}
-                  </span>
-                </div>
-              )}
               <AnchorCard
                 anchor={anchor}
                 earlier={anchors.slice(0, anchorIdx)}
@@ -1382,6 +1361,29 @@ export function NewItineraryBrief({
                 onChange={(patch) => updateAnchor(anchor.uid, patch)}
                 onRemove={() => removeAnchor(anchor.uid)}
               />
+              {maximizeInfo && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    background: "var(--gold-tint)",
+                    borderRadius: "0 0 12px 12px",
+                    marginTop: -4,
+                    borderTop: "1px dashed var(--gold-200)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--gold-2)" }}>
+                      {Math.floor(maximizeInfo.durationMins / 60)}h{maximizeInfo.durationMins % 60 > 0 ? ` ${maximizeInfo.durationMins % 60}m` : ""}
+                    </span>
+                    <span className="mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                      {maximizeInfo.arriveBy} — {maximizeInfo.leaveBy}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 3 }}>
+                    {maximizeInfo.travelNote ?? "Includes 10 min buffer before departure"}
+                  </div>
+                </div>
+              )}
               {/* Show remaining free time if next entry is a transport booking */}
               {nextEntry?.kind === "transport" && anchor.timingMode !== "maximize" && anchor.time && anchor.durationMins ? (() => {
                 const [h, m] = anchor.time.split(":").map(Number);
@@ -1443,6 +1445,46 @@ export function NewItineraryBrief({
           onChange={setBeHomeBy}
           defaultDate={anchors[anchors.length - 1]?.date ?? tripStartDate}
         />
+
+        {/* ── Last transport → Home gap ──────────────────────── */}
+        {(() => {
+          const lastTb = [...transportBookings]
+            .filter((tb) => tb.confirmed && tb.arriveTime)
+            .sort((a, b) => `${b.date}T${b.arriveTime}`.localeCompare(`${a.date}T${a.arriveTime}`))[0];
+          if (!lastTb) return null;
+          const hubId = lastTb.destinationHub?.id;
+          const fromLabel = lastTb.destinationHub?.label ?? "station";
+          const gapKey = `hub:${hubId}→home`;
+          if (hubId) prefetchGap(`hub:${hubId}`, "home");
+          const selectedMode = gapModes.get(gapKey) ?? null;
+          const preview = selectedMode && hubId
+            ? getGapPreview(`hub:${hubId}`, "home", selectedMode)
+            : null;
+          const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
+          const arriveHome = travelMins != null && lastTb.arriveTime
+            ? (() => {
+                const [h, m] = lastTb.arriveTime.split(":").map(Number);
+                const total = h * 60 + m + travelMins;
+                return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+              })()
+            : null;
+          return (
+            <>
+              <GapModePicker
+                selected={selectedMode}
+                onSelect={(m) => setGapMode(gapKey, m)}
+                previews={hubId ? getGapPreviews(`hub:${hubId}`, "home") : undefined}
+                fromLabel={fromLabel}
+                toLabel="Home"
+              />
+              {arriveHome && (
+                <div className="mono" style={{ textAlign: "center", fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
+                  Home by ~{arriveHome}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* ── Home return row ──────────────────────────────────── */}
         {transportBookings.some((tb) => tb.confirmed) && (
