@@ -873,11 +873,46 @@ export function NewItineraryBrief({
               {selectedBase.address}
             </div>
           )}
-          {firstDepartTime && (
-            <div className="mono" style={{ fontSize: 12, color: "var(--gold-2)", marginTop: 6, fontWeight: 500 }}>
-              Catch the {firstDepartTime} train
-            </div>
-          )}
+          {firstDepartTime && (() => {
+            const BUFFER_MINS = 10;
+            // Check if user has set a mode for home→station gap
+            const homeToStationTransition = transitions.get(
+              transitionKey(HOME_UID, "home::transport_dep"),
+            );
+            const homeToStationMode = homeToStationTransition?.mode;
+            const firstTb = transportBookings
+              .filter((tb) => tb.confirmed && tb.departTime)
+              .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))[0];
+            const stationPlace = firstTb ? hubAsPlace(firstTb.departureHub) : null;
+            const homePlace: PlaceSelection | null = selectedBase
+              ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const }
+              : null;
+            const preview = homeToStationMode && homeToStationMode !== "auto"
+              ? briefPreviewsForPair(homePlace, stationPlace)[homeToStationMode]
+              : null;
+            const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
+
+            if (travelMins != null) {
+              const [h, m] = firstDepartTime.split(":").map(Number);
+              const totalMins = h * 60 + m - travelMins - BUFFER_MINS;
+              const leaveH = Math.floor(totalMins / 60);
+              const leaveM = totalMins % 60;
+              const leaveBy = `${String(leaveH).padStart(2, "0")}:${String(leaveM).padStart(2, "0")}`;
+              return (
+                <div className="mono" style={{ fontSize: 12, color: "var(--gold-2)", marginTop: 6, fontWeight: 500 }}>
+                  Leave by {leaveBy}
+                  <span style={{ fontWeight: 400, color: "var(--ink-dim)", marginLeft: 8, fontSize: 11 }}>
+                    {travelMins} min {homeToStationMode} + {BUFFER_MINS} min buffer
+                  </span>
+                </div>
+              );
+            }
+            return (
+              <div className="mono" style={{ fontSize: 12, color: "var(--gold-2)", marginTop: 6, fontWeight: 500 }}>
+                Catch the {firstDepartTime} train
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── Timeline entries ──────────────────────────────────── */}
