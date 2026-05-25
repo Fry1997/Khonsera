@@ -47,6 +47,7 @@ import {
   buildDatePresets,
   emptyTransition,
   stopoverAsAnchor,
+  transitStopAsAnchor,
   stopoverToStopUpdate,
   timelineFromStops,
   transitionKey,
@@ -1546,16 +1547,18 @@ export function ItineraryEditor({
                         }
                         onRemove={() => handleDelete(anchor.uid)}
                       />
-                      {nextItem && nextItem.kind !== "transit" ? (
+                      {nextItem && (nextItem.kind !== "transit" || transitionToNext) ? (
                         <PlanningTransitionRow
                           from={anchor}
                           to={
                             nextItem.kind === "anchor"
                               ? nextItem.anchor
-                              : stopoverAsAnchor(
-                                  nextItem.stopover,
-                                  nextItem.stopover.uid,
-                                )
+                              : nextItem.kind === "stopover"
+                                ? stopoverAsAnchor(
+                                    nextItem.stopover,
+                                    nextItem.stopover.uid,
+                                  )
+                                : transitStopAsAnchor(nextItem.stop)
                           }
                           transition={
                             planningTransitions.get(

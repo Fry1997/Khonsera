@@ -227,6 +227,35 @@ export function stopoverAsAnchor(sv: Stopover, uid: string): Anchor {
   };
 }
 
+export function transitStopAsAnchor(stop: {
+  id: string;
+  title: string | null;
+  start_time: string | null;
+}): Anchor {
+  const time = stop.start_time
+    ? new Date(stop.start_time).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+    : "";
+  return {
+    uid: stop.id,
+    place: stop.title ? { kind: "location" as const, location_id: "", label: stop.title, location_type: "other" as const } : null,
+    kindOverride: "station",
+    roleOverride: null,
+    date: stop.start_time?.slice(0, 10) ?? "",
+    time,
+    timingMode: "arrive_by",
+    timingModeOverride: false,
+    durationMins: 0,
+    checkOutDate: "",
+    checkOutTime: "",
+    notes: null,
+    accommodation: null,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Inference / effective-value helpers
 // ─────────────────────────────────────────────────────────────────────

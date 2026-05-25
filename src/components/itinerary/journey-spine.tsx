@@ -143,135 +143,154 @@ export function JourneySpine({
                   : "z";
             return aTime.localeCompare(bTime);
           });
-          return entries.map((entry) => {
-            if (entry.kind === "transport") {
-              const tb = entry.booking;
-              const MIcon = TransportIcon[tb.mode!];
-              return (
-                <SpineTransportBooking
-                  key={`tb-${tb.uid}`}
-                  booking={tb}
-                  timezone={timezone}
-                />
-              );
-            }
-            const a = entry.anchor;
-            const i = entry.index;
-            const earlier = sorted.slice(0, i);
-          const prev = sorted[i - 1];
-          // The prev→this leg either:
-          //   * has a stopover sitting between them → render the
-          //     in-leg via, the stopover stop, and the out-leg via
-          //   * has no stopover → render the single parent via row
-          // A via row is suppressed when the mode is still "auto" and
-          // no booking exists — nothing meaningful to show yet.
-          const sv = prev ? stopovers.get(transitionKey(prev.uid, a.uid)) : undefined;
+
+          // Helper: get the anchor UID for an entry (transport bookings
+          // don't have anchor UIDs, so transitions to/from them don't
+          // exist in the brief transitions map — we show a prompt instead)
+          const anchorUid = (e: TimelineEntry) =>
+            e.kind === "anchor" ? e.anchor.uid : null;
+
           const showVia = (t?: BriefTransition) =>
             !!t && (t.mode !== "auto" || t.booked);
-          let viaRow: ReactNode = null;
-          if (prev && sv) {
-            const svUid = stopoverUid(prev.uid, a.uid);
-            const legIn = transitions.get(transitionKey(prev.uid, svUid));
-            const legOut = transitions.get(transitionKey(svUid, a.uid));
-            viaRow = (
-              <Fragment key={`sv-spine-${prev.uid}-${a.uid}`}>
-                {showVia(legIn) ? (
-                  <SpineVia
-                    transition={legIn!}
-                    railHubLabel={railHubLabel}
-                    flightHubLabel={flightHubLabel}
-                  />
-                ) : null}
-                <SpineStop
-                  time="—"
-                  eyebrow="Stopover"
-                  title={sv.place?.label ?? "Pick a place"}
-                  sub={`drop-in · ${fmtDur(sv.durationMins)}`}
-                  dotKind="default"
-                />
-                {showVia(legOut) ? (
-                  <SpineVia
-                    transition={legOut!}
-                    railHubLabel={railHubLabel}
-                    flightHubLabel={flightHubLabel}
-                  />
-                ) : null}
-              </Fragment>
-            );
-          } else if (prev) {
-            const via = transitions.get(transitionKey(prev.uid, a.uid));
-            viaRow = showVia(via) ? (
-              <SpineVia
-                key={`via-${prev.uid}-${a.uid}`}
-                transition={via!}
-                railHubLabel={railHubLabel}
-                flightHubLabel={flightHubLabel}
-              />
-            ) : null;
-          }
 
-          const kind = effectiveKind(a);
-          const role = effectiveRole(a, earlier);
-          const labelForBadge = role
-            ? labelForRole(kind, role)
-            : labelForKind(kind);
-          const isCheckIn = kind === "stay" && role !== "return_to_room";
-          if (isCheckIn) {
+          return entries.map((entry, entryIdx) => {
+            // Render transition from the previous entry → this entry
+            const prevEntry = entryIdx > 0 ? entries[entryIdx - 1] : null;
+            let viaRow: ReactNode = null;
+
+            if (prevEntry) {
+              const fromUid = anchorUid(prevEntry);
+              const toUid = anchorUid(entry);
+
+              if (fromUid && toUid) {
+                // Both are anchors — use existing transition + stopover logic
+                const sv = stopovers.get(transitionKey(fromUid, toUid));
+                if (sv) {
+                  const svUid = stopoverUid(fromUid, toUid);
+                  const legIn = transitions.get(transitionKey(fromUid, svUid));
+                  const legOut = transitions.get(transitionKey(svUid, toUid));
+                  viaRow = (
+                    <Fragment key={`sv-spine-${fromUid}-${toUid}`}>
+                      {showVia(legIn) ? (
+                        <SpineVia transition={legIn!} railHubLabel={railHubLabel} flightHubLabel={flightHubLabel} />
+                      ) : null}
+                      <SpineStop
+                        time="—"
+                        eyebrow="Stopover"
+                        title={sv.place?.label ?? "Pick a place"}
+                        sub={`drop-in · ${fmtDur(sv.durationMins)}`}
+                        dotKind="default"
+                      />
+                      {showVia(legOut) ? (
+                        <SpineVia transition={legOut!} railHubLabel={railHubLabel} flightHubLabel={flightHubLabel} />
+                      ) : null}
+                    </Fragment>
+                  );
+                } else {
+                  const via = transitions.get(transitionKey(fromUid, toUid));
+                  viaRow = showVia(via) ? (
+                    <SpineVia key={`via-${fromUid}-${toUid}`} transition={via!} railHubLabel={railHubLabel} flightHubLabel={flightHubLabel} />
+                  ) : null;
+                }
+              } else if (prevEntry.kind === "transport" || entry.kind === "transport") {
+                // Transition involves a transport booking — show a
+                // contextual connector prompt
+                const label =
+                  prevEntry.kind === "transport"
+                    ? `From ${prevEntry.booking.destinationHub?.label ?? "station"}`
+                    : `To ${entry.kind === "transport" ? (entry.booking.departureHub?.label ?? "station") : "next stop"}`;
+                viaRow = (
+                  <div key={`via-transport-${entryIdx}`} className="tl-time" />
+                );
+                // Show a slim "get there" hint between transport and anchor
+                const adjacentAnchorUid = fromUid ?? toUid;
+                if (adjacentAnchorUid) {
+                  // Try to find a transition with the adjacent anchor
+                  // (transport bookings don't have UIDs in the transition map)
+                  viaRow = (
+                    <SpineConnector
+                      key={`conn-${entryIdx}`}
+                      label={label}
+                    />
+                  );
+                } else {
+                  viaRow = null;
+                }
+              }
+            }
+
+            if (entry.kind === "transport") {
+              return (
+                <Fragment key={`tb-${entry.booking.uid}`}>
+                  {viaRow}
+                  <SpineTransportBooking
+                    booking={entry.booking}
+                    timezone={timezone}
+                  />
+                </Fragment>
+              );
+            }
+
+            const a = entry.anchor;
+            const earlier = sorted.slice(0, entry.index);
+            const kind = effectiveKind(a);
+            const role = effectiveRole(a, earlier);
+            const labelForBadge = role
+              ? labelForRole(kind, role)
+              : labelForKind(kind);
+            const isCheckIn = kind === "stay" && role !== "return_to_room";
+            if (isCheckIn) {
+              return (
+                <Fragment key={a.uid}>
+                  {viaRow}
+                  <SpineStop
+                    time={fmtShortDate(a.date, timezone)}
+                    eyebrow={labelForBadge}
+                    title={a.place?.label ?? ""}
+                    sub={`${a.time}${
+                      a.checkOutDate
+                        ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${
+                            a.checkOutTime || "11:00"
+                          }`
+                        : ""
+                    }${
+                      a.accommodation?.reference
+                        ? ` · ref ${a.accommodation.reference}`
+                        : ""
+                    }`}
+                    dotKind="default"
+                  />
+                </Fragment>
+              );
+            }
+            const mode = effectiveTimingMode(a);
+            const timeSlot =
+              mode === "around_then"
+                ? "—"
+                : mode === "leave_by"
+                  ? `by ${a.time}`
+                  : a.time;
+            const subBit = a.durationMins
+              ? `${fmtShortDate(a.date, timezone)} · ${
+                  mode === "around_then" ? "~" : ""
+                }${fmtDur(a.durationMins)}`
+              : fmtShortDate(a.date, timezone);
             return (
               <Fragment key={a.uid}>
                 {viaRow}
                 <SpineStop
-                  time={fmtShortDate(a.date, timezone)}
+                  time={timeSlot}
                   eyebrow={labelForBadge}
-                  title={a.place?.label ?? ""}
-                  sub={`${a.time}${
-                    a.checkOutDate
-                      ? ` → ${fmtShortDate(a.checkOutDate, timezone)} ${
-                          a.checkOutTime || "11:00"
-                        }`
-                      : ""
-                  }${
-                    a.accommodation?.reference
-                      ? ` · ref ${a.accommodation.reference}`
-                      : ""
-                  }`}
-                  dotKind="default"
+                  title={
+                    kind === "stay"
+                      ? `Back at ${a.place?.label ?? "the hotel"}`
+                      : a.place?.label ?? ""
+                  }
+                  sub={subBit}
+                  dotKind={kind === "stay" ? "default" : "gold"}
                 />
               </Fragment>
             );
-          }
-          const mode = effectiveTimingMode(a);
-          // Time slot in the preview reflects the timing mode: arrive_by
-          // shows the time, leave_by shows "by HH:MM" so the reader sees
-          // the ceiling, around_then shows an em-dash (unknown — the
-          // editor solver will fill it in from adjacent anchors).
-          const timeSlot =
-            mode === "around_then"
-              ? "—"
-              : mode === "leave_by"
-                ? `by ${a.time}`
-                : a.time;
-          const subBit = a.durationMins
-            ? `${fmtShortDate(a.date, timezone)} · ${
-                mode === "around_then" ? "~" : ""
-              }${fmtDur(a.durationMins)}`
-            : fmtShortDate(a.date, timezone);
-          return (
-            <Fragment key={a.uid}>
-              {viaRow}
-              <SpineStop
-                time={timeSlot}
-                eyebrow={labelForBadge}
-                title={
-                  kind === "stay"
-                    ? `Back at ${a.place?.label ?? "the hotel"}`
-                    : a.place?.label ?? ""
-                }
-                sub={subBit}
-                dotKind={kind === "stay" ? "default" : "gold"}
-              />
-            </Fragment>
-          );
           });
         })()}
         {accommodationBookings?.map((ab) => {
@@ -318,6 +337,24 @@ export function JourneySpine({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function SpineConnector({ label }: { label: string }) {
+  return (
+    <>
+      <div className="tl-time" />
+      <div className="tl-rail">
+        <div className="bones-via-tick" aria-hidden>
+          <TransportIcon.walk size={10} />
+        </div>
+      </div>
+      <div className="tl-content" style={{ padding: "2px 0 4px" }}>
+        <p className="tl-eyebrow" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
+          {label}
+        </p>
+      </div>
+    </>
   );
 }
 
