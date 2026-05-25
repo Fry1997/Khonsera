@@ -388,8 +388,10 @@ export async function previewRoute(
 const previewByPlaceSchema = z.object({
   from_location_id: z.string().uuid().nullable().optional(),
   from_customer_site_id: z.string().uuid().nullable().optional(),
+  from_transport_hub_id: z.string().uuid().nullable().optional(),
   to_location_id: z.string().uuid().nullable().optional(),
   to_customer_site_id: z.string().uuid().nullable().optional(),
+  to_transport_hub_id: z.string().uuid().nullable().optional(),
   mode: modeEnum,
 });
 
@@ -406,6 +408,7 @@ export async function previewRouteForPlaces(
   const lookup = async (
     locationId: string | null | undefined,
     customerSiteId: string | null | undefined,
+    hubId?: string | null | undefined,
   ): Promise<{ lat: number; lng: number } | null> => {
     if (locationId) {
       const { data } = await supabase
@@ -417,7 +420,6 @@ export async function previewRouteForPlaces(
       if (data?.latitude != null && data?.longitude != null) {
         return { lat: data.latitude, lng: data.longitude };
       }
-      return null;
     }
     if (customerSiteId) {
       const { data } = await supabase
@@ -429,7 +431,16 @@ export async function previewRouteForPlaces(
       if (data?.latitude != null && data?.longitude != null) {
         return { lat: data.latitude, lng: data.longitude };
       }
-      return null;
+    }
+    if (hubId) {
+      const { data } = await supabase
+        .from("transport_hubs")
+        .select("latitude, longitude")
+        .eq("id", hubId)
+        .maybeSingle();
+      if (data?.latitude != null && data?.longitude != null) {
+        return { lat: Number(data.latitude), lng: Number(data.longitude) };
+      }
     }
     return null;
   };
@@ -437,10 +448,12 @@ export async function previewRouteForPlaces(
   const fromPoint = await lookup(
     parsed.value.from_location_id,
     parsed.value.from_customer_site_id,
+    parsed.value.from_transport_hub_id,
   );
   const toPoint = await lookup(
     parsed.value.to_location_id,
     parsed.value.to_customer_site_id,
+    parsed.value.to_transport_hub_id,
   );
   if (!fromPoint || !toPoint) {
     return ok({ durationMinutes: null, distanceMiles: null });

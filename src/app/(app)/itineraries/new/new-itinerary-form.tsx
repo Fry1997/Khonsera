@@ -55,6 +55,17 @@ import { scanGmailForBookings } from "@/lib/actions/gmail";
 import type { ParsedBooking } from "@/lib/gmail/types";
 import type { PlaceSelection } from "@/components/place-picker";
 
+function hubAsPlace(hub: { id: string | null; label: string | null }): PlaceSelection | null {
+  if (!hub.id && !hub.label) return null;
+  return {
+    kind: "location" as const,
+    location_id: "",
+    label: hub.label ?? "Station",
+    location_type: "other" as const,
+    transport_hub_id: hub.id,
+  } as PlaceSelection & { transport_hub_id: string | null };
+}
+
 const MODE_OPTIONS_MAP: Record<string, string> = {
   train: "Train",
   flight: "Flight",
@@ -974,35 +985,62 @@ export function NewItineraryBrief({
                 />
               );
             } else {
-              // Home → transport departure
+              // Home → transport departure: mode picker to station
+              const stationPlace = hubAsPlace(entry.booking.departureHub);
               const stationLabel = entry.booking.departureHub?.label ?? "station";
+              const homePlace: PlaceSelection | null = selectedBase
+                ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const }
+                : null;
+              const tKey = `home::transport_dep`;
               gapBefore = (
-                <div style={{ padding: "8px 0", textAlign: "center" }}>
-                  <span className="uc" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
-                    To {stationLabel}
-                  </span>
-                </div>
+                <TransitionRow
+                  from={null}
+                  to={{ ...emptyAnchor(""), uid: tKey, place: stationPlace }}
+                  transition={getTransition(HOME_UID, tKey)}
+                  onChange={(patch) => setTransition(HOME_UID, tKey, patch)}
+                  fromVirtualLabel={baseName}
+                  modePreviews={briefPreviewsForPair(homePlace, stationPlace)}
+                  onOpenChange={(open) => {
+                    if (open) briefPrefetchPair(homePlace, stationPlace);
+                  }}
+                />
               );
             }
           } else if (prevEntry?.kind === "transport" && entry.kind === "anchor") {
-            // Transport arrival → anchor: "From [station] to your appointment"
+            // Transport arrival → anchor: mode picker from station to appointment
+            const stationPlace = hubAsPlace(prevEntry.booking.destinationHub);
             const stationLabel = prevEntry.booking.destinationHub?.label ?? "station";
+            // Use the anchor's UID for the transition key
+            const tKey = `transport_arr::${entry.anchor.uid}`;
             gapBefore = (
-              <div style={{ padding: "8px 0", textAlign: "center" }}>
-                <span className="uc" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
-                  From {stationLabel}
-                </span>
-              </div>
+              <TransitionRow
+                from={null}
+                to={entry.anchor}
+                transition={getTransition(tKey, entry.anchor.uid)}
+                onChange={(patch) => setTransition(tKey, entry.anchor.uid, patch)}
+                fromVirtualLabel={stationLabel}
+                modePreviews={briefPreviewsForPair(stationPlace, entry.anchor.place)}
+                onOpenChange={(open) => {
+                  if (open) briefPrefetchPair(stationPlace, entry.anchor.place);
+                }}
+              />
             );
           } else if (prevEntry?.kind === "anchor" && entry.kind === "transport") {
-            // Anchor → transport departure: "To [station]"
+            // Anchor → transport departure: mode picker to station
+            const stationPlace = hubAsPlace(entry.booking.departureHub);
             const stationLabel = entry.booking.departureHub?.label ?? "station";
+            const tKey = `${prevEntry.anchor.uid}::transport_dep`;
             gapBefore = (
-              <div style={{ padding: "8px 0", textAlign: "center" }}>
-                <span className="uc" style={{ fontSize: 10, color: "var(--ink-faint)" }}>
-                  To {stationLabel}
-                </span>
-              </div>
+              <TransitionRow
+                from={prevEntry.anchor}
+                to={{ ...emptyAnchor(""), uid: tKey, place: stationPlace }}
+                transition={getTransition(prevEntry.anchor.uid, tKey)}
+                onChange={(patch) => setTransition(prevEntry.anchor.uid, tKey, patch)}
+                modePreviews={briefPreviewsForPair(prevEntry.anchor.place, stationPlace)}
+                onOpenChange={(open) => {
+                  if (open) briefPrefetchPair(prevEntry.anchor.place, stationPlace);
+                }}
+              />
             );
           } else if (prevEntry?.kind === "transport" && entry.kind === "transport") {
             // Between two transport bookings — the contextual gap handles this
@@ -1340,6 +1378,59 @@ export function NewItineraryBrief({
           <input type="text" className="field" value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="e.g. Belper site visit" style={{ marginTop: 8 }} />
         </details>
       </div>
+
+      {/* Day summary */}
+      {transportBookings.some((tb) => tb.confirmed) && (
+        <div
+          className="card"
+          style={{
+            padding: "14px 16px",
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "12px 24px",
+            fontSize: 12,
+            color: "var(--ink-dim)",
+          }}
+        >
+          <span className="uc" style={{ width: "100%", fontSize: 10, marginBottom: -4 }}>
+            Day summary
+          </span>
+          {(() => {
+            const totalPrice = transportBookings
+              .filter((tb) => tb.confirmed && tb.price)
+              .reduce((sum, tb) => sum + Number(tb.price), 0);
+            const trainMins = transportBookings
+              .filter((tb) => tb.confirmed && tb.departTime && tb.arriveTime)
+              .reduce((sum, tb) => {
+                const [dh, dm] = tb.departTime.split(":").map(Number);
+                const [ah, am] = tb.arriveTime.split(":").map(Number);
+                return sum + ((ah * 60 + am) - (dh * 60 + dm));
+              }, 0);
+            const lastReturn = transportBookings
+              .filter((tb) => tb.confirmed && tb.arriveTime)
+              .sort((a, b) => b.arriveTime.localeCompare(a.arriveTime))[0];
+            return (
+              <>
+                {trainMins > 0 && (
+                  <span>Trains: {Math.floor(trainMins / 60)}h {trainMins % 60}m</span>
+                )}
+                {totalPrice > 0 && (
+                  <span style={{ fontFamily: "var(--display)", fontWeight: 500, color: "var(--gold-2)" }}>
+                    Total: {"£"}{totalPrice.toFixed(2)}
+                  </span>
+                )}
+                {firstDepartTime && (
+                  <span>First train: {firstDepartTime}</span>
+                )}
+                {lastReturn && (
+                  <span>Arrive back: {lastReturn.arriveTime}</span>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Build my day */}
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 24 }}>
