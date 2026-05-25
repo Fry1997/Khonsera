@@ -9,6 +9,7 @@ import { transitionItinerary } from "@/lib/state/transitions";
 import { solveTimes } from "@/lib/itinerary/solver";
 import { ok, type Result } from "@/lib/errors";
 import type { ItineraryStatus } from "@/lib/types/domain";
+import { routeForTransition as routeForTransitionFn } from "@/lib/integrations/routing";
 
 const createSchema = z
   .object({
@@ -1235,7 +1236,48 @@ export async function createItineraryFromBrief(
       }
 
       if (newTransitions.length > 0) {
-        await supabase.from("transitions").insert(newTransitions);
+        const { data: inserted } = await supabase
+          .from("transitions")
+          .insert(newTransitions)
+          .select("id, from_stop_id, to_stop_id, mode, is_locked");
+
+        // Fetch transit route polylines for locked legs (rail/bus/flight)
+        // so the map can render actual route geometry.
+        if (inserted) {
+          for (const tr of inserted.filter((t) => t.is_locked)) {
+            try {
+              const { data: trStops } = await supabase
+                .from("stops")
+                .select(
+                  `id, transport_hub_id,
+                   location:locations(latitude, longitude),
+                   customer_site:customer_sites(latitude, longitude),
+                   transport_hub:transport_hubs(latitude, longitude)`,
+                )
+                .in("id", [tr.from_stop_id, tr.to_stop_id])
+                .eq("workspace_id", ctx.workspaceId);
+              if (!trStops || trStops.length < 2) continue;
+              const fromS = trStops.find((s) => s.id === tr.from_stop_id);
+              const toS = trStops.find((s) => s.id === tr.to_stop_id);
+              const fromPt = pickPointFromRow(fromS);
+              const toPt = pickPointFromRow(toS);
+              if (!fromPt || !toPt) continue;
+              const route = await routeForTransitionFn({
+                mode: tr.mode as any,
+                origin: fromPt,
+                destination: toPt,
+              });
+              if (route?.overviewPolyline) {
+                await supabase
+                  .from("transitions")
+                  .update({ overview_polyline: route.overviewPolyline })
+                  .eq("id", tr.id);
+              }
+            } catch {
+              // Route fetch is best-effort — map renders without polyline
+            }
+          }
+        }
       }
     }
   }
@@ -1244,6 +1286,24 @@ export async function createItineraryFromBrief(
   await resolveItineraryTimes(itinerary.id);
 
   return ok({ id: itinerary.id });
+}
+
+function pickPointFromRow(
+  stop: any,
+): { lat: number; lng: number } | null {
+  const cs = stop?.customer_site;
+  if (cs?.latitude != null && cs?.longitude != null) {
+    return { lat: Number(cs.latitude), lng: Number(cs.longitude) };
+  }
+  const loc = stop?.location;
+  if (loc?.latitude != null && loc?.longitude != null) {
+    return { lat: Number(loc.latitude), lng: Number(loc.longitude) };
+  }
+  const hub = stop?.transport_hub;
+  if (hub?.latitude != null && hub?.longitude != null) {
+    return { lat: Number(hub.latitude), lng: Number(hub.longitude) };
+  }
+  return null;
 }
 
 function providerForMode(mode: string | null): string {
