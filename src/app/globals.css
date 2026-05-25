@@ -2073,6 +2073,8 @@
     border: 1px solid var(--rule);
     border-radius: 16px;
     padding: 22px;
+    overflow: hidden;
+    max-width: 100%;
   }
   .brief-card-hero {
     border-color: var(--gold);

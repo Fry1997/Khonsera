@@ -169,6 +169,7 @@ export function NewItineraryBrief({
     setAccommodationBookings((prev) => prev.filter((b) => b.uid !== uid));
 
   const [gmailImportOpen, setGmailImportOpen] = useState(false);
+  const [expandedAnchors, setExpandedAnchors] = useState<Set<string>>(new Set());
 
   const importParsedBooking = (b: ParsedBooking) => {
     if (b.type === "transport") {
@@ -403,6 +404,7 @@ export function NewItineraryBrief({
     const previous =
       anchors[Math.max(0, Math.min(index - 1, anchors.length - 1))];
     const seed = emptyAnchor(previous?.date ?? tripStartDate);
+    setExpandedAnchors((prev) => new Set(prev).add(seed.uid));
     setAnchors((prev) => {
       const copy = [...prev];
       copy.splice(index, 0, seed);
@@ -1187,6 +1189,15 @@ export function NewItineraryBrief({
                 customerSites={customerSites}
                 locations={locations}
                 datePresets={datePresets}
+                mode={expandedAnchors.has(anchor.uid) || !anchor.place ? "expanded" : "summary"}
+                onModeChange={(next) => {
+                  setExpandedAnchors((prev) => {
+                    const copy = new Set(prev);
+                    if (next === "expanded") copy.add(anchor.uid);
+                    else copy.delete(anchor.uid);
+                    return copy;
+                  });
+                }}
                 onChange={(patch) => updateAnchor(anchor.uid, patch)}
                 onRemove={() => removeAnchor(anchor.uid)}
               />
