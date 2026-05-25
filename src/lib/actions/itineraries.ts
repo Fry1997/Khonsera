@@ -1024,14 +1024,25 @@ export async function createItineraryFromBrief(
   // client_ids), what travel mode the user intends and — optionally —
   // the details of a ticket they've already got. Run after stopovers
   // so leg-transition svUids resolve to real stop rows.
+  // Brief mode spans — when transport booking stops are inserted
+  // between anchors, those anchors are no longer adjacent so we can't
+  // create a direct transition row for the pair. Instead we record the
+  // user's intended mode so the fallback loop can apply it to the gap
+  // transitions (anchor → transit_departure, transit_arrival → anchor).
+  const briefModeSpans: Array<{
+    fromSeq: number;
+    toSeq: number;
+    mode: string;
+    localBefore: string;
+    localAfter: string;
+    stationBased: boolean;
+  }> = [];
+
   if (parsed.value.transitions.length > 0) {
     for (const t of parsed.value.transitions) {
       const from = stopByClientId.get(t.from_client_id);
       const to = stopByClientId.get(t.to_client_id);
-      // The brief might send a transition whose anchors no longer sit
-      // adjacent after sorting — drop those silently rather than
-      // producing a nonsensical row.
-      if (!from || !to || from.sequence + 1 !== to.sequence) continue;
+      if (!from || !to) continue;
 
       const isBooked = t.booking != null;
       const mode = t.mode === "auto" ? null : t.mode;
@@ -1039,6 +1050,24 @@ export async function createItineraryFromBrief(
       // When the user has nothing to say (mode=auto, no booking), skip
       // — the editor's solver will compute the transition itself.
       if (!mode && !isBooked) continue;
+
+      // Transport booking stops were inserted between these anchors,
+      // so they're no longer adjacent. Save the mode info for the
+      // fallback loop to use on the gap transitions.
+      if (from.sequence + 1 !== to.sequence) {
+        if (mode) {
+          const sb = ["train", "tube", "bus", "flight"].includes(mode);
+          briefModeSpans.push({
+            fromSeq: from.sequence,
+            toSeq: to.sequence,
+            mode,
+            localBefore: t.local_before ?? (sb ? "walk" : "auto"),
+            localAfter: t.local_after ?? (sb ? "walk" : "auto"),
+            stationBased: sb,
+          });
+        }
+        continue;
+      }
 
       const fromAnchor = parsed.value.anchors.find(
         (a) => a.client_id === t.from_client_id,
@@ -1210,9 +1239,32 @@ export async function createItineraryFromBrief(
           (toMeta?.kind === "transit_changeover" ||
             toMeta?.kind === "transit_arrival");
 
-        const transitMode = isTransitLeg
+        let transitMode = isTransitLeg
           ? (fromMeta?.transport_mode as string) ?? "train"
           : "auto";
+
+        // For non-transit pairs, check if a brief transition spans
+        // this gap and carry the user's intended mode through.
+        if (!isTransitLeg && transitMode === "auto") {
+          const fromSeq = from.sequence as number;
+          const toSeq = to.sequence as number;
+          const span = briefModeSpans.find(
+            (s) => fromSeq >= s.fromSeq && toSeq <= s.toSeq,
+          );
+          if (span) {
+            const toIsTransitDep =
+              toMeta?.kind === "transit_departure";
+            const fromIsTransitArr =
+              fromMeta?.kind === "transit_arrival";
+            if (span.stationBased && toIsTransitDep) {
+              transitMode = span.localBefore !== "auto" ? span.localBefore : "walk";
+            } else if (span.stationBased && fromIsTransitArr) {
+              transitMode = span.localAfter !== "auto" ? span.localAfter : "walk";
+            } else if (!span.stationBased) {
+              transitMode = span.mode;
+            }
+          }
+        }
 
         // Compute duration from stop times for locked transit legs
         let computedDuration: number | null = null;
@@ -1241,10 +1293,12 @@ export async function createItineraryFromBrief(
           .insert(newTransitions)
           .select("id, from_stop_id, to_stop_id, mode, is_locked");
 
-        // Fetch transit route polylines for locked legs (rail/bus/flight)
-        // so the map can render actual route geometry.
+        // Fetch route data for transitions with explicit modes — locked
+        // transit legs get polylines for the map, and non-locked legs with
+        // a set mode (walk, drive, etc.) get duration + distance so the
+        // planning page can show travel time.
         if (inserted) {
-          for (const tr of inserted.filter((t) => t.is_locked)) {
+          for (const tr of inserted.filter((t) => t.is_locked || t.mode !== "auto")) {
             try {
               const { data: trStops } = await supabase
                 .from("stops")
@@ -1267,11 +1321,16 @@ export async function createItineraryFromBrief(
                 origin: fromPt,
                 destination: toPt,
               });
-              if (route?.overviewPolyline) {
-                await supabase
-                  .from("transitions")
-                  .update({ overview_polyline: route.overviewPolyline })
-                  .eq("id", tr.id);
+              if (route) {
+                const patch: Record<string, unknown> = {};
+                if (route.overviewPolyline)
+                  patch.overview_polyline = route.overviewPolyline;
+                if (route.totalDurationMinutes != null)
+                  patch.computed_duration_minutes = Math.round(route.totalDurationMinutes);
+                if (route.totalDistanceMiles != null)
+                  patch.distance_miles = route.totalDistanceMiles;
+                if (Object.keys(patch).length > 0)
+                  await supabase.from("transitions").update(patch).eq("id", tr.id);
               }
             } catch {
               // Route fetch is best-effort — map renders without polyline

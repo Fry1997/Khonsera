@@ -2262,30 +2262,6 @@ function LegTypeIcon({ leg }: { leg: string }) {
 
 // Client-safe builder for /api/maps/static URLs (mirrors the server-side
 // StaticMap component but uses btoa instead of Buffer).
-function buildClientStaticMapUrl(spec: {
-  width: number;
-  height: number;
-  zoom?: number;
-  center?: { lat: number; lng: number };
-  markers?: { lat: number; lng: number; color?: string; label?: string; size?: string }[];
-  paths?: { encoded: string; color?: string; weight?: number }[];
-}): string {
-  const json = JSON.stringify({
-    ...spec,
-    markers: spec.markers ?? [],
-    paths: spec.paths ?? [],
-    // Pin the inline route maps to the Journies map style so the warm
-    // editorial palette carries into every embedded map.
-    style: "journies",
-  });
-  // base64url encode
-  const b64 = btoa(unescape(encodeURIComponent(json)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return `/api/maps/static?s=${b64}`;
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // PlanningTransportBookingModal — the planning-page equivalent of the
 // brief's TransportBookingCard. Uses TransportHubPicker for both
