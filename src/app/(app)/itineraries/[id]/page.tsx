@@ -79,10 +79,11 @@ export default async function ItineraryDetailPage({
       .select(
         `id, sequence, type, title, start_time, end_time, duration_minutes,
          is_time_fixed, location_id, customer_id, customer_site_id, contact_id,
-         external_reference, external_url, metadata, notes,
+         transport_hub_id, external_reference, external_url, metadata, notes,
          location:locations(name, type, address, latitude, longitude),
          customer:customers(name),
-         customer_site:customer_sites(name, address, latitude, longitude)`,
+         customer_site:customer_sites(name, address, latitude, longitude),
+         transport_hub:transport_hubs(name, code, latitude, longitude)`,
       )
       .eq("itinerary_id", id)
       .order("sequence"),

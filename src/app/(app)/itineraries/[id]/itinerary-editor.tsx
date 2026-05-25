@@ -950,9 +950,9 @@ export function ItineraryEditor({
     const markers: { lat: number; lng: number; label?: string }[] = [];
     sortedStops.forEach((s, i) => {
       const lat =
-        s.customer_site?.latitude ?? s.location?.latitude ?? null;
+        s.customer_site?.latitude ?? s.location?.latitude ?? (s as any).transport_hub?.latitude ?? null;
       const lng =
-        s.customer_site?.longitude ?? s.location?.longitude ?? null;
+        s.customer_site?.longitude ?? s.location?.longitude ?? (s as any).transport_hub?.longitude ?? null;
       if (lat != null && lng != null) {
         markers.push({
           lat: Number(lat),
