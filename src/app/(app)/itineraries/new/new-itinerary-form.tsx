@@ -51,6 +51,8 @@ import {
 } from "@/components/itinerary";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { TransportIcon } from "@/components/icons";
+import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
+import { GapModePicker, type GapMode } from "@/components/gap-mode-picker";
 import { scanGmailForBookings } from "@/lib/actions/gmail";
 import type { ParsedBooking } from "@/lib/gmail/types";
 import type { PlaceSelection } from "@/components/place-picker";
@@ -786,27 +788,6 @@ export function NewItineraryBrief({
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 16px" }}>
       <FormError message={feedback?.message} />
 
-      {/* ── Page header ──────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
-        <span className="uc" style={{ color: "var(--gold-2)" }}>New brief</span>
-        <h1
-          className="display-i"
-          style={{
-            fontSize: 32,
-            fontWeight: 500,
-            margin: "4px 0 6px",
-            letterSpacing: "-0.02em",
-            color: "var(--ink)",
-          }}
-        >
-          Plan your <em style={{ color: "var(--gold)" }}>day.</em>
-        </h1>
-        <p className="serif-i" style={{ color: "var(--ink-dim)", fontSize: 14, margin: 0 }}>
-          Drop in what you know — bookings, appointments, when to be back — and
-          we&rsquo;ll piece together the rest.
-        </p>
-      </div>
-
       {/* ── Date + Base ───────────────────────────────────────── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
         <div className="card" style={{ padding: "12px 16px" }}>
@@ -1010,65 +991,42 @@ export function NewItineraryBrief({
                 />
               );
             } else {
-              // Home → transport departure: mode picker to station
-              const stationPlace = hubAsPlace(entry.booking.departureHub);
-              const stationLabel = entry.booking.departureHub?.label ?? "station";
-              const homePlace: PlaceSelection | null = selectedBase
-                ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const }
-                : null;
-              const tKey = `home::transport_dep`;
+              // Home → transport departure
+              const toLabel = entry.booking.departureHub?.label ?? "station";
               gapBefore = (
-                <TransitionRow
-                  from={null}
-                  to={{ ...emptyAnchor(""), uid: tKey, place: stationPlace }}
-                  transition={getTransition(HOME_UID, tKey)}
-                  onChange={(patch) => setTransition(HOME_UID, tKey, patch)}
-                  fromVirtualLabel={baseName}
-                  modePreviews={briefPreviewsForPair(homePlace, stationPlace)}
-                  onOpenChange={(open) => {
-                    if (open) briefPrefetchPair(homePlace, stationPlace);
-                  }}
+                <GapModePicker
+                  selected={null}
+                  onSelect={() => {}}
+                  fromLabel={baseName}
+                  toLabel={toLabel}
                 />
               );
             }
           } else if (prevEntry?.kind === "transport" && entry.kind === "anchor") {
-            // Transport arrival → anchor: mode picker from station to appointment
-            const stationPlace = hubAsPlace(prevEntry.booking.destinationHub);
-            const stationLabel = prevEntry.booking.destinationHub?.label ?? "station";
-            // Use the anchor's UID for the transition key
-            const tKey = `transport_arr::${entry.anchor.uid}`;
+            const fromLabel = prevEntry.booking.destinationHub?.label ?? "station";
+            const toLabel = entry.anchor.place?.label ?? "appointment";
             gapBefore = (
-              <TransitionRow
-                from={null}
-                to={entry.anchor}
-                transition={getTransition(tKey, entry.anchor.uid)}
-                onChange={(patch) => setTransition(tKey, entry.anchor.uid, patch)}
-                fromVirtualLabel={stationLabel}
-                modePreviews={briefPreviewsForPair(stationPlace, entry.anchor.place)}
-                onOpenChange={(open) => {
-                  if (open) briefPrefetchPair(stationPlace, entry.anchor.place);
-                }}
+              <GapModePicker
+                selected={null}
+                onSelect={() => {}}
+                fromLabel={fromLabel}
+                toLabel={toLabel}
               />
             );
           } else if (prevEntry?.kind === "anchor" && entry.kind === "transport") {
-            // Anchor → transport departure: mode picker to station
-            const stationPlace = hubAsPlace(entry.booking.departureHub);
-            const stationLabel = entry.booking.departureHub?.label ?? "station";
-            const tKey = `${prevEntry.anchor.uid}::transport_dep`;
+            const fromLabel = prevEntry.anchor.place?.label ?? "stop";
+            const toLabel = entry.booking.departureHub?.label ?? "station";
             gapBefore = (
-              <TransitionRow
-                from={prevEntry.anchor}
-                to={{ ...emptyAnchor(""), uid: tKey, place: stationPlace }}
-                transition={getTransition(prevEntry.anchor.uid, tKey)}
-                onChange={(patch) => setTransition(prevEntry.anchor.uid, tKey, patch)}
-                modePreviews={briefPreviewsForPair(prevEntry.anchor.place, stationPlace)}
-                onOpenChange={(open) => {
-                  if (open) briefPrefetchPair(prevEntry.anchor.place, stationPlace);
-                }}
+              <GapModePicker
+                selected={null}
+                onSelect={() => {}}
+                fromLabel={fromLabel}
+                toLabel={toLabel}
               />
             );
           } else if (prevEntry?.kind === "transport" && entry.kind === "transport") {
-            // Between two transport bookings — the contextual gap handles this
+            // Between two transport bookings — contextual gap handles the main prompt,
+            // but also show a gap mode picker if there are anchors between them
           } else if (prevEntry?.kind === "anchor" && entry.kind === "anchor") {
             // Anchor → anchor: standard transition
             const prev = prevEntry.anchor;
@@ -1163,65 +1121,50 @@ export function NewItineraryBrief({
           // ── Render the entry ──
           if (entry.kind === "transport") {
             const tb = entry.booking;
-            const Icon = TransportIcon[tb.mode!];
+            // Build individual leg segments (split by changeovers)
+            const legs: TicketSegment[] = [];
+            const stops = [
+              { label: tb.departureHub?.label ?? "?", time: tb.departTime || "" },
+              ...tb.changeovers.map((co) => ({ label: co.hub?.label ?? "?", time: co.departTime || "" })),
+              { label: tb.destinationHub?.label ?? "?", time: tb.arriveTime || "" },
+            ];
+            for (let li = 0; li < stops.length - 1; li++) {
+              const bc = tb.barcodes[li];
+              legs.push({
+                from_station: stops[li].label,
+                to_station: stops[li + 1].label,
+                from_station_code: null,
+                to_station_code: null,
+                departure_date: tb.date || "",
+                departure_time: stops[li].time,
+                arrival_time: li < stops.length - 2 ? (tb.changeovers[li]?.arriveTime || "") : (tb.arriveTime || ""),
+                operator: tb.operator ?? null,
+                route_restriction: tb.routeRestriction ?? null,
+                ticket_type: tb.ticketType ?? null,
+                coach: null,
+                seat: li === 0 ? (tb.seat || null) : null,
+                barcode_ref: bc?.ref ?? null,
+                barcode_data: bc?.data ?? null,
+                price: li === 0 && tb.price ? Number(tb.price) : null,
+              });
+            }
             return (
-              <div key={`tl-${tb.uid}`} style={{ marginBottom: 8 }}>
+              <div key={`tl-${tb.uid}`} style={{ marginBottom: 4 }}>
                 {gapBefore}
                 {contextGap}
-                <div
-                  className="card"
-                  style={{
-                    padding: "12px 16px",
-                    borderLeft: "3px solid var(--gold-2)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <Icon size={14} />
-                      <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--gold-2)" }}>
-                        {tb.departTime}
-                      </span>
-                      <span className="uc" style={{ fontSize: 10 }}>
-                        Train · {tb.departureHub?.label} to {tb.destinationHub?.label}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
-                      <button
-                        type="button"
-                        style={{ color: "var(--ink-dim)" }}
-                        onClick={() => updateTransportBooking(tb.uid, { confirmed: false })}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        style={{ color: "var(--rust)" }}
-                        onClick={() => removeTransportBooking(tb.uid)}
-                      >
-                        Remove
-                      </button>
-                    </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 4px", marginBottom: 2 }}>
+                  <span className="uc" style={{ fontSize: 10, color: "var(--gold-2)" }}>
+                    {tb.departTime} train to {tb.destinationHub?.label}
+                  </span>
+                  <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
+                    <button type="button" style={{ color: "var(--ink-dim)" }} onClick={() => updateTransportBooking(tb.uid, { confirmed: false })}>Edit</button>
+                    <button type="button" style={{ color: "var(--rust)" }} onClick={() => removeTransportBooking(tb.uid)}>Remove</button>
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--ink)" }}>
-                    {tb.departureHub?.label ?? "?"}{" "}
-                    <span className="mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>{tb.departTime}</span>
-                    {tb.changeovers.map((co, ci) => (
-                      <span key={ci}>
-                        {" → "}{co.hub?.label ?? "?"}{" "}
-                        <span className="mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>
-                          ({co.arriveTime}–{co.departTime})
-                        </span>
-                      </span>
-                    ))}
-                    {" → "}{tb.destinationHub?.label ?? "?"}{" "}
-                    <span className="mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>{tb.arriveTime}</span>
-                  </div>
-                  {tb.operator && (
-                    <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
-                      {tb.operator}{tb.ticketType ? ` · ${tb.ticketType}` : ""}
-                      {tb.price ? ` · £${Number(tb.price).toFixed(2)}` : ""}
-                    </div>
-                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {legs.map((leg, li) => (
+                    <TrainTicketCard key={`${tb.uid}-${li}`} segment={leg} compact />
+                  ))}
                 </div>
               </div>
             );
