@@ -153,13 +153,26 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
             item.stopover.uid,
           );
 
+      let transition = planningTransitions.get(
+        transitionKey(stop.id, uidOf(nextItem)),
+      ) ?? emptyTransition();
+
+      // When a transition between an anchor and a transit stop is
+      // still "auto", default to "walk" — stations imply walking to
+      // or from them unless the user says otherwise.
+      if (
+        transition.mode === "auto" &&
+        !transition.booked &&
+        nextItem.kind === "transit"
+      ) {
+        transition = { ...transition, mode: "walk" };
+      }
+
       result.push({
         kind: "gap-transition",
         from: fromAnchor,
         to: toAnchor,
-        transition: planningTransitions.get(
-          transitionKey(stop.id, uidOf(nextItem)),
-        ) ?? emptyTransition(),
+        transition,
         modePreviews: previewsForPair(stop.id, uidOf(nextItem)),
         onChange: (patch) => handlers.handleTransitionPatch(stop.id, uidOf(nextItem), patch),
         onOpenChange: (open) => {
