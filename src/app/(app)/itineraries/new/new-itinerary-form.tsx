@@ -818,7 +818,10 @@ export function NewItineraryBrief({
   // ── Build unified chronological timeline entries ──────────────────
   type TimelineEntry =
     | { kind: "transport"; booking: BriefTransportBooking }
-    | { kind: "anchor"; anchor: Anchor; index: number };
+    | { kind: "anchor"; anchor: Anchor; index: number }
+    | { kind: "hotel"; booking: BriefAccommodationBooking };
+
+  const isMultiDay = tripStartDate !== tripEndDate || accommodationBookings.some((ab) => ab.confirmed);
 
   const timelineEntries = useMemo(() => {
     const entries: TimelineEntry[] = [];
@@ -826,19 +829,20 @@ export function NewItineraryBrief({
     transportBookings
       .filter((tb) => tb.confirmed && tb.mode)
       .forEach((tb) => entries.push({ kind: "transport", booking: tb }));
+    accommodationBookings
+      .filter((ab) => ab.confirmed && ab.hotel)
+      .forEach((ab) => entries.push({ kind: "hotel", booking: ab }));
     entries.sort((a, b) => {
-      const aTime =
-        a.kind === "anchor"
-          ? `${a.anchor.date}T${a.anchor.time}`
-          : `${a.booking.date}T${a.booking.departTime}`;
-      const bTime =
-        b.kind === "anchor"
-          ? `${b.anchor.date}T${b.anchor.time}`
-          : `${b.booking.date}T${b.booking.departTime}`;
-      return aTime.localeCompare(bTime);
+      const timeOf = (e: TimelineEntry) => {
+        if (e.kind === "anchor") return `${e.anchor.date}T${e.anchor.time || "12:00"}`;
+        if (e.kind === "transport") return `${e.booking.date}T${e.booking.departTime}`;
+        // Hotel sorts at check-in time (end of day)
+        return `${e.booking.checkInDate}T${e.booking.checkInTime || "18:00"}`;
+      };
+      return timeOf(a).localeCompare(timeOf(b));
     });
     return entries;
-  }, [anchors, transportBookings]);
+  }, [anchors, transportBookings, accommodationBookings]);
 
   // Find the first departure time for "leave by" display
   const firstDepartTime = transportBookings
@@ -905,13 +909,30 @@ export function NewItineraryBrief({
               )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-              <input
-                type="date"
-                className="field"
-                value={tripStartDate}
-                onChange={(e) => { setTripStartDate(e.target.value); setTripEndDate(e.target.value); }}
-                style={{ width: 130, fontSize: 12, padding: "4px 8px" }}
-              />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input
+                  type="date"
+                  className="field"
+                  value={tripStartDate}
+                  onChange={(e) => {
+                    setTripStartDate(e.target.value);
+                    if (tripEndDate < e.target.value) setTripEndDate(e.target.value);
+                  }}
+                  style={{ width: 120, fontSize: 12, padding: "4px 6px" }}
+                />
+                {tripStartDate !== tripEndDate && (
+                  <>
+                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>to</span>
+                    <input
+                      type="date"
+                      className="field"
+                      value={tripEndDate}
+                      onChange={(e) => setTripEndDate(e.target.value)}
+                      style={{ width: 120, fontSize: 12, padding: "4px 6px" }}
+                    />
+                  </>
+                )}
+              </div>
               {baseLocations.length > 1 ? (
                 <button
                   type="button"
@@ -960,23 +981,31 @@ export function NewItineraryBrief({
               })()}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={beHomeBy != null}
-                  onChange={(e) => setBeHomeBy(e.target.checked ? { date: tripStartDate, time: "17:00" } : null)}
-                  style={{ accentColor: "var(--gold-2)" }}
-                />
-                <span className="uc" style={{ fontSize: 9 }}>Back by</span>
-              </label>
-              {beHomeBy && (
-                <input
-                  type="time"
-                  className="field"
-                  value={beHomeBy.time}
-                  onChange={(e) => setBeHomeBy({ ...beHomeBy, time: e.target.value })}
-                  style={{ width: 80, fontSize: 12, padding: "2px 6px" }}
-                />
+              {tripStartDate === tripEndDate ? (
+                <>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={beHomeBy != null}
+                      onChange={(e) => setBeHomeBy(e.target.checked ? { date: tripStartDate, time: "17:00" } : null)}
+                      style={{ accentColor: "var(--gold-2)" }}
+                    />
+                    <span className="uc" style={{ fontSize: 9 }}>Back by</span>
+                  </label>
+                  {beHomeBy && (
+                    <input
+                      type="time"
+                      className="field"
+                      value={beHomeBy.time}
+                      onChange={(e) => setBeHomeBy({ ...beHomeBy, time: e.target.value })}
+                      style={{ width: 80, fontSize: 12, padding: "2px 6px" }}
+                    />
+                  )}
+                </>
+              ) : (
+                <span className="mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                  {Math.round((new Date(tripEndDate).getTime() - new Date(tripStartDate).getTime()) / 86400000)} night{Math.round((new Date(tripEndDate).getTime() - new Date(tripStartDate).getTime()) / 86400000) !== 1 ? "s" : ""} away
+                </span>
               )}
             </div>
           </div>
@@ -1060,6 +1089,24 @@ export function NewItineraryBrief({
           const prevEntry = entryIdx > 0 ? timelineEntries[entryIdx - 1] : null;
           const nextEntry = entryIdx < timelineEntries.length - 1 ? timelineEntries[entryIdx + 1] : null;
 
+          // Day header — insert when the date changes between entries
+          const entryDate = entry.kind === "anchor" ? entry.anchor.date
+            : entry.kind === "transport" ? entry.booking.date
+            : entry.booking.checkInDate;
+          const prevDate = prevEntry
+            ? prevEntry.kind === "anchor" ? prevEntry.anchor.date
+              : prevEntry.kind === "transport" ? prevEntry.booking.date
+              : prevEntry.booking.checkInDate
+            : tripStartDate;
+          const isNewDay = entryDate && prevDate && entryDate !== prevDate;
+          const dayHeader = isNewDay ? (
+            <div style={{ padding: "12px 0 6px", borderTop: "1px solid var(--rule)", marginTop: 8 }}>
+              <span className="display-i" style={{ fontSize: 14, color: "var(--ink)", fontWeight: 500 }}>
+                {new Date(entryDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}
+              </span>
+            </div>
+          ) : null;
+
           // ── Mode picker gap before this entry ──
           let gapBefore = null;
           if (entryIdx === 0) {
@@ -1086,7 +1133,7 @@ export function NewItineraryBrief({
                   }}
                 />
               );
-            } else {
+            } else if (entry.kind === "transport") {
               // Home → transport departure
               const hubId = entry.booking.departureHub?.id;
               const toLabel = entry.booking.departureHub?.label ?? "station";
@@ -1258,6 +1305,7 @@ export function NewItineraryBrief({
             }
             return (
               <div key={`tl-${tb.uid}`} style={{ marginBottom: 4 }}>
+                {dayHeader}
                 {gapBefore}
                 {contextGap}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 4px", marginBottom: 2 }}>
@@ -1273,6 +1321,50 @@ export function NewItineraryBrief({
                   {legs.map((leg, li) => (
                     <TrainTicketCard key={`${tb.uid}-${li}`} segment={leg} compact />
                   ))}
+                </div>
+              </div>
+            );
+          }
+
+          // Hotel entry
+          if (entry.kind === "hotel") {
+            const ab = entry.booking;
+            const nights = ab.checkInDate && ab.checkOutDate
+              ? Math.round((new Date(ab.checkOutDate).getTime() - new Date(ab.checkInDate).getTime()) / 86400000)
+              : 1;
+            return (
+              <div key={ab.uid} style={{ marginBottom: 8 }}>
+                {dayHeader}
+                {gapBefore}
+                <div
+                  className="card"
+                  style={{
+                    padding: "12px 16px",
+                    borderLeft: "3px solid var(--sage)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <span className="uc" style={{ fontSize: 10, color: "var(--sage)" }}>
+                        {nights > 0 ? `${nights} night${nights !== 1 ? "s" : ""}` : "Hotel"}
+                      </span>
+                      <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 15, color: "var(--ink)", marginTop: 2 }}>
+                        {ab.hotel?.label ?? "Hotel"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
+                      <button type="button" style={{ color: "var(--ink-dim)" }} onClick={() => updateAccommodationBooking(ab.uid, { confirmed: false })}>Edit</button>
+                      <button type="button" style={{ color: "var(--rust)" }} onClick={() => removeAccommodationBooking(ab.uid)}>Remove</button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                    Check in from {ab.checkInTime || "15:00"} · Check out by {ab.checkOutTime || "11:00"}
+                  </div>
+                  {ab.reference && (
+                    <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
+                      Ref: {ab.reference}
+                    </div>
+                  )}
                 </div>
               </div>
             );
