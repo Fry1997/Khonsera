@@ -1212,7 +1212,7 @@ export async function createItineraryFromBrief(
 
         const transitMode = isTransitLeg
           ? (fromMeta?.transport_mode as string) ?? "train"
-          : "mixed";
+          : "auto";
 
         // Compute duration from stop times for locked transit legs
         let computedDuration: number | null = null;

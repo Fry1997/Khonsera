@@ -155,10 +155,17 @@ export default async function ItineraryDetailPage({
           }>,
         };
 
-  const totalCost = (expenseRows ?? []).reduce(
+  const expenseCost = (expenseRows ?? []).reduce(
     (sum, e) => sum + (Number(e.amount) || 0),
     0,
   );
+  // Also tally transport booking prices from stop metadata
+  const bookingCost = (stops ?? []).reduce((sum, s) => {
+    const meta = s.metadata as Record<string, unknown> | null;
+    const price = meta?.price as number | undefined;
+    return sum + (price ?? 0);
+  }, 0);
+  const totalCost = expenseCost + bookingCost;
   const currency =
     (expenseRows?.[0]?.currency as string | undefined) ?? "GBP";
 

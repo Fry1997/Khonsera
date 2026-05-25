@@ -1312,7 +1312,7 @@ export function ItineraryEditor({
                           from_station_code: null,
                           to_station_code: null,
                           departure_date: item.stop.start_time?.slice(0, 10) ?? "",
-                          departure_time: fmtT(item.stop.start_time),
+                          departure_time: fmtT(item.stop.end_time ?? item.stop.start_time),
                           arrival_time: fmtT(nextItem!.stop.start_time),
                           operator: (meta?.operator as string) ?? null,
                           route_restriction: (meta?.route_restriction as string) ?? null,
