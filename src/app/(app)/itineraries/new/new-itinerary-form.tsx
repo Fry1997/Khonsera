@@ -54,6 +54,7 @@ import { TransportIcon } from "@/components/icons";
 import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
 import { GapModePicker, type GapMode, type GapPreview } from "@/components/gap-mode-picker";
 import { scanGmailForBookings } from "@/lib/actions/gmail";
+import { resolveHubByName } from "@/lib/actions/travel-profile";
 import type { ParsedBooking } from "@/lib/gmail/types";
 import type { PlaceSelection } from "@/components/place-picker";
 
@@ -252,7 +253,7 @@ export function NewItineraryBrief({
     }
   };
 
-  const importParsedBooking = (b: ParsedBooking) => {
+  const importParsedBooking = async (b: ParsedBooking) => {
     if (b.type === "transport") {
       // Split outbound/return: detect where the direction reverses.
       // E.g. WEL→LEI, LEI→DER, DER→LEI, LEI→WEL — the reversal is
@@ -276,15 +277,20 @@ export function NewItineraryBrief({
       const outbound = segs.slice(0, splitAt);
       const returnSegs = segs.slice(splitAt);
 
-      const makeBooking = (legs: typeof segs) => {
+      const makeBooking = async (legs: typeof segs) => {
         const first = legs[0];
         const last = legs[legs.length - 1];
+        // Resolve station names → transport hub IDs for route previews
+        const [depHub, destHub] = await Promise.all([
+          first?.from_station ? resolveHubByName(first.from_station) : null,
+          last?.to_station ? resolveHubByName(last.to_station) : null,
+        ]);
         return {
           ...emptyTransportBookingItem(),
           mode: (b.mode === "bus" ? "bus" : b.mode) as any,
           date: first?.departure_date ?? tripStartDate,
-          departureHub: { id: null, label: first?.from_station ?? null },
-          destinationHub: { id: null, label: last?.to_station ?? null },
+          departureHub: { id: depHub?.id ?? null, label: first?.from_station ?? null },
+          destinationHub: { id: destHub?.id ?? null, label: last?.to_station ?? null },
           departTime: first?.departure_time ?? "",
           arriveTime: last?.arrival_time ?? "",
           changeovers: legs.length > 1
@@ -309,9 +315,11 @@ export function NewItineraryBrief({
         };
       };
 
+      const outboundBooking = await makeBooking(outbound);
+      const returnBooking = returnSegs.length > 0 ? await makeBooking(returnSegs) : null;
       setTransportBookings((prev) => {
-        const next = [...prev, makeBooking(outbound)];
-        if (returnSegs.length > 0) next.push(makeBooking(returnSegs));
+        const next = [...prev, outboundBooking];
+        if (returnBooking) next.push(returnBooking);
         return next;
       });
 
