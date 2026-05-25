@@ -41,10 +41,12 @@ import {
   AnchorCard,
   StopoverCard,
   TRANSITION_OPTIONS,
+  Timeline,
   TransitionRow as PlanningTransitionRow,
   anchorsFromStops,
   anchorToStopUpdate,
   buildDatePresets,
+  buildPlanningTimeline,
   emptyTransition,
   stopoverAsAnchor,
   transitStopAsAnchor,
@@ -1263,429 +1265,45 @@ export function ItineraryEditor({
                 </p>
               </div>
             ) : (
-              <ol
-                className="flex flex-col"
-                style={{ gap: 12 }}
-              >
-                {planningTimeline.map((item, i) => {
-                  // The next item on the timeline determines whether
-                  // we render a transition row. We refer to "anchor /
-                  // stopover" interchangeably as "this stop" for the
-                  // transition's `to` side.
-                  const nextItem = planningTimeline[i + 1];
-                  const stop = item.stop;
-                  // DbTransition for this leg — pulls computed
-                  // duration/distance for the inline meta line.
-                  const transitionToNext = nextItem
-                    ? transitionByFrom.get(stop.id)
-                    : null;
-
-                  if (item.kind === "transit") {
-                    const meta = item.stop.metadata as Record<string, unknown> | null;
-                    const transitTransition = transitionByFrom.get(item.stop.id);
-                    const fmtT = (iso: string | null) =>
-                      iso
-                        ? new Intl.DateTimeFormat("en-GB", {
-                            hour: "2-digit", minute: "2-digit",
-                            hour12: false, timeZone: timezone,
-                          }).format(new Date(iso))
-                        : "";
-
-                    // Build a ticket card from stop → next stop for locked legs
-                    const showTicket =
-                      nextItem?.kind === "transit" && transitTransition?.is_locked;
-
-                    // Only hide actual transit_arrival stops (not changeovers)
-                    // that follow a ticket card — the ticket shows the arrival.
-                    const isActualArrival = (item.stop.type as string) === "transit_arrival";
-                    const prevIsTransitTicket =
-                      i > 0 &&
-                      planningTimeline[i - 1]?.kind === "transit" &&
-                      transitionByFrom.get(planningTimeline[i - 1]?.stop.id)?.is_locked;
-                    if (isActualArrival && prevIsTransitTicket) {
-                      return null;
-                    }
-
-                    const ticketSeg: TicketSegment | null = showTicket
-                      ? {
-                          from_station: item.stop.title ?? "?",
-                          to_station: nextItem!.stop.title ?? "?",
-                          from_station_code: null,
-                          to_station_code: null,
-                          departure_date: item.stop.start_time?.slice(0, 10) ?? "",
-                          departure_time: fmtT(item.stop.end_time ?? item.stop.start_time),
-                          arrival_time: fmtT(nextItem!.stop.start_time),
-                          operator: (meta?.operator as string) ?? null,
-                          route_restriction: (meta?.route_restriction as string) ?? null,
-                          ticket_type: (meta?.ticket_type as string) ?? null,
-                          coach: null,
-                          seat: (meta?.seat as string) ?? null,
-                          barcode_ref: (meta?.barcode_ref as string) ?? (meta?.booking_reference as string) ?? null,
-                          barcode_data: (meta?.barcode_data as string) ?? null,
-                          price: (meta?.price as number) ?? null,
-                        }
-                      : null;
-
-                    return (
-                      <li key={item.stop.id} className="flex flex-col" style={{ gap: 4 }}>
-                        {item.transitDirection === "departure" && (
-                          <div style={{ padding: "4px 0 2px" }}>
-                            <span className="uc" style={{ fontSize: 10, color: "var(--gold-2)" }}>
-                              Booked {(meta?.transport_mode as string) ?? "transport"}
-                            </span>
-                          </div>
-                        )}
-                        {ticketSeg ? (
-                          <TrainTicketCard segment={ticketSeg} compact />
-                        ) : item.transitDirection === "departure" ? (
-                          <TransitStopCard
-                            stop={item.stop}
-                            direction={item.transitDirection}
-                            timezone={timezone}
-                            onRemove={() => handleDelete(item.stop.id)}
-                          />
-                        ) : null}
-                      </li>
-                    );
-                  }
-
-                  if (item.kind === "stopover") {
-                    // Stopover row — render StopoverCard summary; its
-                    // surrounding anchors are derived from the
-                    // adjacent timeline entries (skipping any other
-                    // stopover that might sit immediately next to it,
-                    // though in practice stopovers don't chain).
-                    const prevAnchor = (() => {
-                      for (let j = i - 1; j >= 0; j--) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.anchor;
-                      }
-                      return null;
-                    })();
-                    const nextAnchor = (() => {
-                      for (let j = i + 1; j < planningTimeline.length; j++) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.anchor;
-                      }
-                      return null;
-                    })();
-                    // Back-calc: needs the previous/next *anchor stop
-                    // rows* (with start/end times) plus the two leg
-                    // transitions in/out of this stopover.
-                    const prevAnchorStop = (() => {
-                      for (let j = i - 1; j >= 0; j--) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.stop;
-                      }
-                      return undefined;
-                    })();
-                    const nextAnchorStop = (() => {
-                      for (let j = i + 1; j < planningTimeline.length; j++) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.stop;
-                      }
-                      return undefined;
-                    })();
-                    const legIn = prevAnchorStop
-                      ? transitions.find(
-                          (t) =>
-                            t.from_stop_id === prevAnchorStop.id &&
-                            t.to_stop_id === stop.id,
-                        )
-                      : null;
-                    const legOut = nextAnchorStop
-                      ? transitions.find(
-                          (t) =>
-                            t.from_stop_id === stop.id &&
-                            t.to_stop_id === nextAnchorStop.id,
-                        )
-                      : null;
-                    // Fall back to the drive preview when a leg's
-                    // transition has no computed duration stored
-                    // (because the user hasn't picked a mode yet).
-                    const legInPreview = prevAnchorStop
-                      ? routePreviews.get(
-                          prevAnchorStop.id,
-                          item.stop.id,
-                          "drive",
-                        )
-                      : null;
-                    const legOutPreview = nextAnchorStop
-                      ? routePreviews.get(
-                          item.stop.id,
-                          nextAnchorStop.id,
-                          "drive",
-                        )
-                      : null;
-                    const backCalc = computeStopoverBackCalc(
-                      prevAnchorStop,
-                      nextAnchorStop,
-                      legIn,
-                      legOut,
-                      item.stopover.durationMins,
-                      timezone,
-                      legInPreview && legInPreview !== "pending"
-                        ? legInPreview.durationMinutes
-                        : null,
-                      legOutPreview && legOutPreview !== "pending"
-                        ? legOutPreview.durationMinutes
-                        : null,
-                    );
-                    const isExpanded = expandedUids.has(item.stopover.uid);
-                    const liveStopover =
-                      editedStopovers.get(item.stopover.uid) ?? item.stopover;
-                    return (
-                      <li key={stop.id} className="flex flex-col">
-                        <StopoverCard
-                          stopover={liveStopover}
-                          fromAnchor={
-                            prevAnchor ??
-                            stopoverAsAnchor(
-                              item.stopover,
-                              `placeholder-prev-${stop.id}`,
-                            )
-                          }
-                          toAnchor={
-                            nextAnchor ??
-                            stopoverAsAnchor(
-                              item.stopover,
-                              `placeholder-next-${stop.id}`,
-                            )
-                          }
-                          customers={customers}
-                          customerSites={customerSites}
-                          locations={locations}
-                          backCalc={backCalc}
-                          mode={isExpanded ? "expanded" : "summary"}
-                          onModeChange={(next) =>
-                            next === "expanded"
-                              ? handleStopoverExpand(item.stopover.uid)
-                              : handleStopoverCollapse(item.stopover.uid)
-                          }
-                          onChange={(patch) =>
-                            handleStopoverPatch(item.stopover.uid, patch)
-                          }
-                          onRemove={() => handleDelete(stop.id)}
-                        />
-                        {nextItem ? (
-                          <>
-                            <PlanningTransitionRow
-                              from={
-                                prevAnchor ??
-                                stopoverAsAnchor(
-                                  item.stopover,
-                                  `placeholder-prev-${stop.id}`,
-                                )
-                              }
-                              to={
-                                nextItem.kind === "anchor"
-                                  ? nextItem.anchor
-                                  : nextItem.kind === "stopover"
-                                    ? stopoverAsAnchor(
-                                        nextItem.stopover,
-                                        nextItem.stopover.uid,
-                                      )
-                                    : transitStopAsAnchor(nextItem.stop)
-                              }
-                              transition={
-                                planningTransitions.get(
-                                  transitionKey(
-                                    stop.id,
-                                    uidOf(nextItem),
-                                  ),
-                                ) ?? emptyTransition()
-                              }
-                              modePreviews={previewsForPair(
-                                stop.id,
-                                uidOf(nextItem),
-                              )}
-                              onOpenChange={(open) => {
-                                if (open)
-                                  prefetchPair(
-                                    stop.id,
-                                    uidOf(nextItem),
-                                  );
-                              }}
-                              onChange={(patch) =>
-                                handleTransitionPatch(
-                                  stop.id,
-                                  uidOf(nextItem),
-                                  patch,
-                                )
-                              }
-                            />
-                            {transitionToNext ? (
-                              <TransitionMeta
-                                transition={transitionToNext}
-                                feasibility={computeFeasibility(
-                                  stop,
-                                  nextItem.stop,
-                                  transitionToNext,
-                                )}
-                              />
-                            ) : null}
-                          </>
-                        ) : null}
-                      </li>
-                    );
-                  }
-
-                  // Anchor row.
-                  const anchor = item.anchor;
-                  const isExpanded = expandedUids.has(anchor.uid);
-                  const liveAnchor =
-                    editedAnchors.get(anchor.uid) ?? anchor;
-                  return (
-                    <li key={anchor.uid} className="flex flex-col">
-                      <AnchorCard
-                        anchor={liveAnchor}
-                        earlier={planningAnchors.slice(
-                          0,
-                          planningAnchors.findIndex(
-                            (a) => a.uid === anchor.uid,
-                          ),
-                        )}
-                        first={i === 0}
-                        canRemove={planningAnchors.length > 1}
-                        customers={customers}
-                        customerSites={customerSites}
-                        locations={locations}
-                        datePresets={planningDatePresets}
-                        timezone={timezone}
-                        mode={isExpanded ? "expanded" : "summary"}
-                        onModeChange={(next) =>
-                          next === "expanded"
-                            ? handleAnchorExpand(anchor.uid)
-                            : handleAnchorCollapse(anchor.uid)
-                        }
-                        onChange={(patch) =>
-                          handleAnchorPatch(anchor.uid, patch)
-                        }
-                        onRemove={() => handleDelete(anchor.uid)}
-                      />
-                      {nextItem ? (
-                        <PlanningTransitionRow
-                          from={anchor}
-                          to={
-                            nextItem.kind === "anchor"
-                              ? nextItem.anchor
-                              : nextItem.kind === "stopover"
-                                ? stopoverAsAnchor(
-                                    nextItem.stopover,
-                                    nextItem.stopover.uid,
-                                  )
-                                : transitStopAsAnchor(nextItem.stop)
-                          }
-                          transition={
-                            planningTransitions.get(
-                              transitionKey(
-                                anchor.uid,
-                                uidOf(nextItem),
-                              ),
-                            ) ?? emptyTransition()
-                          }
-                          modePreviews={previewsForPair(
-                            anchor.uid,
-                            uidOf(nextItem),
-                          )}
-                          onOpenChange={(open) => {
-                            if (open)
-                              prefetchPair(
-                                anchor.uid,
-                                uidOf(nextItem),
-                              );
-                          }}
-                          onChange={(patch) =>
-                            handleTransitionPatch(
-                              anchor.uid,
-                              uidOf(nextItem),
-                              patch,
-                            )
-                          }
-                        />
-                      ) : null}
-                      {nextItem && transitionToNext ? (
-                        <TransitionMeta
-                          transition={transitionToNext}
-                          feasibility={computeFeasibility(
-                            stop,
-                            nextItem.stop,
-                            transitionToNext,
-                          )}
-                        />
-                      ) : null}
-                      {/* Inline add affordances between anchor pairs
-                          — adds a new anchor at this slot OR adds a
-                          stopover between this anchor and the next
-                          (only when no stopover already exists for
-                          the pair). Mirrors the brief's UI. */}
-                      {nextItem &&
-                      item.kind === "anchor" ? (
-                        transitFormFor &&
-                        transitFormFor.beforeStopId === stop.id &&
-                        transitFormFor.afterStopId === nextItem.stop.id ? (
-                          <TransitLegForm
-                            mode={transitFormFor.mode}
-                            beforeLabel={
-                              item.anchor.place?.label ?? "previous"
-                            }
-                            afterLabel={
-                              nextItem.kind === "anchor"
-                                ? nextItem.anchor.place?.label ?? "next"
-                                : "next"
-                            }
-                            pending={pending}
-                            onCancel={() => setTransitFormFor(null)}
-                            onSubmit={(form) =>
-                              handleInsertTransitLeg({
-                                beforeStopId: stop.id,
-                                afterStopId: nextItem.stop.id,
-                                mode: transitFormFor.mode,
-                                ...form,
-                              })
-                            }
-                          />
-                        ) : (
-                          <div className="anchor-inline-adds">
-                            <AddBetween
-                              between
-                              onAdd={() =>
-                                handleInsertAnchorAt(nextItem.stop.sequence)
-                              }
-                            />
-                            {nextItem.kind === "anchor" ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="brief-add-stop-trigger"
-                                  onClick={() =>
-                                    handleInsertStopoverBetween(
-                                      stop.id,
-                                      nextItem.stop.id,
-                                    )
-                                  }
-                                  title="Drop in somewhere between these two anchors"
-                                >
-                                  + Add a stop between these
-                                </button>
-                                <button
-                                  type="button"
-                                  className="brief-add-stop-trigger"
-                                  onClick={() => setShowAddTransport(true)}
-                                  title="Add a booked transport leg"
-                                >
-                                  + Transport
-                                </button>
-                              </>
-                            ) : null}
-                          </div>
-                        )
-                      ) : null}
-                    </li>
-                  );
+              <Timeline
+                entries={buildPlanningTimeline({
+                  planningTimeline,
+                  planningAnchors,
+                  sortedStops,
+                  transitions,
+                  planningTransitions,
+                  transitionByFrom,
+                  expandedUids,
+                  editedAnchors,
+                  editedStopovers: editedStopovers as Map<string, Stopover & { uid: string }>,
+                  timezone,
+                  previewsForPair,
+                  computeStopoverBackCalc,
+                  computeFeasibility,
+                  routePreviews,
+                  handlers: {
+                    handleAnchorExpand,
+                    handleAnchorCollapse,
+                    handleAnchorPatch,
+                    handleStopoverExpand,
+                    handleStopoverCollapse,
+                    handleStopoverPatch,
+                    handleDelete,
+                    handleTransitionPatch,
+                    prefetchPair,
+                    handleInsertAnchorAt,
+                    handleInsertStopoverBetween,
+                  },
+                  startStop: sortedStops.find((s) => s.type === "start") ?? null,
                 })}
-              </ol>
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                datePresets={planningDatePresets}
+                timezone={timezone}
+              />
             )}
+
 
             {/* Bottom-of-timeline add affordances. + Train and +
                 Flight here append a transit chain at the end (no

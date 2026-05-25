@@ -17,12 +17,14 @@ import {
   JourneySpine,
   StopoverCard,
   TRANSITION_OPTIONS,
+  Timeline,
   TransitionRow,
   TransportBookingCard,
   AccommodationBookingCard,
   anchorEndDate,
   anchorStartDate,
   anchorWithinStay,
+  buildBriefTimeline,
   buildDatePresets,
   defaultAnchorDate,
   effectiveKind,
@@ -1096,533 +1098,55 @@ export function NewItineraryBrief({
           ))}
 
         {/* Render the unified timeline */}
-        {timelineEntries.map((entry, entryIdx) => {
-          const prevEntry = entryIdx > 0 ? timelineEntries[entryIdx - 1] : null;
-          const nextEntry = entryIdx < timelineEntries.length - 1 ? timelineEntries[entryIdx + 1] : null;
+        <Timeline
+          entries={buildBriefTimeline({
+            anchors,
+            transportBookings,
+            accommodationBookings,
+            transitions,
+            stopovers,
+            expandedAnchors,
+            tripStartDate,
+            baseName,
+            basePlace: selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
+            gapModes,
+            getGapPreviews,
+            getGapPreview,
+            briefPreviewsForPair,
+            handlers: {
+              getTransition,
+              setTransition,
+              setGapMode,
+              updateAnchor: (uid, patch) => updateAnchor(uid, patch),
+              removeAnchor,
+              setExpandedAnchor: (uid, expanded) => {
+                setExpandedAnchors((prev) => {
+                  const copy = new Set(prev);
+                  if (expanded) copy.add(uid);
+                  else copy.delete(uid);
+                  return copy;
+                });
+              },
+              updateTransportBooking,
+              removeTransportBooking,
+              updateAccommodationBooking,
+              removeAccommodationBooking,
+              insertAnchorAt,
+              addStopover,
+              removeStopover,
+              setStopoverPatch,
+              prefetchGap,
+              briefPrefetchPair,
+              getStopover,
+            },
+          })}
+          customers={customers}
+          customerSites={customerSites}
+          locations={locations}
+          datePresets={datePresets}
+          timezone={timezone}
+        />
 
-          // Day header — insert when the date changes between entries
-          const entryDate = entry.kind === "anchor" ? entry.anchor.date
-            : entry.kind === "transport" ? entry.booking.date
-            : entry.booking.checkInDate;
-          const prevDate = prevEntry
-            ? prevEntry.kind === "anchor" ? prevEntry.anchor.date
-              : prevEntry.kind === "transport" ? prevEntry.booking.date
-              : prevEntry.booking.checkInDate
-            : tripStartDate;
-          const isNewDay = entryDate && prevDate && entryDate !== prevDate;
-          const dayHeader = isNewDay ? (
-            <div style={{ padding: "12px 0 6px", borderTop: "1px solid var(--rule)", marginTop: 8 }}>
-              <span className="display-i" style={{ fontSize: 14, color: "var(--ink)", fontWeight: 500 }}>
-                {new Date(entryDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}
-              </span>
-            </div>
-          ) : null;
-
-          // ── Mode picker gap before this entry ──
-          let gapBefore = null;
-          if (entryIdx === 0) {
-            // Home → first entry
-            if (entry.kind === "anchor") {
-              gapBefore = (
-                <TransitionRow
-                  from={null}
-                  to={entry.anchor}
-                  transition={getTransition(HOME_UID, entry.anchor.uid)}
-                  onChange={(patch) => setTransition(HOME_UID, entry.anchor.uid, patch)}
-                  fromVirtualLabel={baseName}
-                  modePreviews={briefPreviewsForPair(
-                    selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
-                    entry.anchor.place,
-                  )}
-                  onOpenChange={(open) => {
-                    if (open && entry.anchor.place) {
-                      briefPrefetchPair(
-                        selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
-                        entry.anchor.place,
-                      );
-                    }
-                  }}
-                />
-              );
-            } else if (entry.kind === "transport") {
-              // Home → transport departure
-              const hubId = entry.booking.departureHub?.id;
-              const toLabel = entry.booking.departureHub?.label ?? "station";
-              const gapKey = `home→hub:${hubId}`;
-              prefetchGap("home", `hub:${hubId}`);
-              gapBefore = (
-                <GapModePicker
-                  selected={gapModes.get(gapKey) ?? null}
-                  onSelect={(m) => setGapMode(gapKey, m)}
-                  previews={getGapPreviews("home", `hub:${hubId}`)}
-                  fromLabel={baseName}
-                  toLabel={toLabel}
-                />
-              );
-            }
-          } else if (prevEntry?.kind === "transport" && entry.kind === "anchor") {
-            const hubId = prevEntry.booking.destinationHub?.id;
-            const fromLabel = prevEntry.booking.destinationHub?.label ?? "station";
-            const toLabel = entry.anchor.place?.label ?? "appointment";
-            const gapKey = `hub:${hubId}→anchor:${entry.anchor.uid}`;
-            if (entry.anchor.place) prefetchGap(`hub:${hubId}`, `anchor:${entry.anchor.uid}`);
-            gapBefore = (
-              <GapModePicker
-                selected={gapModes.get(gapKey) ?? null}
-                onSelect={(m) => setGapMode(gapKey, m)}
-                previews={entry.anchor.place ? getGapPreviews(`hub:${hubId}`, `anchor:${entry.anchor.uid}`) : undefined}
-                fromLabel={fromLabel}
-                toLabel={toLabel}
-              />
-            );
-          } else if (prevEntry?.kind === "anchor" && entry.kind === "transport") {
-            const hubId = entry.booking.departureHub?.id;
-            const fromLabel = prevEntry.anchor.place?.label ?? "stop";
-            const toLabel = entry.booking.departureHub?.label ?? "station";
-            const gapKey = `anchor:${prevEntry.anchor.uid}→hub:${hubId}`;
-            if (prevEntry.anchor.place) prefetchGap(`anchor:${prevEntry.anchor.uid}`, `hub:${hubId}`);
-            gapBefore = (
-              <GapModePicker
-                selected={gapModes.get(gapKey) ?? null}
-                onSelect={(m) => setGapMode(gapKey, m)}
-                previews={prevEntry.anchor.place ? getGapPreviews(`anchor:${prevEntry.anchor.uid}`, `hub:${hubId}`) : undefined}
-                fromLabel={fromLabel}
-                toLabel={toLabel}
-              />
-            );
-          } else if (prevEntry?.kind === "transport" && entry.kind === "transport") {
-            // Between two transport bookings — contextual gap handles the main prompt,
-            // but also show a gap mode picker if there are anchors between them
-          } else if (prevEntry?.kind === "anchor" && entry.kind === "anchor") {
-            // Anchor → anchor: standard transition
-            const prev = prevEntry.anchor;
-            const cur = entry.anchor;
-            const sv = getStopover(prev.uid, cur.uid);
-            if (sv) {
-              const svUid = stopoverUid(prev.uid, cur.uid);
-              const svAnchor = stopoverAsAnchor(sv, svUid);
-              gapBefore = (
-                <>
-                  <TransitionRow
-                    from={prev}
-                    to={svAnchor}
-                    transition={getTransition(prev.uid, svUid)}
-                    modePreviews={briefPreviewsForPair(prev.place, sv.place)}
-                    onOpenChange={(open) => { if (open) briefPrefetchPair(prev.place, sv.place); }}
-                    onChange={(patch) => setTransition(prev.uid, svUid, patch)}
-                  />
-                  <StopoverCard
-                    stopover={sv}
-                    fromAnchor={prev}
-                    toAnchor={cur}
-                    customers={customers}
-                    customerSites={customerSites}
-                    locations={locations}
-                    onChange={(patch) => setStopoverPatch(prev.uid, cur.uid, patch)}
-                    onRemove={() => removeStopover(prev.uid, cur.uid)}
-                  />
-                  <TransitionRow
-                    from={svAnchor}
-                    to={cur}
-                    transition={getTransition(svUid, cur.uid)}
-                    modePreviews={briefPreviewsForPair(sv.place, cur.place)}
-                    onOpenChange={(open) => { if (open) briefPrefetchPair(sv.place, cur.place); }}
-                    onChange={(patch) => setTransition(svUid, cur.uid, patch)}
-                  />
-                </>
-              );
-            } else {
-              gapBefore = (
-                <TransitionRow
-                  from={prev}
-                  to={cur}
-                  transition={getTransition(prev.uid, cur.uid)}
-                  modePreviews={briefPreviewsForPair(prev.place, cur.place)}
-                  onOpenChange={(open) => { if (open) briefPrefetchPair(prev.place, cur.place); }}
-                  onChange={(patch) => setTransition(prev.uid, cur.uid, patch)}
-                />
-              );
-            }
-          }
-
-          // ── Contextual gap: "You're in Derby from 08:32 to 15:08" ──
-          let contextGap = null;
-          if (prevEntry?.kind === "transport" && entry.kind === "transport") {
-            const gap = findGapInfo(prevEntry, entry);
-            if (gap && gap.gapMinutes > 0) {
-              const hours = Math.floor(gap.gapMinutes / 60);
-              const mins = gap.gapMinutes % 60;
-              const durLabel = hours > 0
-                ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
-                : `${mins}m`;
-              contextGap = (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "20px 12px",
-                    color: "var(--ink-dim)",
-                  }}
-                >
-                  <p
-                    className="serif-i"
-                    style={{ margin: "0 0 10px", fontSize: 14 }}
-                  >
-                    You're in {gap.location} for {durLabel}
-                  </p>
-                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--ink-faint)" }}>
-                    {gap.from} to {gap.to}
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => insertAnchorAt(anchors.length)}
-                  >
-                    What are you doing here?
-                  </button>
-                </div>
-              );
-            }
-          }
-
-          // ── Render the entry ──
-          if (entry.kind === "transport") {
-            const tb = entry.booking;
-            // Build individual leg segments (split by changeovers)
-            const legs: TicketSegment[] = [];
-            const stops = [
-              { label: tb.departureHub?.label ?? "?", time: tb.departTime || "" },
-              ...tb.changeovers.map((co) => ({ label: co.hub?.label ?? "?", time: co.departTime || "" })),
-              { label: tb.destinationHub?.label ?? "?", time: tb.arriveTime || "" },
-            ];
-            for (let li = 0; li < stops.length - 1; li++) {
-              const bc = tb.barcodes[li];
-              legs.push({
-                from_station: stops[li].label,
-                to_station: stops[li + 1].label,
-                from_station_code: null,
-                to_station_code: null,
-                departure_date: tb.date || "",
-                departure_time: stops[li].time,
-                arrival_time: li < stops.length - 2 ? (tb.changeovers[li]?.arriveTime || "") : (tb.arriveTime || ""),
-                operator: tb.operator ?? null,
-                route_restriction: tb.routeRestriction ?? null,
-                ticket_type: tb.ticketType ?? null,
-                coach: null,
-                seat: li === 0 ? (tb.seat || null) : null,
-                barcode_ref: bc?.ref ?? null,
-                barcode_data: bc?.data ?? null,
-                price: li === 0 && tb.price ? Number(tb.price) : null,
-              });
-            }
-            return (
-              <div key={`tl-${tb.uid}`} style={{ marginBottom: 4 }}>
-                {dayHeader}
-                {gapBefore}
-                {contextGap}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 4px", marginBottom: 2 }}>
-                  <span className="uc" style={{ fontSize: 10, color: "var(--gold-2)" }}>
-                    {tb.departTime} train to {tb.destinationHub?.label}
-                  </span>
-                  <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
-                    <button type="button" style={{ color: "var(--ink-dim)" }} onClick={() => updateTransportBooking(tb.uid, { confirmed: false })}>Edit</button>
-                    <button type="button" style={{ color: "var(--rust)" }} onClick={() => removeTransportBooking(tb.uid)}>Remove</button>
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {legs.map((leg, li) => (
-                    <TrainTicketCard key={`${tb.uid}-${li}`} segment={leg} compact />
-                  ))}
-                </div>
-              </div>
-            );
-          }
-
-          // Hotel entry
-          if (entry.kind === "hotel") {
-            const ab = entry.booking;
-            const nights = ab.checkInDate && ab.checkOutDate
-              ? Math.round((new Date(ab.checkOutDate).getTime() - new Date(ab.checkInDate).getTime()) / 86400000)
-              : 1;
-            return (
-              <div key={ab.uid} style={{ marginBottom: 8 }}>
-                {dayHeader}
-                {gapBefore}
-                <div
-                  className="card"
-                  style={{
-                    padding: "12px 16px",
-                    borderLeft: "3px solid var(--sage)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <span className="uc" style={{ fontSize: 10, color: "var(--sage)" }}>
-                        {nights > 0 ? `${nights} night${nights !== 1 ? "s" : ""}` : "Hotel"}
-                      </span>
-                      <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 15, color: "var(--ink)", marginTop: 2 }}>
-                        {ab.hotel?.label ?? "Hotel"}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
-                      <button type="button" style={{ color: "var(--ink-dim)" }} onClick={() => updateAccommodationBooking(ab.uid, { confirmed: false })}>Edit</button>
-                      <button type="button" style={{ color: "var(--rust)" }} onClick={() => removeAccommodationBooking(ab.uid)}>Remove</button>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
-                    Check in from {ab.checkInTime || "15:00"} · Check out by {ab.checkOutTime || "11:00"}
-                  </div>
-                  {ab.reference && (
-                    <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                      Ref: {ab.reference}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          }
-
-          // Anchor entry
-          const anchor = entry.anchor;
-          const anchorIdx = entry.index;
-          const next = anchors[anchorIdx + 1];
-
-          // Compute maximize window: find surrounding transport bookings
-          let maximizeInfo: { arriveBy: string; leaveBy: string; durationMins: number; travelNote?: string } | null = null;
-          if (anchor.timingMode === "maximize") {
-            const BUFFER = 10;
-            // Find the transport booking BEFORE this anchor
-            const prevTransport = (() => {
-              for (let j = entryIdx - 1; j >= 0; j--) {
-                const e = timelineEntries[j];
-                if (e.kind === "transport") return e.booking;
-              }
-              return null;
-            })();
-            const nextTransport = (() => {
-              for (let j = entryIdx + 1; j < timelineEntries.length; j++) {
-                const e = timelineEntries[j];
-                if (e.kind === "transport") return e.booking;
-              }
-              return null;
-            })();
-
-            if (prevTransport?.arriveTime && nextTransport?.departTime) {
-              const [ah, am] = prevTransport.arriveTime.split(":").map(Number);
-              const [dh, dm] = nextTransport.departTime.split(":").map(Number);
-
-              // Subtract travel time from station → appointment (inbound)
-              const inboundHubId = prevTransport.destinationHub?.id;
-              const inboundGapKey = `hub:${inboundHubId}→anchor:${anchor.uid}`;
-              const inboundMode = gapModes.get(inboundGapKey);
-              const inboundPreview = inboundMode && inboundHubId
-                ? getGapPreview(`hub:${inboundHubId}`, `anchor:${anchor.uid}`, inboundMode)
-                : null;
-              const inboundTravelMin = inboundPreview && inboundPreview !== "pending"
-                ? inboundPreview.durationMinutes ?? 0 : 0;
-
-              // Subtract travel time from appointment → station (outbound)
-              const outboundHubId = nextTransport.departureHub?.id;
-              const outboundGapKey = `anchor:${anchor.uid}→hub:${outboundHubId}`;
-              const outboundMode = gapModes.get(outboundGapKey);
-              const outboundPreview = outboundMode && outboundHubId
-                ? getGapPreview(`anchor:${anchor.uid}`, `hub:${outboundHubId}`, outboundMode)
-                : null;
-              const outboundTravelMin = outboundPreview && outboundPreview !== "pending"
-                ? outboundPreview.durationMinutes ?? 0 : 0;
-
-              const arriveMin = ah * 60 + am + inboundTravelMin;
-              const departMin = dh * 60 + dm - BUFFER - outboundTravelMin;
-              const maxDuration = departMin - arriveMin;
-              if (maxDuration > 0) {
-                const arrH = Math.floor(arriveMin / 60);
-                const arrM = arriveMin % 60;
-                const depH = Math.floor(departMin / 60);
-                const depM = departMin % 60;
-                const travelNote = (inboundTravelMin > 0 || outboundTravelMin > 0)
-                  ? `${inboundTravelMin > 0 ? `${inboundTravelMin}m ${inboundMode} there` : ""}${inboundTravelMin > 0 && outboundTravelMin > 0 ? " + " : ""}${outboundTravelMin > 0 ? `${outboundTravelMin}m ${outboundMode} back` : ""} + ${BUFFER}m buffer`
-                  : `${BUFFER} min buffer before departure`;
-                maximizeInfo = {
-                  arriveBy: `${String(arrH).padStart(2, "0")}:${String(arrM).padStart(2, "0")}`,
-                  leaveBy: `${String(depH).padStart(2, "0")}:${String(depM).padStart(2, "0")}`,
-                  durationMins: maxDuration,
-                  travelNote,
-                };
-              }
-            }
-          }
-
-          return (
-            <div key={anchor.uid} style={{ marginBottom: 8 }}>
-              {gapBefore}
-              {contextGap}
-              <AnchorCard
-                anchor={anchor}
-                earlier={anchors.slice(0, anchorIdx)}
-                first={anchorIdx === 0}
-                canRemove={true}
-                customers={customers}
-                customerSites={customerSites}
-                locations={locations}
-                datePresets={datePresets}
-                mode={expandedAnchors.has(anchor.uid) || !anchor.place ? "expanded" : "summary"}
-                onModeChange={(next) => {
-                  setExpandedAnchors((prev) => {
-                    const copy = new Set(prev);
-                    if (next === "expanded") copy.add(anchor.uid);
-                    else copy.delete(anchor.uid);
-                    return copy;
-                  });
-                }}
-                onChange={(patch) => updateAnchor(anchor.uid, patch)}
-                onRemove={() => removeAnchor(anchor.uid)}
-              />
-              {maximizeInfo && (
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    background: "var(--gold-tint)",
-                    borderRadius: "0 0 12px 12px",
-                    marginTop: -4,
-                    borderTop: "1px dashed var(--gold-200)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--gold-2)" }}>
-                      {Math.floor(maximizeInfo.durationMins / 60)}h{maximizeInfo.durationMins % 60 > 0 ? ` ${maximizeInfo.durationMins % 60}m` : ""}
-                    </span>
-                    <span className="mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
-                      {maximizeInfo.arriveBy} — {maximizeInfo.leaveBy}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 3 }}>
-                    {maximizeInfo.travelNote ?? "Includes 10 min buffer before departure"}
-                  </div>
-                </div>
-              )}
-              {/* Show remaining free time if next entry is a transport booking */}
-              {nextEntry?.kind === "transport" && anchor.timingMode !== "maximize" && anchor.time && anchor.durationMins ? (() => {
-                const [h, m] = anchor.time.split(":").map(Number);
-                const endMin = h * 60 + m + anchor.durationMins;
-                const [dh, dm] = (nextEntry.booking.departTime || "").split(":").map(Number);
-                const departMin = dh * 60 + dm;
-                const freeMin = departMin - endMin;
-                if (freeMin > 60) {
-                  const freeH = Math.floor(freeMin / 60);
-                  const freeM = freeMin % 60;
-                  return (
-                    <div style={{ textAlign: "center", padding: "8px 0", fontSize: 12, color: "var(--ink-faint)" }}>
-                      {freeH}h{freeM > 0 ? ` ${freeM}m` : ""} free before your {nextEntry.booking.departTime} train
-                      <br />
-                      <button
-                        type="button"
-                        className="brief-add-stop-trigger"
-                        onClick={() => insertAnchorAt(anchors.length)}
-                        style={{ marginTop: 4 }}
-                      >
-                        + Add another stop
-                      </button>
-                    </div>
-                  );
-                }
-                return null;
-              })() : null}
-              {next && nextEntry?.kind !== "transport" ? (
-                <button
-                  type="button"
-                  className="brief-add-stop-trigger"
-                  onClick={() => addStopover(anchor.uid, next.uid)}
-                  title="Drop in somewhere between these two anchors"
-                  style={{ marginTop: 4 }}
-                >
-                  + Add a stop between these
-                </button>
-              ) : null}
-            </div>
-          );
-        })}
-
-        {/* Add a stop after the last entry */}
-        {timelineEntries.length > 0 && (
-          <div style={{ textAlign: "center", padding: "8px 0" }}>
-            <button
-              type="button"
-              className="brief-add-stop-trigger"
-              onClick={() => insertAnchorAt(anchors.length)}
-            >
-              + Add a stop
-            </button>
-          </div>
-        )}
-
-        {/* ── Last transport → Home gap ──────────────────────── */}
-        {(() => {
-          const lastTb = [...transportBookings]
-            .filter((tb) => tb.confirmed && tb.arriveTime)
-            .sort((a, b) => `${b.date}T${b.arriveTime}`.localeCompare(`${a.date}T${a.arriveTime}`))[0];
-          if (!lastTb) return null;
-          const hubId = lastTb.destinationHub?.id;
-          const fromLabel = lastTb.destinationHub?.label ?? "station";
-          const gapKey = `hub:${hubId}→home`;
-          if (hubId) prefetchGap(`hub:${hubId}`, "home");
-          const selectedMode = gapModes.get(gapKey) ?? null;
-          const preview = selectedMode && hubId
-            ? getGapPreview(`hub:${hubId}`, "home", selectedMode)
-            : null;
-          const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
-          const arriveHome = travelMins != null && lastTb.arriveTime
-            ? (() => {
-                const [h, m] = lastTb.arriveTime.split(":").map(Number);
-                const total = h * 60 + m + travelMins;
-                return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-              })()
-            : null;
-          return (
-            <>
-              <GapModePicker
-                selected={selectedMode}
-                onSelect={(m) => setGapMode(gapKey, m)}
-                previews={hubId ? getGapPreviews(`hub:${hubId}`, "home") : undefined}
-                fromLabel={fromLabel}
-                toLabel="Home"
-              />
-            </>
-          );
-        })()}
-
-        {/* ── Home return ──────────────────────────────────── */}
-        {timelineEntries.length > 0 && (
-          <div
-            style={{
-              padding: "10px 16px",
-              borderLeft: "3px solid var(--ink-faint)",
-              marginTop: 4,
-              color: "var(--ink-dim)",
-              fontSize: 13,
-            }}
-          >
-            {(() => {
-              const lastTb = [...transportBookings]
-                .filter((tb) => tb.confirmed && tb.arriveTime)
-                .sort((a, b) => `${b.date}T${b.arriveTime}`.localeCompare(`${a.date}T${a.arriveTime}`))[0];
-              const hubId = lastTb?.destinationHub?.id;
-              const gapKey = `hub:${hubId}→home`;
-              const mode = gapModes.get(gapKey);
-              const preview = mode && hubId ? getGapPreview(`hub:${hubId}`, "home", mode) : null;
-              const mins = preview && preview !== "pending" ? preview.durationMinutes : null;
-              if (mins != null && lastTb?.arriveTime) {
-                const [h, m] = lastTb.arriveTime.split(":").map(Number);
-                const total = h * 60 + m + mins;
-                const homeTime = `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-                return (
-                  <span className="mono" style={{ fontWeight: 500 }}>
-                    ~{homeTime} Home
-                  </span>
-                );
-              }
-              return <span>Home</span>;
-            })()}
-          </div>
-        )}
       </div>
 
       {/* ── Compact toolbar ───────────────────────────────────── */}

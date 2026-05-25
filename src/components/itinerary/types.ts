@@ -6,6 +6,9 @@
 import type { PlaceSelection } from "@/components/place-picker";
 import type { TransportBookingValue } from "@/components/transport-booking-fields";
 import type { AccommodationBookingValue } from "@/components/accommodation-booking-fields";
+import type { TicketSegment } from "@/components/train-ticket-card";
+import type { GapMode, GapPreview } from "@/components/gap-mode-picker";
+import type { ModePreviewMap } from "./transition-row";
 
 // ─────────────────────────────────────────────────────────────────────
 // Kinds + sub-roles
@@ -108,3 +111,130 @@ export type BriefTransition = {
   // When set, takes precedence over the simple `booking` fields.
   transportBooking: TransportBookingValue | null;
 };
+
+// ─────────────────────────────────────────────────────────────────────
+// Unified Timeline Entry
+//
+// Both the brief and planning pages build an array of these entries,
+// then hand them to the shared <Timeline> component for rendering.
+// Each page has its own builder function that closes over page-specific
+// state handlers (callbacks).
+// ─────────────────────────────────────────────────────────────────────
+
+export type TimelineEntry =
+  | {
+      kind: "home";
+      label: string;
+      address?: string;
+      leaveBy?: string;
+      leaveByDetail?: string;
+    }
+  | {
+      kind: "transport";
+      uid: string;
+      label: string;
+      mode: string;
+      legs: TicketSegment[];
+      onEdit?: () => void;
+      onRemove?: () => void;
+    }
+  | {
+      kind: "anchor";
+      uid: string;
+      anchor: Anchor;
+      earlier: Anchor[];
+      expanded: boolean;
+      maximizeInfo?: {
+        durationMins: number;
+        arriveBy: string;
+        leaveBy: string;
+        travelNote?: string;
+      };
+      onModeChange?: (next: "expanded" | "summary") => void;
+      onChange?: (patch: Partial<Anchor>) => void;
+      onRemove?: () => void;
+    }
+  | {
+      kind: "hotel";
+      uid: string;
+      label: string;
+      nights: number;
+      checkInTime: string;
+      checkOutTime: string;
+      reference?: string;
+      onEdit?: () => void;
+      onRemove?: () => void;
+    }
+  | {
+      kind: "gap-transition";
+      from: Anchor | null;
+      to: Anchor;
+      transition: BriefTransition;
+      fromVirtualLabel?: string;
+      modePreviews?: ModePreviewMap;
+      onChange: (patch: Partial<BriefTransition>) => void;
+      onOpenChange?: (open: boolean) => void;
+      transitionMeta?: {
+        durationMinutes: number | null;
+        distanceMiles: number | null;
+        feasibility?: { severity: string; message: string } | null;
+      };
+    }
+  | {
+      kind: "gap-mode";
+      fromLabel: string;
+      toLabel: string;
+      selected: GapMode | null;
+      previews?: Partial<Record<GapMode, GapPreview>>;
+      onSelect: (mode: GapMode) => void;
+    }
+  | {
+      kind: "context-gap";
+      location: string;
+      durationLabel: string;
+      onAddStop: () => void;
+    }
+  | {
+      kind: "free-time";
+      durationLabel: string;
+      beforeLabel: string;
+      onAddStop: () => void;
+    }
+  | {
+      kind: "day-break";
+      date: string;
+      label: string;
+    }
+  | {
+      kind: "home-return";
+      arriveBy?: string;
+    }
+  | {
+      kind: "add-stop";
+      label: string;
+      onAdd: () => void;
+    }
+  | {
+      kind: "inline-adds";
+      onAddAnchor: () => void;
+      onAddStopover?: () => void;
+      onAddTransport?: () => void;
+    }
+  | {
+      kind: "stopover";
+      uid: string;
+      stopover: Stopover;
+      fromAnchor: Anchor;
+      toAnchor: Anchor;
+      expanded: boolean;
+      backCalc?: {
+        earliestArrive?: string;
+        latestLeave?: string;
+        availableMinutes?: number;
+        status: "fits" | "tight" | "infeasible" | "unknown";
+        message?: string;
+      };
+      onModeChange?: (next: "expanded" | "summary") => void;
+      onChange?: (patch: Partial<Stopover>) => void;
+      onRemove?: () => void;
+    };
