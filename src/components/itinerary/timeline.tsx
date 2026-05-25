@@ -485,15 +485,6 @@ function InlineAddsEntry({ entry }: { entry: E<"inline-adds"> }) {
           + Add a stop between these
         </button>
       )}
-      {entry.onAddTransport && (
-        <button
-          type="button"
-          className="brief-add-stop-trigger"
-          onClick={entry.onAddTransport}
-        >
-          + Transport
-        </button>
-      )}
     </div>
   );
 }

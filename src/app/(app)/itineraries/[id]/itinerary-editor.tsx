@@ -6,7 +6,6 @@ import Link from "next/link";
 import { RouteMap } from "@/components/route-map";
 import { FormError } from "@/components/ui/form";
 import {
-  createStop,
   deleteStop,
   insertStopAt,
   updateStop,
@@ -16,7 +15,6 @@ import {
   upsertTransition,
   setTransitionMode,
 } from "@/lib/actions/transitions";
-import { TransportHubPicker } from "@/components/transport-hub-picker";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
@@ -27,11 +25,11 @@ import type {
   StopType,
   TransitionMode,
 } from "@/lib/types/domain";
-import { AddStopForm } from "./add-stop-form";
 import {
-  AddTransportBookingForm,
-  type TransportBookingMode,
-} from "./add-transport-booking-form";
+  TransportBookingCard,
+  emptyTransportBookingItem,
+  type BriefTransportBooking,
+} from "@/components/itinerary/transport-booking-card";
 import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
 import { GmailImportPanel } from "./gmail-import-panel";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
@@ -265,21 +263,60 @@ export function ItineraryEditor({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [transportBookingFor, setTransportBookingFor] = useState<{
-    stopId: string;
-    label: string;
-    mode: TransportBookingMode;
-  } | null>(null);
   const [accommodationBookingFor, setAccommodationBookingFor] = useState<{
     afterStopId?: string;
     afterStopLabel?: string;
     existingStopId?: string;
   } | null>(null);
   const [gmailImportOpen, setGmailImportOpen] = useState(false);
-  // Standalone "add booking" — not tied to an existing stop.
-  const [showAddTransport, setShowAddTransport] = useState(false);
   const [showAddAccommodation, setShowAddAccommodation] = useState(false);
+
+  // Transport booking card — same component as the brief. When set,
+  // the card renders in a modal. On "Done" (confirmed: true), we call
+  // the server action and dismiss.
+  const [editingTransport, setEditingTransport] = useState<BriefTransportBooking | null>(null);
+  const handleTransportCardChange = (patch: Partial<BriefTransportBooking>) => {
+    setEditingTransport((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      if (patch.confirmed) {
+        submitTransportBooking(next);
+        return null;
+      }
+      return next;
+    });
+  };
+  const submitTransportBooking = (b: BriefTransportBooking) => {
+    const lastStop = sortedStops[sortedStops.length - 1];
+    if (!lastStop || !b.departureHub.id || !b.destinationHub.id) return;
+    const departIso = b.date && b.departTime
+      ? new Date(`${b.date}T${b.departTime}`).toISOString()
+      : new Date().toISOString();
+    const arriveIso = b.date && b.arriveTime
+      ? new Date(`${b.date}T${b.arriveTime}`).toISOString()
+      : new Date().toISOString();
+    startTransition(async () => {
+      setError(null);
+      const result = await insertTransitLeg({
+        itinerary_id: itinerary.id,
+        before_stop_id: lastStop.id,
+        after_stop_id: null,
+        mode: b.mode ?? "train",
+        depart_hub_id: b.departureHub.id!,
+        depart_label: b.departureHub.label ?? "Departure",
+        depart_time: departIso,
+        arrive_hub_id: b.destinationHub.id!,
+        arrive_label: b.destinationHub.label ?? "Arrival",
+        arrive_time: arriveIso,
+        service_number: b.serviceNumber?.trim() || null,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   // Transitions keyed by from_stop_id for fast lookup.
   const transitionByFrom = useMemo(() => {
@@ -358,53 +395,6 @@ export function ItineraryEditor({
         return;
       }
       setPendingExpandUid(result.value.id);
-      router.refresh();
-    });
-  };
-
-  // State for the inline + Train / + Flight form. When set, the
-  // editor renders the form between the named anchor pair instead
-  // of the usual inline-add row. Cleared on submit or cancel.
-  const [transitFormFor, setTransitFormFor] = useState<{
-    beforeStopId: string;
-    // null = append at the end (used by the bottom + Train / + Flight).
-    afterStopId: string | null;
-    mode: "train" | "flight";
-  } | null>(null);
-
-  const handleInsertTransitLeg = (input: {
-    beforeStopId: string;
-    // null = append at the end of the itinerary (no after anchor).
-    afterStopId: string | null;
-    mode: "train" | "flight";
-    departHubId: string;
-    departLabel: string;
-    departTime: string;
-    arriveHubId: string;
-    arriveLabel: string;
-    arriveTime: string;
-    serviceNumber?: string;
-  }) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await insertTransitLeg({
-        itinerary_id: itinerary.id,
-        before_stop_id: input.beforeStopId,
-        after_stop_id: input.afterStopId,
-        mode: input.mode,
-        depart_hub_id: input.departHubId,
-        depart_label: input.departLabel,
-        depart_time: new Date(input.departTime).toISOString(),
-        arrive_hub_id: input.arriveHubId,
-        arrive_label: input.arriveLabel,
-        arrive_time: new Date(input.arriveTime).toISOString(),
-        service_number: input.serviceNumber ?? null,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      setTransitFormFor(null);
       router.refresh();
     });
   };
@@ -596,65 +586,6 @@ export function ItineraryEditor({
       customer_site_id: prev.customer_site_id,
     };
   }, [sortedStops]);
-
-  const handleAdd = (input: Parameters<typeof createStop>[0]) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await createStop(input);
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      const newStop = result.value;
-
-      // After adding, compute the transition into this stop (if there's a
-      // preceding stop) and out of it (if not last). Both happen
-      // server-side via upsertTransition.
-      const precedingStop = sortedStops[sortedStops.length - 1];
-      if (precedingStop) {
-        await upsertTransition({
-          itinerary_id: itinerary.id,
-          from_stop_id: precedingStop.id,
-          to_stop_id: newStop.id,
-        });
-      }
-      setAdding(false);
-      router.refresh();
-    });
-  };
-
-  const handleReturnTo = (target: {
-    label: string;
-    location_id: string | null;
-    customer_id: string | null;
-    customer_site_id: string | null;
-  }) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await createStop({
-        itinerary_id: itinerary.id,
-        type: "other",
-        title: `Back to ${target.label}`,
-        location_id: target.location_id,
-        customer_id: target.customer_id,
-        customer_site_id: target.customer_site_id,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      const newStop = result.value;
-      const precedingStop = sortedStops[sortedStops.length - 1];
-      if (precedingStop) {
-        await upsertTransition({
-          itinerary_id: itinerary.id,
-          from_stop_id: precedingStop.id,
-          to_stop_id: newStop.id,
-        });
-      }
-      router.refresh();
-    });
-  };
 
   const handleDelete = (stopId: string) => {
     if (!window.confirm("Delete this point?")) return;
@@ -1099,7 +1030,7 @@ export function ItineraryEditor({
             type="button"
             className="btn-ghost"
             style={{ fontSize: 13 }}
-            onClick={() => setShowAddTransport(true)}
+            onClick={() => setEditingTransport(emptyTransportBookingItem())}
           >
             + Transport
           </button>
@@ -1209,44 +1140,10 @@ export function ItineraryEditor({
                       fromVirtualLabel={label}
                     />
                   ) : null}
-                  {/* Inline adds between Home and the first
-                      anchor. Lets the user insert a train (e.g.
-                      Wellingborough → Liverpool) right at the start
-                      of the trip instead of having to add it
-                      between the first two real anchors. */}
-                  {first ? (
-                    <InlineAddsRow
-                      beforeStopId={startStop.id}
-                      afterStopId={first.stop.id}
-                      insertAtSequence={first.stop.sequence}
-                      showStopoverTrigger={first.kind === "anchor"}
-                      beforeLabel={label}
-                      afterLabel={
-                        first.kind === "anchor"
-                          ? first.anchor.place?.label ?? "first stop"
-                          : first.stop.title ?? "first stop"
-                      }
-                      transitFormFor={transitFormFor}
-                      setTransitFormFor={setTransitFormFor}
-                      pending={pending}
-                      onInsertAnchor={(seq) =>
-                        handleInsertAnchorAt(seq ?? 0)
-                      }
-                      onInsertStopover={() =>
-                        handleInsertStopoverBetween(
-                          startStop.id,
-                          first.stop.id,
-                        )
-                      }
-                      onInsertTransitLeg={(form) =>
-                        handleInsertTransitLeg({
-                          beforeStopId: startStop.id,
-                          afterStopId: first.stop.id,
-                          mode: transitFormFor!.mode,
-                          ...form,
-                        })
-                      }
-                    />
+                  {first && first.kind === "anchor" ? (
+                    <div className="anchor-inline-adds">
+                      <AddBetween between onAdd={() => handleInsertAnchorAt(first.stop.sequence)} />
+                    </div>
                   ) : null}
                 </>
               );
@@ -1299,54 +1196,16 @@ export function ItineraryEditor({
             )}
 
 
-            {/* Bottom-of-timeline add affordances. + Train and +
-                Flight here append a transit chain at the end (no
-                surrounding anchor to slot before) — handy for
-                booking the journey home from a multi-day trip. */}
             {(() => {
               const last = sortedStops[sortedStops.length - 1];
-              if (!last) {
-                return (
-                  <AddBetween
-                    onAdd={() => handleInsertAnchorAt(0)}
-                  />
-                );
-              }
               return (
-                <InlineAddsRow
-                  beforeStopId={last.id}
-                  afterStopId={null}
-                  insertAtSequence={(last.sequence ?? -1) + 1}
-                  // Stopovers conceptually need a surrounding pair;
-                  // at the very end of the timeline there's no
-                  // 'next anchor' to fit between, so we hide the
-                  // stopover button here.
-                  showStopoverTrigger={false}
-                  beforeLabel={
-                    last.title ??
-                    last.location?.name ??
-                    "the last stop"
-                  }
-                  afterLabel="end of trip"
-                  transitFormFor={transitFormFor}
-                  setTransitFormFor={setTransitFormFor}
-                  pending={pending}
-                  onInsertAnchor={(seq) =>
-                    handleInsertAnchorAt(seq ?? (last.sequence ?? -1) + 1)
-                  }
-                  onInsertStopover={() => {
-                    // Unreachable — showStopoverTrigger is false at
-                    // the bottom-of-timeline position.
-                  }}
-                  onInsertTransitLeg={(form) =>
-                    handleInsertTransitLeg({
-                      beforeStopId: last.id,
-                      afterStopId: null,
-                      mode: transitFormFor!.mode,
-                      ...form,
-                    })
-                  }
-                />
+                <div className="anchor-inline-adds">
+                  <AddBetween
+                    onAdd={() => handleInsertAnchorAt(
+                      last ? (last.sequence ?? -1) + 1 : 0,
+                    )}
+                  />
+                </div>
               );
             })()}
           </div>
@@ -1410,32 +1269,6 @@ export function ItineraryEditor({
           </aside>
         </div>
 
-        {/* Booking modal — transport */}
-        {transportBookingFor ? (
-          <div
-            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setTransportBookingFor(null);
-            }}
-          >
-            <div className="my-8 w-full max-w-3xl">
-              <AddTransportBookingForm
-                fromStopId={transportBookingFor.stopId}
-                fromStopLabel={transportBookingFor.label}
-                initialMode={transportBookingFor.mode}
-                customers={customers}
-                customerSites={customerSites}
-                locations={locations}
-                onCancel={() => setTransportBookingFor(null)}
-                onDone={() => {
-                  setTransportBookingFor(null);
-                  router.refresh();
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
-
         {/* Booking modal — accommodation */}
         {accommodationBookingFor ? (
           <div
@@ -1481,23 +1314,18 @@ export function ItineraryEditor({
           />
         ) : null}
 
-        {/* Standalone transport booking — same card as the brief */}
-        {showAddTransport ? (
+        {editingTransport ? (
           <div
             className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowAddTransport(false);
+              if (e.target === e.currentTarget) setEditingTransport(null);
             }}
           >
             <div className="my-8 w-full max-w-2xl">
-              <PlanningTransportBookingModal
-                itineraryId={itinerary.id}
-                lastStopId={sortedStops[sortedStops.length - 1]?.id ?? null}
-                onDone={() => {
-                  setShowAddTransport(false);
-                  router.refresh();
-                }}
-                onCancel={() => setShowAddTransport(false)}
+              <TransportBookingCard
+                booking={editingTransport}
+                onChange={handleTransportCardChange}
+                onRemove={() => setEditingTransport(null)}
               />
             </div>
           </div>
@@ -1564,422 +1392,6 @@ function MastheadHeadline({
   return <em>{date}</em>;
 }
 
-function StopBookingMenu({
-  stop,
-  pending,
-  onAddTransport,
-  onAddAccommodation,
-}: {
-  stop: StopRow;
-  pending: boolean;
-  onAddTransport: (mode: TransportBookingMode, label: string) => void;
-  onAddAccommodation: (label: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
-  const label =
-    stop.customer_site?.name ??
-    stop.customer?.name ??
-    stop.location?.name ??
-    stop.title ??
-    "this point";
-
-  const isStation = stop.location?.type === "station";
-
-  const items: { mode: TransportBookingMode; label: string }[] = [
-    { mode: "train", label: "Train" },
-    { mode: "flight", label: "Flight" },
-    { mode: "taxi", label: "Taxi" },
-    { mode: "bus", label: "Bus" },
-    { mode: "tube", label: "Tube" },
-    { mode: "drive", label: "Car hire" },
-  ];
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        className="text-xs hover:underline disabled:opacity-50"
-        style={{ color: "var(--gold-2)" }}
-        onClick={() => setOpen((v) => !v)}
-        disabled={pending}
-      >
-        + Add booking
-      </button>
-      {open ? (
-        <div
-          className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-md border border-rule bg-card shadow-lg"
-          role="menu"
-        >
-          {isStation ? (
-            <button
-              type="button"
-              className="block w-full px-3 py-2 text-left text-xs hover:bg-gold-soft/40"
-              style={{ background: "var(--gold-soft)" }}
-              onClick={() => {
-                setOpen(false);
-                onAddTransport("train", label);
-              }}
-            >
-              <span className="mr-2 inline-flex align-middle" style={{ color: "var(--gold-2)" }}>
-                <TransportIcon.train size={13} />
-              </span>
-              Train (from {stop.location?.name ?? "station"})
-            </button>
-          ) : null}
-          {items.map((it) => {
-            const ItemIcon =
-              it.mode === "train"
-                ? TransportIcon.train
-                : it.mode === "flight"
-                  ? TransportIcon.flight
-                  : it.mode === "taxi"
-                    ? TransportIcon.taxi
-                    : it.mode === "bus"
-                      ? TransportIcon.bus
-                      : it.mode === "tube"
-                        ? TransportIcon.tube
-                        : TransportIcon.drive;
-            return (
-              <button
-                key={it.mode}
-                type="button"
-                role="menuitem"
-                className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
-                onClick={() => {
-                  setOpen(false);
-                  onAddTransport(it.mode, label);
-                }}
-              >
-                <span
-                  className="mr-2 inline-flex align-middle"
-                  style={{ color: "var(--ink-dim)" }}
-                >
-                  <ItemIcon size={13} />
-                </span>
-                {it.label}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            role="menuitem"
-            className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
-            onClick={() => {
-              setOpen(false);
-              onAddAccommodation(label);
-            }}
-          >
-            <span
-              className="mr-2 inline-flex align-middle"
-              style={{ color: "var(--ink-dim)" }}
-            >
-              <StopIcon.stay size={13} />
-            </span>
-            {stop.type === "accommodation" ? "Edit stay" : "Hotel / stay"}
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-// TransitionMeta — small inline row showing the computed travel
-// duration + distance under a transition chip. Surfaces the data
-// that lived inside the old TransitionRowView (computed by the
-// editor's solver / Google Directions). The chip itself is now the
-// shared PlanningTransitionRow.
-// TransitStopCard — compact card for transit_departure /
-// transit_arrival stops. Shows the station/airport name + time, with
-// a small Remove button. Less affordance than an AnchorCard because
-// these stops are facts of a booked train/flight, not free-form
-// anchors the user fills in.
-// InlineAddsRow — the row of dashed pills between two anchors that
-// lets the user insert a new anchor, stopover, train leg or flight
-// leg. Reused for: between anchor pairs, between home and the first
-// anchor, and after the last anchor (where afterStopId is null and
-// the inserts append at the end). When the user clicks + Train / +
-// Flight, transitFormFor is set to the matching pair and the form
-// renders in place of the pill row.
-function InlineAddsRow({
-  beforeStopId,
-  afterStopId,
-  insertAtSequence,
-  showStopoverTrigger,
-  beforeLabel,
-  afterLabel,
-  transitFormFor,
-  setTransitFormFor,
-  pending,
-  onInsertAnchor,
-  onInsertStopover,
-  onInsertTransitLeg,
-}: {
-  beforeStopId: string;
-  // null = append at end (no after-anchor to slot before).
-  afterStopId: string | null;
-  // Sequence to insert at when the user clicks + Add another. null
-  // means append (max sequence + 1, handled inside the handler).
-  insertAtSequence: number | null;
-  showStopoverTrigger: boolean;
-  beforeLabel: string;
-  afterLabel: string;
-  transitFormFor: {
-    beforeStopId: string;
-    afterStopId: string | null;
-    mode: "train" | "flight";
-  } | null;
-  setTransitFormFor: (
-    next:
-      | {
-          beforeStopId: string;
-          afterStopId: string | null;
-          mode: "train" | "flight";
-        }
-      | null,
-  ) => void;
-  pending: boolean;
-  onInsertAnchor: (sequence: number | null) => void;
-  onInsertStopover: () => void;
-  onInsertTransitLeg: (form: {
-    departHubId: string;
-    departLabel: string;
-    departTime: string;
-    arriveHubId: string;
-    arriveLabel: string;
-    arriveTime: string;
-    serviceNumber?: string;
-  }) => void;
-}) {
-  const formActive =
-    !!transitFormFor &&
-    transitFormFor.beforeStopId === beforeStopId &&
-    transitFormFor.afterStopId === afterStopId;
-
-  if (formActive && transitFormFor) {
-    return (
-      <TransitLegForm
-        mode={transitFormFor.mode}
-        beforeLabel={beforeLabel}
-        afterLabel={afterLabel}
-        pending={pending}
-        onCancel={() => setTransitFormFor(null)}
-        onSubmit={onInsertTransitLeg}
-      />
-    );
-  }
-
-  return (
-    <div className="anchor-inline-adds">
-      <AddBetween between onAdd={() => onInsertAnchor(insertAtSequence)} />
-      {showStopoverTrigger ? (
-        <button
-          type="button"
-          className="brief-add-stop-trigger"
-          onClick={onInsertStopover}
-          title="Drop in somewhere between these two anchors"
-        >
-          + Add a stop between these
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className="brief-add-stop-trigger"
-        onClick={() =>
-          setTransitFormFor({ beforeStopId, afterStopId, mode: "train" })
-        }
-        title="Add booked transport here"
-      >
-        + Transport
-      </button>
-    </div>
-  );
-}
-
-function TransitStopCard({
-  stop,
-  direction,
-  timezone,
-  onRemove,
-}: {
-  // Structural shape — both the editor's StopRow and the shared
-  // DbStop satisfy this. Card only needs title + start_time.
-  stop: { title: string | null; start_time: string | null };
-  direction: "departure" | "arrival";
-  timezone: string;
-  onRemove: () => void;
-}) {
-  const kindLabel =
-    direction === "departure" ? "Depart" : "Arrive";
-  const time = stop.start_time
-    ? new Intl.DateTimeFormat("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-        timeZone: timezone,
-      }).format(new Date(stop.start_time))
-    : "—";
-  return (
-    <section className="transit-stop-card">
-      <div className="transit-stop-head">
-        <span className="uc">{kindLabel}</span>
-        <span className="transit-stop-time">{time}</span>
-      </div>
-      <h3 className="transit-stop-title">{stop.title ?? "Station"}</h3>
-      <button
-        type="button"
-        className="transit-stop-remove"
-        onClick={onRemove}
-        aria-label="Remove transit stop"
-      >
-        Remove
-      </button>
-    </section>
-  );
-}
-
-// TransitLegForm — inline form rendered between two anchors when the
-// user clicks '+ Train' or '+ Flight'. Collects depart hub, arrive
-// hub, depart time, arrive time, optional service number. Submits
-// to insertTransitLeg, which writes both transit stops + the locked
-// transition between them.
-function TransitLegForm({
-  mode,
-  beforeLabel,
-  afterLabel,
-  pending,
-  onCancel,
-  onSubmit,
-}: {
-  mode: "train" | "flight";
-  beforeLabel: string;
-  afterLabel: string;
-  pending: boolean;
-  onCancel: () => void;
-  onSubmit: (form: {
-    departHubId: string;
-    departLabel: string;
-    departTime: string;
-    arriveHubId: string;
-    arriveLabel: string;
-    arriveTime: string;
-    serviceNumber?: string;
-  }) => void;
-}) {
-  const hubKind = mode === "train" ? "rail_station" : "airport";
-  const noun = mode === "train" ? "station" : "airport";
-  const [departHub, setDepartHub] = useState<{ id: string | null; label: string | null }>({ id: null, label: null });
-  const [arriveHub, setArriveHub] = useState<{ id: string | null; label: string | null }>({ id: null, label: null });
-  const [departTime, setDepartTime] = useState("");
-  const [arriveTime, setArriveTime] = useState("");
-  const [serviceNumber, setServiceNumber] = useState("");
-
-  const ready =
-    departHub.id != null &&
-    arriveHub.id != null &&
-    departHub.label != null &&
-    arriveHub.label != null &&
-    departTime !== "" &&
-    arriveTime !== "";
-
-  return (
-    <div className="transit-leg-form">
-      <header className="transit-leg-form-head">
-        <span className="uc">
-          {mode === "train" ? "Train" : "Flight"} from {beforeLabel} to{" "}
-          {afterLabel}
-        </span>
-        <button
-          type="button"
-          className="transit-leg-form-cancel"
-          onClick={onCancel}
-          disabled={pending}
-        >
-          Cancel
-        </button>
-      </header>
-      <div className="transit-leg-form-grid">
-        <label className="brief-field">
-          <span className="uc">Departing {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="depart_hub"
-            value={departHub}
-            onChange={setDepartHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Departure time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={departTime}
-            onChange={(e) => setDepartTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arriving {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="arrive_hub"
-            value={arriveHub}
-            onChange={setArriveHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arrival time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={arriveTime}
-            onChange={(e) => setArriveTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field" style={{ gridColumn: "1 / -1" }}>
-          <span className="uc">Service / flight number (optional)</span>
-          <input
-            type="text"
-            className="field"
-            value={serviceNumber}
-            onChange={(e) => setServiceNumber(e.target.value)}
-            placeholder={mode === "train" ? "9M14" : "BA245"}
-          />
-        </label>
-      </div>
-      <div className="transit-leg-form-actions">
-        <button
-          type="button"
-          className="btn btn-gold"
-          disabled={!ready || pending}
-          onClick={() =>
-            onSubmit({
-              departHubId: departHub.id!,
-              departLabel: departHub.label!,
-              departTime,
-              arriveHubId: arriveHub.id!,
-              arriveLabel: arriveHub.label!,
-              arriveTime,
-              serviceNumber: serviceNumber.trim() || undefined,
-            })
-          }
-        >
-          Add {mode}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // Heads-up callout — shown above the timeline whenever any leg
 // arrives late or runs tight under its current mode + travel time.
@@ -2033,46 +1445,6 @@ function FeasibilityCallout({
         ))}
       </ul>
     </aside>
-  );
-}
-
-function TransitionMeta({
-  transition,
-  feasibility,
-}: {
-  transition: TransitionRow;
-  feasibility?: FeasibilityFlag | null;
-}) {
-  const mins = transition.computed_duration_minutes ?? 0;
-  const miles = Number(transition.distance_miles ?? 0);
-  if (!mins && !miles && !feasibility) return null;
-  return (
-    <div
-      style={{
-        marginLeft: 56,
-        fontSize: 11.5,
-        color: "var(--ink-dim)",
-        padding: "2px 0 6px",
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
-      {mins ? <span>{fmtDuration(mins)}</span> : null}
-      {miles ? <span>{miles.toFixed(1)} mi</span> : null}
-      {feasibility ? (
-        <span
-          className={
-            feasibility.severity === "infeasible"
-              ? "feasibility-flag feasibility-flag-bad"
-              : "feasibility-flag feasibility-flag-tight"
-          }
-        >
-          {feasibility.message}
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -2263,198 +1635,3 @@ function LegTypeIcon({ leg }: { leg: string }) {
 // Client-safe builder for /api/maps/static URLs (mirrors the server-side
 // StaticMap component but uses btoa instead of Buffer).
 // ─────────────────────────────────────────────────────────────────────
-// PlanningTransportBookingModal — the planning-page equivalent of the
-// brief's TransportBookingCard. Uses TransportHubPicker for both
-// departure and arrival, full datetime fields, and calls
-// insertTransitLeg to create the stop pair + locked transition.
-// ─────────────────────────────────────────────────────────────────────
-function PlanningTransportBookingModal({
-  itineraryId,
-  lastStopId,
-  onDone,
-  onCancel,
-}: {
-  itineraryId: string;
-  lastStopId: string | null;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const modeOptions: Array<{ value: "train" | "flight"; label: string }> = [
-    { value: "train", label: "Train" },
-    { value: "flight", label: "Flight" },
-  ];
-  const [mode, setMode] = useState<"train" | "flight" | null>(null);
-  const [departHub, setDepartHub] = useState<{
-    id: string | null;
-    label: string | null;
-  }>({ id: null, label: null });
-  const [arriveHub, setArriveHub] = useState<{
-    id: string | null;
-    label: string | null;
-  }>({ id: null, label: null });
-  const [departTime, setDepartTime] = useState("");
-  const [arriveTime, setArriveTime] = useState("");
-  const [serviceNumber, setServiceNumber] = useState("");
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  const hubKind = mode === "flight" ? "airport" : "rail_station";
-  const noun = mode === "flight" ? "airport" : "station";
-
-  const ready =
-    mode != null &&
-    departHub.id != null &&
-    arriveHub.id != null &&
-    departHub.label != null &&
-    arriveHub.label != null &&
-    departTime !== "" &&
-    arriveTime !== "";
-
-  const submit = () => {
-    if (!ready || !lastStopId) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await insertTransitLeg({
-        itinerary_id: itineraryId,
-        before_stop_id: lastStopId,
-        after_stop_id: null,
-        mode: mode!,
-        depart_hub_id: departHub.id!,
-        depart_label: departHub.label!,
-        depart_time: new Date(departTime).toISOString(),
-        arrive_hub_id: arriveHub.id!,
-        arrive_label: arriveHub.label!,
-        arrive_time: new Date(arriveTime).toISOString(),
-        service_number: serviceNumber.trim() || null,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      onDone();
-    });
-  };
-
-  if (!mode) {
-    return (
-      <div className="k-card flex flex-col gap-4 p-5" role="dialog">
-        <header>
-          <p className="uc">Add booked transport</p>
-          <h3 className="h2" style={{ marginTop: 4 }}>
-            What kind of ticket?
-          </h3>
-        </header>
-        <div className="flex flex-wrap gap-2">
-          {modeOptions.map((o) => {
-            const Ic =
-              o.value === "train" ? TransportIcon.train : TransportIcon.flight;
-            return (
-              <button
-                key={o.value}
-                type="button"
-                className="pill brief-pill"
-                onClick={() => setMode(o.value)}
-              >
-                <Ic size={13} />
-                {o.label}
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn-ghost self-start"
-        >
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
-  const MIcon =
-    mode === "train" ? TransportIcon.train : TransportIcon.flight;
-
-  return (
-    <div className="k-card flex flex-col gap-4 p-5" role="dialog">
-      <header>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <MIcon size={14} />
-          <p className="uc">{mode === "train" ? "Train" : "Flight"} booking</p>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="brief-field">
-          <span className="uc">Departing {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="depart_hub"
-            value={departHub}
-            onChange={setDepartHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Departure time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={departTime}
-            onChange={(e) => setDepartTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arriving {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="arrive_hub"
-            value={arriveHub}
-            onChange={setArriveHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arrival time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={arriveTime}
-            onChange={(e) => setArriveTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field" style={{ gridColumn: "1 / -1" }}>
-          <span className="uc">Service / flight number (optional)</span>
-          <input
-            type="text"
-            className="field"
-            value={serviceNumber}
-            onChange={(e) => setServiceNumber(e.target.value)}
-            placeholder={mode === "train" ? "1A45" : "BA245"}
-          />
-        </label>
-      </div>
-
-      {error ? <p className="text-xs text-rust">{error}</p> : null}
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="btn btn-gold"
-          disabled={!ready || pending}
-          onClick={submit}
-        >
-          {pending ? "Adding…" : `Add ${mode}`}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn-ghost"
-          disabled={pending}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}

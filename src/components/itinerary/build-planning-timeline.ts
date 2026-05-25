@@ -35,7 +35,6 @@ export type PlanningTimelineInput = {
     prefetchPair: (fromId: string, toId: string) => void;
     handleInsertAnchorAt: (sequence: number) => void;
     handleInsertStopoverBetween: (fromId: string, toId: string) => void;
-    handleInsertTransitLeg?: (opts: { beforeStopId: string; afterStopId: string | null; mode: string }) => void;
   };
   startStop?: DbStop | null;
 };
@@ -180,13 +179,6 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
           onAddAnchor: () => handlers.handleInsertAnchorAt(nextItem.stop.sequence),
           onAddStopover: nextItem.kind === "anchor"
             ? () => handlers.handleInsertStopoverBetween(stop.id, nextItem.stop.id)
-            : undefined,
-          onAddTransport: nextItem.kind === "anchor" && handlers.handleInsertTransitLeg
-            ? () => handlers.handleInsertTransitLeg!({
-                beforeStopId: stop.id,
-                afterStopId: nextItem.stop.id,
-                mode: "train",
-              })
             : undefined,
         });
       }

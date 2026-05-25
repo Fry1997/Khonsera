@@ -486,7 +486,7 @@ const insertTransitLegSchema = z.object({
   // wants to add a train/flight after their last anchor (e.g. flight
   // home from a trip).
   after_stop_id: z.string().uuid().nullable().optional(),
-  mode: z.enum(["train", "flight"]),
+  mode: z.enum(["train", "flight", "bus", "tube", "taxi", "drive"]),
   depart_hub_id: z.string().uuid(),
   depart_label: z.string().trim().max(200),
   depart_time: z.string().datetime(),
