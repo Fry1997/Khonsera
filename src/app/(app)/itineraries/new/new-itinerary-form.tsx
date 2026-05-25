@@ -305,6 +305,7 @@ export function NewItineraryBrief({
           seat: first?.seat ?? "",
           price: b.price != null ? String(b.price) : "",
           confirmed: true,
+          source: "imported" as const,
           operator: first?.operator ?? null,
           ticketType: first?.ticket_type ?? null,
           routeRestriction: first?.route_restriction ?? null,

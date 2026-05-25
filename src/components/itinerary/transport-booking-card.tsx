@@ -36,6 +36,8 @@ export type SegmentBarcode = {
   data: string | null;
 };
 
+export type BookingSource = "manual" | "imported" | "suggested" | "booked";
+
 export type BriefTransportBooking = {
   uid: string;
   mode: TransportBookingMode | null;
@@ -50,6 +52,7 @@ export type BriefTransportBooking = {
   seat: string;
   price: string;
   confirmed: boolean;
+  source: BookingSource;
   operator: string | null;
   ticketType: string | null;
   routeRestriction: string | null;
@@ -71,6 +74,7 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
     seat: "",
     price: "",
     confirmed: false,
+    source: "manual",
     operator: null,
     ticketType: null,
     routeRestriction: null,
@@ -96,6 +100,7 @@ export function returnTransportBooking(
     seat: "",
     price: "",
     confirmed: false,
+    source: from.source,
     operator: from.operator,
     ticketType: from.ticketType,
     routeRestriction: from.routeRestriction,
