@@ -1243,6 +1243,21 @@ export async function createItineraryFromBrief(
           ? (fromMeta?.transport_mode as string) ?? "train"
           : "auto";
 
+        // Any pair where one side is a transit stop and the other
+        // isn't is a "local connection" — walking to/from the station.
+        // Default to walk rather than leaving it as auto.
+        const fromIsTransit =
+          fromMeta?.kind === "transit_departure" ||
+          fromMeta?.kind === "transit_changeover" ||
+          fromMeta?.kind === "transit_arrival";
+        const toIsTransit =
+          toMeta?.kind === "transit_departure" ||
+          toMeta?.kind === "transit_changeover" ||
+          toMeta?.kind === "transit_arrival";
+        if (!isTransitLeg && transitMode === "auto" && (fromIsTransit || toIsTransit)) {
+          transitMode = "walk";
+        }
+
         // For non-transit pairs, check if a brief transition spans
         // this gap and carry the user's intended mode through.
         if (!isTransitLeg && transitMode === "auto") {
