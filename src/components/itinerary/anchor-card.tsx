@@ -931,7 +931,7 @@ function AppointmentTimes({
         </div>
       ) : null}
 
-      {!isStation ? (
+      {!isStation && mode !== "maximize" ? (
         <div style={{ marginTop: 4 }}>
           <DurationRow
             label={mode === "around_then" ? "About" : "Duration"}

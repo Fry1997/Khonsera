@@ -823,18 +823,25 @@ export function NewItineraryBrief({
                 onChange={(e) => { setTripStartDate(e.target.value); setTripEndDate(e.target.value); }}
                 style={{ width: 130, fontSize: 12, padding: "4px 8px" }}
               />
-              {baseLocations.length > 1 && (
+              {baseLocations.length > 1 ? (
                 <button
                   type="button"
                   style={{ fontSize: 11, color: "var(--gold-2)" }}
                   onClick={() => {
-                    const next = baseLocations.findIndex((b) => b.id === selectedBaseId);
-                    const nextId = baseLocations[(next + 1) % baseLocations.length]?.id;
+                    const idx = baseLocations.findIndex((b) => b.id === selectedBaseId);
+                    const nextId = baseLocations[(idx + 1) % baseLocations.length]?.id;
                     if (nextId) setSelectedBaseId(nextId);
                   }}
                 >
                   Change
                 </button>
+              ) : (
+                <a
+                  href="/profile"
+                  style={{ fontSize: 11, color: "var(--ink-faint)", textDecoration: "underline" }}
+                >
+                  Edit
+                </a>
               )}
             </div>
           </div>
@@ -1194,7 +1201,7 @@ export function NewItineraryBrief({
                 onRemove={() => removeAnchor(anchor.uid)}
               />
               {/* Show remaining free time if next entry is a transport booking */}
-              {nextEntry?.kind === "transport" && anchor.time && anchor.durationMins ? (() => {
+              {nextEntry?.kind === "transport" && anchor.timingMode !== "maximize" && anchor.time && anchor.durationMins ? (() => {
                 const [h, m] = anchor.time.split(":").map(Number);
                 const endMin = h * 60 + m + anchor.durationMins;
                 const [dh, dm] = (nextEntry.booking.departTime || "").split(":").map(Number);
