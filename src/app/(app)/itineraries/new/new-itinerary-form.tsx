@@ -52,7 +52,7 @@ import {
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { TransportIcon } from "@/components/icons";
 import { TrainTicketCard, type TicketSegment } from "@/components/train-ticket-card";
-import { GapModePicker, type GapMode } from "@/components/gap-mode-picker";
+import { GapModePicker, type GapMode, type GapPreview } from "@/components/gap-mode-picker";
 import { scanGmailForBookings } from "@/lib/actions/gmail";
 import type { ParsedBooking } from "@/lib/gmail/types";
 import type { PlaceSelection } from "@/components/place-picker";
@@ -170,6 +170,87 @@ export function NewItineraryBrief({
 
   const [gmailImportOpen, setGmailImportOpen] = useState(false);
   const [expandedAnchors, setExpandedAnchors] = useState<Set<string>>(new Set());
+
+  // Gap mode selections — keyed by gap identifier (e.g., "home→transport", "transport→anchor-uid")
+  const [gapModes, setGapModes] = useState<Map<string, GapMode>>(new Map());
+  const setGapMode = (gapKey: string, mode: GapMode) => {
+    setGapModes((prev) => new Map(prev).set(gapKey, mode));
+    // Prefetch the route preview for this mode
+    const parts = gapKey.split("→");
+    if (parts.length === 2) {
+      const [fromKey, toKey] = parts;
+      const fromPlace = gapPlaces.get(fromKey) ?? null;
+      const toPlace = gapPlaces.get(toKey) ?? null;
+      if (fromPlace && toPlace) {
+        briefPreviews.fetchPreview(fromPlace, toPlace, mode as any);
+      }
+    }
+  };
+
+  // Map of gap endpoint keys → PlaceSelection for route preview lookups
+  const gapPlaces = useMemo(() => {
+    const m = new Map<string, PlaceSelection>();
+    if (selectedBase) {
+      m.set("home", {
+        kind: "location" as const,
+        location_id: selectedBaseId ?? "",
+        label: baseName,
+        location_type: "home" as const,
+      });
+    }
+    for (const tb of transportBookings) {
+      if (!tb.confirmed) continue;
+      if (tb.departureHub?.id) {
+        m.set(`hub:${tb.departureHub.id}`, {
+          kind: "location",
+          location_id: "",
+          label: tb.departureHub.label ?? "Station",
+          location_type: "other",
+          transport_hub_id: tb.departureHub.id,
+        } as PlaceSelection & { transport_hub_id: string });
+      }
+      if (tb.destinationHub?.id) {
+        m.set(`hub:${tb.destinationHub.id}`, {
+          kind: "location",
+          location_id: "",
+          label: tb.destinationHub.label ?? "Station",
+          location_type: "other",
+          transport_hub_id: tb.destinationHub.id,
+        } as PlaceSelection & { transport_hub_id: string });
+      }
+    }
+    for (const a of anchors) {
+      if (a.place) m.set(`anchor:${a.uid}`, a.place);
+    }
+    return m;
+  }, [selectedBase, selectedBaseId, baseName, transportBookings, anchors]);
+
+  // Get preview for a gap
+  const getGapPreview = (fromKey: string, toKey: string, mode: GapMode): GapPreview => {
+    const from = gapPlaces.get(fromKey) ?? null;
+    const to = gapPlaces.get(toKey) ?? null;
+    if (!from || !to) return null;
+    return briefPreviews.get(from, to, mode as any) ?? null;
+  };
+
+  // Get all previews for a gap (all modes)
+  const getGapPreviews = (fromKey: string, toKey: string) => {
+    const result: Partial<Record<GapMode, GapPreview>> = {};
+    for (const mode of ["walk", "drive", "taxi", "cycle"] as GapMode[]) {
+      result[mode] = getGapPreview(fromKey, toKey, mode);
+    }
+    return result;
+  };
+
+  // Prefetch all modes for a gap
+  const prefetchGap = (fromKey: string, toKey: string) => {
+    const from = gapPlaces.get(fromKey) ?? null;
+    const to = gapPlaces.get(toKey) ?? null;
+    if (!from || !to) return;
+    for (const mode of ["walk", "drive", "taxi"] as GapMode[]) {
+      briefPreviews.fetchPreview(from, to, mode as any);
+    }
+  };
 
   const importParsedBooking = (b: ParsedBooking) => {
     if (b.type === "transport") {
@@ -847,20 +928,14 @@ export function NewItineraryBrief({
           </div>
           {firstDepartTime && (() => {
             const BUFFER_MINS = 10;
-            // Check if user has set a mode for home→station gap
-            const homeToStationTransition = transitions.get(
-              transitionKey(HOME_UID, "home::transport_dep"),
-            );
-            const homeToStationMode = homeToStationTransition?.mode;
             const firstTb = transportBookings
               .filter((tb) => tb.confirmed && tb.departTime)
               .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))[0];
-            const stationPlace = firstTb ? hubAsPlace(firstTb.departureHub) : null;
-            const homePlace: PlaceSelection | null = selectedBase
-              ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const }
-              : null;
-            const preview = homeToStationMode && homeToStationMode !== "auto"
-              ? briefPreviewsForPair(homePlace, stationPlace)[homeToStationMode]
+            const hubId = firstTb?.departureHub?.id;
+            const homeGapKey = `home→hub:${hubId}`;
+            const homeToStationMode = gapModes.get(homeGapKey);
+            const preview = homeToStationMode && hubId
+              ? getGapPreview("home", `hub:${hubId}`, homeToStationMode)
               : null;
             const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
 
@@ -993,34 +1068,46 @@ export function NewItineraryBrief({
               );
             } else {
               // Home → transport departure
+              const hubId = entry.booking.departureHub?.id;
               const toLabel = entry.booking.departureHub?.label ?? "station";
+              const gapKey = `home→hub:${hubId}`;
+              prefetchGap("home", `hub:${hubId}`);
               gapBefore = (
                 <GapModePicker
-                  selected={null}
-                  onSelect={() => {}}
+                  selected={gapModes.get(gapKey) ?? null}
+                  onSelect={(m) => setGapMode(gapKey, m)}
+                  previews={getGapPreviews("home", `hub:${hubId}`)}
                   fromLabel={baseName}
                   toLabel={toLabel}
                 />
               );
             }
           } else if (prevEntry?.kind === "transport" && entry.kind === "anchor") {
+            const hubId = prevEntry.booking.destinationHub?.id;
             const fromLabel = prevEntry.booking.destinationHub?.label ?? "station";
             const toLabel = entry.anchor.place?.label ?? "appointment";
+            const gapKey = `hub:${hubId}→anchor:${entry.anchor.uid}`;
+            if (entry.anchor.place) prefetchGap(`hub:${hubId}`, `anchor:${entry.anchor.uid}`);
             gapBefore = (
               <GapModePicker
-                selected={null}
-                onSelect={() => {}}
+                selected={gapModes.get(gapKey) ?? null}
+                onSelect={(m) => setGapMode(gapKey, m)}
+                previews={entry.anchor.place ? getGapPreviews(`hub:${hubId}`, `anchor:${entry.anchor.uid}`) : undefined}
                 fromLabel={fromLabel}
                 toLabel={toLabel}
               />
             );
           } else if (prevEntry?.kind === "anchor" && entry.kind === "transport") {
+            const hubId = entry.booking.departureHub?.id;
             const fromLabel = prevEntry.anchor.place?.label ?? "stop";
             const toLabel = entry.booking.departureHub?.label ?? "station";
+            const gapKey = `anchor:${prevEntry.anchor.uid}→hub:${hubId}`;
+            if (prevEntry.anchor.place) prefetchGap(`anchor:${prevEntry.anchor.uid}`, `hub:${hubId}`);
             gapBefore = (
               <GapModePicker
-                selected={null}
-                onSelect={() => {}}
+                selected={gapModes.get(gapKey) ?? null}
+                onSelect={(m) => setGapMode(gapKey, m)}
+                previews={prevEntry.anchor.place ? getGapPreviews(`anchor:${prevEntry.anchor.uid}`, `hub:${hubId}`) : undefined}
                 fromLabel={fromLabel}
                 toLabel={toLabel}
               />
@@ -1177,7 +1264,7 @@ export function NewItineraryBrief({
           const next = anchors[anchorIdx + 1];
 
           // Compute maximize window: find surrounding transport bookings
-          let maximizeInfo: { arriveBy: string; leaveBy: string; durationMins: number } | null = null;
+          let maximizeInfo: { arriveBy: string; leaveBy: string; durationMins: number; travelNote?: string } | null = null;
           if (anchor.timingMode === "maximize") {
             const BUFFER = 10;
             // Find the transport booking BEFORE this anchor
@@ -1199,18 +1286,43 @@ export function NewItineraryBrief({
             if (prevTransport?.arriveTime && nextTransport?.departTime) {
               const [ah, am] = prevTransport.arriveTime.split(":").map(Number);
               const [dh, dm] = nextTransport.departTime.split(":").map(Number);
-              const arriveMin = ah * 60 + am;
-              const departMin = dh * 60 + dm - BUFFER;
+
+              // Subtract travel time from station → appointment (inbound)
+              const inboundHubId = prevTransport.destinationHub?.id;
+              const inboundGapKey = `hub:${inboundHubId}→anchor:${anchor.uid}`;
+              const inboundMode = gapModes.get(inboundGapKey);
+              const inboundPreview = inboundMode && inboundHubId
+                ? getGapPreview(`hub:${inboundHubId}`, `anchor:${anchor.uid}`, inboundMode)
+                : null;
+              const inboundTravelMin = inboundPreview && inboundPreview !== "pending"
+                ? inboundPreview.durationMinutes ?? 0 : 0;
+
+              // Subtract travel time from appointment → station (outbound)
+              const outboundHubId = nextTransport.departureHub?.id;
+              const outboundGapKey = `anchor:${anchor.uid}→hub:${outboundHubId}`;
+              const outboundMode = gapModes.get(outboundGapKey);
+              const outboundPreview = outboundMode && outboundHubId
+                ? getGapPreview(`anchor:${anchor.uid}`, `hub:${outboundHubId}`, outboundMode)
+                : null;
+              const outboundTravelMin = outboundPreview && outboundPreview !== "pending"
+                ? outboundPreview.durationMinutes ?? 0 : 0;
+
+              const arriveMin = ah * 60 + am + inboundTravelMin;
+              const departMin = dh * 60 + dm - BUFFER - outboundTravelMin;
               const maxDuration = departMin - arriveMin;
               if (maxDuration > 0) {
                 const arrH = Math.floor(arriveMin / 60);
                 const arrM = arriveMin % 60;
                 const depH = Math.floor(departMin / 60);
                 const depM = departMin % 60;
+                const travelNote = (inboundTravelMin > 0 || outboundTravelMin > 0)
+                  ? `${inboundTravelMin > 0 ? `${inboundTravelMin}m ${inboundMode} there` : ""}${inboundTravelMin > 0 && outboundTravelMin > 0 ? " + " : ""}${outboundTravelMin > 0 ? `${outboundTravelMin}m ${outboundMode} back` : ""} + ${BUFFER}m buffer`
+                  : `${BUFFER} min buffer before departure`;
                 maximizeInfo = {
                   arriveBy: `${String(arrH).padStart(2, "0")}:${String(arrM).padStart(2, "0")}`,
                   leaveBy: `${String(depH).padStart(2, "0")}:${String(depM).padStart(2, "0")}`,
                   durationMins: maxDuration,
+                  travelNote,
                 };
               }
             }
@@ -1237,7 +1349,7 @@ export function NewItineraryBrief({
                   {maximizeInfo.durationMins % 60 > 0 ? `${maximizeInfo.durationMins % 60}m ` : ""}
                   available · {maximizeInfo.arriveBy} to {maximizeInfo.leaveBy}
                   <span style={{ display: "block", fontSize: 10, color: "var(--ink-dim)", fontFamily: "var(--sans)", marginTop: 2 }}>
-                    Includes {10} min buffer before departure
+                    {maximizeInfo.travelNote ?? "Includes 10 min buffer before departure"}
                   </span>
                 </div>
               )}
