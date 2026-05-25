@@ -419,6 +419,15 @@ const transportSegmentSchema = z.object({
   platform_dep: z.string().trim().max(40).nullable().optional(),
   platform_arr: z.string().trim().max(40).nullable().optional(),
   notes: z.string().trim().max(500).nullable().optional(),
+  from_station_code: z.string().trim().max(10).nullable().optional(),
+  to_station_code: z.string().trim().max(10).nullable().optional(),
+  operator: z.string().trim().max(200).nullable().optional(),
+  ticket_type: z.string().trim().max(200).nullable().optional(),
+  route_restriction: z.string().trim().max(200).nullable().optional(),
+  coach: z.string().trim().max(20).nullable().optional(),
+  seat: z.string().trim().max(20).nullable().optional(),
+  barcode_ref: z.string().trim().max(40).nullable().optional(),
+  barcode_data: z.string().max(500).nullable().optional(),
 });
 
 const attachTransportBookingSchema = z
@@ -599,8 +608,7 @@ export async function attachTransportBookingToStop(
     .single();
   if (bookingErr || !booking) return err(errors.notFound("travel_booking"));
 
-  // 6. Persist segments (reuses the train segments table — train_number
-  // doubles as the generic service identifier).
+  // 6. Persist segments with all enriched fields from the Gmail parser.
   const segmentRows = parsed.value.segments.map((s, i) => ({
     travel_booking_id: booking.id,
     workspace_id: ctx.workspaceId,
@@ -613,8 +621,38 @@ export async function attachTransportBookingToStop(
     platform_dep: s.platform_dep ?? null,
     platform_arr: s.platform_arr ?? null,
     notes: s.notes ?? null,
+    from_station_code: s.from_station_code ?? null,
+    to_station_code: s.to_station_code ?? null,
+    operator: s.operator ?? null,
+    ticket_type: s.ticket_type ?? null,
+    route_restriction: s.route_restriction ?? null,
+    coach: s.coach ?? null,
+    seat: s.seat ?? null,
+    barcode_ref: s.barcode_ref ?? null,
+    barcode_data: s.barcode_data ?? null,
   }));
   await supabase.from("travel_booking_segments").insert(segmentRows);
+
+  // 6b. Enrich departure stop metadata so the planning page TrainTicketCard
+  // can render operator, ticket type, barcode etc. without a separate query.
+  await supabase
+    .from("stops")
+    .update({
+      metadata: {
+        kind: "transit_departure",
+        transport_mode: parsed.value.mode,
+        booking_reference: parsed.value.booking_reference,
+        seat: parsed.value.seat_reservation,
+        price: parsed.value.actual_price,
+        operator: first.operator ?? null,
+        ticket_type: first.ticket_type ?? null,
+        route_restriction: first.route_restriction ?? null,
+        barcode_ref: first.barcode_ref ?? null,
+        barcode_data: first.barcode_data ?? null,
+      },
+    })
+    .eq("id", parsed.value.from_stop_id)
+    .eq("workspace_id", ctx.workspaceId);
 
   // 7. Locked transition.
   const totalMinutes = Math.round(

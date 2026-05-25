@@ -237,11 +237,20 @@ export function GmailImportPanel({
         `${seg.departure_date}T${seg.departure_time}:00`,
       ).toISOString(),
       arrival_at: new Date(
-        `${seg.arrival_date}T${seg.arrival_time}:00`,
+        `${seg.arrival_date}T${seg.arrival_time || seg.departure_time}:00`,
       ).toISOString(),
       service_number: seg.service_number ?? null,
       platform_dep: seg.platform_dep ?? null,
       platform_arr: seg.platform_arr ?? null,
+      from_station_code: seg.from_station_code ?? null,
+      to_station_code: seg.to_station_code ?? null,
+      operator: seg.operator ?? null,
+      ticket_type: seg.ticket_type ?? null,
+      route_restriction: seg.route_restriction ?? null,
+      coach: seg.coach ?? null,
+      seat: seg.seat ?? null,
+      barcode_ref: seg.barcode_ref ?? null,
+      barcode_data: seg.barcode_data ?? null,
     }));
 
     const result = await attachTransportBookingToStop({
