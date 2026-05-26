@@ -14,15 +14,44 @@ export async function fetchRailPolylineFromBrowser(
   toLat: number,
   toLng: number,
 ): Promise<{ encoded: string; pointCount: number } | null> {
-  const points = await queryOverpass(fromLat, fromLng, toLat, toLng);
+  let points = await queryOverpass(fromLat, fromLng, toLat, toLng);
   if (!points || points.length < 2) return null;
 
-  // Snap endpoints to actual station coordinates so the line
-  // starts and ends exactly at the map markers.
+  // The BFS path may extend beyond the stations because the nearest
+  // rail nodes can be offset along the track. Trim to the portion
+  // between the points closest to each station, then snap endpoints.
+  points = trimPathToStations(points, fromLat, fromLng, toLat, toLng);
   points[0] = { lat: fromLat, lng: fromLng };
   points[points.length - 1] = { lat: toLat, lng: toLng };
 
   return { encoded: encodePolyline(points), pointCount: points.length };
+}
+
+function trimPathToStations(
+  path: LatLng[],
+  fromLat: number, fromLng: number,
+  toLat: number, toLng: number,
+): LatLng[] {
+  let startIdx = 0;
+  let endIdx = path.length - 1;
+  let bestStartDist = Infinity;
+  let bestEndDist = Infinity;
+
+  for (let i = 0; i < path.length; i++) {
+    const dFrom = (path[i].lat - fromLat) ** 2 + (path[i].lng - fromLng) ** 2;
+    const dTo = (path[i].lat - toLat) ** 2 + (path[i].lng - toLng) ** 2;
+    if (dFrom < bestStartDist) {
+      bestStartDist = dFrom;
+      startIdx = i;
+    }
+    if (dTo < bestEndDist) {
+      bestEndDist = dTo;
+      endIdx = i;
+    }
+  }
+
+  if (startIdx > endIdx) [startIdx, endIdx] = [endIdx, startIdx];
+  return path.slice(startIdx, endIdx + 1);
 }
 
 async function queryOverpass(

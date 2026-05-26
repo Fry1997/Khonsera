@@ -133,9 +133,12 @@ async function main() {
       continue;
     }
 
-    // Snap endpoints to actual station coordinates
-    points[0] = { lat: Number(fh.latitude), lng: Number(fh.longitude) };
-    points[points.length - 1] = { lat: Number(th.latitude), lng: Number(th.longitude) };
+    // Trim to the portion between the two stations, then snap endpoints
+    const fromPt = { lat: Number(fh.latitude), lng: Number(fh.longitude) };
+    const toPt = { lat: Number(th.latitude), lng: Number(th.longitude) };
+    points = trimPathToStations(points, fromPt, toPt);
+    points[0] = fromPt;
+    points[points.length - 1] = toPt;
 
     const encoded = encodePolyline(points);
     console.log(` OK (${points.length} points, ${encoded.length} chars)`);
@@ -275,6 +278,19 @@ function bfsPath(ways, nodes, startNode, endNode) {
   }
 
   return null;
+}
+
+function trimPathToStations(path, from, to) {
+  let startIdx = 0, endIdx = path.length - 1;
+  let bestStart = Infinity, bestEnd = Infinity;
+  for (let i = 0; i < path.length; i++) {
+    const dF = (path[i].lat - from.lat) ** 2 + (path[i].lng - from.lng) ** 2;
+    const dT = (path[i].lat - to.lat) ** 2 + (path[i].lng - to.lng) ** 2;
+    if (dF < bestStart) { bestStart = dF; startIdx = i; }
+    if (dT < bestEnd) { bestEnd = dT; endIdx = i; }
+  }
+  if (startIdx > endIdx) [startIdx, endIdx] = [endIdx, startIdx];
+  return path.slice(startIdx, endIdx + 1);
 }
 
 // ── Polyline encoding ───────────────────────────────────────────────
