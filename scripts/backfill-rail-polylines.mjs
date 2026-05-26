@@ -133,6 +133,10 @@ async function main() {
       continue;
     }
 
+    // Snap endpoints to actual station coordinates
+    points[0] = { lat: Number(fh.latitude), lng: Number(fh.longitude) };
+    points[points.length - 1] = { lat: Number(th.latitude), lng: Number(th.longitude) };
+
     const encoded = encodePolyline(points);
     console.log(` OK (${points.length} points, ${encoded.length} chars)`);
 

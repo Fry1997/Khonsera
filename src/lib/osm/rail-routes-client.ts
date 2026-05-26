@@ -16,6 +16,12 @@ export async function fetchRailPolylineFromBrowser(
 ): Promise<{ encoded: string; pointCount: number } | null> {
   const points = await queryOverpass(fromLat, fromLng, toLat, toLng);
   if (!points || points.length < 2) return null;
+
+  // Snap endpoints to actual station coordinates so the line
+  // starts and ends exactly at the map markers.
+  points[0] = { lat: fromLat, lng: fromLng };
+  points[points.length - 1] = { lat: toLat, lng: toLng };
+
   return { encoded: encodePolyline(points), pointCount: points.length };
 }
 
