@@ -521,6 +521,7 @@ export async function createItineraryFromBrief(
 
   type StopType =
     | "start"
+    | "end"
     | "accommodation"
     | "appointment"
     | "meal"
@@ -849,6 +850,25 @@ export async function createItineraryFromBrief(
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
+  } else if (homeId) {
+    // Always create a return-home stop so the transition loop can
+    // generate a walk-home leg and the timeline shows correct arrival.
+    stopRows.push({
+      sequence: seq++,
+      type: "end",
+      location_id: homeId,
+      customer_id: null,
+      customer_site_id: null,
+      title: null,
+      start_time: null,
+      end_time: null,
+      duration_minutes: null,
+      is_time_fixed: false,
+      notes: null,
+      metadata: { kind: "return_home" },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
   }
 
   // Tag each row with its clientId before sorting (object identity survives sort).
@@ -866,10 +886,10 @@ export async function createItineraryFromBrief(
     const bIsHome = b.type === "start" && !(b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by");
     if (aIsHome && !bIsHome) return -1;
     if (bIsHome && !aIsHome) return 1;
-    const aIsBhb = a.metadata && "kind" in a.metadata && (a.metadata as Record<string, unknown>).kind === "be_home_by";
-    const bIsBhb = b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by";
-    if (aIsBhb && !bIsBhb) return 1;
-    if (bIsBhb && !aIsBhb) return -1;
+    const aIsEnd = a.type === "end" || (a.metadata && "kind" in a.metadata && ((a.metadata as Record<string, unknown>).kind === "be_home_by" || (a.metadata as Record<string, unknown>).kind === "return_home"));
+    const bIsEnd = b.type === "end" || (b.metadata && "kind" in b.metadata && ((b.metadata as Record<string, unknown>).kind === "be_home_by" || (b.metadata as Record<string, unknown>).kind === "return_home"));
+    if (aIsEnd && !bIsEnd) return 1;
+    if (bIsEnd && !aIsEnd) return -1;
     if (!a.start_time && !b.start_time) return 0;
     if (!a.start_time) return 1;
     if (!b.start_time) return -1;

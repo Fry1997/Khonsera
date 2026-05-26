@@ -1675,6 +1675,7 @@ function computeFeasibility(
   transition: TransitionRow | null | undefined,
 ): FeasibilityFlag | null {
   if (!fromStop || !toStop || !transition) return null;
+  if (transition.is_locked) return null;
   if (!fromStop.is_time_fixed || !toStop.is_time_fixed) return null;
   const required = transition.computed_duration_minutes;
   const fromEnd = fromStop.end_time ?? fromStop.start_time;
