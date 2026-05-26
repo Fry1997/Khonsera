@@ -138,24 +138,38 @@ export async function routeRailPath(
   const endKey = findNearestKey(coordMap, toLat, toLng);
   if (!startKey || !endKey || startKey === endKey) return null;
 
-  // BFS
-  const visited = new Set<string>();
+  // Dijkstra — shortest path by geographic distance (haversine).
+  // Plain BFS uses node-count which can prefer a longer route through
+  // a branch with fewer nodes (e.g., via Beeston instead of direct to Derby).
+  const dist = new Map<string, number>();
   const parent = new Map<string, string>();
-  const queue: string[] = [startKey];
-  visited.add(startKey);
+  dist.set(startKey, 0);
+
+  // Simple priority queue (array sorted on insert — fine for ~50k nodes)
+  const pq: Array<{ key: string; d: number }> = [{ key: startKey, d: 0 }];
 
   let found = false;
-  while (queue.length > 0) {
-    const current = queue.shift()!;
+  while (pq.length > 0) {
+    pq.sort((a, b) => a.d - b.d);
+    const { key: current, d: currentDist } = pq.shift()!;
+
     if (current === endKey) {
       found = true;
       break;
     }
+
+    if (currentDist > (dist.get(current) ?? Infinity)) continue;
+
+    const currentPt = coordMap.get(current)!;
     for (const neighbor of adj.get(current) ?? []) {
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
+      const neighborPt = coordMap.get(neighbor);
+      if (!neighborPt) continue;
+      const edgeDist = haversineKm(currentPt.lat, currentPt.lng, neighborPt.lat, neighborPt.lng);
+      const newDist = currentDist + edgeDist;
+      if (newDist < (dist.get(neighbor) ?? Infinity)) {
+        dist.set(neighbor, newDist);
         parent.set(neighbor, current);
-        queue.push(neighbor);
+        pq.push({ key: neighbor, d: newDist });
       }
     }
   }
@@ -176,12 +190,12 @@ export async function routeRailPath(
 
   if (points.length < 2) return null;
 
-  // Trim path to station boundaries
+  // Trim to station boundaries (remove overshoot past stations)
   points = trimPathToStations(points, fromLat, fromLng, toLat, toLng);
 
-  // Snap endpoints to exact station coordinates
-  points[0] = { lat: fromLat, lng: fromLng };
-  points[points.length - 1] = { lat: toLat, lng: toLng };
+  // Don't snap endpoints to station entrance coordinates — the line
+  // should end at the nearest point on the actual track, not jump to
+  // the station building entrance (which causes zigzag on zoom).
 
   return encodePolyline(points);
 }
@@ -201,6 +215,18 @@ function findNearestKey(
     }
   }
   return bestKey;
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 function trimPathToStations(
