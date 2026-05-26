@@ -98,144 +98,59 @@ async function routeRailPathViaWaypoints(
   toLng: number,
   waypoints: Array<{ lat: number; lng: number }>,
 ): Promise<string | null> {
-  await requireUserContext();
-  const supabase = await createClient();
-
-  // Build ONE bounding box encompassing the entire route + waypoints
+  // Route each segment independently using routeRailPathDirect.
+  // Each segment gets its own bounding box, edge fetch, and A*.
+  // Segments are concatenated by decoding/re-encoding.
   const allPts = [
     { lat: fromLat, lng: fromLng },
     ...waypoints,
     { lat: toLat, lng: toLng },
   ];
-  const pad = 0.08;
-  const minLat = Math.min(...allPts.map((p) => p.lat)) - pad;
-  const maxLat = Math.max(...allPts.map((p) => p.lat)) + pad;
-  const minLng = Math.min(...allPts.map((p) => p.lng)) - pad;
-  const maxLng = Math.max(...allPts.map((p) => p.lng)) + pad;
 
-  const { data: edges, error } = await supabase
-    .from("rail_network_edges")
-    .select("from_lat, from_lng, to_lat, to_lng")
-    .gte("from_lat", minLat)
-    .lte("from_lat", maxLat)
-    .gte("from_lng", minLng)
-    .lte("from_lng", maxLng);
-
-  if (error || !edges || edges.length === 0) return null;
-
-  // Build one shared adjacency graph
-  const adj = new Map<string, Set<string>>();
-  const coordMap = new Map<string, LatLng>();
-
-  const addEdge = (aLat: number, aLng: number, bLat: number, bLng: number) => {
-    const keyA = coordKey(aLat, aLng);
-    const keyB = coordKey(bLat, bLng);
-    if (!adj.has(keyA)) adj.set(keyA, new Set());
-    if (!adj.has(keyB)) adj.set(keyB, new Set());
-    adj.get(keyA)!.add(keyB);
-    adj.get(keyB)!.add(keyA);
-    if (!coordMap.has(keyA)) coordMap.set(keyA, { lat: aLat, lng: aLng });
-    if (!coordMap.has(keyB)) coordMap.set(keyB, { lat: bLat, lng: bLng });
-  };
-
-  for (const e of edges) {
-    if (
-      e.to_lat >= minLat - pad &&
-      e.to_lat <= maxLat + pad &&
-      e.to_lng >= minLng - pad &&
-      e.to_lng <= maxLng + pad
-    ) {
-      addEdge(e.from_lat, e.from_lng, e.to_lat, e.to_lng);
-    }
-  }
-
-  if (adj.size === 0) return null;
-
-  // Find nearest rail graph nodes for origin, each waypoint, and destination
-  const originKey = findNearestKey(coordMap, fromLat, fromLng);
-  const destKey = findNearestKey(coordMap, toLat, toLng);
-  if (!originKey || !destKey) return null;
-
-  const wpKeys = waypoints.map((wp) => findNearestKey(coordMap, wp.lat, wp.lng));
-  const nodeSequence = [originKey, ...wpKeys.filter((k): k is string => k !== null), destKey];
-
-  // Route through each sequential pair using Dijkstra on the shared graph
-  const fullPath: LatLng[] = [];
-  for (let i = 0; i < nodeSequence.length - 1; i++) {
-    const segPath = dijkstraOnGraph(
-      adj, coordMap, nodeSequence[i], nodeSequence[i + 1],
+  const allPoints: LatLng[] = [];
+  for (let i = 0; i < allPts.length - 1; i++) {
+    const segPoly = await routeRailPathDirect(
+      allPts[i].lat, allPts[i].lng,
+      allPts[i + 1].lat, allPts[i + 1].lng,
     );
-    if (!segPath) continue;
-    // Skip the first point of subsequent segments to avoid duplicates
-    const points = i > 0 && segPath.length > 0 ? segPath.slice(1) : segPath;
-    fullPath.push(...points);
+    if (!segPoly) continue;
+    const decoded = decodePolylineInternal(segPoly);
+    if (i > 0 && allPoints.length > 0 && decoded.length > 0) {
+      decoded.shift();
+    }
+    allPoints.push(...decoded);
   }
 
-  if (fullPath.length < 2) return null;
-
-  // Only trim at the actual origin and destination (not at intermediate waypoints)
-  const trimmed = trimPathToStations(fullPath, fromLat, fromLng, toLat, toLng);
-  return encodePolyline(trimmed);
+  if (allPoints.length < 2) return null;
+  return encodePolyline(allPoints);
 }
 
-function dijkstraOnGraph(
-  adj: Map<string, Set<string>>,
-  coordMap: Map<string, LatLng>,
-  startKey: string,
-  endKey: string,
-): LatLng[] | null {
-  if (startKey === endKey) {
-    const pt = coordMap.get(startKey);
-    return pt ? [pt] : null;
+function decodePolylineInternal(encoded: string): LatLng[] {
+  const points: LatLng[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
   }
-
-  const endPt = coordMap.get(endKey)!;
-  const EPSILON = 1.3;
-
-  const gScore = new Map<string, number>();
-  const parent = new Map<string, string>();
-  gScore.set(startKey, 0);
-
-  const startPt = coordMap.get(startKey)!;
-  const startH = haversineKm(startPt.lat, startPt.lng, endPt.lat, endPt.lng);
-  const pq: Array<{ key: string; f: number; g: number }> = [
-    { key: startKey, f: EPSILON * startH, g: 0 },
-  ];
-
-  let found = false;
-  while (pq.length > 0) {
-    pq.sort((a, b) => a.f - b.f);
-    const { key: current, g: currentG } = pq.shift()!;
-    if (current === endKey) { found = true; break; }
-    if (currentG > (gScore.get(current) ?? Infinity)) continue;
-
-    const currentPt = coordMap.get(current)!;
-    for (const neighbor of adj.get(current) ?? []) {
-      const neighborPt = coordMap.get(neighbor);
-      if (!neighborPt) continue;
-      const edgeDist = haversineKm(currentPt.lat, currentPt.lng, neighborPt.lat, neighborPt.lng);
-      const newG = currentG + edgeDist;
-      if (newG < (gScore.get(neighbor) ?? Infinity)) {
-        gScore.set(neighbor, newG);
-        parent.set(neighbor, current);
-        const h = haversineKm(neighborPt.lat, neighborPt.lng, endPt.lat, endPt.lng);
-        pq.push({ key: neighbor, f: newG + EPSILON * h, g: newG });
-      }
-    }
-  }
-
-  if (!found) return null;
-
-  const pathKeys: string[] = [];
-  let node: string | undefined = endKey;
-  while (node != null) {
-    pathKeys.unshift(node);
-    node = parent.get(node);
-  }
-
-  return pathKeys
-    .map((k) => coordMap.get(k))
-    .filter((pt): pt is LatLng => pt != null);
+  return points;
 }
 
 async function routeRailPathDirect(
