@@ -13,13 +13,22 @@ export async function getRailPolyline(
   // Check cache first
   if (fromCode && toCode) {
     const cached = await getCachedPolyline(fromCode, toCode);
-    if (cached) return cached;
+    if (cached) {
+      console.log(`[rail-routes] Cache hit: ${fromCode}→${toCode}`);
+      return cached;
+    }
   }
+
+  console.log(`[rail-routes] Fetching: ${fromCode ?? "?"}→${toCode ?? "?"} (${fromLat},${fromLng}→${toLat},${toLng})`);
 
   // Query Overpass for railway geometry
   const points = await queryOverpassRailRoute(fromLat, fromLng, toLat, toLng);
-  if (!points || points.length < 2) return null;
+  if (!points || points.length < 2) {
+    console.error(`[rail-routes] No points returned for ${fromCode}→${toCode}`);
+    return null;
+  }
 
+  console.log(`[rail-routes] Got ${points.length} points for ${fromCode}→${toCode}`);
   const encoded = encodePolyline(points);
 
   // Cache for future use
@@ -97,10 +106,13 @@ async function queryOverpassRailRoute(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(25_000),
     });
 
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      console.error(`[rail-routes] Overpass HTTP ${resp.status} for ${fromLat},${fromLng}→${toLat},${toLng}`);
+      return null;
+    }
     const json = await resp.json();
 
     const nodes = new Map<number, LatLng>();
@@ -114,20 +126,23 @@ async function queryOverpassRailRoute(
       }
     }
 
+    console.log(`[rail-routes] Overpass returned ${nodes.size} nodes, ${ways.length} ways`);
     if (ways.length === 0) return null;
 
-    // Build a graph of connected rail segments and find the path
-    // from the nearest node to fromLat/fromLng to the nearest node
-    // to toLat/toLng.
     const fromNode = findNearestNode(nodes, fromLat, fromLng);
     const toNode = findNearestNode(nodes, toLat, toLng);
-    if (!fromNode || !toNode || fromNode === toNode) return null;
+    if (!fromNode || !toNode || fromNode === toNode) {
+      console.error(`[rail-routes] No path: fromNode=${fromNode} toNode=${toNode}`);
+      return null;
+    }
 
     const path = findRailPath(ways, nodes, fromNode, toNode);
+    console.log(`[rail-routes] BFS path: ${path?.length ?? 0} points`);
     if (!path || path.length < 2) return null;
 
     return path;
-  } catch {
+  } catch (e) {
+    console.error("[rail-routes] Overpass fetch failed:", e);
     return null;
   }
 }

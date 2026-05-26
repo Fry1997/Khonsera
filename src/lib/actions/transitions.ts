@@ -658,22 +658,13 @@ function pickPoint(stop: unknown): { lat: number; lng: number } | null {
 export async function backfillRailPolylines(
   itineraryId: string,
 ): Promise<{ filled: number }> {
-  const ctx = await requireUserContext();
+  await requireUserContext();
   const supabase = await createClient();
 
+  // Find locked transit transitions without polylines
   const { data: missing } = await supabase
     .from("transitions")
-    .select(
-      `id, mode, from_stop_id, to_stop_id,
-       from_stop:from_stop_id(
-         transport_hub_id,
-         transport_hub:transport_hubs(latitude, longitude, code)
-       ),
-       to_stop:to_stop_id(
-         transport_hub_id,
-         transport_hub:transport_hubs(latitude, longitude, code)
-       )`,
-    )
+    .select("id, mode, from_stop_id, to_stop_id")
     .eq("itinerary_id", itineraryId)
     .eq("is_locked", true)
     .is("overview_polyline", null);
@@ -682,16 +673,29 @@ export async function backfillRailPolylines(
 
   let filled = 0;
   for (const t of missing) {
-    const fromHub = first(t.from_stop)?.transport_hub;
-    const toHub = first(t.to_stop)?.transport_hub;
-    const fh = first(fromHub) as { latitude?: number; longitude?: number; code?: string } | null;
-    const th = first(toHub) as { latitude?: number; longitude?: number; code?: string } | null;
+    // Look up each stop's transport hub separately — simpler than
+    // nested joins, and we only run this once per itinerary.
+    const { data: stops } = await supabase
+      .from("stops")
+      .select("id, transport_hub_id, transport_hub:transport_hubs(latitude, longitude, code)")
+      .in("id", [t.from_stop_id, t.to_stop_id]);
+
+    if (!stops || stops.length < 2) continue;
+    const fromStop = stops.find((s) => s.id === t.from_stop_id);
+    const toStop = stops.find((s) => s.id === t.to_stop_id);
+    const fh = first(fromStop?.transport_hub) as
+      | { latitude?: number | null; longitude?: number | null; code?: string | null }
+      | null;
+    const th = first(toStop?.transport_hub) as
+      | { latitude?: number | null; longitude?: number | null; code?: string | null }
+      | null;
     if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) continue;
+
     try {
       const poly = await getRailPolyline(
-        fh.latitude, fh.longitude,
-        th.latitude, th.longitude,
-        fh.code ?? null, th.code ?? null,
+        Number(fh.latitude), Number(fh.longitude),
+        Number(th.latitude), Number(th.longitude),
+        (fh.code as string) ?? null, (th.code as string) ?? null,
       );
       if (poly) {
         await supabase
@@ -701,7 +705,7 @@ export async function backfillRailPolylines(
         filled++;
       }
     } catch {
-      // Best-effort
+      // Best-effort — Overpass might be down or unreachable
     }
   }
   return { filled };
