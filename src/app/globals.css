@@ -3647,53 +3647,48 @@
 .route-map-marker {
   pointer-events: none;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   z-index: 1;
 }
 
 .route-map-dot {
-  width: 14px;
-  height: 14px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  border: 2px solid var(--ink);
+  border: 1.5px solid var(--ink);
   background: transparent;
-  box-shadow: 0 0 0 2px var(--card);
+  flex-shrink: 0;
 }
 
 .route-map-marker-home .route-map-dot {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--ink);
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--ink);
   background: transparent;
-  box-shadow:
-    inset 0 0 0 2px transparent,
-    inset 0 0 0 3px var(--ink),
-    0 0 0 2px var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--card), inset 0 0 0 2.5px var(--ink);
 }
 
 .route-map-marker-site .route-map-dot {
-  width: 16px;
-  height: 16px;
-  border: 3px solid var(--gold);
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--gold);
   background: var(--gold);
-  box-shadow: 0 0 0 2px var(--card);
 }
 
 .route-map-marker-transit .route-map-dot {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--ink-dim);
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--ink-dim);
   background: var(--card);
-  box-shadow: 0 0 0 2px var(--card);
 }
 
 .route-map-code {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink);
   text-shadow:
@@ -3706,6 +3701,7 @@
     -1px 0 0 var(--card),
     1px 0 0 var(--card);
   white-space: nowrap;
+  line-height: 1;
 }
 
 .route-map-marker-site .route-map-code {

@@ -38,8 +38,8 @@ export function RouteMap({
     markers: [],
     paths: polylines.map((encoded) => ({
       encoded,
-      color: "b8893f",
-      weight: 4,
+      color: "936820",
+      weight: 5,
     })),
     style: "journies",
   });
@@ -62,9 +62,9 @@ export function RouteMap({
         <div className="route-map-header">
           <span className="route-map-eyebrow">Door-to-door</span>
           <span className="route-map-headline">
-            {totalMiles != null && <>{Math.round(totalMiles)} mi</>}
-            {totalMiles != null && totalMinutes != null && " · "}
-            {totalMinutes != null && <>{fmtDuration(totalMinutes)}</>}
+            {totalMiles != null && totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
+            {totalMiles != null && totalMiles > 0 && totalMinutes != null && totalMinutes > 0 && " · "}
+            {totalMinutes != null && totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
           </span>
         </div>
       )}
@@ -97,13 +97,11 @@ export function RouteMap({
               position: "absolute",
               left: `${(m.x / width) * 100}%`,
               top: `${(m.y / height) * 100}%`,
-              transform: "translate(-50%, -50%)",
+              transform: "translate(-4px, -50%)",
             }}
           >
             <div className="route-map-dot" />
-            {m.code && (
-              <span className="route-map-code">{m.code}</span>
-            )}
+            <span className="route-map-code">{m.label}</span>
           </div>
         ))}
       </div>
