@@ -112,8 +112,12 @@ async function discoverIntermediateStations(
   const len2 = dLat * dLat + dLng * dLng;
   if (len2 === 0) return [];
 
-  // Corridor width scales with route distance — wider for longer routes
-  const corridorKm = Math.min(8, Math.max(3, directDistKm * 0.08));
+  // UK rail lines curve significantly — the Midland Main Line deviates
+  // up to 10km from the Leicester→Derby straight line. Scale corridor
+  // with route length, generous enough to capture real intermediate
+  // stations but tight enough to exclude parallel lines (Beeston is
+  // 16km off the LEI→DBY direct line).
+  const corridorKm = Math.max(5, Math.min(15, directDistKm * 0.3));
 
   const candidates: Array<{ lat: number; lng: number; t: number }> = [];
 
