@@ -553,14 +553,16 @@ export function ItineraryEditor({
   const backfillRan = useRef(false);
   useEffect(() => {
     if (backfillRan.current) return;
-    const hasLockedWithoutPoly = transitions.some(
-      (t) => t.is_locked && !t.overview_polyline,
-    );
-    if (!hasLockedWithoutPoly) return;
+    const locked = transitions.filter((t) => t.is_locked && !t.overview_polyline);
+    if (locked.length === 0) return;
     backfillRan.current = true;
-    backfillRailPolylines(itinerary.id).then((res) => {
-      if (res.filled > 0) router.refresh();
-    });
+    console.log("[backfill] starting for", locked.length, "transitions");
+    backfillRailPolylines(itinerary.id)
+      .then((res) => {
+        console.log("[backfill] filled", res.filled);
+        if (res.filled > 0) router.refresh();
+      })
+      .catch((err) => console.error("[backfill] error:", err));
   }, [transitions, itinerary.id, router]);
 
   // editedAnchors holds the per-anchor in-flight patch while a card
@@ -999,10 +1001,25 @@ export function ItineraryEditor({
     return out;
   }, [sortedStops]);
 
-  const mapPolylines = useMemo(
-    () => transitions.filter((t) => t.overview_polyline).map((t) => t.overview_polyline!),
-    [transitions],
-  );
+  const mapSegments = useMemo(() => {
+    const coordById = new Map<string, { lat: number; lng: number }>();
+    for (const s of sortedStops) {
+      const lat = s.customer_site?.latitude ?? s.location?.latitude ?? (s as any).transport_hub?.latitude;
+      const lng = s.customer_site?.longitude ?? s.location?.longitude ?? (s as any).transport_hub?.longitude;
+      if (lat != null && lng != null) coordById.set(s.id, { lat: Number(lat), lng: Number(lng) });
+    }
+    const segs: Array<{ type: "encoded"; polyline: string } | { type: "straight"; from: { lat: number; lng: number }; to: { lat: number; lng: number } }> = [];
+    for (const t of transitions) {
+      if (t.overview_polyline) {
+        segs.push({ type: "encoded", polyline: t.overview_polyline });
+      } else {
+        const from = coordById.get(t.from_stop_id);
+        const to = coordById.get(t.to_stop_id);
+        if (from && to) segs.push({ type: "straight", from, to });
+      }
+    }
+    return segs;
+  }, [transitions, sortedStops]);
 
   const currentStatusIndex = STATUS_FLOW.indexOf(itinerary.status);
   const canAdvance =
@@ -1352,7 +1369,7 @@ export function ItineraryEditor({
             {mapStops.length > 0 ? (
               <RouteMap
                 stops={mapStops}
-                polylines={mapPolylines}
+                segments={mapSegments}
                 totalMiles={totalMiles}
                 totalMinutes={totalMinutes}
               />

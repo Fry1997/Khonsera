@@ -8,9 +8,14 @@ type Stop = {
   role: "home" | "transit" | "site";
 };
 
+type PathSegment =
+  | { type: "encoded"; polyline: string }
+  | { type: "straight"; from: { lat: number; lng: number }; to: { lat: number; lng: number } };
+
 type RouteMapProps = {
   stops: Stop[];
-  polylines: string[];
+  polylines?: string[];
+  segments?: PathSegment[];
   totalMiles?: number;
   totalMinutes?: number;
   width?: number;
@@ -20,6 +25,7 @@ type RouteMapProps = {
 export function RouteMap({
   stops,
   polylines,
+  segments,
   totalMiles,
   totalMinutes,
   width = 400,
@@ -30,14 +36,26 @@ export function RouteMap({
   const { center, zoom } = fitBounds(stops, width, height);
   const mapScale = 2;
 
-  // Build paths: use encoded polylines when available, otherwise draw
-  // straight lines between consecutive stops as a fallback.
   const paths: Array<{ encoded?: string; points?: Array<{ lat: number; lng: number }>; color: string; weight: number }> = [];
-  if (polylines.length > 0) {
+
+  if (segments && segments.length > 0) {
+    for (const seg of segments) {
+      if (seg.type === "encoded") {
+        paths.push({ encoded: seg.polyline, color: "936820", weight: 5 });
+      } else {
+        paths.push({
+          points: [seg.from, seg.to],
+          color: "936820",
+          weight: 4,
+        });
+      }
+    }
+  } else if (polylines && polylines.length > 0) {
     for (const encoded of polylines) {
       paths.push({ encoded, color: "936820", weight: 5 });
     }
   }
+
   if (paths.length === 0 && stops.length >= 2) {
     paths.push({
       points: stops.map((s) => ({ lat: s.lat, lng: s.lng })),

@@ -669,18 +669,24 @@ export async function backfillRailPolylines(
     .eq("is_locked", true)
     .is("overview_polyline", null);
 
+  console.log("[rail-routes] backfill: found", missing?.length ?? 0, "transitions missing polylines");
   if (!missing || missing.length === 0) return { filled: 0 };
 
   let filled = 0;
   for (const t of missing) {
-    // Look up each stop's transport hub separately — simpler than
-    // nested joins, and we only run this once per itinerary.
-    const { data: stops } = await supabase
+    const { data: stops, error: stopsErr } = await supabase
       .from("stops")
       .select("id, transport_hub_id, transport_hub:transport_hubs(latitude, longitude, code)")
       .in("id", [t.from_stop_id, t.to_stop_id]);
 
-    if (!stops || stops.length < 2) continue;
+    if (stopsErr) {
+      console.error("[rail-routes] stops query error:", stopsErr.message);
+      continue;
+    }
+    if (!stops || stops.length < 2) {
+      console.log("[rail-routes] skipping transition", t.id, "- only", stops?.length ?? 0, "stops found");
+      continue;
+    }
     const fromStop = stops.find((s) => s.id === t.from_stop_id);
     const toStop = stops.find((s) => s.id === t.to_stop_id);
     const fh = first(fromStop?.transport_hub) as
@@ -689,7 +695,11 @@ export async function backfillRailPolylines(
     const th = first(toStop?.transport_hub) as
       | { latitude?: number | null; longitude?: number | null; code?: string | null }
       | null;
-    if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) continue;
+    console.log("[rail-routes] from hub:", fh, "to hub:", th);
+    if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) {
+      console.log("[rail-routes] skipping - missing coordinates");
+      continue;
+    }
 
     try {
       const poly = await getRailPolyline(
@@ -697,6 +707,7 @@ export async function backfillRailPolylines(
         Number(th.latitude), Number(th.longitude),
         (fh.code as string) ?? null, (th.code as string) ?? null,
       );
+      console.log("[rail-routes] polyline result for", t.id, ":", poly ? `${poly.length} chars` : "null");
       if (poly) {
         await supabase
           .from("transitions")
@@ -704,9 +715,10 @@ export async function backfillRailPolylines(
           .eq("id", t.id);
         filled++;
       }
-    } catch {
-      // Best-effort — Overpass might be down or unreachable
+    } catch (err) {
+      console.error("[rail-routes] error for transition", t.id, ":", err);
     }
   }
+  console.log("[rail-routes] backfill complete:", filled, "filled");
   return { filled };
 }
