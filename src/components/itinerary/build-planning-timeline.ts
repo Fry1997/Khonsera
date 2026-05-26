@@ -86,7 +86,26 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
   // Home → first item gap
   if (startStop && planningTimeline.length > 0) {
     const first = planningTimeline[0];
-    if (first.kind !== "transit") {
+    if (first.kind === "transit") {
+      // Home → station: show GapModePicker (walk/drive/taxi to station)
+      const toLabel = first.stop.title ?? "station";
+      const fromLabel = startStop.location?.name ?? startStop.title ?? "Home";
+      const trans = planningTransitions.get(
+        transitionKey(startStop.id, uidOf(first)),
+      ) ?? emptyTransition();
+      const currentMode = trans.mode as string;
+      const selectedGap: GapMode | null =
+        currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
+          ? currentMode : null;
+      result.push({
+        kind: "gap-mode",
+        fromLabel,
+        toLabel,
+        selected: selectedGap,
+        previews: gapPreviewsForPair(startStop.id, uidOf(first)),
+        onSelect: (mode: GapMode) => onSetGapMode(startStop.id, uidOf(first), mode),
+      });
+    } else {
       const toAnchor = first.kind === "anchor"
         ? first.anchor
         : stopoverAsAnchor(first.stopover, first.stopover.uid);
@@ -251,13 +270,21 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     }
   }
 
-  // Context-gap: when two transport groups appear with a gap between
-  // them (e.g., arrive Derby 08:32, depart Derby 15:08), show "You're
-  // in Derby for 6h 36m" with a button to add a stop.
+  // Context-gap: when two transport groups appear with NO anchor
+  // between them (user hasn't said what they're doing in that city),
+  // show "You're in Derby for 6h 36m" with a prompt to add a stop.
+  // Skip when there's already an anchor/stopover between the transports.
   const transportEntries = result.filter((e) => e.kind === "transport");
-  for (let i = 0; i < transportEntries.length - 1; i++) {
-    const prev = transportEntries[i] as Extract<TimelineEntry, { kind: "transport" }>;
-    const next = transportEntries[i + 1] as Extract<TimelineEntry, { kind: "transport" }>;
+  for (let ti = 0; ti < transportEntries.length - 1; ti++) {
+    const prev = transportEntries[ti] as Extract<TimelineEntry, { kind: "transport" }>;
+    const next = transportEntries[ti + 1] as Extract<TimelineEntry, { kind: "transport" }>;
+    const prevIdx = result.indexOf(prev);
+    const nextIdx = result.indexOf(next);
+    const between = result.slice(prevIdx + 1, nextIdx);
+    const hasAnchor = between.some(
+      (e) => e.kind === "anchor" || e.kind === "stopover",
+    );
+    if (hasAnchor) continue;
     const prevLegs = prev.legs;
     const nextLegs = next.legs;
     if (!prevLegs.length || !nextLegs.length) continue;
@@ -274,7 +301,6 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     const label = gH > 0
       ? `${gH}h${gM > 0 ? ` ${gM}m` : ""}`
       : `${gM}m`;
-    const prevIdx = result.indexOf(prev);
     const insertAt = prevIdx + 1;
     result.splice(insertAt, 0, {
       kind: "context-gap",
@@ -289,7 +315,7 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     });
   }
 
-  // Home-return: show estimated home arrival after the last transport.
+  // Last transit → Home gap: show GapModePicker for the last mile home
   const lastTransitArr = planningTimeline
     .filter((it) => it.kind === "transit")
     .map((it) => it.stop)
@@ -298,14 +324,38 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
       return meta?.kind === "transit_arrival";
     })
     .pop();
+  const endStop = input.sortedStops.find((s) => s.type === "end") ?? startStop;
+  if (lastTransitArr && endStop) {
+    const fromLabel = lastTransitArr.title ?? "station";
+    const toLabel = endStop.location?.name ?? endStop.title ?? "Home";
+    const trans = planningTransitions.get(
+      transitionKey(lastTransitArr.id, endStop.id),
+    ) ?? emptyTransition();
+    const currentMode = trans.mode as string;
+    const selectedGap: GapMode | null =
+      currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
+        ? currentMode : null;
+    result.push({
+      kind: "gap-mode",
+      fromLabel,
+      toLabel,
+      selected: selectedGap,
+      previews: gapPreviewsForPair(lastTransitArr.id, endStop.id),
+      onSelect: (mode: GapMode) => onSetGapMode(lastTransitArr.id, endStop.id, mode),
+    });
+  }
+
+  // Home-return: show estimated home arrival after the last transport.
   if (lastTransitArr?.start_time) {
     const arrMin = isoToMinutes(lastTransitArr.start_time, timezone);
-    const homeTransition = transitions.find((t) => t.from_stop_id === lastTransitArr.id);
+    const homeTransition = endStop
+      ? transitions.find((t) => t.from_stop_id === lastTransitArr.id && t.to_stop_id === endStop.id)
+      : transitions.find((t) => t.from_stop_id === lastTransitArr.id);
     const travelHome = homeTransition?.computed_duration_minutes ?? 0;
     const homeMin = arrMin + travelHome;
     result.push({
       kind: "home-return",
-      arriveBy: travelHome > 0 ? minutesToHHMM(homeMin) : undefined,
+      arriveBy: minutesToHHMM(homeMin),
     });
   }
 
