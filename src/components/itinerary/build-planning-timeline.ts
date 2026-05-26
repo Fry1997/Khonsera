@@ -103,7 +103,11 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
         toLabel,
         selected: selectedGap,
         previews: gapPreviewsForPair(startStop.id, uidOf(first)),
-        onSelect: (mode: GapMode) => onSetGapMode(startStop.id, uidOf(first), mode),
+        onSelect: (mode: GapMode) => {
+          if (mode === "walk" || mode === "drive" || mode === "taxi") {
+            onSetGapMode(startStop.id, uidOf(first), mode);
+          }
+        },
       });
     } else {
       const toAnchor = first.kind === "anchor"
@@ -179,7 +183,11 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
           toLabel,
           selected: selectedGap,
           previews: gapPreviewsForPair(groupEndItem.stop.id, afterGroup.stop.id),
-          onSelect: (mode: GapMode) => onSetGapMode(groupEndItem.stop.id, afterGroup.stop.id, mode),
+          onSelect: (mode: GapMode) => {
+            if (mode === "walk" || mode === "drive" || mode === "taxi") {
+              onSetGapMode(groupEndItem.stop.id, afterGroup.stop.id, mode);
+            }
+          },
         });
       }
     } else if (item.kind === "stopover") {
@@ -246,6 +254,19 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
         transition = { ...transition, mode: "walk" };
       }
 
+      // Inline adds BEFORE the gap-mode picker — adding a stop between
+      // the anchor and the station should come before choosing how you
+      // get to the station.
+      if (item.kind === "anchor" && nextItem) {
+        result.push({
+          kind: "inline-adds",
+          onAddAnchor: () => handlers.handleInsertAnchorAt(nextItem.stop.sequence),
+          onAddStopover: nextItem.kind === "anchor"
+            ? () => handlers.handleInsertStopoverBetween(stop.id, nextItem.stop.id)
+            : undefined,
+        });
+      }
+
       // Local connections (anchor ↔ transit stop) get the multi-badge
       // GapModePicker so the user sees walk/drive/taxi with times at a
       // glance — same UX as the brief page.
@@ -263,7 +284,11 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
           toLabel,
           selected: selectedGap,
           previews: gapPreviewsForPair(stop.id, uidOf(nextItem)),
-          onSelect: (mode: GapMode) => onSetGapMode(stop.id, uidOf(nextItem), mode),
+          onSelect: (mode: GapMode) => {
+            if (mode === "walk" || mode === "drive" || mode === "taxi") {
+              onSetGapMode(stop.id, uidOf(nextItem), mode);
+            }
+          },
         });
       } else {
         result.push({
@@ -281,17 +306,6 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
             distanceMiles: transitionToNext.distance_miles ? Number(transitionToNext.distance_miles) : null,
             feasibility: nextItem ? computeFeasibility(stop, nextItem.stop, transitionToNext) : null,
           } : undefined,
-        });
-      }
-
-      // Inline adds between anchor pairs
-      if (item.kind === "anchor" && nextItem) {
-        result.push({
-          kind: "inline-adds",
-          onAddAnchor: () => handlers.handleInsertAnchorAt(nextItem.stop.sequence),
-          onAddStopover: nextItem.kind === "anchor"
-            ? () => handlers.handleInsertStopoverBetween(stop.id, nextItem.stop.id)
-            : undefined,
         });
       }
     }
@@ -368,7 +382,11 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
       toLabel,
       selected: selectedGap,
       previews: gapPreviewsForPair(lastTransitArr.id, endStop.id),
-      onSelect: (mode: GapMode) => onSetGapMode(lastTransitArr.id, endStop.id, mode),
+      onSelect: (mode: GapMode) => {
+        if (mode === "walk" || mode === "drive" || mode === "taxi") {
+          onSetGapMode(lastTransitArr.id, endStop.id, mode);
+        }
+      },
     });
   }
 
