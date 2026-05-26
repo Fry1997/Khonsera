@@ -370,9 +370,14 @@ export function ItineraryEditor({
     toStopId: string,
   ): Partial<Record<import("@/components/gap-mode-picker").GapMode, import("@/components/gap-mode-picker").GapPreview>> => {
     const out: Partial<Record<"walk" | "drive" | "taxi", import("@/components/gap-mode-picker").GapPreview>> = {};
+    const tr = transitionByFrom.get(fromStopId);
     for (const mode of ["walk", "drive", "taxi"] as const) {
       const entry = routePreviews.get(fromStopId, toStopId, mode);
-      if (entry) out[mode] = entry === "pending" ? "pending" : entry;
+      if (entry) {
+        out[mode] = entry === "pending" ? "pending" : entry;
+      } else if (tr && tr.mode === mode && tr.computed_duration_minutes != null) {
+        out[mode] = { durationMinutes: tr.computed_duration_minutes, distanceMiles: tr.distance_miles ?? null };
+      }
     }
     return out;
   };
