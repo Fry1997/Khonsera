@@ -155,6 +155,33 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     if (item.kind === "transit") {
       const groupEnd = transitGroupStart.get(i) ?? i;
       buildTransitGroup(result, i, groupEnd, planningTimeline, transitionByFrom, timezone, handlers);
+
+      // After a transit group, if the next item is an anchor (or
+      // stopover), show a GapModePicker for the last-mile walk from
+      // the arrival station to the destination.
+      const groupEndItem = planningTimeline[groupEnd];
+      const afterGroup = planningTimeline[groupEnd + 1];
+      if (groupEndItem && afterGroup && afterGroup.kind !== "transit") {
+        const fromLabel = groupEndItem.stop.title ?? "station";
+        const toLabel = afterGroup.kind === "anchor"
+          ? (afterGroup.anchor.place?.label ?? afterGroup.stop.title ?? "destination")
+          : (afterGroup.stop.title ?? "destination");
+        const trans = planningTransitions.get(
+          transitionKey(groupEndItem.stop.id, afterGroup.stop.id),
+        ) ?? emptyTransition();
+        const currentMode = trans.mode as string;
+        const selectedGap: GapMode | null =
+          currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
+            ? currentMode : null;
+        result.push({
+          kind: "gap-mode",
+          fromLabel,
+          toLabel,
+          selected: selectedGap,
+          previews: gapPreviewsForPair(groupEndItem.stop.id, afterGroup.stop.id),
+          onSelect: (mode: GapMode) => onSetGapMode(groupEndItem.stop.id, afterGroup.stop.id, mode),
+        });
+      }
     } else if (item.kind === "stopover") {
       buildStopoverEntry(result, item, i, planningTimeline, input);
     } else {

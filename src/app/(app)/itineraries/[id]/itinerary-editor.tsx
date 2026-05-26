@@ -485,6 +485,14 @@ export function ItineraryEditor({
         to: planningTimeline[i + 1].stop,
       });
     }
+    // Also prefetch last transit → end stop (walk home from station)
+    const endStop = stops.find((s) => s.type === "end") ?? startStop;
+    const lastTransit = [...planningTimeline]
+      .reverse()
+      .find((it) => it.kind === "transit");
+    if (lastTransit && endStop) {
+      pairs.push({ from: lastTransit.stop, to: endStop });
+    }
     // Fan out to all three scoreable modes per pair — the engine
     // returns 'resolving' if any candidate is still pending, so a
     // drive-only prefetch keeps the chip stuck on the spinner until
@@ -1113,16 +1121,48 @@ export function ItineraryEditor({
               if (!startStop) return null;
               const label =
                 startStop.location?.name ?? startStop.title ?? "Home";
+              const address = startStop.location?.address ?? null;
               const first = planningTimeline[0];
+
+              // Leave-by: first transit departure minus travel to station
+              let leaveBy: string | null = null;
+              if (first?.kind === "transit" && first.stop.start_time) {
+                const depMin = (() => {
+                  const d = new Date(first.stop.start_time!);
+                  const parts = new Intl.DateTimeFormat("en-GB", {
+                    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone,
+                  }).formatToParts(d);
+                  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+                  const m = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+                  return h * 60 + m;
+                })();
+                const travelTrans = transitions.find(
+                  (t) => t.from_stop_id === startStop.id && t.to_stop_id === first.stop.id,
+                );
+                const travelMin = travelTrans?.computed_duration_minutes ?? 0;
+                const leaveMin = depMin - travelMin - 10;
+                if (leaveMin > 0) {
+                  const lh = Math.floor(leaveMin / 60) % 24;
+                  const lm = leaveMin % 60;
+                  leaveBy = `${String(lh).padStart(2, "0")}:${String(lm).padStart(2, "0")}`;
+                }
+              }
+
               return (
                 <>
                   <div className="home-header">
                     <div className="home-header-badge">
                       <span className="home-header-dot" aria-hidden />
-                      <span className="uc">Start</span>
+                      <span className="uc">Home</span>
                     </div>
-                    <h3 className="home-header-title">{label}</h3>
-                    <p className="home-header-meta">From your travel profile</p>
+                    <h3 className="home-header-title">{address ?? label}</h3>
+                    {leaveBy ? (
+                      <p className="home-header-meta mono" style={{ color: "var(--gold-2)" }}>
+                        Leave by {leaveBy}
+                      </p>
+                    ) : (
+                      <p className="home-header-meta">From your travel profile</p>
+                    )}
                   </div>
                   {first && first.kind !== "transit" ? (
                     <PlanningTransitionRow
