@@ -189,28 +189,37 @@ function dijkstraOnGraph(
     return pt ? [pt] : null;
   }
 
-  const dist = new Map<string, number>();
+  const endPt = coordMap.get(endKey)!;
+  const EPSILON = 1.3;
+
+  const gScore = new Map<string, number>();
   const parent = new Map<string, string>();
-  dist.set(startKey, 0);
-  const pq: Array<{ key: string; d: number }> = [{ key: startKey, d: 0 }];
+  gScore.set(startKey, 0);
+
+  const startPt = coordMap.get(startKey)!;
+  const startH = haversineKm(startPt.lat, startPt.lng, endPt.lat, endPt.lng);
+  const pq: Array<{ key: string; f: number; g: number }> = [
+    { key: startKey, f: EPSILON * startH, g: 0 },
+  ];
 
   let found = false;
   while (pq.length > 0) {
-    pq.sort((a, b) => a.d - b.d);
-    const { key: current, d: currentDist } = pq.shift()!;
+    pq.sort((a, b) => a.f - b.f);
+    const { key: current, g: currentG } = pq.shift()!;
     if (current === endKey) { found = true; break; }
-    if (currentDist > (dist.get(current) ?? Infinity)) continue;
+    if (currentG > (gScore.get(current) ?? Infinity)) continue;
 
     const currentPt = coordMap.get(current)!;
     for (const neighbor of adj.get(current) ?? []) {
       const neighborPt = coordMap.get(neighbor);
       if (!neighborPt) continue;
       const edgeDist = haversineKm(currentPt.lat, currentPt.lng, neighborPt.lat, neighborPt.lng);
-      const newDist = currentDist + edgeDist;
-      if (newDist < (dist.get(neighbor) ?? Infinity)) {
-        dist.set(neighbor, newDist);
+      const newG = currentG + edgeDist;
+      if (newG < (gScore.get(neighbor) ?? Infinity)) {
+        gScore.set(neighbor, newG);
         parent.set(neighbor, current);
-        pq.push({ key: neighbor, d: newDist });
+        const h = haversineKm(neighborPt.lat, neighborPt.lng, endPt.lat, endPt.lng);
+        pq.push({ key: neighbor, f: newG + EPSILON * h, g: newG });
       }
     }
   }
@@ -294,38 +303,47 @@ async function routeRailPathDirect(
   const endKey = findNearestKey(coordMap, toLat, toLng);
   if (!startKey || !endKey || startKey === endKey) return null;
 
-  // Dijkstra — shortest path by geographic distance (haversine).
-  // Plain BFS uses node-count which can prefer a longer route through
-  // a branch with fewer nodes (e.g., via Beeston instead of direct to Derby).
-  const dist = new Map<string, number>();
-  const parent = new Map<string, string>();
-  dist.set(startKey, 0);
+  // Weighted A* — biases toward the destination so the path prefers
+  // branches heading toward the target. Pure Dijkstra picks the
+  // geometrically shortest path which can detour through a nearby
+  // branch (e.g. via Beeston/Nottingham instead of direct to Derby).
+  // Epsilon > 1 trades slight optimality for directness.
+  const EPSILON = 1.3;
+  const endPt = coordMap.get(endKey)!;
 
-  // Simple priority queue (array sorted on insert — fine for ~50k nodes)
-  const pq: Array<{ key: string; d: number }> = [{ key: startKey, d: 0 }];
+  const gScore = new Map<string, number>();
+  const parent = new Map<string, string>();
+  gScore.set(startKey, 0);
+
+  const startPt = coordMap.get(startKey)!;
+  const startH = haversineKm(startPt.lat, startPt.lng, endPt.lat, endPt.lng);
+  const pq: Array<{ key: string; f: number; g: number }> = [
+    { key: startKey, f: EPSILON * startH, g: 0 },
+  ];
 
   let found = false;
   while (pq.length > 0) {
-    pq.sort((a, b) => a.d - b.d);
-    const { key: current, d: currentDist } = pq.shift()!;
+    pq.sort((a, b) => a.f - b.f);
+    const { key: current, g: currentG } = pq.shift()!;
 
     if (current === endKey) {
       found = true;
       break;
     }
 
-    if (currentDist > (dist.get(current) ?? Infinity)) continue;
+    if (currentG > (gScore.get(current) ?? Infinity)) continue;
 
     const currentPt = coordMap.get(current)!;
     for (const neighbor of adj.get(current) ?? []) {
       const neighborPt = coordMap.get(neighbor);
       if (!neighborPt) continue;
       const edgeDist = haversineKm(currentPt.lat, currentPt.lng, neighborPt.lat, neighborPt.lng);
-      const newDist = currentDist + edgeDist;
-      if (newDist < (dist.get(neighbor) ?? Infinity)) {
-        dist.set(neighbor, newDist);
+      const newG = currentG + edgeDist;
+      if (newG < (gScore.get(neighbor) ?? Infinity)) {
+        gScore.set(neighbor, newG);
         parent.set(neighbor, current);
-        pq.push({ key: neighbor, d: newDist });
+        const h = haversineKm(neighborPt.lat, neighborPt.lng, endPt.lat, endPt.lng);
+        pq.push({ key: neighbor, f: newG + EPSILON * h, g: newG });
       }
     }
   }
