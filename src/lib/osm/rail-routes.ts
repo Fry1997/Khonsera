@@ -36,8 +36,20 @@ export async function getRailPolyline(
       if (data?.encoded_polyline) return data.encoded_polyline;
     }
 
+    // Auto-discover intermediate stations when no calling points provided.
+    // Finds rail stations along the direct line between origin and
+    // destination, then uses them as waypoints to force the path through
+    // the correct branch at junctions.
+    let effectiveWaypoints = waypoints;
+    if (!hasWaypoints) {
+      const discovered = await discoverIntermediateStations(
+        supabase, fromLat, fromLng, toLat, toLng, fromCode, toCode,
+      );
+      if (discovered.length > 0) effectiveWaypoints = discovered;
+    }
+
     const polyline = await routeRailPath(
-      fromLat, fromLng, toLat, toLng, waypoints,
+      fromLat, fromLng, toLat, toLng, effectiveWaypoints,
     );
     if (!polyline) return null;
 

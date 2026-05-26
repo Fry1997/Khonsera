@@ -83,8 +83,11 @@ export async function routeRailPath(
   fromLng: number,
   toLat: number,
   toLng: number,
-  _waypoints?: Array<{ lat: number; lng: number }>,
+  waypoints?: Array<{ lat: number; lng: number }>,
 ): Promise<string | null> {
+  if (waypoints && waypoints.length > 0) {
+    return routeRailPathViaWaypoints(fromLat, fromLng, toLat, toLng, waypoints);
+  }
   return routeRailPathDirect(fromLat, fromLng, toLat, toLng);
 }
 
@@ -95,9 +98,6 @@ async function routeRailPathViaWaypoints(
   toLng: number,
   waypoints: Array<{ lat: number; lng: number }>,
 ): Promise<string | null> {
-  // Route each segment independently using routeRailPathDirect.
-  // Each segment gets its own bounding box, edge fetch, and A*.
-  // Segments are concatenated by decoding/re-encoding.
   const allPts = [
     { lat: fromLat, lng: fromLng },
     ...waypoints,
@@ -105,16 +105,31 @@ async function routeRailPathViaWaypoints(
   ];
 
   const allPoints: LatLng[] = [];
+  // Track the actual endpoint of the previous segment so the next
+  // segment starts from where the track actually is, not from the
+  // station entrance coordinates. This eliminates zigzag at junctions.
+  let prevEndpoint: { lat: number; lng: number } | null = null;
+
   for (let i = 0; i < allPts.length - 1; i++) {
+    const startPt = prevEndpoint ?? allPts[i];
+    const endPt = allPts[i + 1];
+
     const segPoly = await routeRailPathDirect(
-      allPts[i].lat, allPts[i].lng,
-      allPts[i + 1].lat, allPts[i + 1].lng,
+      startPt.lat, startPt.lng,
+      endPt.lat, endPt.lng,
     );
-    if (!segPoly) continue;
-    const decoded = decodePolylineInternal(segPoly);
-    if (i > 0 && allPoints.length > 0 && decoded.length > 0) {
-      decoded.shift();
+    if (!segPoly) {
+      prevEndpoint = null;
+      continue;
     }
+    const decoded = decodePolylineInternal(segPoly);
+    if (decoded.length === 0) continue;
+
+    // Capture the actual last track point for the next segment's start
+    prevEndpoint = decoded[decoded.length - 1];
+
+    // Skip the first point of subsequent segments to avoid duplicates
+    if (i > 0 && allPoints.length > 0) decoded.shift();
     allPoints.push(...decoded);
   }
 
