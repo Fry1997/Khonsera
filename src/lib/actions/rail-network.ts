@@ -209,6 +209,32 @@ async function routeRailPathDirect(
 
   if (adj.size === 0) return null;
 
+  // Corridor pruning: remove graph nodes that are too far from the
+  // direct origin→destination line. This eliminates parallel branches
+  // (e.g. the Beeston/Nottingham line when routing Leicester→Derby).
+  const directDistKm = haversineKm(fromLat, fromLng, toLat, toLng);
+  if (directDistKm > 10) {
+    const corridorKm = Math.max(6, Math.min(15, directDistKm * 0.25));
+    const dLat = toLat - fromLat;
+    const dLng = toLng - fromLng;
+    const len2 = dLat * dLat + dLng * dLng;
+    const toRemove: string[] = [];
+    for (const [key, pt] of coordMap) {
+      const t = ((pt.lat - fromLat) * dLat + (pt.lng - fromLng) * dLng) / len2;
+      const projLat = fromLat + Math.max(0, Math.min(1, t)) * dLat;
+      const projLng = fromLng + Math.max(0, Math.min(1, t)) * dLng;
+      const perpDist = haversineKm(pt.lat, pt.lng, projLat, projLng);
+      if (perpDist > corridorKm) toRemove.push(key);
+    }
+    for (const key of toRemove) {
+      coordMap.delete(key);
+      adj.delete(key);
+      for (const neighbors of adj.values()) neighbors.delete(key);
+    }
+  }
+
+  if (adj.size === 0) return null;
+
   // Find nearest graph nodes to from/to stations
   const startKey = findNearestKey(coordMap, fromLat, fromLng);
   const endKey = findNearestKey(coordMap, toLat, toLng);
