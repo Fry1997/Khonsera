@@ -53,6 +53,7 @@ function TransportBookingCard({
     seat: seg.seat,
     barcode_ref: seg.barcode_ref,
     barcode_data: seg.barcode_data,
+    calling_points: seg.calling_points ?? null,
   }));
 
   return (
@@ -251,6 +252,7 @@ export function GmailImportPanel({
       seat: seg.seat ?? null,
       barcode_ref: seg.barcode_ref ?? null,
       barcode_data: seg.barcode_data ?? null,
+      calling_points: seg.calling_points ?? null,
     }));
 
     const result = await attachTransportBookingToStop({

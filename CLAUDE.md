@@ -188,9 +188,22 @@ On the **timeline** (both brief spine and planning page), calling points appear:
 2. As a visual strip (time · dot · station code) between the station names and ticket details on the `TrainTicketCard`
 
 ### Next steps
-- Planning-page transport booking: polyline + duration should work when adding transport during planning (not just from brief)
 - Day-of mode: live position dot, adaptive zoom — component API supports it, just needs wiring
 - Leicester→Derby routing: Dijkstra may fork toward Nottingham at Trent Junction — calling point waypoints could help constrain the polyline to the correct branch
+
+## Planning-Page Transport Booking
+
+The planning page can add transport bookings directly (not just via the brief). The `+ Transport` button opens the same `TransportBookingCard` as the brief. On "Done", it calls `addFullTransportBooking` in `bookings.ts` which creates:
+- Departure/changeover/arrival stops with full metadata (operator, ticket type, barcodes, calling_points with resolved coordinates)
+- Booking entities (booking_intent, travel_booking, travel_booking_segments)
+- Locked transition with computed duration
+- Expense record (if price is set)
+
+The Gmail import panel (`gmail-import-panel.tsx`) also passes calling_points through when importing.
+
+### Re-Enrich Existing Itineraries
+
+`reEnrichItineraryFromGmail()` in `gmail.ts` re-fetches Trainline PDFs from Gmail for an existing itinerary's transit stops. Re-parses with the updated parser (extracting calling points), resolves coordinates, and patches stop metadata. Triggered by the "Refresh ticket details" button on the planning page toolbar.
 
 ## Key File Map
 

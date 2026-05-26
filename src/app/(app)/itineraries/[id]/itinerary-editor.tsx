@@ -20,10 +20,11 @@ import {
   updateStop,
 } from "@/lib/actions/stops";
 import {
-  insertTransitLeg,
   upsertTransition,
   setTransitionMode,
 } from "@/lib/actions/transitions";
+import { addFullTransportBooking } from "@/lib/actions/bookings";
+import { reEnrichItineraryFromGmail } from "@/lib/actions/gmail";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
@@ -296,8 +297,7 @@ export function ItineraryEditor({
     });
   };
   const submitTransportBooking = (b: BriefTransportBooking) => {
-    const lastStop = sortedStops[sortedStops.length - 1];
-    if (!lastStop || !b.departureHub.id || !b.destinationHub.id) return;
+    if (!b.departureHub.id || !b.destinationHub.id) return;
     const departIso = b.date && b.departTime
       ? new Date(`${b.date}T${b.departTime}`).toISOString()
       : new Date().toISOString();
@@ -306,10 +306,8 @@ export function ItineraryEditor({
       : new Date().toISOString();
     startTransition(async () => {
       setError(null);
-      const result = await insertTransitLeg({
+      const result = await addFullTransportBooking({
         itinerary_id: itinerary.id,
-        before_stop_id: lastStop.id,
-        after_stop_id: null,
         mode: b.mode ?? "train",
         depart_hub_id: b.departureHub.id!,
         depart_label: b.departureHub.label ?? "Departure",
@@ -317,7 +315,23 @@ export function ItineraryEditor({
         arrive_hub_id: b.destinationHub.id!,
         arrive_label: b.destinationHub.label ?? "Arrival",
         arrive_time: arriveIso,
+        changeovers: b.changeovers
+          .filter((co) => co.hub.id || co.hub.label)
+          .map((co) => ({
+            hub_id: co.hub.id,
+            hub_label: co.hub.label ?? "Changeover",
+            arrive_time: co.arriveTime ? new Date(`${b.date}T${co.arriveTime}`).toISOString() : departIso,
+            depart_time: co.departTime ? new Date(`${b.date}T${co.departTime}`).toISOString() : departIso,
+          })),
         service_number: b.serviceNumber?.trim() || null,
+        reference: b.reference?.trim() || null,
+        seat: b.seat?.trim() || null,
+        price: b.price ? Number(b.price) : null,
+        operator: b.operator,
+        ticket_type: b.ticketType,
+        route_restriction: b.routeRestriction,
+        barcodes: b.barcodes,
+        segment_calling_points: b.segmentCallingPoints,
       });
       if (!result.ok) {
         setError(feedbackFromError(result.error).message);
@@ -1256,16 +1270,37 @@ export function ItineraryEditor({
             + Accommodation
           </button>
           {gmailConnected ? (
-            <button
-              type="button"
-              className="btn-ghost"
-              style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
-              onClick={() => setGmailImportOpen(true)}
-              disabled={pending}
-            >
-              {Icon.ticket}
-              Scan for tickets
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+                onClick={() => setGmailImportOpen(true)}
+                disabled={pending}
+              >
+                {Icon.ticket}
+                Scan for tickets
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: 12 }}
+                onClick={() => {
+                  startTransition(async () => {
+                    setError(null);
+                    const result = await reEnrichItineraryFromGmail(itinerary.id);
+                    if (!result.ok) {
+                      setError(feedbackFromError(result.error).message);
+                      return;
+                    }
+                    if (result.value.enriched > 0) router.refresh();
+                  });
+                }}
+                disabled={pending}
+              >
+                Refresh ticket details
+              </button>
+            </>
           ) : null}
           <span style={{ marginLeft: "auto" }}>
             <DeleteItineraryButton
