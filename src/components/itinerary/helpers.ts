@@ -55,12 +55,8 @@ export const TRANSITION_OPTIONS: Array<{
   value: TransitionMode;
   label: string;
   icon: TransportName;
-  // True when the mode is fundamentally station-/airport-based — the
-  // user has to get to and from a terminal at each end, so we ask for
-  // the local connection mode.
   stationBased?: boolean;
 }> = [
-  { value: "auto", label: "Auto", icon: "auto" },
   { value: "walk", label: "Walk", icon: "walk" },
   { value: "drive", label: "Drive", icon: "drive" },
   { value: "train", label: "Train", icon: "train", stationBased: true },
@@ -78,7 +74,6 @@ export const LOCAL_MODES: Array<{
   label: string;
   icon: TransportName;
 }> = [
-  { value: "auto", label: "Auto", icon: "auto" },
   { value: "walk", label: "Walk", icon: "walk" },
   { value: "drive", label: "Drive", icon: "drive" },
   { value: "taxi", label: "Taxi", icon: "taxi" },
@@ -148,9 +143,9 @@ export function emptyStopover(): Stopover {
 
 export function emptyTransition(): BriefTransition {
   return {
-    mode: "auto",
-    localBefore: "auto",
-    localAfter: "auto",
+    mode: "walk",
+    localBefore: "walk",
+    localAfter: "walk",
     booked: false,
     booking: {
       provider: "",
@@ -220,6 +215,35 @@ export function stopoverAsAnchor(sv: Stopover, uid: string): Anchor {
     timingMode: "around_then",
     timingModeOverride: false,
     durationMins: sv.durationMins,
+    checkOutDate: "",
+    checkOutTime: "",
+    notes: null,
+    accommodation: null,
+  };
+}
+
+export function transitStopAsAnchor(stop: {
+  id: string;
+  title: string | null;
+  start_time: string | null;
+}): Anchor {
+  const time = stop.start_time
+    ? new Date(stop.start_time).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+    : "";
+  return {
+    uid: stop.id,
+    place: stop.title ? { kind: "location" as const, location_id: "", label: stop.title, location_type: "other" as const } : null,
+    kindOverride: "station",
+    roleOverride: null,
+    date: stop.start_time?.slice(0, 10) ?? "",
+    time,
+    timingMode: "arrive_by",
+    timingModeOverride: false,
+    durationMins: 0,
     checkOutDate: "",
     checkOutTime: "",
     notes: null,

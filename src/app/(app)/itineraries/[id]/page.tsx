@@ -79,10 +79,11 @@ export default async function ItineraryDetailPage({
       .select(
         `id, sequence, type, title, start_time, end_time, duration_minutes,
          is_time_fixed, location_id, customer_id, customer_site_id, contact_id,
-         external_reference, external_url, metadata, notes,
+         transport_hub_id, external_reference, external_url, metadata, notes,
          location:locations(name, type, address, latitude, longitude),
          customer:customers(name),
-         customer_site:customer_sites(name, address, latitude, longitude)`,
+         customer_site:customer_sites(name, address, latitude, longitude),
+         transport_hub:transport_hubs(name, code, latitude, longitude)`,
       )
       .eq("itinerary_id", id)
       .order("sequence"),
@@ -154,10 +155,17 @@ export default async function ItineraryDetailPage({
           }>,
         };
 
-  const totalCost = (expenseRows ?? []).reduce(
+  const expenseCost = (expenseRows ?? []).reduce(
     (sum, e) => sum + (Number(e.amount) || 0),
     0,
   );
+  // Also tally transport booking prices from stop metadata
+  const bookingCost = (stops ?? []).reduce((sum, s) => {
+    const meta = s.metadata as Record<string, unknown> | null;
+    const price = meta?.price as number | undefined;
+    return sum + (price ?? 0);
+  }, 0);
+  const totalCost = expenseCost + bookingCost;
   const currency =
     (expenseRows?.[0]?.currency as string | undefined) ?? "GBP";
 

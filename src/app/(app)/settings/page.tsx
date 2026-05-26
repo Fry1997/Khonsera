@@ -104,7 +104,11 @@ export default async function SettingsPage({
         <div className="j-card p-5">
           <h2 className="h3 mb-2">Account</h2>
           <p className="small">{ctx.email}</p>
-          {ctx.isStaff ? (
+          {ctx.isAdmin ? (
+            <p className="mt-1 text-xs text-terra">
+              Admin account
+            </p>
+          ) : ctx.isStaff ? (
             <p className="mt-1 text-xs text-terra">
               Staff account · demo mode available
             </p>
@@ -197,6 +201,18 @@ export default async function SettingsPage({
             isn&rsquo;t affected.
           </p>
           <ThemePicker />
+        </section>
+      ) : null}
+
+      {ctx.isAdmin ? (
+        <section className="j-card p-5">
+          <h2 className="h3">Admin tools</h2>
+          <p className="small mt-1 mb-3">
+            System-level tools. Only visible to admins.
+          </p>
+          <a href="/settings/rail-network" className="btn btn-ghost">
+            Rail network seed
+          </a>
         </section>
       ) : null}
 

@@ -160,7 +160,7 @@ const placeCacheKey = (
   const part = (p: PlaceSelection | null) =>
     p
       ? p.kind === "location"
-        ? `L:${p.location_id}`
+        ? `L:${p.location_id || (p as any).transport_hub_id || "?"}`
         : p.kind === "customer_site"
           ? `S:${p.customer_site_id}`
           : `C:${p.customer_id}`
@@ -189,12 +189,17 @@ export function useRoutePreviewsForPlaces() {
       cacheRef.current.set(k, "pending");
       const result = await previewRouteForPlaces({
         from_location_id:
-          from.kind === "location" ? from.location_id : null,
+          from.kind === "location" && from.location_id ? from.location_id : null,
         from_customer_site_id:
           from.kind === "customer_site" ? from.customer_site_id : null,
-        to_location_id: to.kind === "location" ? to.location_id : null,
+        from_transport_hub_id:
+          (from as any).transport_hub_id ?? null,
+        to_location_id:
+          to.kind === "location" && to.location_id ? to.location_id : null,
         to_customer_site_id:
           to.kind === "customer_site" ? to.customer_site_id : null,
+        to_transport_hub_id:
+          (to as any).transport_hub_id ?? null,
         mode,
       });
       if (result.ok) {

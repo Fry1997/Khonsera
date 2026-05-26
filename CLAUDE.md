@@ -2,13 +2,21 @@
 
 **Every session must read this before making changes. Update it before ending.**
 
-## Known Bugs (as of 2026-05-24)
+## Mandatory: Keep docs/ updated
+
+After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.
+
+## Known Bugs (as of 2026-05-26)
 
 ### Planning page after brief submit
-- Transport booking stops show as "(no place yet)" — they're created with `location_id: null` and title from hub label (often just station codes like "WEL"). Need to resolve hub IDs to proper location records with names and coordinates.
-- "via undefined" on transitions — mode not set properly on auto-created transitions between transport booking stops.
-- PR #11 restored the old "+ Train" / "+ Flight" inline buttons in the editor — these should be replaced with the single "+ Transport" button. The editor file needs the inline button replacement re-applied after the rebase.
-- Transport booking stops created as `type: "appointment"` — should use a more appropriate type or have metadata that the editor recognises as transit stops.
+- All previously listed bugs FIXED (see git history)
+- ~~Batch transition insert crashed on unique constraint~~ FIXED: `.insert()` → `.upsert()` with onConflict
+- ~~Changeover stops (Leicester) had no transport_hub_id~~ FIXED: Gmail import now resolves changeover station names via resolveHubByName
+- ~~Google Transit duration overwrites booked train times~~ FIXED: skip `computed_duration_minutes` overwrite for locked (is_locked=true) legs
+- ~~Changeover duration uses arrival instead of departure~~ FIXED: use `from.end_time` (departure) instead of `from.start_time` (arrival) for changeover stops
+- ~~No return-home walk transition without "be home by"~~ FIXED: always create a type="end" return-home stop so the transition loop generates the walk-home leg
+- ~~Feasibility warnings on locked train legs~~ FIXED: skip feasibility checks for locked transitions (0m slack on a booked train is a fact, not a warning)
+- ~~Badge times empty on first load~~ FIXED: fall back to transition's computed_duration_minutes when preview cache is empty
 
 ## Architecture
 
@@ -50,7 +58,16 @@ Subject keywords MUST include: `eticket`, `etickets`, `tickets` (plural), `trip`
 - **Marketing filter**: Skip emails with `unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo` in the SUBJECT (not body). Trainline's email footer has "unsubscribe" in the body — checking the body would kill real bookings.
 - **Forwarded email detection**: When no SENDER_CONFIG matches, check the email BODY for known provider names ("trainline", "easyjet", etc.) AND booking-like content (HH:MM times, "booking ref", "e-ticket", etc.). This catches forwarded confirmation emails.
 - **HTML-only emails**: iPhone forwards often have only `text/html` and no `text/plain` MIME part. When there's no plain text, strip HTML tags to produce text for regex parsing. Without this, the parser receives empty text and fails silently.
-- **Trainline eticket format**: The email body has "Wellingborough to Derby" as station names but NO departure/arrival times. Times are only in the PDF attachments. The parser extracts stations + changeover codes (WEL→LEI, LEI→DER from ticket numbers) + date + booking ref. Times are left blank for manual entry.
+- **Trainline eticket format**: Two emails per booking (eticket + booking confirmation). The eticket is the richer source:
+  - Body text: "Adult 1, WEL to LEI: TTBQEBVV49M" patterns give station codes + ticket refs + outbound/return split
+  - PDF attachments (one per leg): departure/arrival times, operator, ticket type, route restriction, price, NRS booking ref, coach/seat
+  - PDF images: Aztec barcode decoded via unpdf extractImages + zxing-wasm → full RSP barcode payload for ticket regeneration
+  - Booking confirmation subject: departure times in "(DD Month at HH:MM - DD Month at HH:MM)" pattern
+  - Marketing filter: no-reply@comms.trainline.com + "Open this email for tickets" → skip
+  - Deduplication: booking confirmation preferred over eticket for same-date Trainline bookings
+- **Price extraction**: Trainline SAS footer contains "capital of 118 513.94 Euros" — `findTrainlinePrice` strips text after "Terms and Conditions" before searching
+- **PDF library**: Use `unpdf` (pure JS) NOT `pdf-parse` (native modules crash on Vercel serverless)
+- **Barcode decoding**: `zxing-wasm/reader` with `{formats: ["Aztec"]}` — pass plain `{data, width, height}` object, NOT `ImageData` constructor (unavailable in Node.js)
 
 ### Scan Cache (`gmail_scanned_emails` table)
 - Every scanned email is persisted with sender, subject, parsed data, and parse_failed flag
@@ -116,6 +133,51 @@ Transport booking stops store `transport_hub_id`. The `transport_hubs` table has
 ### Solver
 `resolveItineraryTimes()` is called at the end of `createItineraryFromBrief()`. The solver propagates times from anchored stops through transitions, computing departure times for unfixed stops.
 
+## UK Rail Network (OSM-seeded)
+
+### How it works
+The entire UK rail network (~643k edges) is stored in `rail_network_edges` (migration 0025). Seeded once from the user's browser via `/settings/rail-network` (Overpass blocks Vercel IPs, so the browser makes the Overpass calls). Admin-only page (requires `is_admin = true` on profiles).
+
+### Routing: Dijkstra, not BFS
+`routeRailPath()` in `src/lib/actions/rail-network.ts` uses Dijkstra with haversine edge weights. BFS (node-count shortest) was tried and failed — it preferred routes with fewer nodes even when geographically longer (e.g., via Beeston instead of direct to Derby at Trent Junction).
+
+### Endpoint handling
+Rail polylines end at the nearest rail node to the station, NOT at the station entrance coordinates. Snapping to entrance coordinates caused visible zigzags at close zoom because entrances are offset from the track.
+
+### Caching
+Two-tier: `rail_route_cache` (L1, by CRS code pair) → `routeRailPath` BFS (L2, from `rail_network_edges`). Results cached after first computation.
+
+### Pipe characters in polylines
+Google's encoded polyline format can produce `|` characters. Google Static Maps uses `|` as a path parameter delimiter. The `buildStaticMapUrl` function in `src/lib/google/maps.ts` uses `encodeURIComponent` on the polyline and manually appends path params (NOT `URLSearchParams`, which double-encodes `%7C`).
+
+## Admin Role
+
+`is_admin` boolean on `profiles` table (migration 0026). Separate from `is_staff`:
+- **Staff**: demo mode, palette picker, feature testing
+- **Admin**: system tools (rail network seeding, data management)
+
+`requireUserContext()` returns `isAdmin` alongside `isStaff`. Admin pages redirect non-admins. Admin server actions reject non-admins.
+
+## JourneyMap (MapLibre)
+
+### Architecture
+`src/components/journey-map/` — interactive map replacing Google Static Maps (RouteMap).
+- **MapLibre GL JS** with OSM raster tiles (basemap, desaturated + warm-tinted)
+- **GeoJSON layers** for journey lines (rail solid gold + glow, walk dashed, road solid hairline)
+- **maplibregl.Marker** for station markers (bullseye origin, gold disc destination, ringed intermediate)
+- Zero SVG — everything renders in MapLibre's WebGL/HTML pipeline, zero lag on pan/zoom
+
+### Themes
+Three themes: `dusk` (warm cream, default), `midnight` (dark), `sahara` (daylight ochre). Theme drives basemap raster paint (saturation, brightness) and overlay colours. Theme files in `src/components/journey-map/themes/`.
+
+### Tile source
+Currently OSM raster tiles (always available, no API key). Upgrade path: Protomaps or MapTiler vector tiles for full brand control (custom layer colours, hidden POIs). Requires an API key.
+
+### Next steps
+- Calling points: parse intermediate stops from Trainline PDFs, render as small waypoint markers on the rail leg
+- Planning-page transport booking: polyline + duration should work when adding transport during planning (not just from brief)
+- Day-of mode: live position dot, adaptive zoom — component API supports it, just needs wiring
+
 ## Key File Map
 
 | File | Purpose |
@@ -137,3 +199,10 @@ Transport booking stops store `transport_hub_id`. The `transport_hubs` table has
 | `src/lib/actions/transitions.ts` | Route previews, pickPoint, transition CRUD |
 | `src/lib/actions/travel-profile.ts` | Hub search (searchTransportHubs) |
 | `src/lib/itinerary/solver.ts` | Time propagation solver |
+| `src/lib/osm/rail-routes.ts` | getRailPolyline: cache check → BFS route → cache result |
+| `src/lib/actions/rail-network.ts` | seedRailEdges, routeRailPath (Dijkstra), clearRailNetwork |
+| `src/components/journey-map/journey-map.tsx` | JourneyMap component (MapLibre + GeoJSON layers) |
+| `src/components/journey-map/map-style/build-map-style.ts` | Theme → MapLibre style JSON |
+| `src/components/journey-map/themes/` | dusk, midnight, sahara theme definitions |
+| `src/app/(app)/settings/rail-network/` | Admin page for seeding UK rail network |
+| `scripts/backfill-rail-polylines.mjs` | CLI alternative for seeding (requires terminal) |

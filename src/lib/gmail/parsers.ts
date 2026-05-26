@@ -9,6 +9,7 @@ import type {
   ParsedTransportSegment,
   ParsedAccommodationBooking,
 } from "./types";
+import { resolveStationName } from "./trainline-pdf";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -554,56 +555,81 @@ function parseTrainlineEticket(
   // Subject: "Your etickets to Derby Thursday 25 June"
   const destMatch = subject.match(/e-?tickets?\s+to\s+(.+?)(?:\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*)?(?:\s+\d{1,2}\s+\w+)/i);
   const dateMatch = subject.match(/(\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?))/i);
-  const destination = destMatch?.[1]?.trim() ?? null;
   const travelDate = dateMatch ? parseDate(dateMatch[1]) : null;
+  const date = travelDate ?? new Date().toISOString().slice(0, 10);
 
-  // Check train-times URLs for structured data
-  const urlLegs = parseTrainlineTrainTimesUrls(html);
-  if (urlLegs.length > 0) {
-    const segments = urlLegs.map((leg) => makeSegment({
-      from_station: leg.from, to_station: leg.to,
-      departure_date: leg.date, departure_time: leg.time,
+  // Primary: "Adult 1, WEL to LEI: TTBQEBVV49M" patterns in body text
+  const ticketPattern = /([A-Z]{3})\s+to\s+([A-Z]{3}):\s*(TT[A-Z0-9]{8,12})/g;
+  const tickets: Array<{ from: string; to: string; ref: string; direction: "outbound" | "return" }> = [];
+  let m;
+  let currentDirection: "outbound" | "return" = "outbound";
+  const lines = text.split("\n");
+  for (const line of lines) {
+    if (/\breturn\b/i.test(line) && !/outbound/i.test(line)) currentDirection = "return";
+    const ticketMatch = line.match(/([A-Z]{3})\s+to\s+([A-Z]{3}):\s*(TT[A-Z0-9]{8,12})/);
+    if (ticketMatch) {
+      tickets.push({
+        from: ticketMatch[1],
+        to: ticketMatch[2],
+        ref: ticketMatch[3],
+        direction: currentDirection,
+      });
+    }
+  }
+
+  if (tickets.length > 0) {
+    const segments = tickets.map((t) => makeSegment({
+      from_station: resolveStationName(t.from),
+      to_station: resolveStationName(t.to),
+      from_station_code: t.from,
+      to_station_code: t.to,
+      departure_date: date,
+      departure_time: "00:00",
+      barcode_ref: t.ref,
     }));
+
+    // Extract transaction ID as booking reference
+    const txnMatch = text.match(/Transaction\s*ID:\s*(\d{10,})/i);
+
     return {
       type: "transport", mode: "train", provider: "Trainline",
-      booking_reference: findTrainlineBookingRef(text),
-      price: findPrice(text)?.amount ?? null,
-      currency: findPrice(text)?.currency ?? "GBP",
+      booking_reference: txnMatch?.[1] ?? null,
+      price: findTrainlinePrice(text),
+      currency: "GBP",
       segments,
     };
   }
 
-  // Fallback: extract station codes from body (WEL→LEI pattern)
-  const stationCodePattern = /\b([A-Z]{3})\s*→\s*([A-Z]{3})\b/g;
+  // Fallback: station codes from WEL→LEI or WEL to LEI patterns
+  const stationCodePattern = /\b([A-Z]{3})\s*(?:→|to)\s*([A-Z]{3})\b/g;
   const codePairs: Array<[string, string]> = [];
-  let m;
   while ((m = stationCodePattern.exec(text)) !== null) {
     codePairs.push([m[1], m[2]]);
   }
 
-  const date = travelDate ?? new Date().toISOString().slice(0, 10);
-
   if (codePairs.length > 0) {
     const segments = codePairs.map(([fc, tc]) => makeSegment({
-      from_station: fc, to_station: tc,
+      from_station: resolveStationName(fc),
+      to_station: resolveStationName(tc),
       from_station_code: fc, to_station_code: tc,
       departure_date: date, departure_time: "00:00",
     }));
     return {
       type: "transport", mode: "train", provider: "Trainline",
       booking_reference: findTrainlineBookingRef(text),
-      price: findPrice(text)?.amount ?? null,
-      currency: findPrice(text)?.currency ?? "GBP",
+      price: findTrainlinePrice(text),
+      currency: "GBP",
       segments,
     };
   }
 
+  const destination = destMatch?.[1]?.trim() ?? null;
   if (destination) {
     return {
       type: "transport", mode: "train", provider: "Trainline",
       booking_reference: findTrainlineBookingRef(text),
-      price: findPrice(text)?.amount ?? null,
-      currency: findPrice(text)?.currency ?? "GBP",
+      price: findTrainlinePrice(text),
+      currency: "GBP",
       segments: [makeSegment({
         from_station: "Unknown", to_station: destination,
         departure_date: date, departure_time: "00:00",
@@ -686,6 +712,15 @@ function parseTrainlineGeneric(
     currency: findPrice(text)?.currency ?? "GBP",
     segments,
   };
+}
+
+function findTrainlinePrice(text: string): number | null {
+  // Trainline footer contains "registered capital of 118 513.94 Euros"
+  // which the generic findPrice matches. Strip the footer first.
+  const cutoff = text.search(/Terms\s+and\s+Conditions|Trainline\s+Group|registered\s+office/i);
+  const body = cutoff > 0 ? text.slice(0, cutoff) : text;
+  const price = findPrice(body);
+  return price?.amount ?? null;
 }
 
 function findTrainlineBookingRef(text: string): string | null {

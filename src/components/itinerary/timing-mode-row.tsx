@@ -18,6 +18,7 @@ export function TimingModeRow({
     { value: "arrive_by", label: "Arrive by", helper: "I know when to be there" },
     { value: "leave_by", label: "Leave by", helper: "I know when I need to leave" },
     { value: "around_then", label: "Around then", helper: "Fit between things" },
+    { value: "maximize", label: "Maximize", helper: "Spend as long as possible here" },
   ];
   return (
     <div className="timing-mode-row">

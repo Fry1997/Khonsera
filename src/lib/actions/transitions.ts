@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { routeForTransition, type TransitionRoute } from "@/lib/integrations/routing";
+import { getRailPolyline } from "@/lib/osm/rail-routes";
 import { resolveItineraryTimes } from "./itineraries";
 import { dbResult, parseInput } from "./_helpers";
 import { err, errors, ok, type Result } from "@/lib/errors";
@@ -388,8 +389,10 @@ export async function previewRoute(
 const previewByPlaceSchema = z.object({
   from_location_id: z.string().uuid().nullable().optional(),
   from_customer_site_id: z.string().uuid().nullable().optional(),
+  from_transport_hub_id: z.string().uuid().nullable().optional(),
   to_location_id: z.string().uuid().nullable().optional(),
   to_customer_site_id: z.string().uuid().nullable().optional(),
+  to_transport_hub_id: z.string().uuid().nullable().optional(),
   mode: modeEnum,
 });
 
@@ -406,6 +409,7 @@ export async function previewRouteForPlaces(
   const lookup = async (
     locationId: string | null | undefined,
     customerSiteId: string | null | undefined,
+    hubId?: string | null | undefined,
   ): Promise<{ lat: number; lng: number } | null> => {
     if (locationId) {
       const { data } = await supabase
@@ -417,7 +421,6 @@ export async function previewRouteForPlaces(
       if (data?.latitude != null && data?.longitude != null) {
         return { lat: data.latitude, lng: data.longitude };
       }
-      return null;
     }
     if (customerSiteId) {
       const { data } = await supabase
@@ -429,7 +432,16 @@ export async function previewRouteForPlaces(
       if (data?.latitude != null && data?.longitude != null) {
         return { lat: data.latitude, lng: data.longitude };
       }
-      return null;
+    }
+    if (hubId) {
+      const { data } = await supabase
+        .from("transport_hubs")
+        .select("latitude, longitude")
+        .eq("id", hubId)
+        .maybeSingle();
+      if (data?.latitude != null && data?.longitude != null) {
+        return { lat: Number(data.latitude), lng: Number(data.longitude) };
+      }
     }
     return null;
   };
@@ -437,10 +449,12 @@ export async function previewRouteForPlaces(
   const fromPoint = await lookup(
     parsed.value.from_location_id,
     parsed.value.from_customer_site_id,
+    parsed.value.from_transport_hub_id,
   );
   const toPoint = await lookup(
     parsed.value.to_location_id,
     parsed.value.to_customer_site_id,
+    parsed.value.to_transport_hub_id,
   );
   if (!fromPoint || !toPoint) {
     return ok({ durationMinutes: null, distanceMiles: null });
@@ -473,7 +487,7 @@ const insertTransitLegSchema = z.object({
   // wants to add a train/flight after their last anchor (e.g. flight
   // home from a trip).
   after_stop_id: z.string().uuid().nullable().optional(),
-  mode: z.enum(["train", "flight"]),
+  mode: z.enum(["train", "flight", "bus", "tube", "taxi", "drive"]),
   depart_hub_id: z.string().uuid(),
   depart_label: z.string().trim().max(200),
   depart_time: z.string().datetime(),
@@ -639,4 +653,110 @@ function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   if (hub?.latitude != null && hub?.longitude != null)
     return { lat: hub.latitude, lng: hub.longitude };
   return null;
+}
+
+export async function backfillRailPolylines(
+  itineraryId: string,
+): Promise<{ filled: number }> {
+  await requireUserContext();
+  const supabase = await createClient();
+
+  // Find locked transit transitions without polylines
+  const { data: missing } = await supabase
+    .from("transitions")
+    .select("id, mode, from_stop_id, to_stop_id")
+    .eq("itinerary_id", itineraryId)
+    .eq("is_locked", true)
+    .is("overview_polyline", null);
+
+  console.log("[rail-routes] backfill: found", missing?.length ?? 0, "transitions missing polylines");
+  if (!missing || missing.length === 0) return { filled: 0 };
+
+  let filled = 0;
+  for (const t of missing) {
+    const { data: stops, error: stopsErr } = await supabase
+      .from("stops")
+      .select("id, transport_hub_id, transport_hub:transport_hubs(latitude, longitude, code)")
+      .in("id", [t.from_stop_id, t.to_stop_id]);
+
+    if (stopsErr) {
+      console.error("[rail-routes] stops query error:", stopsErr.message);
+      continue;
+    }
+    if (!stops || stops.length < 2) {
+      console.log("[rail-routes] skipping transition", t.id, "- only", stops?.length ?? 0, "stops found");
+      continue;
+    }
+    const fromStop = stops.find((s) => s.id === t.from_stop_id);
+    const toStop = stops.find((s) => s.id === t.to_stop_id);
+    const fh = first(fromStop?.transport_hub) as
+      | { latitude?: number | null; longitude?: number | null; code?: string | null }
+      | null;
+    const th = first(toStop?.transport_hub) as
+      | { latitude?: number | null; longitude?: number | null; code?: string | null }
+      | null;
+    console.log("[rail-routes] from hub:", fh, "to hub:", th);
+    if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) {
+      console.log("[rail-routes] skipping - missing coordinates");
+      continue;
+    }
+
+    try {
+      const poly = await getRailPolyline(
+        Number(fh.latitude), Number(fh.longitude),
+        Number(th.latitude), Number(th.longitude),
+        (fh.code as string) ?? null, (th.code as string) ?? null,
+      );
+      console.log("[rail-routes] polyline result for", t.id, ":", poly ? `${poly.length} chars` : "null");
+      if (poly) {
+        await supabase
+          .from("transitions")
+          .update({ overview_polyline: poly })
+          .eq("id", t.id);
+        filled++;
+      }
+    } catch (err) {
+      console.error("[rail-routes] error for transition", t.id, ":", err);
+    }
+  }
+  console.log("[rail-routes] backfill complete:", filled, "filled");
+  return { filled };
+}
+
+const storePolylineSchema = z.object({
+  transitionId: z.string().uuid(),
+  polyline: z.string().min(1).max(100_000),
+  fromCode: z.string().max(10).optional(),
+  toCode: z.string().max(10).optional(),
+  pointCount: z.number().int().min(2).optional(),
+});
+
+export async function storeRailPolyline(
+  input: z.infer<typeof storePolylineSchema>,
+): Promise<{ ok: boolean }> {
+  const ctx = await requireUserContext();
+  const parsed = storePolylineSchema.parse(input);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("transitions")
+    .update({ overview_polyline: parsed.polyline })
+    .eq("id", parsed.transitionId)
+    .eq("workspace_id", ctx.workspaceId);
+
+  if (error) return { ok: false };
+
+  if (parsed.fromCode && parsed.toCode) {
+    await supabase.from("rail_route_cache").upsert(
+      {
+        from_station_code: parsed.fromCode,
+        to_station_code: parsed.toCode,
+        encoded_polyline: parsed.polyline,
+        point_count: parsed.pointCount ?? 0,
+      },
+      { onConflict: "from_station_code,to_station_code" },
+    );
+  }
+
+  return { ok: true };
 }

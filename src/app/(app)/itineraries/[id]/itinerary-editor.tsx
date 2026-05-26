@@ -1,11 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useMemo, useEffect, useRef } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import { RouteMap } from "@/components/route-map";
+import { decodePolyline } from "@/components/journey-map";
+import type { Journey, Leg, Station, LegMode } from "@/components/journey-map";
+
+// MapLibre needs browser APIs — dynamic import with ssr: false
+const JourneyMap = dynamic(
+  () => import("@/components/journey-map").then((m) => m.JourneyMap),
+  { ssr: false },
+);
 import { FormError } from "@/components/ui/form";
 import {
-  createStop,
   deleteStop,
   insertStopAt,
   updateStop,
@@ -15,7 +24,6 @@ import {
   upsertTransition,
   setTransitionMode,
 } from "@/lib/actions/transitions";
-import { TransportHubPicker } from "@/components/transport-hub-picker";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
@@ -26,26 +34,27 @@ import type {
   StopType,
   TransitionMode,
 } from "@/lib/types/domain";
-import { AddStopForm } from "./add-stop-form";
 import {
-  AddTransportBookingForm,
-  type TransportBookingMode,
-} from "./add-transport-booking-form";
+  TransportBookingCard,
+  emptyTransportBookingItem,
+  type BriefTransportBooking,
+} from "@/components/itinerary/transport-booking-card";
 import { AddAccommodationBookingForm } from "./add-accommodation-booking-form";
 import { GmailImportPanel } from "./gmail-import-panel";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
 import { TransportIcon, StopIcon } from "@/components/icons";
 import {
   AddBetween,
-  AnchorCard,
-  StopoverCard,
   TRANSITION_OPTIONS,
+  Timeline,
   TransitionRow as PlanningTransitionRow,
   anchorsFromStops,
   anchorToStopUpdate,
   buildDatePresets,
+  buildPlanningTimeline,
   emptyTransition,
   stopoverAsAnchor,
+  transitStopAsAnchor,
   stopoverToStopUpdate,
   timelineFromStops,
   transitionKey,
@@ -263,21 +272,60 @@ export function ItineraryEditor({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [transportBookingFor, setTransportBookingFor] = useState<{
-    stopId: string;
-    label: string;
-    mode: TransportBookingMode;
-  } | null>(null);
   const [accommodationBookingFor, setAccommodationBookingFor] = useState<{
     afterStopId?: string;
     afterStopLabel?: string;
     existingStopId?: string;
   } | null>(null);
   const [gmailImportOpen, setGmailImportOpen] = useState(false);
-  // Standalone "add booking" — not tied to an existing stop.
-  const [showAddTransport, setShowAddTransport] = useState(false);
   const [showAddAccommodation, setShowAddAccommodation] = useState(false);
+
+  // Transport booking card — same component as the brief. When set,
+  // the card renders in a modal. On "Done" (confirmed: true), we call
+  // the server action and dismiss.
+  const [editingTransport, setEditingTransport] = useState<BriefTransportBooking | null>(null);
+  const handleTransportCardChange = (patch: Partial<BriefTransportBooking>) => {
+    setEditingTransport((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      if (patch.confirmed) {
+        submitTransportBooking(next);
+        return null;
+      }
+      return next;
+    });
+  };
+  const submitTransportBooking = (b: BriefTransportBooking) => {
+    const lastStop = sortedStops[sortedStops.length - 1];
+    if (!lastStop || !b.departureHub.id || !b.destinationHub.id) return;
+    const departIso = b.date && b.departTime
+      ? new Date(`${b.date}T${b.departTime}`).toISOString()
+      : new Date().toISOString();
+    const arriveIso = b.date && b.arriveTime
+      ? new Date(`${b.date}T${b.arriveTime}`).toISOString()
+      : new Date().toISOString();
+    startTransition(async () => {
+      setError(null);
+      const result = await insertTransitLeg({
+        itinerary_id: itinerary.id,
+        before_stop_id: lastStop.id,
+        after_stop_id: null,
+        mode: b.mode ?? "train",
+        depart_hub_id: b.departureHub.id!,
+        depart_label: b.departureHub.label ?? "Departure",
+        depart_time: departIso,
+        arrive_hub_id: b.destinationHub.id!,
+        arrive_label: b.destinationHub.label ?? "Arrival",
+        arrive_time: arriveIso,
+        service_number: b.serviceNumber?.trim() || null,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   // Transitions keyed by from_stop_id for fast lookup.
   const transitionByFrom = useMemo(() => {
@@ -313,7 +361,7 @@ export function ItineraryEditor({
   ): ModePreviewMap => {
     const out: ModePreviewMap = {};
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       const entry = routePreviews.get(fromStopId, toStopId, opt.value);
       if (entry) out[opt.value] = entry;
     }
@@ -321,9 +369,69 @@ export function ItineraryEditor({
   };
   const prefetchPair = (fromStopId: string, toStopId: string) => {
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       routePreviews.fetchPreview(fromStopId, toStopId, opt.value);
     }
+  };
+
+  const gapPreviewsForPair = (
+    fromStopId: string,
+    toStopId: string,
+  ): Partial<Record<import("@/components/gap-mode-picker").GapMode, import("@/components/gap-mode-picker").GapPreview>> => {
+    const out: Partial<Record<"walk" | "drive" | "taxi", import("@/components/gap-mode-picker").GapPreview>> = {};
+    const tr = transitionByFrom.get(fromStopId);
+    for (const mode of ["walk", "drive", "taxi"] as const) {
+      const entry = routePreviews.get(fromStopId, toStopId, mode);
+      if (entry) {
+        out[mode] = entry === "pending" ? "pending" : entry;
+      } else if (tr && tr.mode === mode && tr.computed_duration_minutes != null) {
+        out[mode] = { durationMinutes: tr.computed_duration_minutes, distanceMiles: tr.distance_miles ?? null };
+      }
+    }
+    return out;
+  };
+
+  // Gap mode selection — optimistic local state + server persist.
+  // The local state ensures the badge highlights immediately without
+  // waiting for the server round-trip.
+  const [gapModeOverrides, setGapModeOverrides] = useState<Map<string, string>>(new Map());
+  const handleSetGapMode = (fromId: string, toId: string, mode: string) => {
+    const key = `${fromId}::${toId}`;
+    setGapModeOverrides((prev) => new Map(prev).set(key, mode));
+    startTransition(async () => {
+      setError(null);
+      const result = await upsertTransition({
+        itinerary_id: itinerary.id,
+        from_stop_id: fromId,
+        to_stop_id: toId,
+        mode: mode as "walk" | "drive" | "taxi",
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        setGapModeOverrides((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  const gapPreviewsForPairWithOverride = (
+    fromStopId: string,
+    toStopId: string,
+  ): Partial<Record<import("@/components/gap-mode-picker").GapMode, import("@/components/gap-mode-picker").GapPreview>> => {
+    return gapPreviewsForPair(fromStopId, toStopId);
+  };
+
+  const getGapModeSelected = (fromId: string, toId: string, dbMode: string): import("@/components/gap-mode-picker").GapMode | null => {
+    const key = `${fromId}::${toId}`;
+    const override = gapModeOverrides.get(key);
+    const mode = override ?? dbMode;
+    if (mode === "walk" || mode === "drive" || mode === "taxi") return mode;
+    return null;
   };
 
   // Track the most recently created stop so we can auto-expand it
@@ -356,53 +464,6 @@ export function ItineraryEditor({
         return;
       }
       setPendingExpandUid(result.value.id);
-      router.refresh();
-    });
-  };
-
-  // State for the inline + Train / + Flight form. When set, the
-  // editor renders the form between the named anchor pair instead
-  // of the usual inline-add row. Cleared on submit or cancel.
-  const [transitFormFor, setTransitFormFor] = useState<{
-    beforeStopId: string;
-    // null = append at the end (used by the bottom + Train / + Flight).
-    afterStopId: string | null;
-    mode: "train" | "flight";
-  } | null>(null);
-
-  const handleInsertTransitLeg = (input: {
-    beforeStopId: string;
-    // null = append at the end of the itinerary (no after anchor).
-    afterStopId: string | null;
-    mode: "train" | "flight";
-    departHubId: string;
-    departLabel: string;
-    departTime: string;
-    arriveHubId: string;
-    arriveLabel: string;
-    arriveTime: string;
-    serviceNumber?: string;
-  }) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await insertTransitLeg({
-        itinerary_id: itinerary.id,
-        before_stop_id: input.beforeStopId,
-        after_stop_id: input.afterStopId,
-        mode: input.mode,
-        depart_hub_id: input.departHubId,
-        depart_label: input.departLabel,
-        depart_time: new Date(input.departTime).toISOString(),
-        arrive_hub_id: input.arriveHubId,
-        arrive_label: input.arriveLabel,
-        arrive_time: new Date(input.arriveTime).toISOString(),
-        service_number: input.serviceNumber ?? null,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      setTransitFormFor(null);
       router.refresh();
     });
   };
@@ -469,6 +530,14 @@ export function ItineraryEditor({
         to: planningTimeline[i + 1].stop,
       });
     }
+    // Also prefetch last transit → end stop (walk home from station)
+    const endStop = stops.find((s) => s.type === "end") ?? startStop;
+    const lastTransit = [...planningTimeline]
+      .reverse()
+      .find((it) => it.kind === "transit");
+    if (lastTransit && endStop) {
+      pairs.push({ from: lastTransit.stop, to: endStop });
+    }
     // Fan out to all three scoreable modes per pair — the engine
     // returns 'resolving' if any candidate is still pending, so a
     // drive-only prefetch keeps the chip stuck on the spinner until
@@ -490,6 +559,7 @@ export function ItineraryEditor({
     // routePreviews.fetchPreviewsBatch is stable (memoised inside).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planningTimeline, transitions, stops]);
+
   // editedAnchors holds the per-anchor in-flight patch while a card
   // is in expanded mode. We seed each entry from the DB anchor on
   // first expand; onChange writes here; clicking Done flushes the
@@ -594,65 +664,6 @@ export function ItineraryEditor({
       customer_site_id: prev.customer_site_id,
     };
   }, [sortedStops]);
-
-  const handleAdd = (input: Parameters<typeof createStop>[0]) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await createStop(input);
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      const newStop = result.value;
-
-      // After adding, compute the transition into this stop (if there's a
-      // preceding stop) and out of it (if not last). Both happen
-      // server-side via upsertTransition.
-      const precedingStop = sortedStops[sortedStops.length - 1];
-      if (precedingStop) {
-        await upsertTransition({
-          itinerary_id: itinerary.id,
-          from_stop_id: precedingStop.id,
-          to_stop_id: newStop.id,
-        });
-      }
-      setAdding(false);
-      router.refresh();
-    });
-  };
-
-  const handleReturnTo = (target: {
-    label: string;
-    location_id: string | null;
-    customer_id: string | null;
-    customer_site_id: string | null;
-  }) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await createStop({
-        itinerary_id: itinerary.id,
-        type: "other",
-        title: `Back to ${target.label}`,
-        location_id: target.location_id,
-        customer_id: target.customer_id,
-        customer_site_id: target.customer_site_id,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      const newStop = result.value;
-      const precedingStop = sortedStops[sortedStops.length - 1];
-      if (precedingStop) {
-        await upsertTransition({
-          itinerary_id: itinerary.id,
-          from_stop_id: precedingStop.id,
-          to_stop_id: newStop.id,
-        });
-      }
-      router.refresh();
-    });
-  };
 
   const handleDelete = (stopId: string) => {
     if (!window.confirm("Delete this point?")) return;
@@ -820,7 +831,7 @@ export function ItineraryEditor({
       // a follow-up (see the booking-modal direction question).
       return;
     }
-    if (patch.mode === "auto" || patch.mode === "mixed") {
+    if (patch.mode === "mixed") {
       // User cleared the mode. If a transition row exists we can
       // either leave it as 'mixed' (the schema's catch-all) or no-op.
       // Pragmatic call: leave it untouched — clearing is rare and
@@ -916,14 +927,27 @@ export function ItineraryEditor({
       ),
     [transitions],
   );
-  const totalMiles = useMemo(
-    () =>
-      transitions.reduce(
-        (sum, t) => sum + (Number(t.distance_miles) || 0),
-        0,
-      ),
-    [transitions],
-  );
+  const totalMiles = useMemo(() => {
+    const dbMiles = transitions.reduce(
+      (sum, t) => sum + (Number(t.distance_miles) || 0),
+      0,
+    );
+    if (dbMiles > 5) return dbMiles;
+    // Fallback: haversine sum between consecutive stops with coordinates
+    let miles = 0;
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const a = sortedStops[i];
+      const b = sortedStops[i + 1];
+      const aLat = a.customer_site?.latitude ?? a.location?.latitude ?? (a as any).transport_hub?.latitude;
+      const aLng = a.customer_site?.longitude ?? a.location?.longitude ?? (a as any).transport_hub?.longitude;
+      const bLat = b.customer_site?.latitude ?? b.location?.latitude ?? (b as any).transport_hub?.latitude;
+      const bLng = b.customer_site?.longitude ?? b.location?.longitude ?? (b as any).transport_hub?.longitude;
+      if (aLat != null && aLng != null && bLat != null && bLng != null) {
+        miles += haversine(Number(aLat), Number(aLng), Number(bLat), Number(bLng));
+      }
+    }
+    return miles;
+  }, [transitions, sortedStops]);
   const stopCount = useMemo(
     () =>
       sortedStops.filter(
@@ -944,36 +968,140 @@ export function ItineraryEditor({
 
   // Map URL — markers from stops w/ coords + paths from transition polylines.
   // Coordinates come from customer_site → location.
-  const mapUrl = useMemo(() => {
-    const markers: { lat: number; lng: number; label?: string }[] = [];
-    sortedStops.forEach((s, i) => {
+  const mapStops = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Array<{ lat: number; lng: number; label: string; code?: string; role: "home" | "transit" | "site" }> = [];
+    sortedStops.forEach((s) => {
       const lat =
-        s.customer_site?.latitude ?? s.location?.latitude ?? null;
+        s.customer_site?.latitude ?? s.location?.latitude ?? (s as any).transport_hub?.latitude ?? null;
       const lng =
-        s.customer_site?.longitude ?? s.location?.longitude ?? null;
-      if (lat != null && lng != null) {
-        markers.push({
-          lat: Number(lat),
-          lng: Number(lng),
-          label: String(i + 1),
-        });
+        s.customer_site?.longitude ?? s.location?.longitude ?? (s as any).transport_hub?.longitude ?? null;
+      if (lat == null || lng == null) return;
+      const coordKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
+      if (seen.has(coordKey)) return;
+      seen.add(coordKey);
+      const name = s.title ?? s.location?.name ?? (s as any).transport_hub?.name ?? "";
+      const hubCode = (s as any).transport_hub?.code as string | undefined;
+      const isHome = s.type === "start" || s.type === "end";
+      const sType = s.type as string;
+      const isTransit = sType === "transit_departure" || sType === "transit_arrival" || sType === "transit_changeover";
+      out.push({
+        lat: Number(lat),
+        lng: Number(lng),
+        label: name,
+        code: isHome ? undefined : isTransit ? (hubCode ?? name.slice(0, 3).toUpperCase()) : "SITE",
+        role: isHome ? "home" : isTransit ? "transit" : "site",
+      });
+    });
+    return out;
+  }, [sortedStops]);
+
+  const mapSegments = useMemo(() => {
+    const segs: Array<{ type: "encoded"; polyline: string }> = [];
+    for (const t of transitions) {
+      if (t.overview_polyline) {
+        segs.push({ type: "encoded", polyline: t.overview_polyline });
       }
-    });
-    const paths = transitions
-      .filter((t) => t.overview_polyline)
-      .map((t) => ({
-        encoded: t.overview_polyline!,
-        color: "c25c3a",
-        weight: 3,
-      }));
-    if (markers.length === 0 && paths.length === 0) return null;
-    return buildClientStaticMapUrl({
-      width: 320,
-      height: 320,
-      markers,
-      paths,
-    });
-  }, [sortedStops, transitions]);
+    }
+    return segs;
+  }, [transitions]);
+
+  // Build a Journey object for the JourneyMap component. Converts the
+  // existing stops + transitions into the component's domain types.
+  const journeyMapData = useMemo<Journey | null>(() => {
+    if (sortedStops.length < 2) return null;
+
+    const legs: Leg[] = [];
+
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const fromStop = sortedStops[i];
+      const toStop = sortedStops[i + 1];
+      const transition = transitionByFrom.get(fromStop.id);
+      if (!transition) continue;
+
+      // Extract coordinates for from/to
+      const fromLat = Number(
+        fromStop.customer_site?.latitude ??
+        fromStop.location?.latitude ??
+        (fromStop as any).transport_hub?.latitude ?? 0,
+      );
+      const fromLng = Number(
+        fromStop.customer_site?.longitude ??
+        fromStop.location?.longitude ??
+        (fromStop as any).transport_hub?.longitude ?? 0,
+      );
+      const toLat = Number(
+        toStop.customer_site?.latitude ??
+        toStop.location?.latitude ??
+        (toStop as any).transport_hub?.latitude ?? 0,
+      );
+      const toLng = Number(
+        toStop.customer_site?.longitude ??
+        toStop.location?.longitude ??
+        (toStop as any).transport_hub?.longitude ?? 0,
+      );
+
+      // Skip legs with no coordinates on either end
+      if (fromLat === 0 && fromLng === 0) continue;
+      if (toLat === 0 && toLng === 0) continue;
+
+      const fromStation: Station = {
+        name: fromStop.title ?? fromStop.location?.name ?? (fromStop as any).transport_hub?.name ?? "",
+        code: (fromStop as any).transport_hub?.code ?? undefined,
+        lat: fromLat,
+        lng: fromLng,
+      };
+
+      const toStation: Station = {
+        name: toStop.title ?? toStop.location?.name ?? (toStop as any).transport_hub?.name ?? "",
+        code: (toStop as any).transport_hub?.code ?? undefined,
+        lat: toLat,
+        lng: toLng,
+      };
+
+      // Decode the polyline track, or fall back to a straight line
+      let track: [number, number][];
+      if (transition.overview_polyline) {
+        track = decodePolyline(transition.overview_polyline);
+      } else {
+        track = [[fromLat, fromLng], [toLat, toLng]];
+      }
+
+      // Map DB mode to JourneyMap leg mode
+      const modeMap: Record<string, LegMode> = {
+        walk: "walk",
+        drive: "road",
+        taxi: "road",
+        train: "rail",
+        bus: "transit",
+        mixed: "road",
+        cycle: "road",
+      };
+      const legMode: LegMode = modeMap[transition.mode] ?? "road";
+
+      const durationMins = transition.computed_duration_minutes ?? 0;
+      const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : "";
+
+      legs.push({
+        mode: legMode,
+        from: fromStation,
+        to: toStation,
+        track,
+        durationLabel,
+        durationMinutes: durationMins || undefined,
+      });
+    }
+
+    if (legs.length === 0) return null;
+
+    return {
+      id: itinerary.id,
+      eyebrow: `${formatDate(itinerary.date_start, timezone, { weekday: "long" }).toUpperCase()} / DOOR TO DOOR`,
+      totalDistanceMi: totalMiles,
+      totalDurationLabel: fmtDuration(totalMinutes),
+      legs,
+    };
+  }, [sortedStops, transitionByFrom, itinerary.id, itinerary.date_start, timezone, totalMiles, totalMinutes]);
 
   const currentStatusIndex = STATUS_FLOW.indexOf(itinerary.status);
   const canAdvance =
@@ -1095,7 +1223,7 @@ export function ItineraryEditor({
             type="button"
             className="btn-ghost"
             style={{ fontSize: 13 }}
-            onClick={() => setShowAddTransport(true)}
+            onClick={() => setEditingTransport(emptyTransportBookingItem())}
           >
             + Transport
           </button>
@@ -1116,7 +1244,7 @@ export function ItineraryEditor({
               disabled={pending}
             >
               {Icon.ticket}
-              Import from Gmail
+              Scan for tickets
             </button>
           ) : null}
           <span style={{ marginLeft: "auto" }}>
@@ -1154,16 +1282,55 @@ export function ItineraryEditor({
               if (!startStop) return null;
               const label =
                 startStop.location?.name ?? startStop.title ?? "Home";
+              const address = startStop.location?.address ?? null;
               const first = planningTimeline[0];
+
+              // Leave-by: first transit departure minus travel to station
+              let leaveBy: string | null = null;
+              if (first?.kind === "transit" && first.stop.start_time) {
+                const depMin = (() => {
+                  const d = new Date(first.stop.start_time!);
+                  const parts = new Intl.DateTimeFormat("en-GB", {
+                    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone,
+                  }).formatToParts(d);
+                  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+                  const m = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+                  return h * 60 + m;
+                })();
+                const travelTrans = transitions.find(
+                  (t) => t.from_stop_id === startStop.id && t.to_stop_id === first.stop.id,
+                );
+                let travelMin = travelTrans?.computed_duration_minutes ?? 0;
+                if (!travelMin) {
+                  const mode = travelTrans?.mode ?? "walk";
+                  const preview = routePreviews.get(startStop.id, first.stop.id, mode as any);
+                  if (preview && preview !== "pending" && preview.durationMinutes) {
+                    travelMin = preview.durationMinutes;
+                  }
+                }
+                const leaveMin = depMin - travelMin - 10;
+                if (leaveMin > 0) {
+                  const lh = Math.floor(leaveMin / 60) % 24;
+                  const lm = leaveMin % 60;
+                  leaveBy = `${String(lh).padStart(2, "0")}:${String(lm).padStart(2, "0")}`;
+                }
+              }
+
               return (
                 <>
                   <div className="home-header">
                     <div className="home-header-badge">
                       <span className="home-header-dot" aria-hidden />
-                      <span className="uc">Start</span>
+                      <span className="uc">Home</span>
                     </div>
-                    <h3 className="home-header-title">{label}</h3>
-                    <p className="home-header-meta">From your travel profile</p>
+                    <h3 className="home-header-title">{address ?? label}</h3>
+                    {leaveBy ? (
+                      <p className="home-header-meta mono" style={{ color: "var(--gold-2)" }}>
+                        Leave by {leaveBy}
+                      </p>
+                    ) : (
+                      <p className="home-header-meta">From your travel profile</p>
+                    )}
                   </div>
                   {first && first.kind !== "transit" ? (
                     <PlanningTransitionRow
@@ -1205,44 +1372,10 @@ export function ItineraryEditor({
                       fromVirtualLabel={label}
                     />
                   ) : null}
-                  {/* Inline adds between Home and the first
-                      anchor. Lets the user insert a train (e.g.
-                      Wellingborough → Liverpool) right at the start
-                      of the trip instead of having to add it
-                      between the first two real anchors. */}
-                  {first ? (
-                    <InlineAddsRow
-                      beforeStopId={startStop.id}
-                      afterStopId={first.stop.id}
-                      insertAtSequence={first.stop.sequence}
-                      showStopoverTrigger={first.kind === "anchor"}
-                      beforeLabel={label}
-                      afterLabel={
-                        first.kind === "anchor"
-                          ? first.anchor.place?.label ?? "first stop"
-                          : first.stop.title ?? "first stop"
-                      }
-                      transitFormFor={transitFormFor}
-                      setTransitFormFor={setTransitFormFor}
-                      pending={pending}
-                      onInsertAnchor={(seq) =>
-                        handleInsertAnchorAt(seq ?? 0)
-                      }
-                      onInsertStopover={() =>
-                        handleInsertStopoverBetween(
-                          startStop.id,
-                          first.stop.id,
-                        )
-                      }
-                      onInsertTransitLeg={(form) =>
-                        handleInsertTransitLeg({
-                          beforeStopId: startStop.id,
-                          afterStopId: first.stop.id,
-                          mode: transitFormFor!.mode,
-                          ...form,
-                        })
-                      }
-                    />
+                  {first && first.kind === "anchor" ? (
+                    <div className="anchor-inline-adds">
+                      <AddBetween between onAdd={() => handleInsertAnchorAt(first.stop.sequence)} />
+                    </div>
                   ) : null}
                 </>
               );
@@ -1255,440 +1388,91 @@ export function ItineraryEditor({
                 </p>
               </div>
             ) : (
-              <ol
-                className="flex flex-col"
-                style={{ gap: 12 }}
-              >
-                {planningTimeline.map((item, i) => {
-                  // The next item on the timeline determines whether
-                  // we render a transition row. We refer to "anchor /
-                  // stopover" interchangeably as "this stop" for the
-                  // transition's `to` side.
-                  const nextItem = planningTimeline[i + 1];
-                  const stop = item.stop;
-                  // DbTransition for this leg — pulls computed
-                  // duration/distance for the inline meta line.
-                  const transitionToNext = nextItem
-                    ? transitionByFrom.get(stop.id)
-                    : null;
-
-                  if (item.kind === "transit") {
-                    // Compact card for transit_departure /
-                    // transit_arrival stops. Not editable in the same
-                    // way an anchor is — the train/flight leg between
-                    // them is the editable thing; the stops are
-                    // facts of the journey.
-                    return (
-                      <li key={item.stop.id} className="flex flex-col">
-                        <TransitStopCard
-                          stop={item.stop}
-                          direction={item.transitDirection}
-                          timezone={timezone}
-                          onRemove={() => handleDelete(item.stop.id)}
-                        />
-                      </li>
-                    );
-                  }
-
-                  if (item.kind === "stopover") {
-                    // Stopover row — render StopoverCard summary; its
-                    // surrounding anchors are derived from the
-                    // adjacent timeline entries (skipping any other
-                    // stopover that might sit immediately next to it,
-                    // though in practice stopovers don't chain).
-                    const prevAnchor = (() => {
-                      for (let j = i - 1; j >= 0; j--) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.anchor;
-                      }
-                      return null;
-                    })();
-                    const nextAnchor = (() => {
-                      for (let j = i + 1; j < planningTimeline.length; j++) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.anchor;
-                      }
-                      return null;
-                    })();
-                    // Back-calc: needs the previous/next *anchor stop
-                    // rows* (with start/end times) plus the two leg
-                    // transitions in/out of this stopover.
-                    const prevAnchorStop = (() => {
-                      for (let j = i - 1; j >= 0; j--) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.stop;
-                      }
-                      return undefined;
-                    })();
-                    const nextAnchorStop = (() => {
-                      for (let j = i + 1; j < planningTimeline.length; j++) {
-                        const it = planningTimeline[j];
-                        if (it.kind === "anchor") return it.stop;
-                      }
-                      return undefined;
-                    })();
-                    const legIn = prevAnchorStop
-                      ? transitions.find(
-                          (t) =>
-                            t.from_stop_id === prevAnchorStop.id &&
-                            t.to_stop_id === stop.id,
-                        )
-                      : null;
-                    const legOut = nextAnchorStop
-                      ? transitions.find(
-                          (t) =>
-                            t.from_stop_id === stop.id &&
-                            t.to_stop_id === nextAnchorStop.id,
-                        )
-                      : null;
-                    // Fall back to the drive preview when a leg's
-                    // transition has no computed duration stored
-                    // (because the user hasn't picked a mode yet).
-                    const legInPreview = prevAnchorStop
-                      ? routePreviews.get(
-                          prevAnchorStop.id,
-                          item.stop.id,
-                          "drive",
-                        )
-                      : null;
-                    const legOutPreview = nextAnchorStop
-                      ? routePreviews.get(
-                          item.stop.id,
-                          nextAnchorStop.id,
-                          "drive",
-                        )
-                      : null;
-                    const backCalc = computeStopoverBackCalc(
-                      prevAnchorStop,
-                      nextAnchorStop,
-                      legIn,
-                      legOut,
-                      item.stopover.durationMins,
-                      timezone,
-                      legInPreview && legInPreview !== "pending"
-                        ? legInPreview.durationMinutes
-                        : null,
-                      legOutPreview && legOutPreview !== "pending"
-                        ? legOutPreview.durationMinutes
-                        : null,
-                    );
-                    const isExpanded = expandedUids.has(item.stopover.uid);
-                    const liveStopover =
-                      editedStopovers.get(item.stopover.uid) ?? item.stopover;
-                    return (
-                      <li key={stop.id} className="flex flex-col">
-                        <StopoverCard
-                          stopover={liveStopover}
-                          fromAnchor={
-                            prevAnchor ??
-                            stopoverAsAnchor(
-                              item.stopover,
-                              `placeholder-prev-${stop.id}`,
-                            )
-                          }
-                          toAnchor={
-                            nextAnchor ??
-                            stopoverAsAnchor(
-                              item.stopover,
-                              `placeholder-next-${stop.id}`,
-                            )
-                          }
-                          customers={customers}
-                          customerSites={customerSites}
-                          locations={locations}
-                          backCalc={backCalc}
-                          mode={isExpanded ? "expanded" : "summary"}
-                          onModeChange={(next) =>
-                            next === "expanded"
-                              ? handleStopoverExpand(item.stopover.uid)
-                              : handleStopoverCollapse(item.stopover.uid)
-                          }
-                          onChange={(patch) =>
-                            handleStopoverPatch(item.stopover.uid, patch)
-                          }
-                          onRemove={() => handleDelete(stop.id)}
-                        />
-                        {nextItem && nextItem.kind !== "transit" ? (
-                          <>
-                            <PlanningTransitionRow
-                              from={
-                                prevAnchor ??
-                                stopoverAsAnchor(
-                                  item.stopover,
-                                  `placeholder-prev-${stop.id}`,
-                                )
-                              }
-                              to={
-                                nextItem.kind === "anchor"
-                                  ? nextItem.anchor
-                                  : stopoverAsAnchor(
-                                      nextItem.stopover,
-                                      nextItem.stopover.uid,
-                                    )
-                              }
-                              transition={
-                                planningTransitions.get(
-                                  transitionKey(
-                                    stop.id,
-                                    uidOf(nextItem),
-                                  ),
-                                ) ?? emptyTransition()
-                              }
-                              modePreviews={previewsForPair(
-                                stop.id,
-                                uidOf(nextItem),
-                              )}
-                              onOpenChange={(open) => {
-                                if (open)
-                                  prefetchPair(
-                                    stop.id,
-                                    uidOf(nextItem),
-                                  );
-                              }}
-                              onChange={(patch) =>
-                                handleTransitionPatch(
-                                  stop.id,
-                                  uidOf(nextItem),
-                                  patch,
-                                )
-                              }
-                            />
-                            {transitionToNext ? (
-                              <TransitionMeta
-                                transition={transitionToNext}
-                                feasibility={computeFeasibility(
-                                  stop,
-                                  nextItem.stop,
-                                  transitionToNext,
-                                )}
-                              />
-                            ) : null}
-                          </>
-                        ) : null}
-                      </li>
-                    );
-                  }
-
-                  // Anchor row.
-                  const anchor = item.anchor;
-                  const isExpanded = expandedUids.has(anchor.uid);
-                  const liveAnchor =
-                    editedAnchors.get(anchor.uid) ?? anchor;
-                  return (
-                    <li key={anchor.uid} className="flex flex-col">
-                      <AnchorCard
-                        anchor={liveAnchor}
-                        earlier={planningAnchors.slice(
-                          0,
-                          planningAnchors.findIndex(
-                            (a) => a.uid === anchor.uid,
-                          ),
-                        )}
-                        first={i === 0}
-                        canRemove={planningAnchors.length > 1}
-                        customers={customers}
-                        customerSites={customerSites}
-                        locations={locations}
-                        datePresets={planningDatePresets}
-                        timezone={timezone}
-                        mode={isExpanded ? "expanded" : "summary"}
-                        onModeChange={(next) =>
-                          next === "expanded"
-                            ? handleAnchorExpand(anchor.uid)
-                            : handleAnchorCollapse(anchor.uid)
-                        }
-                        onChange={(patch) =>
-                          handleAnchorPatch(anchor.uid, patch)
-                        }
-                        onRemove={() => handleDelete(anchor.uid)}
-                      />
-                      {nextItem && nextItem.kind !== "transit" ? (
-                        <PlanningTransitionRow
-                          from={anchor}
-                          to={
-                            nextItem.kind === "anchor"
-                              ? nextItem.anchor
-                              : stopoverAsAnchor(
-                                  nextItem.stopover,
-                                  nextItem.stopover.uid,
-                                )
-                          }
-                          transition={
-                            planningTransitions.get(
-                              transitionKey(
-                                anchor.uid,
-                                uidOf(nextItem),
-                              ),
-                            ) ?? emptyTransition()
-                          }
-                          modePreviews={previewsForPair(
-                            anchor.uid,
-                            uidOf(nextItem),
-                          )}
-                          onOpenChange={(open) => {
-                            if (open)
-                              prefetchPair(
-                                anchor.uid,
-                                uidOf(nextItem),
-                              );
-                          }}
-                          onChange={(patch) =>
-                            handleTransitionPatch(
-                              anchor.uid,
-                              uidOf(nextItem),
-                              patch,
-                            )
-                          }
-                        />
-                      ) : null}
-                      {nextItem && transitionToNext ? (
-                        <TransitionMeta
-                          transition={transitionToNext}
-                          feasibility={computeFeasibility(
-                            stop,
-                            nextItem.stop,
-                            transitionToNext,
-                          )}
-                        />
-                      ) : null}
-                      {/* Inline add affordances between anchor pairs
-                          — adds a new anchor at this slot OR adds a
-                          stopover between this anchor and the next
-                          (only when no stopover already exists for
-                          the pair). Mirrors the brief's UI. */}
-                      {nextItem &&
-                      item.kind === "anchor" &&
-                      nextItem.kind !== "transit" ? (
-                        transitFormFor &&
-                        transitFormFor.beforeStopId === stop.id &&
-                        transitFormFor.afterStopId === nextItem.stop.id ? (
-                          <TransitLegForm
-                            mode={transitFormFor.mode}
-                            beforeLabel={
-                              item.anchor.place?.label ?? "previous"
-                            }
-                            afterLabel={
-                              nextItem.kind === "anchor"
-                                ? nextItem.anchor.place?.label ?? "next"
-                                : "next"
-                            }
-                            pending={pending}
-                            onCancel={() => setTransitFormFor(null)}
-                            onSubmit={(form) =>
-                              handleInsertTransitLeg({
-                                beforeStopId: stop.id,
-                                afterStopId: nextItem.stop.id,
-                                mode: transitFormFor.mode,
-                                ...form,
-                              })
-                            }
-                          />
-                        ) : (
-                          <div className="anchor-inline-adds">
-                            <AddBetween
-                              between
-                              onAdd={() =>
-                                handleInsertAnchorAt(nextItem.stop.sequence)
-                              }
-                            />
-                            {nextItem.kind === "anchor" ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="brief-add-stop-trigger"
-                                  onClick={() =>
-                                    handleInsertStopoverBetween(
-                                      stop.id,
-                                      nextItem.stop.id,
-                                    )
-                                  }
-                                  title="Drop in somewhere between these two anchors"
-                                >
-                                  + Add a stop between these
-                                </button>
-                                <button
-                                  type="button"
-                                  className="brief-add-stop-trigger"
-                                  onClick={() => setShowAddTransport(true)}
-                                  title="Add a booked transport leg"
-                                >
-                                  + Transport
-                                </button>
-                              </>
-                            ) : null}
-                          </div>
-                        )
-                      ) : null}
-                    </li>
-                  );
+              <Timeline
+                entries={buildPlanningTimeline({
+                  planningTimeline,
+                  planningAnchors,
+                  sortedStops,
+                  transitions,
+                  planningTransitions,
+                  transitionByFrom,
+                  expandedUids,
+                  editedAnchors,
+                  editedStopovers: editedStopovers as Map<string, Stopover & { uid: string }>,
+                  timezone,
+                  previewsForPair,
+                  gapPreviewsForPair,
+                  onSetGapMode: (fromId: string, toId: string, mode: import("@/components/gap-mode-picker").GapMode) =>
+                    handleSetGapMode(fromId, toId, mode),
+                  getGapModeSelected,
+                  computeStopoverBackCalc,
+                  computeFeasibility,
+                  routePreviews,
+                  handlers: {
+                    handleAnchorExpand,
+                    handleAnchorCollapse,
+                    handleAnchorPatch,
+                    handleStopoverExpand,
+                    handleStopoverCollapse,
+                    handleStopoverPatch,
+                    handleDelete,
+                    handleTransitionPatch,
+                    prefetchPair,
+                    handleInsertAnchorAt,
+                    handleInsertStopoverBetween,
+                  },
+                  startStop: sortedStops.find((s) => s.type === "start") ?? null,
                 })}
-              </ol>
+                customers={customers}
+                customerSites={customerSites}
+                locations={locations}
+                datePresets={planningDatePresets}
+                timezone={timezone}
+              />
             )}
 
-            {/* Bottom-of-timeline add affordances. + Train and +
-                Flight here append a transit chain at the end (no
-                surrounding anchor to slot before) — handy for
-                booking the journey home from a multi-day trip. */}
+
             {(() => {
               const last = sortedStops[sortedStops.length - 1];
-              if (!last) {
-                return (
-                  <AddBetween
-                    onAdd={() => handleInsertAnchorAt(0)}
-                  />
-                );
-              }
               return (
-                <InlineAddsRow
-                  beforeStopId={last.id}
-                  afterStopId={null}
-                  insertAtSequence={(last.sequence ?? -1) + 1}
-                  // Stopovers conceptually need a surrounding pair;
-                  // at the very end of the timeline there's no
-                  // 'next anchor' to fit between, so we hide the
-                  // stopover button here.
-                  showStopoverTrigger={false}
-                  beforeLabel={
-                    last.title ??
-                    last.location?.name ??
-                    "the last stop"
-                  }
-                  afterLabel="end of trip"
-                  transitFormFor={transitFormFor}
-                  setTransitFormFor={setTransitFormFor}
-                  pending={pending}
-                  onInsertAnchor={(seq) =>
-                    handleInsertAnchorAt(seq ?? (last.sequence ?? -1) + 1)
-                  }
-                  onInsertStopover={() => {
-                    // Unreachable — showStopoverTrigger is false at
-                    // the bottom-of-timeline position.
-                  }}
-                  onInsertTransitLeg={(form) =>
-                    handleInsertTransitLeg({
-                      beforeStopId: last.id,
-                      afterStopId: null,
-                      mode: transitFormFor!.mode,
-                      ...form,
-                    })
-                  }
-                />
+                <div className="anchor-inline-adds">
+                  <AddBetween
+                    onAdd={() => handleInsertAnchorAt(
+                      last ? (last.sequence ?? -1) + 1 : 0,
+                    )}
+                  />
+                </div>
               );
             })()}
           </div>
 
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
-            {mapUrl ? (
-              <div className="overflow-hidden rounded-md border border-rule bg-card">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={mapUrl}
-                  alt="Route map"
-                  className="block w-full"
-                  style={{ aspectRatio: "1 / 1", objectFit: "cover" }}
-                />
+            {journeyMapData && journeyMapData.legs.length > 0 ? (
+              <div className="route-map-card">
+                <div className="route-map-header">
+                  <span className="route-map-eyebrow">Door-to-door</span>
+                  <span className="route-map-headline">
+                    {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
+                    {totalMiles > 0 && totalMinutes > 0 && " · "}
+                    {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
+                  </span>
+                </div>
+                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                  <JourneyMap
+                    journey={journeyMapData}
+                    mode="planning"
+                    height={320}
+                  />
+                </div>
               </div>
+            ) : mapStops.length > 0 ? (
+              <RouteMap
+                stops={mapStops}
+                segments={mapSegments}
+                totalMiles={totalMiles}
+                totalMinutes={totalMinutes}
+              />
             ) : (
               <div
                 className="flex h-[320px] items-center justify-center rounded-md border border-dashed border-rule-2 bg-card-2 text-center"
@@ -1739,32 +1523,6 @@ export function ItineraryEditor({
           </aside>
         </div>
 
-        {/* Booking modal — transport */}
-        {transportBookingFor ? (
-          <div
-            className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setTransportBookingFor(null);
-            }}
-          >
-            <div className="my-8 w-full max-w-3xl">
-              <AddTransportBookingForm
-                fromStopId={transportBookingFor.stopId}
-                fromStopLabel={transportBookingFor.label}
-                initialMode={transportBookingFor.mode}
-                customers={customers}
-                customerSites={customerSites}
-                locations={locations}
-                onCancel={() => setTransportBookingFor(null)}
-                onDone={() => {
-                  setTransportBookingFor(null);
-                  router.refresh();
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
-
         {/* Booking modal — accommodation */}
         {accommodationBookingFor ? (
           <div
@@ -1810,23 +1568,18 @@ export function ItineraryEditor({
           />
         ) : null}
 
-        {/* Standalone transport booking — same card as the brief */}
-        {showAddTransport ? (
+        {editingTransport ? (
           <div
             className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/35 p-4 backdrop-blur-sm"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowAddTransport(false);
+              if (e.target === e.currentTarget) setEditingTransport(null);
             }}
           >
             <div className="my-8 w-full max-w-2xl">
-              <PlanningTransportBookingModal
-                itineraryId={itinerary.id}
-                lastStopId={sortedStops[sortedStops.length - 1]?.id ?? null}
-                onDone={() => {
-                  setShowAddTransport(false);
-                  router.refresh();
-                }}
-                onCancel={() => setShowAddTransport(false)}
+              <TransportBookingCard
+                booking={editingTransport}
+                onChange={handleTransportCardChange}
+                onRemove={() => setEditingTransport(null)}
               />
             </div>
           </div>
@@ -1893,432 +1646,6 @@ function MastheadHeadline({
   return <em>{date}</em>;
 }
 
-function StopBookingMenu({
-  stop,
-  pending,
-  onAddTransport,
-  onAddAccommodation,
-}: {
-  stop: StopRow;
-  pending: boolean;
-  onAddTransport: (mode: TransportBookingMode, label: string) => void;
-  onAddAccommodation: (label: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
-  const label =
-    stop.customer_site?.name ??
-    stop.customer?.name ??
-    stop.location?.name ??
-    stop.title ??
-    "this point";
-
-  const isStation = stop.location?.type === "station";
-
-  const items: { mode: TransportBookingMode; label: string }[] = [
-    { mode: "train", label: "Train" },
-    { mode: "flight", label: "Flight" },
-    { mode: "taxi", label: "Taxi" },
-    { mode: "bus", label: "Bus" },
-    { mode: "tube", label: "Tube" },
-    { mode: "drive", label: "Car hire" },
-  ];
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        className="text-xs hover:underline disabled:opacity-50"
-        style={{ color: "var(--gold-2)" }}
-        onClick={() => setOpen((v) => !v)}
-        disabled={pending}
-      >
-        + Add booking
-      </button>
-      {open ? (
-        <div
-          className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-md border border-rule bg-card shadow-lg"
-          role="menu"
-        >
-          {isStation ? (
-            <button
-              type="button"
-              className="block w-full px-3 py-2 text-left text-xs hover:bg-gold-soft/40"
-              style={{ background: "var(--gold-soft)" }}
-              onClick={() => {
-                setOpen(false);
-                onAddTransport("train", label);
-              }}
-            >
-              <span className="mr-2 inline-flex align-middle" style={{ color: "var(--gold-2)" }}>
-                <TransportIcon.train size={13} />
-              </span>
-              Train (from {stop.location?.name ?? "station"})
-            </button>
-          ) : null}
-          {items.map((it) => {
-            const ItemIcon =
-              it.mode === "train"
-                ? TransportIcon.train
-                : it.mode === "flight"
-                  ? TransportIcon.flight
-                  : it.mode === "taxi"
-                    ? TransportIcon.taxi
-                    : it.mode === "bus"
-                      ? TransportIcon.bus
-                      : it.mode === "tube"
-                        ? TransportIcon.tube
-                        : TransportIcon.drive;
-            return (
-              <button
-                key={it.mode}
-                type="button"
-                role="menuitem"
-                className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
-                onClick={() => {
-                  setOpen(false);
-                  onAddTransport(it.mode, label);
-                }}
-              >
-                <span
-                  className="mr-2 inline-flex align-middle"
-                  style={{ color: "var(--ink-dim)" }}
-                >
-                  <ItemIcon size={13} />
-                </span>
-                {it.label}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            role="menuitem"
-            className="block w-full border-t border-rule/50 px-3 py-2 text-left text-xs hover:bg-card-2"
-            onClick={() => {
-              setOpen(false);
-              onAddAccommodation(label);
-            }}
-          >
-            <span
-              className="mr-2 inline-flex align-middle"
-              style={{ color: "var(--ink-dim)" }}
-            >
-              <StopIcon.stay size={13} />
-            </span>
-            {stop.type === "accommodation" ? "Edit stay" : "Hotel / stay"}
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-// TransitionMeta — small inline row showing the computed travel
-// duration + distance under a transition chip. Surfaces the data
-// that lived inside the old TransitionRowView (computed by the
-// editor's solver / Google Directions). The chip itself is now the
-// shared PlanningTransitionRow.
-// TransitStopCard — compact card for transit_departure /
-// transit_arrival stops. Shows the station/airport name + time, with
-// a small Remove button. Less affordance than an AnchorCard because
-// these stops are facts of a booked train/flight, not free-form
-// anchors the user fills in.
-// InlineAddsRow — the row of dashed pills between two anchors that
-// lets the user insert a new anchor, stopover, train leg or flight
-// leg. Reused for: between anchor pairs, between home and the first
-// anchor, and after the last anchor (where afterStopId is null and
-// the inserts append at the end). When the user clicks + Train / +
-// Flight, transitFormFor is set to the matching pair and the form
-// renders in place of the pill row.
-function InlineAddsRow({
-  beforeStopId,
-  afterStopId,
-  insertAtSequence,
-  showStopoverTrigger,
-  beforeLabel,
-  afterLabel,
-  transitFormFor,
-  setTransitFormFor,
-  pending,
-  onInsertAnchor,
-  onInsertStopover,
-  onInsertTransitLeg,
-}: {
-  beforeStopId: string;
-  // null = append at end (no after-anchor to slot before).
-  afterStopId: string | null;
-  // Sequence to insert at when the user clicks + Add another. null
-  // means append (max sequence + 1, handled inside the handler).
-  insertAtSequence: number | null;
-  showStopoverTrigger: boolean;
-  beforeLabel: string;
-  afterLabel: string;
-  transitFormFor: {
-    beforeStopId: string;
-    afterStopId: string | null;
-    mode: "train" | "flight";
-  } | null;
-  setTransitFormFor: (
-    next:
-      | {
-          beforeStopId: string;
-          afterStopId: string | null;
-          mode: "train" | "flight";
-        }
-      | null,
-  ) => void;
-  pending: boolean;
-  onInsertAnchor: (sequence: number | null) => void;
-  onInsertStopover: () => void;
-  onInsertTransitLeg: (form: {
-    departHubId: string;
-    departLabel: string;
-    departTime: string;
-    arriveHubId: string;
-    arriveLabel: string;
-    arriveTime: string;
-    serviceNumber?: string;
-  }) => void;
-}) {
-  const formActive =
-    !!transitFormFor &&
-    transitFormFor.beforeStopId === beforeStopId &&
-    transitFormFor.afterStopId === afterStopId;
-
-  if (formActive && transitFormFor) {
-    return (
-      <TransitLegForm
-        mode={transitFormFor.mode}
-        beforeLabel={beforeLabel}
-        afterLabel={afterLabel}
-        pending={pending}
-        onCancel={() => setTransitFormFor(null)}
-        onSubmit={onInsertTransitLeg}
-      />
-    );
-  }
-
-  return (
-    <div className="anchor-inline-adds">
-      <AddBetween between onAdd={() => onInsertAnchor(insertAtSequence)} />
-      {showStopoverTrigger ? (
-        <button
-          type="button"
-          className="brief-add-stop-trigger"
-          onClick={onInsertStopover}
-          title="Drop in somewhere between these two anchors"
-        >
-          + Add a stop between these
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className="brief-add-stop-trigger"
-        onClick={() =>
-          setTransitFormFor({ beforeStopId, afterStopId, mode: "train" })
-        }
-        title="Add a train journey here"
-      >
-        + Train
-      </button>
-      <button
-        type="button"
-        className="brief-add-stop-trigger"
-        onClick={() =>
-          setTransitFormFor({ beforeStopId, afterStopId, mode: "flight" })
-        }
-        title="Add a flight here"
-      >
-        + Flight
-      </button>
-    </div>
-  );
-}
-
-function TransitStopCard({
-  stop,
-  direction,
-  timezone,
-  onRemove,
-}: {
-  // Structural shape — both the editor's StopRow and the shared
-  // DbStop satisfy this. Card only needs title + start_time.
-  stop: { title: string | null; start_time: string | null };
-  direction: "departure" | "arrival";
-  timezone: string;
-  onRemove: () => void;
-}) {
-  const kindLabel =
-    direction === "departure" ? "Depart" : "Arrive";
-  const time = stop.start_time
-    ? new Intl.DateTimeFormat("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-        timeZone: timezone,
-      }).format(new Date(stop.start_time))
-    : "—";
-  return (
-    <section className="transit-stop-card">
-      <div className="transit-stop-head">
-        <span className="uc">{kindLabel}</span>
-        <span className="transit-stop-time">{time}</span>
-      </div>
-      <h3 className="transit-stop-title">{stop.title ?? "Station"}</h3>
-      <button
-        type="button"
-        className="transit-stop-remove"
-        onClick={onRemove}
-        aria-label="Remove transit stop"
-      >
-        Remove
-      </button>
-    </section>
-  );
-}
-
-// TransitLegForm — inline form rendered between two anchors when the
-// user clicks '+ Train' or '+ Flight'. Collects depart hub, arrive
-// hub, depart time, arrive time, optional service number. Submits
-// to insertTransitLeg, which writes both transit stops + the locked
-// transition between them.
-function TransitLegForm({
-  mode,
-  beforeLabel,
-  afterLabel,
-  pending,
-  onCancel,
-  onSubmit,
-}: {
-  mode: "train" | "flight";
-  beforeLabel: string;
-  afterLabel: string;
-  pending: boolean;
-  onCancel: () => void;
-  onSubmit: (form: {
-    departHubId: string;
-    departLabel: string;
-    departTime: string;
-    arriveHubId: string;
-    arriveLabel: string;
-    arriveTime: string;
-    serviceNumber?: string;
-  }) => void;
-}) {
-  const hubKind = mode === "train" ? "rail_station" : "airport";
-  const noun = mode === "train" ? "station" : "airport";
-  const [departHub, setDepartHub] = useState<{ id: string | null; label: string | null }>({ id: null, label: null });
-  const [arriveHub, setArriveHub] = useState<{ id: string | null; label: string | null }>({ id: null, label: null });
-  const [departTime, setDepartTime] = useState("");
-  const [arriveTime, setArriveTime] = useState("");
-  const [serviceNumber, setServiceNumber] = useState("");
-
-  const ready =
-    departHub.id != null &&
-    arriveHub.id != null &&
-    departHub.label != null &&
-    arriveHub.label != null &&
-    departTime !== "" &&
-    arriveTime !== "";
-
-  return (
-    <div className="transit-leg-form">
-      <header className="transit-leg-form-head">
-        <span className="uc">
-          {mode === "train" ? "Train" : "Flight"} from {beforeLabel} to{" "}
-          {afterLabel}
-        </span>
-        <button
-          type="button"
-          className="transit-leg-form-cancel"
-          onClick={onCancel}
-          disabled={pending}
-        >
-          Cancel
-        </button>
-      </header>
-      <div className="transit-leg-form-grid">
-        <label className="brief-field">
-          <span className="uc">Departing {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="depart_hub"
-            value={departHub}
-            onChange={setDepartHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Departure time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={departTime}
-            onChange={(e) => setDepartTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arriving {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="arrive_hub"
-            value={arriveHub}
-            onChange={setArriveHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arrival time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={arriveTime}
-            onChange={(e) => setArriveTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field" style={{ gridColumn: "1 / -1" }}>
-          <span className="uc">Service / flight number (optional)</span>
-          <input
-            type="text"
-            className="field"
-            value={serviceNumber}
-            onChange={(e) => setServiceNumber(e.target.value)}
-            placeholder={mode === "train" ? "9M14" : "BA245"}
-          />
-        </label>
-      </div>
-      <div className="transit-leg-form-actions">
-        <button
-          type="button"
-          className="btn btn-gold"
-          disabled={!ready || pending}
-          onClick={() =>
-            onSubmit({
-              departHubId: departHub.id!,
-              departLabel: departHub.label!,
-              departTime,
-              arriveHubId: arriveHub.id!,
-              arriveLabel: arriveHub.label!,
-              arriveTime,
-              serviceNumber: serviceNumber.trim() || undefined,
-            })
-          }
-        >
-          Add {mode}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // Heads-up callout — shown above the timeline whenever any leg
 // arrives late or runs tight under its current mode + travel time.
@@ -2372,46 +1699,6 @@ function FeasibilityCallout({
         ))}
       </ul>
     </aside>
-  );
-}
-
-function TransitionMeta({
-  transition,
-  feasibility,
-}: {
-  transition: TransitionRow;
-  feasibility?: FeasibilityFlag | null;
-}) {
-  const mins = transition.computed_duration_minutes ?? 0;
-  const miles = Number(transition.distance_miles ?? 0);
-  if (!mins && !miles && !feasibility) return null;
-  return (
-    <div
-      style={{
-        marginLeft: 56,
-        fontSize: 11.5,
-        color: "var(--ink-dim)",
-        padding: "2px 0 6px",
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
-      {mins ? <span>{fmtDuration(mins)}</span> : null}
-      {miles ? <span>{miles.toFixed(1)} mi</span> : null}
-      {feasibility ? (
-        <span
-          className={
-            feasibility.severity === "infeasible"
-              ? "feasibility-flag feasibility-flag-bad"
-              : "feasibility-flag feasibility-flag-tight"
-          }
-        >
-          {feasibility.message}
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -2517,6 +1804,7 @@ function computeFeasibility(
   transition: TransitionRow | null | undefined,
 ): FeasibilityFlag | null {
   if (!fromStop || !toStop || !transition) return null;
+  if (transition.is_locked) return null;
   if (!fromStop.is_time_fixed || !toStop.is_time_fixed) return null;
   const required = transition.computed_duration_minutes;
   const fromEnd = fromStop.end_time ?? fromStop.start_time;
@@ -2533,6 +1821,18 @@ function computeFeasibility(
     return { severity: "tight", message: `Tight: ${result.message}` };
   }
   return null;
+}
+
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 function fmtDuration(minutes: number): string {
@@ -2601,223 +1901,4 @@ function LegTypeIcon({ leg }: { leg: string }) {
 
 // Client-safe builder for /api/maps/static URLs (mirrors the server-side
 // StaticMap component but uses btoa instead of Buffer).
-function buildClientStaticMapUrl(spec: {
-  width: number;
-  height: number;
-  zoom?: number;
-  center?: { lat: number; lng: number };
-  markers?: { lat: number; lng: number; color?: string; label?: string }[];
-  paths?: { encoded: string; color?: string; weight?: number }[];
-}): string {
-  const json = JSON.stringify({
-    ...spec,
-    markers: spec.markers ?? [],
-    paths: spec.paths ?? [],
-    // Pin the inline route maps to the Journies map style so the warm
-    // editorial palette carries into every embedded map.
-    style: "journies",
-  });
-  // base64url encode
-  const b64 = btoa(unescape(encodeURIComponent(json)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return `/api/maps/static?s=${b64}`;
-}
-
 // ─────────────────────────────────────────────────────────────────────
-// PlanningTransportBookingModal — the planning-page equivalent of the
-// brief's TransportBookingCard. Uses TransportHubPicker for both
-// departure and arrival, full datetime fields, and calls
-// insertTransitLeg to create the stop pair + locked transition.
-// ─────────────────────────────────────────────────────────────────────
-function PlanningTransportBookingModal({
-  itineraryId,
-  lastStopId,
-  onDone,
-  onCancel,
-}: {
-  itineraryId: string;
-  lastStopId: string | null;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const modeOptions: Array<{ value: "train" | "flight"; label: string }> = [
-    { value: "train", label: "Train" },
-    { value: "flight", label: "Flight" },
-  ];
-  const [mode, setMode] = useState<"train" | "flight" | null>(null);
-  const [departHub, setDepartHub] = useState<{
-    id: string | null;
-    label: string | null;
-  }>({ id: null, label: null });
-  const [arriveHub, setArriveHub] = useState<{
-    id: string | null;
-    label: string | null;
-  }>({ id: null, label: null });
-  const [departTime, setDepartTime] = useState("");
-  const [arriveTime, setArriveTime] = useState("");
-  const [serviceNumber, setServiceNumber] = useState("");
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  const hubKind = mode === "flight" ? "airport" : "rail_station";
-  const noun = mode === "flight" ? "airport" : "station";
-
-  const ready =
-    mode != null &&
-    departHub.id != null &&
-    arriveHub.id != null &&
-    departHub.label != null &&
-    arriveHub.label != null &&
-    departTime !== "" &&
-    arriveTime !== "";
-
-  const submit = () => {
-    if (!ready || !lastStopId) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await insertTransitLeg({
-        itinerary_id: itineraryId,
-        before_stop_id: lastStopId,
-        after_stop_id: null,
-        mode: mode!,
-        depart_hub_id: departHub.id!,
-        depart_label: departHub.label!,
-        depart_time: new Date(departTime).toISOString(),
-        arrive_hub_id: arriveHub.id!,
-        arrive_label: arriveHub.label!,
-        arrive_time: new Date(arriveTime).toISOString(),
-        service_number: serviceNumber.trim() || null,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      onDone();
-    });
-  };
-
-  if (!mode) {
-    return (
-      <div className="k-card flex flex-col gap-4 p-5" role="dialog">
-        <header>
-          <p className="uc">Add booked transport</p>
-          <h3 className="h2" style={{ marginTop: 4 }}>
-            What kind of ticket?
-          </h3>
-        </header>
-        <div className="flex flex-wrap gap-2">
-          {modeOptions.map((o) => {
-            const Ic =
-              o.value === "train" ? TransportIcon.train : TransportIcon.flight;
-            return (
-              <button
-                key={o.value}
-                type="button"
-                className="pill brief-pill"
-                onClick={() => setMode(o.value)}
-              >
-                <Ic size={13} />
-                {o.label}
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn-ghost self-start"
-        >
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
-  const MIcon =
-    mode === "train" ? TransportIcon.train : TransportIcon.flight;
-
-  return (
-    <div className="k-card flex flex-col gap-4 p-5" role="dialog">
-      <header>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <MIcon size={14} />
-          <p className="uc">{mode === "train" ? "Train" : "Flight"} booking</p>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="brief-field">
-          <span className="uc">Departing {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="depart_hub"
-            value={departHub}
-            onChange={setDepartHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Departure time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={departTime}
-            onChange={(e) => setDepartTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arriving {noun}</span>
-          <TransportHubPicker
-            kind={hubKind}
-            name="arrive_hub"
-            value={arriveHub}
-            onChange={setArriveHub}
-            placeholder={`Pick a ${noun}`}
-          />
-        </label>
-        <label className="brief-field">
-          <span className="uc">Arrival time</span>
-          <input
-            type="datetime-local"
-            className="field"
-            value={arriveTime}
-            onChange={(e) => setArriveTime(e.target.value)}
-          />
-        </label>
-        <label className="brief-field" style={{ gridColumn: "1 / -1" }}>
-          <span className="uc">Service / flight number (optional)</span>
-          <input
-            type="text"
-            className="field"
-            value={serviceNumber}
-            onChange={(e) => setServiceNumber(e.target.value)}
-            placeholder={mode === "train" ? "1A45" : "BA245"}
-          />
-        </label>
-      </div>
-
-      {error ? <p className="text-xs text-rust">{error}</p> : null}
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="btn btn-gold"
-          disabled={!ready || pending}
-          onClick={submit}
-        >
-          {pending ? "Adding…" : `Add ${mode}`}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn-ghost"
-          disabled={pending}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}

@@ -9,6 +9,8 @@ import { transitionItinerary } from "@/lib/state/transitions";
 import { solveTimes } from "@/lib/itinerary/solver";
 import { ok, type Result } from "@/lib/errors";
 import type { ItineraryStatus } from "@/lib/types/domain";
+import { routeForTransition as routeForTransitionFn } from "@/lib/integrations/routing";
+import { getRailPolyline } from "@/lib/osm/rail-routes";
 
 const createSchema = z
   .object({
@@ -187,7 +189,7 @@ const anchorInputSchema = z
     //              start/end times are written null and is_time_fixed
     //              is set to false.
     timing_mode: z
-      .enum(["arrive_by", "leave_by", "around_then"])
+      .enum(["arrive_by", "leave_by", "around_then", "maximize"])
       .default("arrive_by"),
     time: z
       .string()
@@ -329,6 +331,13 @@ const briefTransportBookingSchema = z.object({
   reference: z.string().max(200).nullable().optional(),
   seat: z.string().max(200).nullable().optional(),
   price: z.number().min(0).nullable().optional(),
+  operator: z.string().max(200).nullable().optional(),
+  ticket_type: z.string().max(200).nullable().optional(),
+  route_restriction: z.string().max(200).nullable().optional(),
+  barcodes: z.array(z.object({
+    ref: z.string().nullable(),
+    data: z.string().nullable(),
+  })).optional().default([]),
 });
 
 const briefAccommodationBookingSchema = z.object({
@@ -512,10 +521,14 @@ export async function createItineraryFromBrief(
 
   type StopType =
     | "start"
+    | "end"
     | "accommodation"
     | "appointment"
     | "meal"
-    | "event";
+    | "event"
+    | "transit_departure"
+    | "transit_changeover"
+    | "transit_arrival";
   const stopRows: Array<{
     sequence: number;
     type: StopType;
@@ -601,12 +614,14 @@ export async function createItineraryFromBrief(
     }
 
     // Everything else picks a pinning side based on timing_mode.
-    const dur =
-      a.duration_minutes ??
-      (a.time && a.end_time
-        ? minutesBetweenLocal(a.time, a.end_time)
-        : null) ??
-      defaultDurationForKind(a.kind, a.role);
+    let dur: number | null =
+      a.timing_mode === "maximize"
+        ? null
+        : a.duration_minutes ??
+          (a.time && a.end_time
+            ? minutesBetweenLocal(a.time, a.end_time)
+            : null) ??
+          defaultDurationForKind(a.kind, a.role);
 
     const stopType: StopType =
       a.kind === "meal"
@@ -619,20 +634,22 @@ export async function createItineraryFromBrief(
     let endIso: string | null;
     let isFixed = true;
 
-    if (a.timing_mode === "around_then") {
-      // Solver-resolved: no pinned times, just a duration. The editor
-      // will fit this between adjacent fixed anchors based on travel.
-      startIso = null;
+    if (a.timing_mode === "around_then" || a.timing_mode === "maximize") {
+      // Solver-resolved: no pinned times. But we need a provisional
+      // start_time for chronological sorting — use the anchor's date
+      // with a midday time so it sorts between morning departure and
+      // afternoon return transport bookings.
+      startIso = isoFromLocal(a.date, a.time || "12:00", tz);
       endIso = null;
       isFixed = false;
     } else if (a.timing_mode === "leave_by" && a.time) {
       // Pin at the back end — user knows when they need to leave.
       endIso = isoFromLocal(a.date, a.time, tz);
-      startIso = addMinutesIso(endIso, -dur);
+      startIso = addMinutesIso(endIso, -(dur ?? 60));
     } else {
       // arrive_by — the original behaviour and our default.
       startIso = isoFromLocal(a.date, a.time ?? "09:00", tz);
-      endIso = addMinutesIso(startIso, dur);
+      endIso = addMinutesIso(startIso, dur ?? 60);
     }
 
     if (a.client_id) clientIdBySeq.set(seq, a.client_id);
@@ -676,7 +693,7 @@ export async function createItineraryFromBrief(
 
     stopRows.push({
       sequence: seq++,
-      type: "appointment",
+      type: "transit_departure",
       location_id: null,
       customer_id: null,
       customer_site_id: null,
@@ -694,6 +711,11 @@ export async function createItineraryFromBrief(
         booking_reference: tb.reference,
         seat: tb.seat,
         price: tb.price,
+        operator: tb.operator,
+        ticket_type: tb.ticket_type,
+        route_restriction: tb.route_restriction,
+        barcode_ref: tb.barcodes[0]?.ref ?? null,
+        barcode_data: tb.barcodes[0]?.data ?? null,
         departure_hub_id: tb.departure_hub_id,
         destination_hub_id: tb.destination_hub_id,
       },
@@ -702,7 +724,11 @@ export async function createItineraryFromBrief(
     });
 
     // Changeover stops — intermediate stations between departure and arrival.
-    for (const co of tb.changeovers) {
+    // Each changeover starts a new ticket leg. barcodes[0] is on the departure
+    // stop; barcodes[i+1] goes on changeover[i].
+    for (let coIdx = 0; coIdx < tb.changeovers.length; coIdx++) {
+      const co = tb.changeovers[coIdx];
+      const coBarcode = tb.barcodes[coIdx + 1];
       const coArrIso = co.arrive_time
         ? isoFromLocal(dateForBooking, co.arrive_time, tz)
         : null;
@@ -711,7 +737,7 @@ export async function createItineraryFromBrief(
         : null;
       stopRows.push({
         sequence: seq++,
-        type: "appointment",
+        type: "transit_changeover",
         location_id: null,
         customer_id: null,
         customer_site_id: null,
@@ -726,6 +752,11 @@ export async function createItineraryFromBrief(
           kind: "transit_changeover",
           transport_mode: tb.mode,
           hub_id: co.hub_id,
+          operator: tb.operator,
+          ticket_type: tb.ticket_type,
+          route_restriction: tb.route_restriction,
+          barcode_ref: coBarcode?.ref ?? null,
+          barcode_data: coBarcode?.data ?? null,
         },
         itinerary_id: itinerary.id,
         workspace_id: ctx.workspaceId,
@@ -734,7 +765,7 @@ export async function createItineraryFromBrief(
 
     stopRows.push({
       sequence: seq++,
-      type: "appointment",
+      type: "transit_arrival",
       location_id: null,
       customer_id: null,
       customer_site_id: null,
@@ -819,6 +850,25 @@ export async function createItineraryFromBrief(
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
     });
+  } else if (homeId) {
+    // Always create a return-home stop so the transition loop can
+    // generate a walk-home leg and the timeline shows correct arrival.
+    stopRows.push({
+      sequence: seq++,
+      type: "end",
+      location_id: homeId,
+      customer_id: null,
+      customer_site_id: null,
+      title: null,
+      start_time: null,
+      end_time: null,
+      duration_minutes: null,
+      is_time_fixed: false,
+      notes: null,
+      metadata: { kind: "return_home" },
+      itinerary_id: itinerary.id,
+      workspace_id: ctx.workspaceId,
+    });
   }
 
   // Tag each row with its clientId before sorting (object identity survives sort).
@@ -836,10 +886,10 @@ export async function createItineraryFromBrief(
     const bIsHome = b.type === "start" && !(b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by");
     if (aIsHome && !bIsHome) return -1;
     if (bIsHome && !aIsHome) return 1;
-    const aIsBhb = a.metadata && "kind" in a.metadata && (a.metadata as Record<string, unknown>).kind === "be_home_by";
-    const bIsBhb = b.metadata && "kind" in b.metadata && (b.metadata as Record<string, unknown>).kind === "be_home_by";
-    if (aIsBhb && !bIsBhb) return 1;
-    if (bIsBhb && !aIsBhb) return -1;
+    const aIsEnd = a.type === "end" || (a.metadata && "kind" in a.metadata && ((a.metadata as Record<string, unknown>).kind === "be_home_by" || (a.metadata as Record<string, unknown>).kind === "return_home"));
+    const bIsEnd = b.type === "end" || (b.metadata && "kind" in b.metadata && ((b.metadata as Record<string, unknown>).kind === "be_home_by" || (b.metadata as Record<string, unknown>).kind === "return_home"));
+    if (aIsEnd && !bIsEnd) return 1;
+    if (bIsEnd && !aIsEnd) return -1;
     if (!a.start_time && !b.start_time) return 0;
     if (!a.start_time) return 1;
     if (!b.start_time) return -1;
@@ -995,21 +1045,46 @@ export async function createItineraryFromBrief(
   // client_ids), what travel mode the user intends and — optionally —
   // the details of a ticket they've already got. Run after stopovers
   // so leg-transition svUids resolve to real stop rows.
+  // Brief mode spans — when transport booking stops are inserted
+  // between anchors, those anchors are no longer adjacent so we can't
+  // create a direct transition row for the pair. Instead we record the
+  // user's intended mode so the fallback loop can apply it to the gap
+  // transitions (anchor → transit_departure, transit_arrival → anchor).
+  const briefModeSpans: Array<{
+    fromSeq: number;
+    toSeq: number;
+    mode: string;
+    localBefore: string;
+    localAfter: string;
+    stationBased: boolean;
+  }> = [];
+
   if (parsed.value.transitions.length > 0) {
     for (const t of parsed.value.transitions) {
       const from = stopByClientId.get(t.from_client_id);
       const to = stopByClientId.get(t.to_client_id);
-      // The brief might send a transition whose anchors no longer sit
-      // adjacent after sorting — drop those silently rather than
-      // producing a nonsensical row.
-      if (!from || !to || from.sequence + 1 !== to.sequence) continue;
+      if (!from || !to) continue;
 
       const isBooked = t.booking != null;
-      const mode = t.mode === "auto" ? null : t.mode;
+      const mode = t.mode === "auto" ? "walk" : t.mode;
 
-      // When the user has nothing to say (mode=auto, no booking), skip
-      // — the editor's solver will compute the transition itself.
-      if (!mode && !isBooked) continue;
+      // Transport booking stops were inserted between these anchors,
+      // so they're no longer adjacent. Save the mode info for the
+      // fallback loop to use on the gap transitions.
+      if (from.sequence + 1 !== to.sequence) {
+        if (mode) {
+          const sb = ["train", "tube", "bus", "flight"].includes(mode);
+          briefModeSpans.push({
+            fromSeq: from.sequence,
+            toSeq: to.sequence,
+            mode,
+            localBefore: t.local_before ?? (sb ? "walk" : "auto"),
+            localAfter: t.local_after ?? (sb ? "walk" : "auto"),
+            stationBased: sb,
+          });
+        }
+        continue;
+      }
 
       const fromAnchor = parsed.value.anchors.find(
         (a) => a.client_id === t.from_client_id,
@@ -1063,7 +1138,7 @@ export async function createItineraryFromBrief(
             workspace_id: ctx.workspaceId,
             from_stop_id: from.id,
             to_stop_id: to.id,
-            mode: mode ?? "mixed",
+            mode: mode,
             is_locked: isBooked,
             start_time: startIso,
             end_time: endIso,
@@ -1138,7 +1213,7 @@ export async function createItineraryFromBrief(
   {
     const { data: allStops } = await supabase
       .from("stops")
-      .select("id, sequence, metadata")
+      .select("id, sequence, metadata, start_time, end_time")
       .eq("itinerary_id", itinerary.id)
       .eq("workspace_id", ctx.workspaceId)
       .order("sequence");
@@ -1181,19 +1256,146 @@ export async function createItineraryFromBrief(
           (toMeta?.kind === "transit_changeover" ||
             toMeta?.kind === "transit_arrival");
 
+        let transitMode = isTransitLeg
+          ? (fromMeta?.transport_mode as string) ?? "train"
+          : "auto";
+
+        // Any pair where one side is a transit stop and the other
+        // isn't is a "local connection" — walking to/from the station.
+        // Default to walk rather than leaving it as auto.
+        const fromIsTransit =
+          fromMeta?.kind === "transit_departure" ||
+          fromMeta?.kind === "transit_changeover" ||
+          fromMeta?.kind === "transit_arrival";
+        const toIsTransit =
+          toMeta?.kind === "transit_departure" ||
+          toMeta?.kind === "transit_changeover" ||
+          toMeta?.kind === "transit_arrival";
+        if (!isTransitLeg && transitMode === "auto" && (fromIsTransit || toIsTransit)) {
+          transitMode = "walk";
+        }
+
+        // For non-transit pairs, check if a brief transition spans
+        // this gap and carry the user's intended mode through.
+        if (!isTransitLeg && transitMode === "auto") {
+          const fromSeq = from.sequence as number;
+          const toSeq = to.sequence as number;
+          const span = briefModeSpans.find(
+            (s) => fromSeq >= s.fromSeq && toSeq <= s.toSeq,
+          );
+          if (span) {
+            const toIsTransitDep =
+              toMeta?.kind === "transit_departure";
+            const fromIsTransitArr =
+              fromMeta?.kind === "transit_arrival";
+            if (span.stationBased && toIsTransitDep) {
+              transitMode = span.localBefore !== "auto" ? span.localBefore : "walk";
+            } else if (span.stationBased && fromIsTransitArr) {
+              transitMode = span.localAfter !== "auto" ? span.localAfter : "walk";
+            } else if (!span.stationBased) {
+              transitMode = span.mode;
+            }
+          }
+        }
+
+        // Compute duration from stop times for locked transit legs.
+        // For changeover stops, end_time is the departure (start_time is arrival).
+        let computedDuration: number | null = null;
+        if (isTransitLeg) {
+          const departTime = from.end_time ?? from.start_time;
+          const arriveTime = to.start_time;
+          if (departTime && arriveTime) {
+            computedDuration = Math.round(
+              (new Date(arriveTime as string).getTime() -
+                new Date(departTime as string).getTime()) /
+                60_000,
+            );
+          }
+        }
+
         newTransitions.push({
           itinerary_id: itinerary.id,
           workspace_id: ctx.workspaceId,
           from_stop_id: from.id as string,
           to_stop_id: to.id as string,
-          mode: isTransitLeg ? "train" : "mixed",
+          mode: transitMode === "auto" ? "walk" : transitMode,
           is_locked: isTransitLeg,
-          computed_duration_minutes: null,
+          computed_duration_minutes: computedDuration,
         });
       }
 
       if (newTransitions.length > 0) {
-        await supabase.from("transitions").insert(newTransitions);
+        const { data: inserted } = await supabase
+          .from("transitions")
+          .upsert(newTransitions, { onConflict: "from_stop_id,to_stop_id", ignoreDuplicates: false })
+          .select("id, from_stop_id, to_stop_id, mode, is_locked");
+
+        // Fetch route data for transitions with explicit modes — locked
+        // transit legs get polylines for the map, and non-locked legs with
+        // a set mode (walk, drive, etc.) get duration + distance so the
+        // planning page can show travel time.
+        if (inserted) {
+          for (const tr of inserted.filter((t) => t.is_locked || t.mode !== "auto")) {
+            try {
+              const { data: trStops } = await supabase
+                .from("stops")
+                .select(
+                  `id, transport_hub_id,
+                   location:locations(latitude, longitude),
+                   customer_site:customer_sites(latitude, longitude),
+                   transport_hub:transport_hubs(latitude, longitude, code)`,
+                )
+                .in("id", [tr.from_stop_id, tr.to_stop_id])
+                .eq("workspace_id", ctx.workspaceId);
+              if (!trStops || trStops.length < 2) continue;
+              const fromS = trStops.find((s) => s.id === tr.from_stop_id);
+              const toS = trStops.find((s) => s.id === tr.to_stop_id);
+              const fromPt = pickPointFromRow(fromS);
+              const toPt = pickPointFromRow(toS);
+              if (!fromPt || !toPt) continue;
+              const route = await routeForTransitionFn({
+                mode: tr.mode as any,
+                origin: fromPt,
+                destination: toPt,
+              });
+              if (route) {
+                const patch: Record<string, unknown> = {};
+                if (route.overviewPolyline)
+                  patch.overview_polyline = route.overviewPolyline;
+                if (route.totalDurationMinutes != null && !tr.is_locked)
+                  patch.computed_duration_minutes = Math.round(route.totalDurationMinutes);
+                if (route.totalDistanceMiles != null)
+                  patch.distance_miles = route.totalDistanceMiles;
+                if (Object.keys(patch).length > 0)
+                  await supabase.from("transitions").update(patch).eq("id", tr.id);
+              }
+
+              // For train/bus/tube legs, prefer our seeded rail network
+              // polylines over Google Transit's (which are approximate and
+              // often don't follow actual UK track geometry).
+              const isRailMode = tr.mode === "train" || tr.mode === "bus" || tr.mode === "tube";
+              if (isRailMode && fromPt && toPt) {
+                const fromHub = (fromS as any)?.transport_hub;
+                const toHub = (toS as any)?.transport_hub;
+                const fromCode = fromHub?.code ?? null;
+                const toCode = toHub?.code ?? null;
+                const railPoly = await getRailPolyline(
+                  fromPt.lat, fromPt.lng,
+                  toPt.lat, toPt.lng,
+                  fromCode, toCode,
+                );
+                if (railPoly) {
+                  await supabase
+                    .from("transitions")
+                    .update({ overview_polyline: railPoly })
+                    .eq("id", tr.id);
+                }
+              }
+            } catch {
+              // Route fetch is best-effort — map renders without polyline
+            }
+          }
+        }
       }
     }
   }
@@ -1202,6 +1404,24 @@ export async function createItineraryFromBrief(
   await resolveItineraryTimes(itinerary.id);
 
   return ok({ id: itinerary.id });
+}
+
+function pickPointFromRow(
+  stop: any,
+): { lat: number; lng: number } | null {
+  const cs = stop?.customer_site;
+  if (cs?.latitude != null && cs?.longitude != null) {
+    return { lat: Number(cs.latitude), lng: Number(cs.longitude) };
+  }
+  const loc = stop?.location;
+  if (loc?.latitude != null && loc?.longitude != null) {
+    return { lat: Number(loc.latitude), lng: Number(loc.longitude) };
+  }
+  const hub = stop?.transport_hub;
+  if (hub?.latitude != null && hub?.longitude != null) {
+    return { lat: Number(hub.latitude), lng: Number(hub.longitude) };
+  }
+  return null;
 }
 
 function providerForMode(mode: string | null): string {

@@ -502,26 +502,31 @@ export function buildStaticMapUrl(args: {
     url.searchParams.append("markers", parts.join("|"));
   }
 
+  // Path parameters need manual URL construction because:
+  // 1. URLSearchParams double-encodes %7C → %257C
+  // 2. Encoded polylines can contain | (valid in the encoding alphabet)
+  //    which collides with Google's | delimiter in path params
+  // Solution: URL-encode the polyline content, keep | as literal delimiters
+  const pathParams: string[] = [];
   for (const p of args.paths ?? []) {
     if (p.encoded) {
-      const parts = [
-        `weight:${p.weight ?? 4}`,
-        `color:0x${p.color ?? "c25c3a"}`,
-        `enc:${p.encoded}`,
-      ];
-      url.searchParams.append("path", parts.join("|"));
+      const safePolyline = encodeURIComponent(p.encoded);
+      pathParams.push(
+        `weight:${p.weight ?? 4}|color:0x${p.color ?? "c25c3a"}|enc:${safePolyline}`,
+      );
     } else if (p.points && p.points.length >= 2) {
       const coords = p.points.map((pt) => `${pt.lat},${pt.lng}`).join("|");
-      const parts = [
-        `weight:${p.weight ?? 3}`,
-        `color:0x${p.color ?? "c25c3a"}`,
-        coords,
-      ];
-      url.searchParams.append("path", parts.join("|"));
+      pathParams.push(
+        `weight:${p.weight ?? 3}|color:0x${p.color ?? "c25c3a"}|${coords}`,
+      );
     }
   }
 
   url.searchParams.set("key", key);
-  return url.toString();
+  let finalUrl = url.toString();
+  for (const pp of pathParams) {
+    finalUrl += `&path=${pp}`;
+  }
+  return finalUrl;
 }
 

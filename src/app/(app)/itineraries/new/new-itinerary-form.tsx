@@ -11,18 +11,16 @@ import {
   type PlacePickerLocation,
 } from "@/components/place-picker";
 import {
-  AddBetween,
-  AnchorCard,
   HOME_UID,
   JourneySpine,
-  StopoverCard,
   TRANSITION_OPTIONS,
-  TransitionRow,
+  Timeline,
   TransportBookingCard,
   AccommodationBookingCard,
   anchorEndDate,
   anchorStartDate,
   anchorWithinStay,
+  buildBriefTimeline,
   buildDatePresets,
   defaultAnchorDate,
   effectiveKind,
@@ -50,10 +48,22 @@ import {
   type TransitionMode,
 } from "@/components/itinerary";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
-import { TransportIcon } from "@/components/icons";
+import type { GapMode, GapPreview } from "@/components/gap-mode-picker";
 import { scanGmailForBookings } from "@/lib/actions/gmail";
+import { resolveHubByName } from "@/lib/actions/travel-profile";
 import type { ParsedBooking } from "@/lib/gmail/types";
 import type { PlaceSelection } from "@/components/place-picker";
+
+function hubAsPlace(hub: { id: string | null; label: string | null }): PlaceSelection | null {
+  if (!hub.id && !hub.label) return null;
+  return {
+    kind: "location" as const,
+    location_id: "",
+    label: hub.label ?? "Station",
+    location_type: "other" as const,
+    transport_hub_id: hub.id,
+  } as PlaceSelection & { transport_hub_id: string | null };
+}
 
 const MODE_OPTIONS_MAP: Record<string, string> = {
   train: "Train",
@@ -156,8 +166,90 @@ export function NewItineraryBrief({
     setAccommodationBookings((prev) => prev.filter((b) => b.uid !== uid));
 
   const [gmailImportOpen, setGmailImportOpen] = useState(false);
+  const [expandedAnchors, setExpandedAnchors] = useState<Set<string>>(new Set());
 
-  const importParsedBooking = (b: ParsedBooking) => {
+  // Gap mode selections — keyed by gap identifier (e.g., "home→transport", "transport→anchor-uid")
+  const [gapModes, setGapModes] = useState<Map<string, GapMode>>(new Map());
+  const setGapMode = (gapKey: string, mode: GapMode) => {
+    setGapModes((prev) => new Map(prev).set(gapKey, mode));
+    // Prefetch the route preview for this mode
+    const parts = gapKey.split("→");
+    if (parts.length === 2) {
+      const [fromKey, toKey] = parts;
+      const fromPlace = gapPlaces.get(fromKey) ?? null;
+      const toPlace = gapPlaces.get(toKey) ?? null;
+      if (fromPlace && toPlace) {
+        briefPreviews.fetchPreview(fromPlace, toPlace, mode as any);
+      }
+    }
+  };
+
+  // Map of gap endpoint keys → PlaceSelection for route preview lookups
+  const gapPlaces = useMemo(() => {
+    const m = new Map<string, PlaceSelection>();
+    if (selectedBase) {
+      m.set("home", {
+        kind: "location" as const,
+        location_id: selectedBaseId ?? "",
+        label: baseName,
+        location_type: "home" as const,
+      });
+    }
+    for (const tb of transportBookings) {
+      if (!tb.confirmed) continue;
+      if (tb.departureHub?.id) {
+        m.set(`hub:${tb.departureHub.id}`, {
+          kind: "location",
+          location_id: "",
+          label: tb.departureHub.label ?? "Station",
+          location_type: "other",
+          transport_hub_id: tb.departureHub.id,
+        } as PlaceSelection & { transport_hub_id: string });
+      }
+      if (tb.destinationHub?.id) {
+        m.set(`hub:${tb.destinationHub.id}`, {
+          kind: "location",
+          location_id: "",
+          label: tb.destinationHub.label ?? "Station",
+          location_type: "other",
+          transport_hub_id: tb.destinationHub.id,
+        } as PlaceSelection & { transport_hub_id: string });
+      }
+    }
+    for (const a of anchors) {
+      if (a.place) m.set(`anchor:${a.uid}`, a.place);
+    }
+    return m;
+  }, [selectedBase, selectedBaseId, baseName, transportBookings, anchors]);
+
+  // Get preview for a gap
+  const getGapPreview = (fromKey: string, toKey: string, mode: GapMode): GapPreview => {
+    const from = gapPlaces.get(fromKey) ?? null;
+    const to = gapPlaces.get(toKey) ?? null;
+    if (!from || !to) return null;
+    return briefPreviews.get(from, to, mode as any) ?? null;
+  };
+
+  // Get all previews for a gap (all modes)
+  const getGapPreviews = (fromKey: string, toKey: string) => {
+    const result: Partial<Record<GapMode, GapPreview>> = {};
+    for (const mode of ["walk", "drive", "taxi", "cycle"] as GapMode[]) {
+      result[mode] = getGapPreview(fromKey, toKey, mode);
+    }
+    return result;
+  };
+
+  // Prefetch all modes for a gap
+  const prefetchGap = (fromKey: string, toKey: string) => {
+    const from = gapPlaces.get(fromKey) ?? null;
+    const to = gapPlaces.get(toKey) ?? null;
+    if (!from || !to) return;
+    for (const mode of ["walk", "drive", "taxi"] as GapMode[]) {
+      briefPreviews.fetchPreview(from, to, mode as any);
+    }
+  };
+
+  const importParsedBooking = async (b: ParsedBooking) => {
     if (b.type === "transport") {
       // Split outbound/return: detect where the direction reverses.
       // E.g. WEL→LEI, LEI→DER, DER→LEI, LEI→WEL — the reversal is
@@ -181,37 +273,68 @@ export function NewItineraryBrief({
       const outbound = segs.slice(0, splitAt);
       const returnSegs = segs.slice(splitAt);
 
-      const makeBooking = (legs: typeof segs) => {
+      const makeBooking = async (legs: typeof segs) => {
         const first = legs[0];
         const last = legs[legs.length - 1];
+        // Resolve station names → transport hub IDs for route previews
+        const changeoverLegs = legs.length > 1 ? legs.slice(0, -1) : [];
+        const [depHub, destHub, ...coHubs] = await Promise.all([
+          first?.from_station ? resolveHubByName(first.from_station) : null,
+          last?.to_station ? resolveHubByName(last.to_station) : null,
+          ...changeoverLegs.map((seg) =>
+            seg.to_station ? resolveHubByName(seg.to_station) : null,
+          ),
+        ]);
         return {
           ...emptyTransportBookingItem(),
           mode: (b.mode === "bus" ? "bus" : b.mode) as any,
           date: first?.departure_date ?? tripStartDate,
-          departureHub: { id: null, label: first?.from_station ?? null },
-          destinationHub: { id: null, label: last?.to_station ?? null },
+          departureHub: { id: depHub?.id ?? null, label: first?.from_station ?? null },
+          destinationHub: { id: destHub?.id ?? null, label: last?.to_station ?? null },
           departTime: first?.departure_time ?? "",
           arriveTime: last?.arrival_time ?? "",
-          changeovers: legs.length > 1
-            ? legs.slice(0, -1).map((seg, i) => ({
-                hub: { id: null, label: seg.to_station },
-                arriveTime: seg.arrival_time,
-                departTime: legs[i + 1]?.departure_time ?? "",
-              }))
-            : [],
+          changeovers: changeoverLegs.map((seg, i) => ({
+            hub: { id: coHubs[i]?.id ?? null, label: seg.to_station },
+            arriveTime: seg.arrival_time,
+            departTime: legs[i + 1]?.departure_time ?? "",
+          })),
           serviceNumber: first?.service_number ?? "",
           reference: b.booking_reference ?? "",
           seat: first?.seat ?? "",
           price: b.price != null ? String(b.price) : "",
           confirmed: true,
+          source: "imported" as const,
+          operator: first?.operator ?? null,
+          ticketType: first?.ticket_type ?? null,
+          routeRestriction: first?.route_restriction ?? null,
+          barcodes: legs.map((seg) => ({
+            ref: seg.barcode_ref ?? null,
+            data: seg.barcode_data ?? null,
+          })),
         };
       };
 
+      const outboundBooking = await makeBooking(outbound);
+      const returnBooking = returnSegs.length > 0 ? await makeBooking(returnSegs) : null;
       setTransportBookings((prev) => {
-        const next = [...prev, makeBooking(outbound)];
-        if (returnSegs.length > 0) next.push(makeBooking(returnSegs));
+        const next = [...prev, outboundBooking];
+        if (returnBooking) next.push(returnBooking);
         return next;
       });
+
+      // Auto-update trip dates to match the booking. If dates are still
+      // at the default (tomorrow), replace them entirely. Otherwise expand
+      // the range to encompass the booking.
+      const bookingDate = outbound[0]?.departure_date;
+      const defaultDate = defaultAnchorDate();
+      if (bookingDate) {
+        setTripStartDate((prev) =>
+          prev === defaultDate ? bookingDate : (bookingDate < prev ? bookingDate : prev),
+        );
+        setTripEndDate((prev) =>
+          prev === defaultDate ? bookingDate : (bookingDate > prev ? bookingDate : prev),
+        );
+      }
     } else {
       setAccommodationBookings((prev) => [
         ...prev,
@@ -320,7 +443,7 @@ export function NewItineraryBrief({
   ): ModePreviewMap => {
     const out: ModePreviewMap = {};
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       const entry = briefPreviews.get(from, to, opt.value);
       if (entry) out[opt.value] = entry;
     }
@@ -332,7 +455,7 @@ export function NewItineraryBrief({
   ) => {
     if (!from || !to) return;
     for (const opt of TRANSITION_OPTIONS) {
-      if (opt.value === "auto" || opt.value === "mixed") continue;
+      if (opt.value === "mixed") continue;
       briefPreviews.fetchPreview(from, to, opt.value);
     }
   };
@@ -346,7 +469,7 @@ export function NewItineraryBrief({
       const from = anchors[i].place;
       const to = anchors[i + 1].place;
       const t = transitions.get(transitionKey(anchors[i].uid, anchors[i + 1].uid));
-      if (!t || t.mode === "auto" || t.mode === "mixed") continue;
+      if (!t || t.mode === "mixed") continue;
       briefPreviews.fetchPreview(from, to, t.mode);
     }
     // briefPreviews is a stable hook; depending on anchors + transitions
@@ -369,6 +492,7 @@ export function NewItineraryBrief({
     const previous =
       anchors[Math.max(0, Math.min(index - 1, anchors.length - 1))];
     const seed = emptyAnchor(previous?.date ?? tripStartDate);
+    setExpandedAnchors((prev) => new Set(prev).add(seed.uid));
     setAnchors((prev) => {
       const copy = [...prev];
       copy.splice(index, 0, seed);
@@ -435,7 +559,7 @@ export function NewItineraryBrief({
       const from = anchors[i];
       const to = anchors[i + 1];
       const t = transitions.get(transitionKey(from.uid, to.uid));
-      if (!t || t.mode === "auto" || t.mode === "mixed") continue;
+      if (!t || t.mode === "mixed") continue;
       const preview = briefPreviews.get(from.place, to.place, t.mode);
       if (!preview || preview === "pending") continue;
       const result = checkLegFeasibility({
@@ -540,8 +664,7 @@ export function NewItineraryBrief({
             toUid: string,
             t: BriefTransition,
           ) => {
-            const meaningful = t.mode !== "auto" || t.booked;
-            if (!meaningful) return;
+            if (!t.mode && !t.booked) return;
             const booking =
               t.booked &&
               t.booking.departTime &&
@@ -659,6 +782,10 @@ export function NewItineraryBrief({
             reference: tb.reference || null,
             seat: tb.seat || null,
             price: tb.price ? Number(tb.price) : null,
+            operator: tb.operator || null,
+            ticket_type: tb.ticketType || null,
+            route_restriction: tb.routeRestriction || null,
+            barcodes: tb.barcodes,
           })),
         accommodation_bookings: accommodationBookings
           .filter((ab) => ab.hotel != null || ab.checkInDate)
@@ -686,617 +813,456 @@ export function NewItineraryBrief({
     });
   };
 
+  // ── Build unified chronological timeline entries ──────────────────
+  type TimelineEntry =
+    | { kind: "transport"; booking: BriefTransportBooking }
+    | { kind: "anchor"; anchor: Anchor; index: number }
+    | { kind: "hotel"; booking: BriefAccommodationBooking };
+
+  const isMultiDay = useMemo(() => {
+    if (tripStartDate !== tripEndDate) return true;
+    if (accommodationBookings.some((ab) => ab.confirmed)) return true;
+    // Check if transport bookings span multiple dates
+    const dates = new Set(
+      transportBookings
+        .filter((tb) => tb.confirmed && tb.date)
+        .map((tb) => tb.date),
+    );
+    return dates.size > 1;
+  }, [tripStartDate, tripEndDate, accommodationBookings, transportBookings]);
+
+  const timelineEntries = useMemo(() => {
+    const entries: TimelineEntry[] = [];
+    anchors.forEach((a, i) => entries.push({ kind: "anchor", anchor: a, index: i }));
+    transportBookings
+      .filter((tb) => tb.confirmed && tb.mode)
+      .forEach((tb) => entries.push({ kind: "transport", booking: tb }));
+    accommodationBookings
+      .filter((ab) => ab.confirmed && ab.hotel)
+      .forEach((ab) => entries.push({ kind: "hotel", booking: ab }));
+    entries.sort((a, b) => {
+      const timeOf = (e: TimelineEntry) => {
+        if (e.kind === "anchor") return `${e.anchor.date}T${e.anchor.time || "12:00"}`;
+        if (e.kind === "transport") return `${e.booking.date}T${e.booking.departTime}`;
+        // Hotel sorts at check-in time (end of day)
+        return `${e.booking.checkInDate}T${e.booking.checkInTime || "18:00"}`;
+      };
+      return timeOf(a).localeCompare(timeOf(b));
+    });
+    return entries;
+  }, [anchors, transportBookings, accommodationBookings]);
+
+  // Find the first departure time for "leave by" display
+  const firstDepartTime = transportBookings
+    .filter((tb) => tb.confirmed && tb.departTime)
+    .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))
+    [0]?.departTime ?? null;
+
+  // Find contextual gaps between transport bookings
+  const findGapInfo = (
+    prevEntry: TimelineEntry | null,
+    nextEntry: TimelineEntry | null,
+  ): { location: string; from: string; to: string; gapMinutes: number } | null => {
+    if (!prevEntry || !nextEntry) return null;
+    // Gap between outbound arrival and return departure
+    if (prevEntry.kind === "transport" && nextEntry.kind === "transport") {
+      const arriveTime = prevEntry.booking.arriveTime;
+      const departTime = nextEntry.booking.departTime;
+      const dest = prevEntry.booking.destinationHub?.label;
+      if (arriveTime && departTime && dest) {
+        const [ah, am] = arriveTime.split(":").map(Number);
+        const [dh, dm] = departTime.split(":").map(Number);
+        const gap = (dh * 60 + dm) - (ah * 60 + am);
+        if (gap > 0) return { location: dest, from: arriveTime, to: departTime, gapMinutes: gap };
+      }
+    }
+    // Gap between transport arrival and anchor
+    if (prevEntry.kind === "transport" && nextEntry.kind === "anchor") {
+      const arriveTime = prevEntry.booking.arriveTime;
+      const dest = prevEntry.booking.destinationHub?.label;
+      if (arriveTime && dest) {
+        return { location: dest, from: arriveTime, to: nextEntry.anchor.time, gapMinutes: 0 };
+      }
+    }
+    return null;
+  };
+
   return (
-    <div className="brief-grid">
-      {/* Left — the anchor stack */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <FormError message={feedback?.message} />
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 16px" }}>
+      <FormError message={feedback?.message} />
 
-        <BaseLocationCard
-          baseLocations={baseLocations}
-          defaultBaseId={defaultBaseId}
-          selectedBaseId={selectedBaseId}
-          onSelect={setSelectedBaseId}
-        />
-
-        {/* ── Trip dates ─────────────────────────────────────────── */}
-        <div className="brief-subcard">
-          <span className="uc">Trip dates</span>
-          <div className="brief-when-row" style={{ marginTop: 6 }}>
-            <label className="brief-field">
-              <span className="uc" style={{ fontSize: 10.5 }}>Start</span>
-              <input
-                type="date"
-                className="field"
-                value={tripStartDate}
-                onChange={(e) => setTripStartDate(e.target.value)}
-              />
-            </label>
-            <label className="brief-field">
-              <span className="uc" style={{ fontSize: 10.5 }}>End</span>
-              <input
-                type="date"
-                className="field"
-                value={tripEndDate}
-                onChange={(e) => setTripEndDate(e.target.value)}
-              />
-            </label>
+      {/* ══════════════════════════════════════════════════════════════
+          THE TIMELINE
+          ════════════════════════════════════════════════════════════ */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 20 }}>
+        {/* ── Starting point: home + date + be home by ──────── */}
+        <div
+          className="card"
+          style={{
+            padding: "12px 16px",
+            marginBottom: 8,
+            borderLeft: "3px solid var(--ink-faint)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <span className="uc" style={{ fontSize: 10 }}>Starting from</span>
+              <div style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 16, color: "var(--ink)", marginTop: 2 }}>
+                {baseName}
+              </div>
+              {selectedBase?.address && (
+                <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
+                  {selectedBase.address}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input
+                  type="date"
+                  className="field"
+                  value={tripStartDate}
+                  onChange={(e) => {
+                    setTripStartDate(e.target.value);
+                    if (tripEndDate < e.target.value) setTripEndDate(e.target.value);
+                  }}
+                  style={{ width: 120, fontSize: 12, padding: "4px 6px" }}
+                />
+                {tripStartDate !== tripEndDate && (
+                  <>
+                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>to</span>
+                    <input
+                      type="date"
+                      className="field"
+                      value={tripEndDate}
+                      onChange={(e) => setTripEndDate(e.target.value)}
+                      style={{ width: 120, fontSize: 12, padding: "4px 6px" }}
+                    />
+                  </>
+                )}
+              </div>
+              {baseLocations.length > 1 ? (
+                <button
+                  type="button"
+                  style={{ fontSize: 11, color: "var(--gold-2)" }}
+                  onClick={() => {
+                    const idx = baseLocations.findIndex((b) => b.id === selectedBaseId);
+                    const nextId = baseLocations[(idx + 1) % baseLocations.length]?.id;
+                    if (nextId) setSelectedBaseId(nextId);
+                  }}
+                >
+                  Change
+                </button>
+              ) : (
+                <a href="/profile" style={{ fontSize: 11, color: "var(--ink-faint)", textDecoration: "underline" }}>Edit</a>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--rule)" }}>
+            <div>
+              {firstDepartTime && (() => {
+                const BUFFER_MINS = 10;
+                const firstTb = transportBookings
+                  .filter((tb) => tb.confirmed && tb.departTime)
+                  .sort((a, b) => `${a.date}T${a.departTime}`.localeCompare(`${b.date}T${b.departTime}`))[0];
+                const hubId = firstTb?.departureHub?.id;
+                const homeGapKey = `home→hub:${hubId}`;
+                const homeToStationMode = gapModes.get(homeGapKey);
+                const preview = homeToStationMode && hubId
+                  ? getGapPreview("home", `hub:${hubId}`, homeToStationMode)
+                  : null;
+                const travelMins = preview && preview !== "pending" ? preview.durationMinutes : null;
+                if (travelMins != null) {
+                  const [h, m] = firstDepartTime.split(":").map(Number);
+                  const totalMins = h * 60 + m - travelMins - BUFFER_MINS;
+                  return (
+                    <span className="mono" style={{ fontSize: 12, color: "var(--gold-2)", fontWeight: 500 }}>
+                      Leave by {String(Math.floor(totalMins / 60)).padStart(2, "0")}:{String(totalMins % 60).padStart(2, "0")}
+                    </span>
+                  );
+                }
+                return (
+                  <span className="mono" style={{ fontSize: 12, color: "var(--gold-2)", fontWeight: 500 }}>
+                    Catch the {firstDepartTime}
+                  </span>
+                );
+              })()}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {tripStartDate === tripEndDate ? (
+                <>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={beHomeBy != null}
+                      onChange={(e) => setBeHomeBy(e.target.checked ? { date: tripStartDate, time: "17:00" } : null)}
+                      style={{ accentColor: "var(--gold-2)" }}
+                    />
+                    <span className="uc" style={{ fontSize: 9 }}>Back by</span>
+                  </label>
+                  {beHomeBy && (
+                    <input
+                      type="time"
+                      className="field"
+                      value={beHomeBy.time}
+                      onChange={(e) => setBeHomeBy({ ...beHomeBy, time: e.target.value })}
+                      style={{ width: 80, fontSize: 12, padding: "2px 6px" }}
+                    />
+                  )}
+                </>
+              ) : (
+                <span className="mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                  {Math.round((new Date(tripEndDate).getTime() - new Date(tripStartDate).getTime()) / 86400000)} night{Math.round((new Date(tripEndDate).getTime() - new Date(tripStartDate).getTime()) / 86400000) !== 1 ? "s" : ""} away
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Bookings bar ─────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <span className="uc" style={{ marginRight: 4 }}>
-            Bookings
-          </span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              setTransportBookings((prev) => [
-                ...prev,
-                { ...emptyTransportBookingItem(), date: tripStartDate },
-              ])
-            }
+        {/* ── Timeline entries ──────────────────────────────────── */}
+        {timelineEntries.length === 0 && !transportBookings.some((tb) => !tb.confirmed) ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 16px",
+              color: "var(--ink-dim)",
+              fontSize: 14,
+            }}
           >
-            + Transport
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              setAccommodationBookings((prev) => [
-                ...prev,
-                {
-                  ...emptyAccommodationBookingItem(),
-                  checkInDate: tripStartDate,
-                  checkOutDate: tripEndDate,
-                },
-              ])
-            }
-          >
-            + Accommodation
-          </button>
-          {gmailConnected ? (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setGmailImportOpen(true)}
-            >
-              Import from Gmail
-            </button>
-          ) : null}
-        </div>
-
-        {/* ── Confirmed reservations (condensed chips) ────────────── */}
-        {(transportBookings.some((tb) => tb.confirmed) ||
-          accommodationBookings.some((ab) => ab.confirmed)) ? (
-          <div className="brief-reservations">
-            {transportBookings
-              .filter((tb) => tb.confirmed)
-              .map((tb) => {
-                const modeLabel =
-                  tb.mode === "train"
-                    ? "Train"
-                    : tb.mode === "flight"
-                      ? "Flight"
-                      : tb.mode === "taxi"
-                        ? "Taxi"
-                        : tb.mode === "bus"
-                          ? "Bus"
-                          : tb.mode === "tube"
-                            ? "Tube"
-                            : tb.mode === "drive"
-                              ? "Car hire"
-                              : "";
-                return (
-                  <div key={tb.uid} className="brief-reservation-chip">
-                    <span style={{ fontWeight: 500 }}>
-                      {modeLabel}
-                      {tb.departureHub?.label && tb.destinationHub?.label
-                        ? ` ${tb.departureHub.label} to ${tb.destinationHub.label}`
-                        : tb.destinationHub?.label
-                          ? ` to ${tb.destinationHub.label}`
-                          : tb.departureHub?.label
-                            ? ` from ${tb.departureHub.label}`
-                            : ""}
-                    </span>
-                    {tb.date ? (
-                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                        {tb.date}
-                      </span>
-                    ) : null}
-                    {tb.departTime && tb.arriveTime ? (
-                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                        {tb.departTime} → {tb.arriveTime}
-                      </span>
-                    ) : null}
-                    {tb.serviceNumber ? (
-                      <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                        · {tb.serviceNumber}
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
-                      onClick={() =>
-                        setTransportBookings((prev) => [
-                          ...prev,
-                          returnTransportBooking(tb, tripEndDate),
-                        ])
-                      }
-                    >
-                      + Return
-                    </button>
-                    <button
-                      type="button"
-                      style={{ fontSize: 11, color: "var(--ink-dim)" }}
-                      onClick={() =>
-                        updateTransportBooking(tb.uid, { confirmed: false })
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      style={{ fontSize: 11, color: "var(--rust)" }}
-                      onClick={() => removeTransportBooking(tb.uid)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              })}
-            {accommodationBookings
-              .filter((ab) => ab.confirmed)
-              .map((ab) => (
-                <div key={ab.uid} className="brief-reservation-chip">
-                  <span style={{ fontWeight: 500 }}>
-                    {ab.hotel?.label ?? "Hotel"}
-                  </span>
-                  {ab.checkInDate ? (
-                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                      CI from {ab.checkInTime} · CO by {ab.checkOutTime}
-                    </span>
-                  ) : null}
-                  {ab.reference ? (
-                    <span style={{ color: "var(--ink-dim)", fontSize: 12 }}>
-                      · ref {ab.reference}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: "var(--ink-dim)", marginLeft: "auto" }}
-                    onClick={() =>
-                      updateAccommodationBooking(ab.uid, { confirmed: false })
-                    }
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: "var(--rust)" }}
-                    onClick={() => removeAccommodationBooking(ab.uid)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+            <p style={{ margin: "0 0 12px" }}>
+              Start by adding your bookings or appointments.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+              {gmailConnected ? (
+                <button
+                  type="button"
+                  className="btn btn-gold btn-sm"
+                  onClick={() => setGmailImportOpen(true)}
+                >
+                  Scan for tickets
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() =>
+                  setTransportBookings((prev) => [
+                    ...prev,
+                    { ...emptyTransportBookingItem(), date: tripStartDate },
+                  ])
+                }
+              >
+                + Transport
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => insertAnchorAt(0)}
+              >
+                + Add a stop
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {/* ── Active booking forms (not yet confirmed) ───────────── */}
+        {/* Active (unconfirmed) booking forms */}
         {transportBookings
           .filter((tb) => !tb.confirmed)
           .map((tb) => (
-            <TransportBookingCard
-              key={tb.uid}
-              booking={tb}
-              onChange={(patch) => updateTransportBooking(tb.uid, patch)}
-              onRemove={() => removeTransportBooking(tb.uid)}
-            />
+            <div key={tb.uid} style={{ marginBottom: 12 }}>
+              <TransportBookingCard
+                booking={tb}
+                onChange={(patch) => updateTransportBooking(tb.uid, patch)}
+                onRemove={() => removeTransportBooking(tb.uid)}
+              />
+            </div>
           ))}
         {accommodationBookings
           .filter((ab) => !ab.confirmed)
           .map((ab) => (
-            <AccommodationBookingCard
-              key={ab.uid}
-              booking={ab}
-              customers={customers}
-              customerSites={customerSites}
-              locations={locations}
-              onChange={(patch) => updateAccommodationBooking(ab.uid, patch)}
-              onRemove={() => removeAccommodationBooking(ab.uid)}
-            />
-          ))}
-
-        {/* ── Timeline ─────────────────────────────────────────────── */}
-        <header style={{ marginBottom: 4, marginTop: 6 }}>
-          <span className="uc">
-            Timeline{anchors.length > 0 ? ` · ${anchors.length} anchor${anchors.length === 1 ? "" : "s"}` : ""}
-          </span>
-        </header>
-
-        {/* Transport booking stops — read-only markers from confirmed bookings */}
-        {transportBookings
-          .filter((tb) => tb.confirmed && tb.mode)
-          .map((tb) => {
-            const modeLabel =
-              MODE_OPTIONS_MAP[tb.mode!] ?? tb.mode;
-            const Icon = TransportIcon[tb.mode!];
-            return (
-              <div
-                key={`tl-${tb.uid}`}
-                className="brief-card-soft"
-                style={{
-                  padding: "10px 14px",
-                  borderLeft: "3px solid var(--gold-2)",
-                  marginBottom: 8,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Icon size={13} />
-                  <span className="uc" style={{ fontSize: 10.5 }}>
-                    Booked {modeLabel}
-                  </span>
-                </div>
-                <div style={{ fontSize: 13, color: "var(--ink)" }}>
-                  {tb.departureHub?.label ?? "Departure"}{" "}
-                  <span style={{ color: "var(--ink-dim)" }}>
-                    {tb.departTime || "—"}
-                  </span>
-                  {tb.changeovers.map((co, ci) => (
-                    <span key={ci} style={{ color: "var(--ink-dim)" }}>
-                      {" → "}{co.hub?.label ?? "Change"}{" "}
-                      {co.arriveTime && co.departTime
-                        ? `(${co.arriveTime}–${co.departTime})`
-                        : ""}
-                    </span>
-                  ))}
-                  {" → "}
-                  {tb.destinationHub?.label ?? "Arrival"}{" "}
-                  <span style={{ color: "var(--ink-dim)" }}>
-                    {tb.arriveTime || "—"}
-                  </span>
-                </div>
-                {tb.serviceNumber ? (
-                  <div
-                    style={{ fontSize: 12, color: "var(--ink-dim)" }}
-                  >
-                    {tb.serviceNumber}
-                    {tb.reference ? ` · ref ${tb.reference}` : ""}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-
-        {/* Accommodation constraint markers */}
-        {accommodationBookings
-          .filter((ab) => ab.confirmed && ab.hotel)
-          .map((ab) => (
-            <div
-              key={`tl-acc-${ab.uid}`}
-              style={{
-                padding: "8px 14px",
-                borderLeft: "2px dashed var(--ink-faint)",
-                marginBottom: 8,
-                fontSize: 12,
-                color: "var(--ink-dim)",
-              }}
-            >
-              <span className="uc" style={{ fontSize: 10 }}>
-                Check-in from {ab.checkInTime}
-              </span>
-              {" · "}
-              {ab.hotel?.label}
-              {ab.checkInDate ? ` · ${ab.checkInDate}` : ""}
-            </div>
-          ))}
-
-        <AddBetween onAdd={() => insertAnchorAt(0)} />
-
-        {anchors.map((anchor, i) => {
-          const next = anchors[i + 1];
-          return (
-            <div key={anchor.uid}>
-              {i === 0 ? (
-                <TransitionRow
-                  from={null}
-                  to={anchor}
-                  transition={getTransition(HOME_UID, anchor.uid)}
-                  onChange={(patch) =>
-                    setTransition(HOME_UID, anchor.uid, patch)
-                  }
-                  fromVirtualLabel={baseName}
-                />
-              ) : null}
-              <AnchorCard
-                anchor={anchor}
-                earlier={anchors.slice(0, i)}
-                first={i === 0}
-                canRemove={anchors.length > 1}
+            <div key={ab.uid} style={{ marginBottom: 12 }}>
+              <AccommodationBookingCard
+                booking={ab}
                 customers={customers}
                 customerSites={customerSites}
                 locations={locations}
-                datePresets={datePresets}
-                onChange={(patch) => updateAnchor(anchor.uid, patch)}
-                onRemove={() => removeAnchor(anchor.uid)}
-              />
-              {/* Link to accommodation booking if this anchor is a stay at the same hotel */}
-              {anchor.place &&
-                effectiveKind(anchor) === "stay" &&
-                (() => {
-                  const match = accommodationBookings.find(
-                    (ab) =>
-                      ab.confirmed &&
-                      ab.hotel &&
-                      anchor.place &&
-                      ab.hotel.label === anchor.place.label,
-                  );
-                  if (!match) return null;
-                  return (
-                    <div
-                      style={{
-                        padding: "6px 14px",
-                        borderLeft: "2px dashed var(--gold-2)",
-                        fontSize: 12,
-                        color: "var(--ink-dim)",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Linked to booking: {match.hotel?.label}
-                      {match.checkInTime
-                        ? ` · check-in from ${match.checkInTime}`
-                        : ""}
-                      {match.checkOutTime
-                        ? ` · check-out by ${match.checkOutTime}`
-                        : ""}
-                      {match.reference ? ` · ref ${match.reference}` : ""}
-                    </div>
-                  );
-                })()}
-              {next
-                ? (() => {
-                    const sv = getStopover(anchor.uid, next.uid);
-                    if (sv) {
-                      const svUid = stopoverUid(anchor.uid, next.uid);
-                      const svAnchor = stopoverAsAnchor(sv, svUid);
-                      return (
-                        <>
-                          <TransitionRow
-                            from={anchor}
-                            to={svAnchor}
-                            transition={getTransition(anchor.uid, svUid)}
-                            modePreviews={briefPreviewsForPair(
-                              anchor.place,
-                              sv.place,
-                            )}
-                            onOpenChange={(open) => {
-                              if (open)
-                                briefPrefetchPair(anchor.place, sv.place);
-                            }}
-                            onChange={(patch) =>
-                              setTransition(anchor.uid, svUid, patch)
-                            }
-                          />
-                          <StopoverCard
-                            stopover={sv}
-                            fromAnchor={anchor}
-                            toAnchor={next}
-                            customers={customers}
-                            customerSites={customerSites}
-                            locations={locations}
-                            onChange={(patch) =>
-                              setStopoverPatch(anchor.uid, next.uid, patch)
-                            }
-                            onRemove={() =>
-                              removeStopover(anchor.uid, next.uid)
-                            }
-                          />
-                          <TransitionRow
-                            from={svAnchor}
-                            to={next}
-                            transition={getTransition(svUid, next.uid)}
-                            modePreviews={briefPreviewsForPair(
-                              sv.place,
-                              next.place,
-                            )}
-                            onOpenChange={(open) => {
-                              if (open)
-                                briefPrefetchPair(sv.place, next.place);
-                            }}
-                            onChange={(patch) =>
-                              setTransition(svUid, next.uid, patch)
-                            }
-                          />
-                        </>
-                      );
-                    }
-                    return (
-                      <>
-                        <TransitionRow
-                          from={anchor}
-                          to={next}
-                          transition={getTransition(anchor.uid, next.uid)}
-                          modePreviews={briefPreviewsForPair(
-                            anchor.place,
-                            next.place,
-                          )}
-                          onOpenChange={(open) => {
-                            if (open)
-                              briefPrefetchPair(anchor.place, next.place);
-                          }}
-                          onChange={(patch) =>
-                            setTransition(anchor.uid, next.uid, patch)
-                          }
-                        />
-                        <button
-                          type="button"
-                          className="brief-add-stop-trigger"
-                          onClick={() => addStopover(anchor.uid, next.uid)}
-                          title="Drop in somewhere between these two anchors"
-                        >
-                          + Add a stop between these
-                        </button>
-                      </>
-                    );
-                  })()
-                : null}
-              <AddBetween
-                onAdd={() => insertAnchorAt(i + 1)}
-                between={i < anchors.length - 1}
+                onChange={(patch) => updateAccommodationBooking(ab.uid, patch)}
+                onRemove={() => removeAccommodationBooking(ab.uid)}
               />
             </div>
-          );
-        })}
+          ))}
 
-        <BeHomeByField
-          value={beHomeBy}
-          onChange={setBeHomeBy}
-          defaultDate={anchors[anchors.length - 1]?.date ?? defaultAnchorDate()}
+        {/* Render the unified timeline */}
+        <Timeline
+          entries={buildBriefTimeline({
+            anchors,
+            transportBookings,
+            accommodationBookings,
+            transitions,
+            stopovers,
+            expandedAnchors,
+            tripStartDate,
+            baseName,
+            basePlace: selectedBase ? { kind: "location" as const, location_id: selectedBaseId ?? "", label: baseName, location_type: "home" as const } : null,
+            gapModes,
+            getGapPreviews,
+            getGapPreview,
+            briefPreviewsForPair,
+            handlers: {
+              getTransition,
+              setTransition,
+              setGapMode,
+              updateAnchor: (uid, patch) => updateAnchor(uid, patch),
+              removeAnchor,
+              setExpandedAnchor: (uid, expanded) => {
+                setExpandedAnchors((prev) => {
+                  const copy = new Set(prev);
+                  if (expanded) copy.add(uid);
+                  else copy.delete(uid);
+                  return copy;
+                });
+              },
+              updateTransportBooking,
+              removeTransportBooking,
+              updateAccommodationBooking,
+              removeAccommodationBooking,
+              insertAnchorAt,
+              addStopover,
+              removeStopover,
+              setStopoverPatch,
+              prefetchGap,
+              briefPrefetchPair,
+              getStopover,
+            },
+          })}
+          customers={customers}
+          customerSites={customerSites}
+          locations={locations}
+          datePresets={datePresets}
+          timezone={timezone}
         />
 
-        {/* Notes + title — collapsed, low-priority */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {!notesOn ? (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setNotesOn(true)}
-              style={{ alignSelf: "flex-start" }}
-            >
-              + Notes
-            </button>
-          ) : (
-            <div className="brief-subcard">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
-                <span className="uc">Trip notes</span>
-                <button
-                  type="button"
-                  onClick={() => setNotesOn(false)}
-                  style={{ fontSize: 11.5, color: "var(--rust)" }}
-                >
-                  Remove
-                </button>
-              </div>
-              <textarea
-                className="field"
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="The brief, dress code, who's expected — anything Khonsera should know."
-              />
-            </div>
-          )}
-
-          <details className="brief-details">
-            <summary className="brief-details-summary">
-              <span className="uc">Title override</span>
-              <span className="brief-details-hint">
-                {titleOverride
-                  ? `“${titleOverride}”`
-                  : "Khonsera will pick one for you"}
-              </span>
-            </summary>
-            <input
-              type="text"
-              className="field"
-              value={titleOverride}
-              onChange={(e) => setTitleOverride(e.target.value)}
-              placeholder="e.g. Belper site visit"
-              style={{ marginTop: 8 }}
-            />
-          </details>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginTop: 6,
-          }}
-        >
-          <button
-            type="button"
-            disabled={!canSubmit || pending}
-            onClick={submit}
-            className="btn btn-gold btn-lg"
-          >
-            {pending ? "Building your day…" : "Build my day"}
-            <Arrow />
-          </button>
-          {!canSubmit ? (
-            <span className="brief-helper" style={{ margin: 0 }}>
-              Every anchor needs a place to continue.
-            </span>
-          ) : feasibilityRollup.late > 0 || feasibilityRollup.tight > 0 ? (
-            <span
-              className={
-                feasibilityRollup.late > 0
-                  ? "feasibility-flag feasibility-flag-bad"
-                  : "feasibility-flag feasibility-flag-tight"
-              }
-            >
-              {feasibilityRollup.late > 0
-                ? `${feasibilityRollup.late} leg${feasibilityRollup.late === 1 ? "" : "s"} arrive${feasibilityRollup.late === 1 ? "s" : ""} late`
-                : `${feasibilityRollup.tight} leg${feasibilityRollup.tight === 1 ? "" : "s"} tight`}
-              {feasibilityRollup.late > 0 && feasibilityRollup.tight > 0
-                ? `, ${feasibilityRollup.tight} tight`
-                : ""}
-            </span>
-          ) : null}
-        </div>
       </div>
 
-      {/* Gmail import panel */}
+      {/* ── Compact toolbar ───────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12, paddingTop: 8 }}>
+        {gmailConnected ? (
+          <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setGmailImportOpen(true)}>Scan for tickets</button>
+        ) : null}
+        <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => insertAnchorAt(anchors.length)}>+ Stop</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setTransportBookings((prev) => [...prev, { ...emptyTransportBookingItem(), date: tripStartDate }])}>+ Transport</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setAccommodationBookings((prev) => [...prev, { ...emptyAccommodationBookingItem(), checkInDate: tripStartDate, checkOutDate: tripEndDate }])}>+ Hotel</button>
+      </div>
+
+      {/* Notes + title */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+        {!notesOn ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setNotesOn(true)}
+            style={{ alignSelf: "flex-start" }}
+          >
+            + Notes
+          </button>
+        ) : (
+          <div className="brief-subcard">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span className="uc">Trip notes</span>
+              <button type="button" onClick={() => setNotesOn(false)} style={{ fontSize: 11.5, color: "var(--rust)" }}>Remove</button>
+            </div>
+            <textarea className="field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="The brief, dress code, who's expected — anything Khonsera should know." />
+          </div>
+        )}
+        <details className="brief-details">
+          <summary className="brief-details-summary">
+            <span className="uc">Title override</span>
+            <span className="brief-details-hint">{titleOverride ? `"${titleOverride}"` : "Khonsera will pick one for you"}</span>
+          </summary>
+          <input type="text" className="field" value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="e.g. Belper site visit" style={{ marginTop: 8 }} />
+        </details>
+      </div>
+
+      {/* Day summary */}
+      {transportBookings.some((tb) => tb.confirmed) && (
+        <div
+          className="card"
+          style={{
+            padding: "14px 16px",
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "12px 24px",
+            fontSize: 12,
+            color: "var(--ink-dim)",
+          }}
+        >
+          <span className="uc" style={{ width: "100%", fontSize: 10, marginBottom: -4 }}>
+            Day summary
+          </span>
+          {(() => {
+            const totalPrice = transportBookings
+              .filter((tb) => tb.confirmed && tb.price)
+              .reduce((sum, tb) => sum + Number(tb.price), 0);
+            const trainMins = transportBookings
+              .filter((tb) => tb.confirmed && tb.departTime && tb.arriveTime)
+              .reduce((sum, tb) => {
+                const [dh, dm] = tb.departTime.split(":").map(Number);
+                const [ah, am] = tb.arriveTime.split(":").map(Number);
+                return sum + ((ah * 60 + am) - (dh * 60 + dm));
+              }, 0);
+            const lastReturn = transportBookings
+              .filter((tb) => tb.confirmed && tb.arriveTime)
+              .sort((a, b) => b.arriveTime.localeCompare(a.arriveTime))[0];
+            return (
+              <>
+                {trainMins > 0 && (
+                  <span>Trains: {Math.floor(trainMins / 60)}h {trainMins % 60}m</span>
+                )}
+                {totalPrice > 0 && (
+                  <span style={{ fontFamily: "var(--display)", fontWeight: 500, color: "var(--gold-2)" }}>
+                    Total: {"£"}{totalPrice.toFixed(2)}
+                  </span>
+                )}
+                {firstDepartTime && (
+                  <span>First train: {firstDepartTime}</span>
+                )}
+                {lastReturn && (
+                  <span>Arrive back: {lastReturn.arriveTime}</span>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Build my day */}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 24 }}>
+        <button
+          type="button"
+          disabled={!canSubmit || pending}
+          onClick={submit}
+          className="btn btn-gold btn-lg"
+        >
+          {pending ? "Building your day..." : "Build my day"}
+          <Arrow />
+        </button>
+        {!canSubmit ? (
+          <span className="brief-helper" style={{ margin: 0 }}>Every anchor needs a place to continue.</span>
+        ) : feasibilityRollup.late > 0 || feasibilityRollup.tight > 0 ? (
+          <span className={feasibilityRollup.late > 0 ? "feasibility-flag feasibility-flag-bad" : "feasibility-flag feasibility-flag-tight"}>
+            {feasibilityRollup.late > 0 ? `${feasibilityRollup.late} leg${feasibilityRollup.late === 1 ? "" : "s"} arrive${feasibilityRollup.late === 1 ? "s" : ""} late` : `${feasibilityRollup.tight} leg${feasibilityRollup.tight === 1 ? "" : "s"} tight`}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Gmail import modal */}
       {gmailImportOpen ? (
         <BriefGmailImport
           onImport={importParsedBooking}
           onClose={() => setGmailImportOpen(false)}
         />
       ) : null}
-
-      {/* Right — live spine preview */}
-      <aside className="brief-preview" aria-label="What Khonsera will build">
-        <div className="flank left">
-          <span>What we&rsquo;ll build</span>
-        </div>
-        <JourneySpine
-          anchors={anchors}
-          transitions={transitions}
-          stopovers={stopovers}
-          titleOverride={titleOverride}
-          timezone={timezone}
-          railHubLabel={railHubLabel ?? null}
-          flightHubLabel={flightHubLabel ?? null}
-          baseName={baseName}
-          baseAddress={selectedBase?.address}
-          baseType={selectedBase?.type}
-          beHomeBy={beHomeBy}
-          transportBookings={transportBookings}
-          accommodationBookings={accommodationBookings}
-        />
-      </aside>
     </div>
   );
 }

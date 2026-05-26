@@ -1,5 +1,6 @@
 // Parse text extracted from Trainline eticket PDF attachments.
 // Each PDF represents one ticket (one leg of the journey).
+// Also extracts Aztec barcode data from PDF images using ZXing WASM.
 
 import type { ParsedTransportSegment } from "./types";
 
@@ -8,6 +9,7 @@ const STATION_NAMES: Record<string, string> = {
   WEL: "Wellingborough",
   LEI: "Leicester",
   DER: "Derby",
+  DBY: "Derby",
   NTG: "Nottingham",
   SHF: "Sheffield",
   LDS: "Leeds",
@@ -58,119 +60,130 @@ export type TrainlinePdfTicket = {
   from_name: string;
   to_name: string;
   departure_time: string;
+  arrival_time: string;
   date: string;
   ticket_type: string | null;
   route_restriction: string | null;
   operator: string | null;
   coach: string | null;
   seat: string | null;
+  price: number | null;
+  nrs_ref: string | null;
   barcode_ref: string | null;
   barcode_data: string | null;
 };
 
 export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | null {
-  // Trainline eticket PDFs have a consistent layout:
-  // Station codes (WEL, LEI), times, ticket type, route, coach/seat
+  // Trainline PDF layout (verified from real data):
+  // Line 1: TTBQEBVV49M
+  // Line 2: 25 Jun 2026 WEL - LEI
+  // Then: WELLINGBOROUGH LEICESTER / WEL LEI
+  // Then: TICKET TYPE ROUTE / Advance Single EMR ONLY
+  // Then: DEPART 07:13 / COACH * / SEAT ***
+  // Then: Itinerary section with intermediate stops + times
+  // Then: Ticket Details with price, NRS ref, etc.
 
-  // Station codes: 3-letter NRS codes, usually near top
-  const codePattern = /\b([A-Z]{3})\s*[-–→]\s*([A-Z]{3})\b/;
-  const codeMatch = pdfText.match(codePattern);
-
-  // Also try separate patterns: "WELLINGBOROUGH" header + "WEL" code
-  const fromCodeMatch = pdfText.match(/\b([A-Z]{3})\b[\s\S]{0,50}→|^([A-Z]{3})\s/m);
-  const toCodeMatch = pdfText.match(/→[\s\S]{0,50}\b([A-Z]{3})\b|→\s*([A-Z]{3})/);
-
-  let fromCode = codeMatch?.[1] ?? fromCodeMatch?.[1] ?? fromCodeMatch?.[2] ?? "";
-  let toCode = codeMatch?.[2] ?? toCodeMatch?.[1] ?? toCodeMatch?.[2] ?? "";
-
-  // Station names: look for UPPERCASE station names
-  const stationNamePattern = /([A-Z][A-Z\s]+(?:STREET|ROAD|CENTRAL|PARKWAY|LIME|CROSS|BRIDGE)?)\s/g;
-  const stationNames: string[] = [];
-  let m;
-  while ((m = stationNamePattern.exec(pdfText)) !== null) {
-    const name = m[1].trim();
-    if (name.length > 3 && !/TICKET|TYPE|ROUTE|ADULT|CHILD|DEPART|RESERV|SINGLE|RETURN|ADVANCE|OFF.PEAK/i.test(name)) {
-      stationNames.push(name);
-    }
-  }
-
-  // Time: departure time
-  const timeMatch = pdfText.match(/(?:DEPART|DEP|Depart)\s*:?\s*(\d{1,2}:\d{2})/i)
-    ?? pdfText.match(/\b(\d{1,2}:\d{2})\b/);
-  const departureTime = timeMatch?.[1] ?? "";
+  // Header line: "25 Jun 2026 WEL - LEI"
+  const headerMatch = pdfText.match(
+    /(\d{1,2}\s+\w+\s+\d{4})\s+([A-Z]{3})\s*-\s*([A-Z]{3})/,
+  );
+  const fromCode = headerMatch?.[2] ?? "";
+  const toCode = headerMatch?.[3] ?? "";
 
   // Date
-  const dateMatch = pdfText.match(
-    /(\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\d{0,4})/i,
-  );
   let date = "";
-  if (dateMatch) {
+  if (headerMatch) {
     const MONTHS: Record<string, string> = {
       jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
       jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
-      january: "01", february: "02", march: "03", april: "04",
-      june: "06", july: "07", august: "08", september: "09",
-      october: "10", november: "11", december: "12",
     };
-    const parts = dateMatch[1].match(/(\d{1,2})\s+(\w+)\s*(\d{4})?/);
+    const parts = headerMatch[1].match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
     if (parts) {
       const day = parts[1].padStart(2, "0");
       const month = MONTHS[parts[2].toLowerCase()] ?? "01";
-      const year = parts[3] ?? new Date().getFullYear().toString();
-      date = `${year}-${month}-${day}`;
+      date = `${parts[3]}-${month}-${day}`;
     }
   }
 
-  // Ticket type: "Advance Single", "Off-Peak Return", etc.
-  const ticketTypeMatch = pdfText.match(
-    /(?:TICKET\s*TYPE|Ticket\s*Type)\s*:?\s*(.+?)(?:\n|$)/i,
-  ) ?? pdfText.match(
-    /((?:Advance|Off[- ]?Peak|Anytime|Super Off[- ]?Peak)\s+(?:Single|Return|Day Single|Day Return))/i,
-  );
-  const ticketType = ticketTypeMatch?.[1]?.trim() ?? null;
+  // Departure time: "DEPART\n07:13"
+  const departMatch = pdfText.match(/DEPART\n(\d{1,2}:\d{2})/);
+  const departureTime = departMatch?.[1] ?? "";
 
-  // Route restriction: "Emr Only", "Any Permitted", etc.
-  const routeMatch = pdfText.match(
-    /(?:ROUTE|Route)\s*:?\s*(.+?)(?:\n|$)/i,
+  // Ticket type + route: "Advance Single EMR ONLY" on the line after "TICKET TYPE ROUTE"
+  const typeRouteMatch = pdfText.match(
+    /TICKET TYPE\s+ROUTE\n(.+?)\n/,
   );
-  const routeRestriction = routeMatch?.[1]?.trim() ?? null;
+  let ticketType: string | null = null;
+  let routeRestriction: string | null = null;
+  if (typeRouteMatch) {
+    const combined = typeRouteMatch[1].trim();
+    const ticketMatch = combined.match(
+      /(Advance Single|Advance Return|Off[- ]?Peak (?:Single|Return|Day \w+)|Anytime (?:Single|Return|Day \w+)|Super Off[- ]?Peak \w+)/i,
+    );
+    ticketType = ticketMatch?.[1] ?? null;
+    routeRestriction = ticketType
+      ? combined.replace(ticketType, "").trim() || null
+      : combined;
+  }
 
-  // Operator
+  // Coach and seat: "COACH\n*\nSEAT\n***" or "COACH\nB\nSEAT\n42"
+  const coachMatch = pdfText.match(/COACH\n([A-Z0-9*]+)/);
+  const seatMatch = pdfText.match(/SEAT\n([A-Z0-9*]+)/);
+  const coach = coachMatch?.[1] === "*" ? null : coachMatch?.[1] ?? null;
+  const seat = seatMatch?.[1]?.includes("*") ? null : seatMatch?.[1] ?? null;
+
+  // Operator from itinerary: "East Midlands\nRailway" (split across lines)
   const operatorMatch = pdfText.match(
-    /(East Midlands Railway|Avanti West Coast|LNER|CrossCountry|Great Western Railway|Northern|TransPennine Express|South(?:ern|western)|Southeastern|ScotRail|Chiltern|c2c|Greater Anglia|Thameslink|West Midlands Railway)/i,
+    /(East Midlands)\n(Railway)|(Avanti West Coast)|(CrossCountry)|(?:^|\n)(LNER)(?:\n|$)|(Great Western)\n(Railway)|(Northern)|(TransPennine)\n(Express)/,
   );
-  const operator = operatorMatch?.[1] ?? null;
+  let operator: string | null = null;
+  if (operatorMatch) {
+    const parts = operatorMatch.filter((p, i) => i > 0 && p);
+    operator = parts.join(" ");
+  }
 
-  // Coach and seat: "Coach B Seat 42" or "COACH: B  SEAT: 42"
-  const coachMatch = pdfText.match(/(?:COACH|Coach)\s*:?\s*([A-Z0-9]{1,3})/i);
-  const seatMatch = pdfText.match(/(?:SEAT|Seat)\s*:?\s*(\d{1,3}[A-Z]?)/i);
-  const coach = coachMatch?.[1] ?? null;
-  const seat = seatMatch?.[1] ?? null;
+  // Arrival time: last time in the itinerary section before "Ticket Details"
+  const itineraryMatch = pdfText.match(
+    /Itinerary[\s\S]*?(\d{1,2}:\d{2})\n(?:No specific seat\n)?[A-Z][a-z]+(?:\n|$)[\s\S]*?(?:Ticket Details|$)/,
+  );
+  // Get ALL times from the itinerary to find the last arrival
+  const itinerarySection = pdfText.match(/Itinerary[\s\S]*?(?=Ticket Details)/)?.[0] ?? "";
+  const itineraryTimes = [...itinerarySection.matchAll(/(\d{1,2}:\d{2})/g)].map((m) => m[1]);
+  const arrivalTime = itineraryTimes.length > 0 ? itineraryTimes[itineraryTimes.length - 1] : "";
 
-  // Barcode reference: display reference like TTBQEBVV49M
-  const barcodeMatch = pdfText.match(/\b(TT[A-Z0-9]{8,12})\b/)
-    ?? pdfText.match(/\b([A-Z0-9]{10,14})\b(?:\s*$)/m);
+  // Price: "Price £19.70" (appears as "Price Â£19.70" due to encoding)
+  const priceMatch = pdfText.match(/Price\s+(?:Â£|£)([\d.]+)/);
+  const price = priceMatch ? parseFloat(priceMatch[1]) : null;
+
+  // NRS Booking Reference
+  const nrsMatch = pdfText.match(/NRS Booking Reference\s+([A-Z0-9]+)/);
+  const nrsRef = nrsMatch?.[1] ?? null;
+
+  // Barcode reference: first line of PDF or "Ticket Number TTBQEBVV49M"
+  const barcodeMatch = pdfText.match(/Ticket Number\s+(TT[A-Z0-9]+)/)
+    ?? pdfText.match(/^(TT[A-Z0-9]{8,12})/m);
   const barcodeRef = barcodeMatch?.[1] ?? null;
 
-  // Full barcode data: RSP Aztec payload — starts with 2-digit version,
-  // then ticket ID, then encoded+signed journey data. ~200-300 chars.
-  const barcodeDataMatch = pdfText.match(/\b(\d{2}[A-Z0-9]{50,300})\b/);
-  const barcodeData = barcodeDataMatch?.[1] ?? null;
+  // Barcode data is in the Aztec image, not in PDF text
+  const barcodeData: string | null = null;
 
-  if (!fromCode && !toCode && stationNames.length < 2) return null;
+  if (!fromCode && !toCode) return null;
 
   return {
     from_code: fromCode,
     to_code: toCode,
-    from_name: resolveStationName(fromCode) || stationNames[0] || fromCode,
-    to_name: resolveStationName(toCode) || stationNames[1] || toCode,
+    from_name: resolveStationName(fromCode) || fromCode,
+    to_name: resolveStationName(toCode) || toCode,
     departure_time: departureTime,
+    arrival_time: arrivalTime,
     date,
     ticket_type: ticketType,
     route_restriction: routeRestriction,
     operator,
     coach,
     seat,
+    price,
+    nrs_ref: nrsRef,
     barcode_ref: barcodeRef,
     barcode_data: barcodeData,
   };
@@ -261,6 +274,58 @@ export async function tryDownloadPkpass(downloadUrl: string): Promise<Buffer | n
   return null;
 }
 
+export async function decodeAztecFromPdf(pdfBuffer: ArrayBuffer): Promise<string | null> {
+  try {
+    const { extractImages } = await import("unpdf");
+    const images = await extractImages(pdfBuffer, 1);
+    if (!images || images.length === 0) return null;
+
+    const { readBarcodes } = await import("zxing-wasm/reader");
+
+    // Try each image — the Aztec code is usually the first/largest
+    for (const img of images) {
+      // Convert to RGBA ImageData format that zxing-wasm expects
+      let rgbaData: Uint8ClampedArray;
+      if (img.channels === 4) {
+        rgbaData = img.data;
+      } else if (img.channels === 3) {
+        rgbaData = new Uint8ClampedArray(img.width * img.height * 4);
+        for (let i = 0; i < img.width * img.height; i++) {
+          rgbaData[i * 4] = img.data[i * 3];
+          rgbaData[i * 4 + 1] = img.data[i * 3 + 1];
+          rgbaData[i * 4 + 2] = img.data[i * 3 + 2];
+          rgbaData[i * 4 + 3] = 255;
+        }
+      } else if (img.channels === 1) {
+        rgbaData = new Uint8ClampedArray(img.width * img.height * 4);
+        for (let i = 0; i < img.width * img.height; i++) {
+          rgbaData[i * 4] = img.data[i];
+          rgbaData[i * 4 + 1] = img.data[i];
+          rgbaData[i * 4 + 2] = img.data[i];
+          rgbaData[i * 4 + 3] = 255;
+        }
+      } else {
+        continue;
+      }
+
+      // ImageData isn't available in Node.js/serverless — pass a plain
+      // object with the same shape. ZXing accepts this via its ImageData overload.
+      const results = await readBarcodes(
+        { data: rgbaData, width: img.width, height: img.height } as ImageData,
+        { formats: ["Aztec"], maxNumberOfSymbols: 1 },
+      );
+
+      if (results.length > 0 && results[0].text) {
+        return results[0].text;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.warn("Aztec barcode decoding failed", e);
+    return null;
+  }
+}
+
 export function pdfTicketsToSegments(
   tickets: TrainlinePdfTicket[],
   fallbackDate: string,
@@ -273,7 +338,7 @@ export function pdfTicketsToSegments(
     departure_date: t.date || fallbackDate,
     departure_time: t.departure_time || "00:00",
     arrival_date: t.date || fallbackDate,
-    arrival_time: "",
+    arrival_time: t.arrival_time || "",
     service_number: null,
     operator: t.operator,
     route_restriction: t.route_restriction,

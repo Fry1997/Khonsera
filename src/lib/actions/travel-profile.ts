@@ -87,6 +87,22 @@ export type TransportHubHit = {
   country: string | null;
 };
 
+export async function resolveHubByName(
+  name: string,
+): Promise<{ id: string; name: string; code: string | null } | null> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const cleaned = name.trim();
+  if (!cleaned) return null;
+  const { data } = await supabase
+    .from("transport_hubs")
+    .select("id, name, code")
+    .ilike("name", cleaned)
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function searchTransportHubs(
   input: z.input<typeof searchHubsSchema>,
 ): Promise<Result<TransportHubHit[]>> {

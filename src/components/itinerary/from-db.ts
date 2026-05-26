@@ -213,7 +213,22 @@ const PLANNING_ANCHOR_TYPES = new Set([
   "other",
 ]);
 
-const TRANSIT_TYPES = new Set(["transit_departure", "transit_arrival"]);
+const TRANSIT_TYPES = new Set(["transit_departure", "transit_arrival", "transit_changeover"]);
+
+function isTransitStop(s: DbStop): boolean {
+  if (TRANSIT_TYPES.has(s.type)) return true;
+  const meta = s.metadata as Record<string, unknown> | null;
+  const kind = meta?.kind as string | undefined;
+  return kind === "transit_departure" || kind === "transit_arrival" || kind === "transit_changeover";
+}
+
+function transitDirection(s: DbStop): "departure" | "arrival" {
+  if (s.type === "transit_departure") return "departure";
+  if (s.type === "transit_arrival") return "arrival";
+  if ((s.type as string) === "transit_changeover") return "departure";
+  const meta = s.metadata as Record<string, unknown> | null;
+  return (meta?.kind as string) === "transit_departure" ? "departure" : "arrival";
+}
 
 // Build the editor's anchor list from the loaded stop rows. Filters
 // out the implicit "home" start stop AND stopover stops — stopovers
@@ -224,7 +239,7 @@ export function anchorsFromStops(
   timezone: string,
 ): Anchor[] {
   return stops
-    .filter((s) => PLANNING_ANCHOR_TYPES.has(s.type))
+    .filter((s) => PLANNING_ANCHOR_TYPES.has(s.type) && !isTransitStop(s))
     .sort((a, b) => a.sequence - b.sequence)
     .map((s) => anchorFromStop(s, timezone));
 }
@@ -246,7 +261,7 @@ export function timelineFromStops(
       (s) =>
         PLANNING_ANCHOR_TYPES.has(s.type) ||
         s.type === "stopover" ||
-        TRANSIT_TYPES.has(s.type),
+        isTransitStop(s),
     )
     .sort((a, b) => a.sequence - b.sequence)
     .map<EditorTimelineItem>((s) => {
@@ -261,11 +276,11 @@ export function timelineFromStops(
           stop: s,
         };
       }
-      if (TRANSIT_TYPES.has(s.type)) {
+      if (isTransitStop(s)) {
         return {
           kind: "transit",
           stop: s,
-          transitDirection: s.type === "transit_departure" ? "departure" : "arrival",
+          transitDirection: transitDirection(s),
         };
       }
       return {
@@ -290,14 +305,14 @@ export function transitionsFromDb(
     // the transitions.notes "khonsera:local_before=X;local_after=Y"
     // marker (createItineraryFromBrief writes it there because
     // transitions has no dedicated local-leg columns).
-    let localBefore: LocalMode = "auto";
-    let localAfter: LocalMode = "auto";
+    let localBefore: LocalMode = "walk";
+    let localAfter: LocalMode = "walk";
     const marker = t.notes ?? "";
     if (marker.startsWith("khonsera:")) {
       for (const part of marker.slice("khonsera:".length).split(";")) {
         const [k, v] = part.split("=");
-        if (k === "local_before") localBefore = (v as LocalMode) ?? "auto";
-        if (k === "local_after") localAfter = (v as LocalMode) ?? "auto";
+        if (k === "local_before") localBefore = (v as LocalMode) ?? "walk";
+        if (k === "local_after") localAfter = (v as LocalMode) ?? "walk";
       }
     }
     out.set(transitionKey(t.from_stop_id, t.to_stop_id), {
