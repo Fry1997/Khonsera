@@ -7,10 +7,10 @@ type LatLng = { lat: number; lng: number };
  * Get an encoded polyline for a rail route between two stations.
  *
  * 1. Check the `rail_route_cache` table (L1 — keyed by CRS code pair).
- * 2. On miss, call `routeRailPath` which BFS-routes through the stored
- *    rail_network_edges graph (seeded from the admin page).
- * 3. If the graph produces a result, cache it for next time.
- * 4. If the network hasn't been seeded, return null gracefully.
+ * 2. On miss, auto-discover intermediate stations along the direct line
+ *    to use as waypoints (prevents wrong-branch routing at junctions).
+ * 3. Call `routeRailPath` (weighted A*) through the stored rail network.
+ * 4. Cache the result for next time.
  */
 export async function getRailPolyline(
   fromLat: number,
@@ -36,13 +36,23 @@ export async function getRailPolyline(
       if (data?.encoded_polyline) return data.encoded_polyline;
     }
 
-    // L2: Dijkstra through the stored rail network graph
+    // Auto-discover intermediate stations when no calling points provided.
+    // Finds rail stations along the direct line between origin and
+    // destination, then uses them as waypoints to force the path through
+    // the correct branch at junctions.
+    let effectiveWaypoints = waypoints;
+    if (!hasWaypoints) {
+      const discovered = await discoverIntermediateStations(
+        supabase, fromLat, fromLng, toLat, toLng, fromCode, toCode,
+      );
+      if (discovered.length > 0) effectiveWaypoints = discovered;
+    }
+
     const polyline = await routeRailPath(
-      fromLat, fromLng, toLat, toLng, waypoints,
+      fromLat, fromLng, toLat, toLng, effectiveWaypoints,
     );
     if (!polyline) return null;
 
-    // Cache the result for next time
     if (fromCode && toCode) {
       await supabase.from("rail_route_cache").upsert(
         {
@@ -59,6 +69,105 @@ export async function getRailPolyline(
   } catch {
     return null;
   }
+}
+
+/**
+ * Find rail stations that lie along the corridor between two points.
+ * Returns stations sorted by progress along the line, excluding the
+ * origin and destination themselves. Used as synthetic waypoints
+ * when no calling points are available from ticket data.
+ */
+async function discoverIntermediateStations(
+  supabase: Awaited<ReturnType<typeof createSupabaseClient>>,
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  fromCode?: string | null,
+  toCode?: string | null,
+): Promise<Array<{ lat: number; lng: number }>> {
+  const directDistKm = haversineKm(fromLat, fromLng, toLat, toLng);
+  if (directDistKm < 10) return [];
+
+  const pad = 0.05;
+  const minLat = Math.min(fromLat, toLat) - pad;
+  const maxLat = Math.max(fromLat, toLat) + pad;
+  const minLng = Math.min(fromLng, toLng) - pad;
+  const maxLng = Math.max(fromLng, toLng) + pad;
+
+  const { data: stations } = await supabase
+    .from("transport_hubs")
+    .select("code, latitude, longitude")
+    .eq("kind", "rail_station")
+    .gte("latitude", minLat)
+    .lte("latitude", maxLat)
+    .gte("longitude", minLng)
+    .lte("longitude", maxLng);
+
+  if (!stations || stations.length === 0) return [];
+
+  // Direction vector from origin to destination
+  const dLat = toLat - fromLat;
+  const dLng = toLng - fromLng;
+  const len2 = dLat * dLat + dLng * dLng;
+  if (len2 === 0) return [];
+
+  // Corridor width scales with route distance — wider for longer routes
+  const corridorKm = Math.min(8, Math.max(3, directDistKm * 0.08));
+
+  const candidates: Array<{ lat: number; lng: number; t: number }> = [];
+
+  for (const s of stations) {
+    const sLat = Number(s.latitude);
+    const sLng = Number(s.longitude);
+    if (!sLat || !sLng) continue;
+
+    // Skip origin/destination
+    if (s.code === fromCode || s.code === toCode) continue;
+
+    // Project station onto the origin→destination line
+    const t = ((sLat - fromLat) * dLat + (sLng - fromLng) * dLng) / len2;
+    if (t <= 0.05 || t >= 0.95) continue;
+
+    // Perpendicular distance from the direct line
+    const projLat = fromLat + t * dLat;
+    const projLng = fromLng + t * dLng;
+    const perpDist = haversineKm(sLat, sLng, projLat, projLng);
+
+    if (perpDist <= corridorKm) {
+      candidates.push({ lat: sLat, lng: sLng, t });
+    }
+  }
+
+  // Sort by progress along the line
+  candidates.sort((a, b) => a.t - b.t);
+
+  // For long routes with many candidates, keep only a few well-spaced ones
+  if (candidates.length > 5) {
+    const kept: typeof candidates = [];
+    let lastT = -0.2;
+    for (const c of candidates) {
+      if (c.t - lastT >= 0.15) {
+        kept.push(c);
+        lastT = c.t;
+      }
+    }
+    return kept.map(({ lat, lng }) => ({ lat, lng }));
+  }
+
+  return candidates.map(({ lat, lng }) => ({ lat, lng }));
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 // Google's encoded polyline algorithm — kept here for shared use.
