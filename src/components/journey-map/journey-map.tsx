@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { JourneyMapProps } from "./types";
+import type { JourneyMapProps, Journey } from "./types";
 import { THEMES } from "./themes";
+import type { JourneyTheme } from "./themes/types";
 import { buildMapStyle } from "./map-style/build-map-style";
 import { computeBounds } from "./utils/compute-bounds";
-import { useMapProjection } from "./hooks/use-map-projection";
-import { StationMarker } from "./overlay/station-marker";
-import type { JourneyTheme } from "./themes/types";
-import type { Journey } from "./types";
 
 /**
  * JourneyMap — interactive MapLibre-based map for Khonsera itineraries.
  *
- * Journey lines render as native MapLibre GeoJSON layers (zero lag on
- * pan/zoom). Station markers render as a small SVG overlay.
+ * Everything renders inside MapLibre's pipeline (GeoJSON layers for lines,
+ * native Markers for stations). Zero SVG, zero lag on pan/zoom.
  */
 export function JourneyMap({
   journey,
@@ -28,259 +25,225 @@ export function JourneyMap({
 }: JourneyMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const [map, setMap] = useState<maplibregl.Map | null>(null);
-  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const layersAdded = useRef(false);
 
   const theme = THEMES[themeName] ?? THEMES.dusk;
-  const { project, renderToken } = useMapProjection(map);
 
-  const updateSize = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setContainerSize({ w: rect.width, h: rect.height });
-  }, []);
+  const stations = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Array<{ lat: number; lng: number; label: string; role: "origin" | "destination" | "intermediate" }> = [];
+    journey.legs.forEach((leg, i) => {
+      const fk = `${leg.from.lat.toFixed(4)},${leg.from.lng.toFixed(4)}`;
+      if (!seen.has(fk)) {
+        seen.add(fk);
+        out.push({ lat: leg.from.lat, lng: leg.from.lng, label: leg.from.code ?? leg.from.name, role: i === 0 ? "origin" : "intermediate" });
+      }
+      const tk = `${leg.to.lat.toFixed(4)},${leg.to.lng.toFixed(4)}`;
+      if (!seen.has(tk)) {
+        seen.add(tk);
+        out.push({ lat: leg.to.lat, lng: leg.to.lng, label: leg.to.code ?? leg.to.name, role: i === journey.legs.length - 1 ? "destination" : "intermediate" });
+      }
+    });
+    return out;
+  }, [journey]);
 
-  // Initialise MapLibre
+  // Initialise map
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const style = buildMapStyle(theme);
-    const bounds = computeBounds(journey);
-
     const m = new maplibregl.Map({
       container: containerRef.current,
-      style,
-      bounds,
-      fitBoundsOptions: {
-        padding: { top: 50, bottom: 50, left: 50, right: 50 },
-      },
+      style: buildMapStyle(theme),
+      bounds: computeBounds(journey),
+      fitBoundsOptions: { padding: { top: 50, bottom: 50, left: 50, right: 50 } },
       attributionControl: false,
       maxZoom: 16,
       minZoom: 3,
     });
 
-    m.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-      "bottom-right",
-    );
+    m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
     m.on("load", () => {
       addJourneyLayers(m, journey, theme);
-      setMap(m);
-      updateSize();
+      layersAdded.current = true;
+      addMarkers(m, stations, theme, markersRef);
     });
 
     mapRef.current = m;
 
     return () => {
+      clearMarkers(markersRef);
       m.remove();
       mapRef.current = null;
-      setMap(null);
+      layersAdded.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update journey layers when journey or theme changes
+  // Update journey data when it changes (without re-creating the map)
   useEffect(() => {
-    if (!map) return;
-    updateJourneyLayers(map, journey, theme);
-  }, [map, journey, theme]);
+    const m = mapRef.current;
+    if (!m || !layersAdded.current) return;
+    const src = m.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+    if (src) src.setData(buildGeoJSON(journey));
+
+    clearMarkers(markersRef);
+    addMarkers(m, stations, theme, markersRef);
+  }, [journey, stations, theme]);
 
   // Re-fit bounds when journey changes
   useEffect(() => {
-    if (!map || journey.legs.length === 0) return;
-    const bounds = computeBounds(journey);
-    map.fitBounds(bounds, {
+    const m = mapRef.current;
+    if (!m || journey.legs.length === 0) return;
+    m.fitBounds(computeBounds(journey), {
       padding: { top: 50, bottom: 50, left: 50, right: 50 },
       duration: 600,
     });
-  }, [map, journey]);
-
-  // Update style when theme changes
-  useEffect(() => {
-    if (!map) return;
-    const style = buildMapStyle(theme);
-    map.setStyle(style);
-    map.once("style.load", () => {
-      addJourneyLayers(map, journey, theme);
-    });
-  }, [map, theme, journey]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const ro = new ResizeObserver(() => updateSize());
-    ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, [updateSize]);
-
-  // Collect unique station markers from all legs
-  const markers = useMemo(() => {
-    const seen = new Set<string>();
-    const out: Array<{ lat: number; lng: number; label: string; role: "origin" | "destination" | "intermediate" }> = [];
-
-    journey.legs.forEach((leg, i) => {
-      const fromKey = `${leg.from.lat.toFixed(4)},${leg.from.lng.toFixed(4)}`;
-      if (!seen.has(fromKey)) {
-        seen.add(fromKey);
-        out.push({
-          lat: leg.from.lat,
-          lng: leg.from.lng,
-          label: leg.from.name,
-          role: i === 0 ? "origin" : "intermediate",
-        });
-      }
-
-      const toKey = `${leg.to.lat.toFixed(4)},${leg.to.lng.toFixed(4)}`;
-      if (!seen.has(toKey)) {
-        seen.add(toKey);
-        out.push({
-          lat: leg.to.lat,
-          lng: leg.to.lng,
-          label: leg.to.name,
-          role: i === journey.legs.length - 1 ? "destination" : "intermediate",
-        });
-      }
-    });
-
-    return out;
   }, [journey]);
 
-  const containerStyle: React.CSSProperties = {
-    position: "relative",
-    width: width ? `${width}px` : "100%",
-    height: height ? `${height}px` : "100%",
-    minHeight: height ?? 320,
-    borderRadius: 12,
-    overflow: "hidden",
-  };
-
   return (
-    <div style={containerStyle}>
-      <div
-        ref={containerRef}
-        style={{ position: "absolute", inset: 0 }}
-      />
-      {map && containerSize.w > 0 && (
-        <svg
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            overflow: "visible",
-          }}
-          width={containerSize.w}
-          height={containerSize.h}
-          key={renderToken}
-        >
-          {markers.map((m, i) => (
-            <StationMarker
-              key={i}
-              station={{ name: m.label, lat: m.lat, lng: m.lng }}
-              role={m.role}
-              project={project}
-              theme={theme}
-            />
-          ))}
-        </svg>
-      )}
+    <div
+      style={{
+        position: "relative",
+        width: width ? `${width}px` : "100%",
+        height: height ? `${height}px` : "100%",
+        minHeight: height ?? 320,
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
+      <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
     </div>
   );
 }
 
-// ── MapLibre GeoJSON layer management ───────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────
 
-const JOURNEY_SOURCE = "journey-lines";
-const GLOW_LAYER = "journey-glow";
-const RAIL_LAYER = "journey-rail";
-const WALK_LAYER = "journey-walk";
-const ROAD_LAYER = "journey-road";
+const SOURCE_ID = "journey-lines";
 
 function buildGeoJSON(journey: Journey): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (const leg of journey.legs) {
-    if (leg.track.length < 2) continue;
-    features.push({
-      type: "Feature",
-      properties: { mode: leg.mode },
-      geometry: {
-        type: "LineString",
-        coordinates: leg.track.map(([lat, lng]) => [lng, lat]),
-      },
-    });
-  }
-  return { type: "FeatureCollection", features };
+  return {
+    type: "FeatureCollection",
+    features: journey.legs
+      .filter((leg) => leg.track.length >= 2)
+      .map((leg) => ({
+        type: "Feature" as const,
+        properties: { mode: leg.mode },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: leg.track.map(([lat, lng]) => [lng, lat]),
+        },
+      })),
+  };
 }
 
 function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyTheme) {
-  if (map.getSource(JOURNEY_SOURCE)) return;
+  if (map.getSource(SOURCE_ID)) return;
 
-  map.addSource(JOURNEY_SOURCE, {
-    type: "geojson",
-    data: buildGeoJSON(journey),
-  });
+  map.addSource(SOURCE_ID, { type: "geojson", data: buildGeoJSON(journey) });
 
-  // Glow underlay for rail legs
   map.addLayer({
-    id: GLOW_LAYER,
+    id: "j-glow",
     type: "line",
-    source: JOURNEY_SOURCE,
+    source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: {
-      "line-color": theme.colors.gold,
-      "line-width": 8,
-      "line-opacity": 0.15,
-      "line-blur": 4,
-    },
+    paint: { "line-color": theme.colors.gold, "line-width": 8, "line-opacity": 0.15, "line-blur": 4 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
-  // Rail legs — solid gold
   map.addLayer({
-    id: RAIL_LAYER,
+    id: "j-rail",
     type: "line",
-    source: JOURNEY_SOURCE,
+    source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: {
-      "line-color": theme.colors.gold,
-      "line-width": 2.5,
-      "line-opacity": 0.85,
-    },
+    paint: { "line-color": theme.colors.gold, "line-width": 2.5, "line-opacity": 0.85 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
-  // Walk legs — dashed gold hairline
   map.addLayer({
-    id: WALK_LAYER,
+    id: "j-walk",
     type: "line",
-    source: JOURNEY_SOURCE,
+    source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "walk"],
-    paint: {
-      "line-color": theme.colors.gold,
-      "line-width": 1.5,
-      "line-opacity": 0.6,
-      "line-dasharray": [2, 4],
-    },
+    paint: { "line-color": theme.colors.gold, "line-width": 1.5, "line-opacity": 0.6, "line-dasharray": [2, 4] },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
-  // Road legs — solid hairline
   map.addLayer({
-    id: ROAD_LAYER,
+    id: "j-road",
     type: "line",
-    source: JOURNEY_SOURCE,
+    source: SOURCE_ID,
     filter: ["in", ["get", "mode"], ["literal", ["road", "transit"]]],
-    paint: {
-      "line-color": theme.colors.gold,
-      "line-width": 1.5,
-      "line-opacity": 0.6,
-    },
+    paint: { "line-color": theme.colors.gold, "line-width": 1.5, "line-opacity": 0.6 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 }
 
-function updateJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyTheme) {
-  const source = map.getSource(JOURNEY_SOURCE) as maplibregl.GeoJSONSource | undefined;
-  if (source) {
-    source.setData(buildGeoJSON(journey));
+function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLElement {
+  const el = document.createElement("div");
+  el.style.display = "flex";
+  el.style.alignItems = "center";
+  el.style.gap = "5px";
+  el.style.pointerEvents = "none";
+
+  const dot = document.createElement("div");
+  const sz = role === "origin" ? 12 : role === "destination" ? 10 : 8;
+  dot.style.width = `${sz}px`;
+  dot.style.height = `${sz}px`;
+  dot.style.borderRadius = "50%";
+  dot.style.flexShrink = "0";
+
+  if (role === "origin") {
+    dot.style.background = "transparent";
+    dot.style.border = `2px solid ${theme.colors.markerStroke}`;
+    dot.style.boxShadow = `inset 0 0 0 2px transparent, inset 0 0 0 3px ${theme.colors.markerStroke}`;
+    const inner = document.createElement("div");
+    inner.style.width = "5px";
+    inner.style.height = "5px";
+    inner.style.borderRadius = "50%";
+    inner.style.background = theme.colors.markerStroke;
+    inner.style.margin = "auto";
+    dot.style.display = "flex";
+    dot.style.alignItems = "center";
+    dot.style.justifyContent = "center";
+    dot.appendChild(inner);
+  } else if (role === "destination") {
+    dot.style.background = theme.colors.markerFill;
+  } else {
+    dot.style.background = theme.colors.labelHalo;
+    dot.style.border = `1.5px solid ${theme.colors.markerFill}`;
   }
+
+  const lbl = document.createElement("span");
+  lbl.textContent = label.toUpperCase();
+  lbl.style.fontFamily = theme.fonts.mono;
+  lbl.style.fontSize = "9px";
+  lbl.style.letterSpacing = "0.06em";
+  lbl.style.color = theme.colors.labelText;
+  lbl.style.whiteSpace = "nowrap";
+
+  el.appendChild(dot);
+  el.appendChild(lbl);
+  return el;
+}
+
+function addMarkers(
+  map: maplibregl.Map,
+  stations: Array<{ lat: number; lng: number; label: string; role: string }>,
+  theme: JourneyTheme,
+  markersRef: React.RefObject<maplibregl.Marker[]>,
+) {
+  for (const s of stations) {
+    const el = createMarkerEl(s.role, s.label, theme);
+    const marker = new maplibregl.Marker({ element: el, anchor: "left" })
+      .setLngLat([s.lng, s.lat])
+      .addTo(map);
+    markersRef.current.push(marker);
+  }
+}
+
+function clearMarkers(markersRef: React.RefObject<maplibregl.Marker[]>) {
+  for (const m of markersRef.current) m.remove();
+  markersRef.current = [];
 }
