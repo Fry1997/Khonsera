@@ -6,22 +6,17 @@
 
 After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.
 
-## Known Bugs (as of 2026-05-25)
+## Known Bugs (as of 2026-05-26)
 
 ### Planning page after brief submit
-- ~~PR #11 restored the old "+ Train" / "+ Flight" inline buttons~~ FIXED: replaced with single "+ Transport" button
-- ~~Transport booking stops show as "(no place yet)"~~ FIXED: stops now use transit_departure/transit_changeover/transit_arrival types instead of "appointment"
-- ~~"via undefined" on transitions~~ FIXED: mode now reads transport_mode from stop metadata instead of hardcoding "train"
-- ~~Transport booking stops created as `type: "appointment"`~~ FIXED: migration 0022 adds transit_departure + transit_changeover to stop_type enum
-- ~~Spine preview only connects adjacent anchors~~ FIXED: spine now renders transitions between ALL timeline entries (anchors + transport bookings)
-- ~~No "leave home by" time~~ FIXED: home stop shows earliest booked departure time; solver propagates backward once Home→Station transition has a duration
-- ~~Map missing transit stop markers~~ FIXED: page query joins transport_hubs for coordinates; map marker builder falls through to hub lat/lng
-- ~~Planning page hides anchor↔transit transitions~~ FIXED: PlanningTransitionRow renders between anchors and transit stops with mode pickers
-- ~~"auto" mode crashes transition inserts~~ FIXED: "auto" removed from UI + type; was never in DB enum, causing batch insert failures for ALL transitions
-- ~~Planning page has 5 redundant transport-add mechanisms~~ FIXED: consolidated to single TransportBookingCard (same as brief); removed PlanningTransportBookingModal, TransitLegForm, InlineAddsRow, StopBookingMenu, TransitionMeta (~840 lines removed)
-- ~~Brief transport modes lost on planning page~~ FIXED: createItineraryFromBrief defaults anchor↔transit transitions to "walk" instead of "auto"; buildPlanningTimeline uses GapModePicker (multi-badge walk/drive/taxi with times) for local connections
-- ~~Planning page missing context from brief~~ FIXED: buildPlanningTimeline now computes maximize-info (time window), home-return (arrival estimate), context-gaps ("You're in Derby for 6h"), free-time hints ("1h 30m free before your 15:08 departure")
-- ~~Map uses stock Google pins~~ FIXED: RouteMap component with styled HTML markers (bullseye home, outlined transit with station codes, solid gold site), serif italic headline, gold route line, branded card wrapper
+- All previously listed bugs FIXED (see git history)
+- ~~Batch transition insert crashed on unique constraint~~ FIXED: `.insert()` → `.upsert()` with onConflict
+- ~~Changeover stops (Leicester) had no transport_hub_id~~ FIXED: Gmail import now resolves changeover station names via resolveHubByName
+- ~~Google Transit duration overwrites booked train times~~ FIXED: skip `computed_duration_minutes` overwrite for locked (is_locked=true) legs
+- ~~Changeover duration uses arrival instead of departure~~ FIXED: use `from.end_time` (departure) instead of `from.start_time` (arrival) for changeover stops
+- ~~No return-home walk transition without "be home by"~~ FIXED: always create a type="end" return-home stop so the transition loop generates the walk-home leg
+- ~~Feasibility warnings on locked train legs~~ FIXED: skip feasibility checks for locked transitions (0m slack on a booked train is a fact, not a warning)
+- ~~Badge times empty on first load~~ FIXED: fall back to transition's computed_duration_minutes when preview cache is empty
 
 ## Architecture
 
@@ -138,6 +133,51 @@ Transport booking stops store `transport_hub_id`. The `transport_hubs` table has
 ### Solver
 `resolveItineraryTimes()` is called at the end of `createItineraryFromBrief()`. The solver propagates times from anchored stops through transitions, computing departure times for unfixed stops.
 
+## UK Rail Network (OSM-seeded)
+
+### How it works
+The entire UK rail network (~643k edges) is stored in `rail_network_edges` (migration 0025). Seeded once from the user's browser via `/settings/rail-network` (Overpass blocks Vercel IPs, so the browser makes the Overpass calls). Admin-only page (requires `is_admin = true` on profiles).
+
+### Routing: Dijkstra, not BFS
+`routeRailPath()` in `src/lib/actions/rail-network.ts` uses Dijkstra with haversine edge weights. BFS (node-count shortest) was tried and failed — it preferred routes with fewer nodes even when geographically longer (e.g., via Beeston instead of direct to Derby at Trent Junction).
+
+### Endpoint handling
+Rail polylines end at the nearest rail node to the station, NOT at the station entrance coordinates. Snapping to entrance coordinates caused visible zigzags at close zoom because entrances are offset from the track.
+
+### Caching
+Two-tier: `rail_route_cache` (L1, by CRS code pair) → `routeRailPath` BFS (L2, from `rail_network_edges`). Results cached after first computation.
+
+### Pipe characters in polylines
+Google's encoded polyline format can produce `|` characters. Google Static Maps uses `|` as a path parameter delimiter. The `buildStaticMapUrl` function in `src/lib/google/maps.ts` uses `encodeURIComponent` on the polyline and manually appends path params (NOT `URLSearchParams`, which double-encodes `%7C`).
+
+## Admin Role
+
+`is_admin` boolean on `profiles` table (migration 0026). Separate from `is_staff`:
+- **Staff**: demo mode, palette picker, feature testing
+- **Admin**: system tools (rail network seeding, data management)
+
+`requireUserContext()` returns `isAdmin` alongside `isStaff`. Admin pages redirect non-admins. Admin server actions reject non-admins.
+
+## JourneyMap (MapLibre)
+
+### Architecture
+`src/components/journey-map/` — interactive map replacing Google Static Maps (RouteMap).
+- **MapLibre GL JS** with OSM raster tiles (basemap, desaturated + warm-tinted)
+- **GeoJSON layers** for journey lines (rail solid gold + glow, walk dashed, road solid hairline)
+- **maplibregl.Marker** for station markers (bullseye origin, gold disc destination, ringed intermediate)
+- Zero SVG — everything renders in MapLibre's WebGL/HTML pipeline, zero lag on pan/zoom
+
+### Themes
+Three themes: `dusk` (warm cream, default), `midnight` (dark), `sahara` (daylight ochre). Theme drives basemap raster paint (saturation, brightness) and overlay colours. Theme files in `src/components/journey-map/themes/`.
+
+### Tile source
+Currently OSM raster tiles (always available, no API key). Upgrade path: Protomaps or MapTiler vector tiles for full brand control (custom layer colours, hidden POIs). Requires an API key.
+
+### Next steps
+- Calling points: parse intermediate stops from Trainline PDFs, render as small waypoint markers on the rail leg
+- Planning-page transport booking: polyline + duration should work when adding transport during planning (not just from brief)
+- Day-of mode: live position dot, adaptive zoom — component API supports it, just needs wiring
+
 ## Key File Map
 
 | File | Purpose |
@@ -159,3 +199,10 @@ Transport booking stops store `transport_hub_id`. The `transport_hubs` table has
 | `src/lib/actions/transitions.ts` | Route previews, pickPoint, transition CRUD |
 | `src/lib/actions/travel-profile.ts` | Hub search (searchTransportHubs) |
 | `src/lib/itinerary/solver.ts` | Time propagation solver |
+| `src/lib/osm/rail-routes.ts` | getRailPolyline: cache check → BFS route → cache result |
+| `src/lib/actions/rail-network.ts` | seedRailEdges, routeRailPath (Dijkstra), clearRailNetwork |
+| `src/components/journey-map/journey-map.tsx` | JourneyMap component (MapLibre + GeoJSON layers) |
+| `src/components/journey-map/map-style/build-map-style.ts` | Theme → MapLibre style JSON |
+| `src/components/journey-map/themes/` | dusk, midnight, sahara theme definitions |
+| `src/app/(app)/settings/rail-network/` | Admin page for seeding UK rail network |
+| `scripts/backfill-rail-polylines.mjs` | CLI alternative for seeding (requires terminal) |
