@@ -151,6 +151,7 @@ function makeSegment(partial: {
   seat?: string | null;
   barcode_ref?: string | null;
   barcode_data?: string | null;
+  calling_points?: Array<{ station: string; station_code: string | null; time: string }> | null;
 }): ParsedTransportSegment {
   return {
     from_station: partial.from_station,
@@ -171,6 +172,7 @@ function makeSegment(partial: {
     seat: partial.seat ?? null,
     barcode_ref: partial.barcode_ref ?? null,
     barcode_data: partial.barcode_data ?? null,
+    calling_points: partial.calling_points ?? null,
   };
 }
 

@@ -32,12 +32,21 @@ export function JourneyMap({
 
   const stations = useMemo(() => {
     const seen = new Set<string>();
-    const out: Array<{ lat: number; lng: number; label: string; role: "origin" | "destination" | "intermediate" }> = [];
+    const out: Array<{ lat: number; lng: number; label: string; role: "origin" | "destination" | "intermediate" | "waypoint" }> = [];
     journey.legs.forEach((leg, i) => {
       const fk = `${leg.from.lat.toFixed(4)},${leg.from.lng.toFixed(4)}`;
       if (!seen.has(fk)) {
         seen.add(fk);
         out.push({ lat: leg.from.lat, lng: leg.from.lng, label: leg.from.code ?? leg.from.name, role: i === 0 ? "origin" : "intermediate" });
+      }
+      if (leg.waypoints) {
+        for (const wp of leg.waypoints) {
+          const wk = `${wp.lat.toFixed(4)},${wp.lng.toFixed(4)}`;
+          if (!seen.has(wk)) {
+            seen.add(wk);
+            out.push({ lat: wp.lat, lng: wp.lng, label: wp.code ?? wp.name, role: "waypoint" });
+          }
+        }
       }
       const tk = `${leg.to.lat.toFixed(4)},${leg.to.lng.toFixed(4)}`;
       if (!seen.has(tk)) {
@@ -184,11 +193,11 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
   const el = document.createElement("div");
   el.style.display = "flex";
   el.style.alignItems = "center";
-  el.style.gap = "5px";
+  el.style.gap = role === "waypoint" ? "3px" : "5px";
   el.style.pointerEvents = "none";
 
   const dot = document.createElement("div");
-  const sz = role === "origin" ? 12 : role === "destination" ? 10 : 8;
+  const sz = role === "origin" ? 12 : role === "destination" ? 10 : role === "waypoint" ? 5 : 8;
   dot.style.width = `${sz}px`;
   dot.style.height = `${sz}px`;
   dot.style.borderRadius = "50%";
@@ -210,6 +219,9 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
     dot.appendChild(inner);
   } else if (role === "destination") {
     dot.style.background = theme.colors.markerFill;
+  } else if (role === "waypoint") {
+    dot.style.background = theme.colors.labelHalo;
+    dot.style.border = `1px solid ${theme.colors.gold}`;
   } else {
     dot.style.background = theme.colors.labelHalo;
     dot.style.border = `1.5px solid ${theme.colors.markerFill}`;
@@ -218,10 +230,11 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
   const lbl = document.createElement("span");
   lbl.textContent = label.toUpperCase();
   lbl.style.fontFamily = theme.fonts.mono;
-  lbl.style.fontSize = "9px";
+  lbl.style.fontSize = role === "waypoint" ? "7.5px" : "9px";
   lbl.style.letterSpacing = "0.06em";
   lbl.style.color = theme.colors.labelText;
   lbl.style.whiteSpace = "nowrap";
+  if (role === "waypoint") lbl.style.opacity = "0.7";
 
   el.appendChild(dot);
   el.appendChild(lbl);

@@ -311,6 +311,13 @@ export function NewItineraryBrief({
             ref: seg.barcode_ref ?? null,
             data: seg.barcode_data ?? null,
           })),
+          segmentCallingPoints: legs.map((seg) =>
+            (seg.calling_points ?? []).map((cp) => ({
+              station: cp.station,
+              station_code: cp.station_code ?? null,
+              time: cp.time,
+            })),
+          ),
         };
       };
 
@@ -786,6 +793,7 @@ export function NewItineraryBrief({
             ticket_type: tb.ticketType || null,
             route_restriction: tb.routeRestriction || null,
             barcodes: tb.barcodes,
+            segment_calling_points: tb.segmentCallingPoints,
           })),
         accommodation_bookings: accommodationBookings
           .filter((ab) => ab.hotel != null || ab.checkInDate)

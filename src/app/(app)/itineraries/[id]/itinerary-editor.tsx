@@ -1082,6 +1082,25 @@ export function ItineraryEditor({
       const durationMins = transition.computed_duration_minutes ?? 0;
       const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : "";
 
+      // Extract calling points from stop metadata as map waypoints
+      const meta = fromStop.metadata as Record<string, unknown> | null;
+      const rawCps = meta?.calling_points;
+      const waypoints: Station[] = [];
+      if (Array.isArray(rawCps)) {
+        for (const cp of rawCps) {
+          const cpLat = Number(cp.lat);
+          const cpLng = Number(cp.lng);
+          if (cpLat && cpLng) {
+            waypoints.push({
+              name: cp.station ?? "",
+              code: cp.station_code ?? undefined,
+              lat: cpLat,
+              lng: cpLng,
+            });
+          }
+        }
+      }
+
       legs.push({
         mode: legMode,
         from: fromStation,
@@ -1089,6 +1108,7 @@ export function ItineraryEditor({
         track,
         durationLabel,
         durationMinutes: durationMins || undefined,
+        ...(waypoints.length > 0 ? { waypoints } : {}),
       });
     }
 

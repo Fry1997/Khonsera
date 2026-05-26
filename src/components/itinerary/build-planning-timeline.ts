@@ -436,6 +436,8 @@ function buildTransitGroup(
     const from = groupStops[j];
     const to = groupStops[j + 1];
     const fromMeta = from.stop.metadata as Record<string, unknown> | null;
+    const rawCp = fromMeta?.calling_points;
+    const callingPoints = Array.isArray(rawCp) ? rawCp as Array<{ station: string; station_code: string | null; time: string }> : null;
     legs.push({
       from_station: from.stop.title ?? "?",
       to_station: to.stop.title ?? "?",
@@ -452,6 +454,7 @@ function buildTransitGroup(
       barcode_ref: (fromMeta?.barcode_ref as string) ?? (fromMeta?.booking_reference as string) ?? null,
       barcode_data: (fromMeta?.barcode_data as string) ?? null,
       price: (fromMeta?.price as number) ?? null,
+      calling_points: callingPoints,
     });
   }
 

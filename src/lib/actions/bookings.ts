@@ -428,6 +428,11 @@ const transportSegmentSchema = z.object({
   seat: z.string().trim().max(20).nullable().optional(),
   barcode_ref: z.string().trim().max(40).nullable().optional(),
   barcode_data: z.string().max(500).nullable().optional(),
+  calling_points: z.array(z.object({
+    station: z.string().max(200),
+    station_code: z.string().max(10).nullable().optional(),
+    time: z.string().max(10).optional().default(""),
+  })).nullable().optional(),
 });
 
 const attachTransportBookingSchema = z
@@ -630,6 +635,7 @@ export async function attachTransportBookingToStop(
     seat: s.seat ?? null,
     barcode_ref: s.barcode_ref ?? null,
     barcode_data: s.barcode_data ?? null,
+    calling_points: s.calling_points ?? null,
   }));
   await supabase.from("travel_booking_segments").insert(segmentRows);
 
@@ -649,6 +655,7 @@ export async function attachTransportBookingToStop(
         route_restriction: first.route_restriction ?? null,
         barcode_ref: first.barcode_ref ?? null,
         barcode_data: first.barcode_data ?? null,
+        calling_points: first.calling_points ?? null,
       },
     })
     .eq("id", parsed.value.from_stop_id)

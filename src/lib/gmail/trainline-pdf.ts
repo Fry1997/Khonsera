@@ -2,7 +2,7 @@
 // Each PDF represents one ticket (one leg of the journey).
 // Also extracts Aztec barcode data from PDF images using ZXing WASM.
 
-import type { ParsedTransportSegment } from "./types";
+import type { CallingPoint, ParsedTransportSegment } from "./types";
 
 // NRS station code → full name mapping (common UK stations)
 const STATION_NAMES: Record<string, string> = {
@@ -71,6 +71,7 @@ export type TrainlinePdfTicket = {
   nrs_ref: string | null;
   barcode_ref: string | null;
   barcode_data: string | null;
+  calling_points: CallingPoint[];
 };
 
 export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | null {
@@ -142,14 +143,16 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
     operator = parts.join(" ");
   }
 
-  // Arrival time: last time in the itinerary section before "Ticket Details"
-  const itineraryMatch = pdfText.match(
-    /Itinerary[\s\S]*?(\d{1,2}:\d{2})\n(?:No specific seat\n)?[A-Z][a-z]+(?:\n|$)[\s\S]*?(?:Ticket Details|$)/,
-  );
-  // Get ALL times from the itinerary to find the last arrival
+  // Arrival time + calling points from the itinerary section.
+  // The itinerary lists each stop with a time and station name, e.g.:
+  //   07:13\nNo specific seat\nWellingborough\n...\n07:45\nKettering\n...\n08:15\nLeicester
+  // We extract all (time, station) pairs. First is the departure, last is the
+  // arrival, and everything between is a calling point.
   const itinerarySection = pdfText.match(/Itinerary[\s\S]*?(?=Ticket Details)/)?.[0] ?? "";
   const itineraryTimes = [...itinerarySection.matchAll(/(\d{1,2}:\d{2})/g)].map((m) => m[1]);
   const arrivalTime = itineraryTimes.length > 0 ? itineraryTimes[itineraryTimes.length - 1] : "";
+
+  const callingPoints = parseItineraryCallingPoints(itinerarySection, fromCode, toCode);
 
   // Price: "Price £19.70" (appears as "Price Â£19.70" due to encoding)
   const priceMatch = pdfText.match(/Price\s+(?:Â£|£)([\d.]+)/);
@@ -186,7 +189,106 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
     nrs_ref: nrsRef,
     barcode_ref: barcodeRef,
     barcode_data: barcodeData,
+    calling_points: callingPoints,
   };
+}
+
+// Known operator names that appear in the itinerary section (split across lines).
+// These should NOT be treated as station names.
+const OPERATOR_NAMES = new Set([
+  "east midlands railway",
+  "avanti west coast",
+  "crosscountry",
+  "lner",
+  "great western railway",
+  "northern",
+  "transpennine express",
+  "southeastern",
+  "southern",
+  "thameslink",
+  "scotrail",
+  "chiltern railways",
+  "greater anglia",
+  "west midlands trains",
+  "c2c",
+  "gatwick express",
+  "hull trains",
+  "grand central",
+  "merseyrail",
+  "elizabeth line",
+  "heathrow express",
+]);
+
+const SKIP_LINES = new Set([
+  "no specific seat",
+  "itinerary",
+  "standard class",
+  "first class",
+  "quiet coach",
+]);
+
+function parseItineraryCallingPoints(
+  itinerarySection: string,
+  fromCode: string,
+  toCode: string,
+): CallingPoint[] {
+  if (!itinerarySection) return [];
+
+  const lines = itinerarySection.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  // Build (time, station) pairs by scanning for times followed by station names.
+  // Pattern: a line with HH:MM, then skip noise lines (operator, "No specific seat"),
+  // until we hit a line that looks like a station name (capitalised, not an operator).
+  const stops: { time: string; station: string; code: string | null }[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const timeMatch = lines[i].match(/^(\d{1,2}:\d{2})$/);
+    if (!timeMatch) { i++; continue; }
+
+    const time = timeMatch[1];
+    // Look ahead for a station name
+    let station: string | null = null;
+    let code: string | null = null;
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      const line = lines[j];
+      if (/^\d{1,2}:\d{2}$/.test(line)) break;
+      if (SKIP_LINES.has(line.toLowerCase())) continue;
+      // Skip if it's a partial operator name (operators span multiple lines)
+      const combined = lines.slice(j, j + 2).join(" ").toLowerCase();
+      if (OPERATOR_NAMES.has(combined) || OPERATOR_NAMES.has(line.toLowerCase())) continue;
+      // Station names start with a capital letter and are typically 3+ chars
+      if (/^[A-Z][a-z]/.test(line) && line.length >= 3) {
+        station = line;
+        // Check if there's a station code in parentheses or on the next line
+        const codeMatch = line.match(/\(([A-Z]{3})\)/);
+        if (codeMatch) {
+          code = codeMatch[1];
+          station = line.replace(/\s*\([A-Z]{3}\)/, "").trim();
+        }
+        break;
+      }
+    }
+    if (station) {
+      // Try to resolve to a CRS code if we don't already have one
+      if (!code) {
+        const entry = Object.entries(STATION_NAMES).find(
+          ([, name]) => name.toLowerCase() === station!.toLowerCase(),
+        );
+        if (entry) code = entry[0];
+      }
+      stops.push({ time, station, code });
+    }
+    i++;
+  }
+
+  if (stops.length <= 2) return [];
+
+  // First stop is the departure origin, last is arrival destination — exclude both.
+  return stops.slice(1, -1).map((s) => ({
+    station: s.station,
+    station_code: s.code,
+    time: s.time,
+  }));
 }
 
 // Extract barcode data from .pkpass wallet pass files.
@@ -349,5 +451,6 @@ export function pdfTicketsToSegments(
     seat: t.seat,
     barcode_ref: t.barcode_ref,
     barcode_data: t.barcode_data,
+    calling_points: t.calling_points.length > 0 ? t.calling_points : null,
   }));
 }

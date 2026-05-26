@@ -1,5 +1,11 @@
 // Shared types for Gmail booking import.
 
+export type CallingPoint = {
+  station: string;
+  station_code: string | null;
+  time: string; // HH:MM — arrival time at this calling point
+};
+
 export type ParsedTransportSegment = {
   from_station: string;
   to_station: string;
@@ -19,6 +25,7 @@ export type ParsedTransportSegment = {
   seat: string | null;
   barcode_ref: string | null;
   barcode_data: string | null; // Full Aztec/barcode payload for regeneration
+  calling_points: CallingPoint[] | null;
 };
 
 export type ParsedTransportBooking = {

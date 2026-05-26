@@ -173,10 +173,24 @@ Three themes: `dusk` (warm cream, default), `midnight` (dark), `sahara` (dayligh
 ### Tile source
 Currently OSM raster tiles (always available, no API key). Upgrade path: Protomaps or MapTiler vector tiles for full brand control (custom layer colours, hidden POIs). Requires an API key.
 
+### Calling Points (intermediate stations)
+Trainline PDF etickets contain an "Itinerary" section listing intermediate stops with times. These are parsed by `parseItineraryCallingPoints()` in `trainline-pdf.ts` and stored as `calling_points` on:
+- `TrainlinePdfTicket.calling_points` — raw parse output
+- `ParsedTransportSegment.calling_points` — flows through Gmail import
+- `BriefTransportBooking.segmentCallingPoints` — client state (array of arrays, one per segment)
+- `travel_booking_segments.calling_points` — DB column (jsonb, migration 0027)
+- Stop `metadata.calling_points` — on transit_departure/transit_changeover stops, enriched with lat/lng at insert time
+
+On the **map**, calling points populate `Leg.waypoints` in the editor's journey builder. Rendered as small gold-bordered circles (5px) with 7.5px labels at 70% opacity — subtler than origin/destination/intermediate markers.
+
+On the **timeline** (both brief spine and planning page), calling points appear:
+1. As a "calling at KET, MKC +1 more" hint on the collapsed transport booking in the spine
+2. As a visual strip (time · dot · station code) between the station names and ticket details on the `TrainTicketCard`
+
 ### Next steps
-- Calling points: parse intermediate stops from Trainline PDFs, render as small waypoint markers on the rail leg
 - Planning-page transport booking: polyline + duration should work when adding transport during planning (not just from brief)
 - Day-of mode: live position dot, adaptive zoom — component API supports it, just needs wiring
+- Leicester→Derby routing: Dijkstra may fork toward Nottingham at Trent Junction — calling point waypoints could help constrain the polyline to the correct branch
 
 ## Key File Map
 

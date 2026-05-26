@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+export type TicketCallingPoint = {
+  station: string;
+  station_code: string | null;
+  time: string;
+};
+
 export type TicketSegment = {
   from_station: string;
   to_station: string;
@@ -18,6 +24,7 @@ export type TicketSegment = {
   barcode_ref: string | null;
   barcode_data: string | null;
   price?: number | null;
+  calling_points?: TicketCallingPoint[] | null;
 };
 
 function formatDate(iso: string): string {
@@ -110,6 +117,11 @@ export function TrainTicketCard({
           </div>
         </div>
       </div>
+
+      {/* Calling points */}
+      {segment.calling_points && segment.calling_points.length > 0 && (
+        <CallingPointsStrip points={segment.calling_points} />
+      )}
 
       {/* Ticket details row */}
       <div
@@ -214,6 +226,92 @@ export function TrainTicketCard({
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function CallingPointsStrip({ points }: { points: TicketCallingPoint[] }) {
+  return (
+    <div
+      style={{
+        padding: "6px 14px 2px",
+        display: "flex",
+        alignItems: "center",
+        gap: 0,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0,
+          flex: 1,
+          position: "relative",
+        }}
+      >
+        {/* Connecting line */}
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: 0,
+            right: 0,
+            height: 1,
+            background: "var(--rule)",
+            transform: "translateY(-50%)",
+          }}
+        />
+        {points.map((pt, i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 8.5,
+                fontFamily: "var(--mono)",
+                color: "var(--ink-faint)",
+                letterSpacing: "0.04em",
+                marginBottom: 3,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {pt.time}
+            </span>
+            <div
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                border: "1px solid var(--ink-faint)",
+                background: "var(--card)",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 8,
+                fontFamily: "var(--mono)",
+                color: "var(--ink-faint)",
+                letterSpacing: "0.04em",
+                marginTop: 3,
+                whiteSpace: "nowrap",
+                textTransform: "uppercase",
+              }}
+            >
+              {pt.station_code ?? pt.station}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
