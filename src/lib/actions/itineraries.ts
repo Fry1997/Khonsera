@@ -1193,7 +1193,7 @@ export async function createItineraryFromBrief(
   {
     const { data: allStops } = await supabase
       .from("stops")
-      .select("id, sequence, metadata, start_time")
+      .select("id, sequence, metadata, start_time, end_time")
       .eq("itinerary_id", itinerary.id)
       .eq("workspace_id", ctx.workspaceId)
       .order("sequence");
@@ -1278,14 +1278,19 @@ export async function createItineraryFromBrief(
           }
         }
 
-        // Compute duration from stop times for locked transit legs
+        // Compute duration from stop times for locked transit legs.
+        // For changeover stops, end_time is the departure (start_time is arrival).
         let computedDuration: number | null = null;
-        if (isTransitLeg && from.start_time && to.start_time) {
-          computedDuration = Math.round(
-            (new Date(to.start_time as string).getTime() -
-              new Date(from.start_time as string).getTime()) /
-              60_000,
-          );
+        if (isTransitLeg) {
+          const departTime = from.end_time ?? from.start_time;
+          const arriveTime = to.start_time;
+          if (departTime && arriveTime) {
+            computedDuration = Math.round(
+              (new Date(arriveTime as string).getTime() -
+                new Date(departTime as string).getTime()) /
+                60_000,
+            );
+          }
         }
 
         newTransitions.push({
@@ -1345,10 +1350,11 @@ export async function createItineraryFromBrief(
                   await supabase.from("transitions").update(patch).eq("id", tr.id);
               }
 
-              // For train/bus/tube legs without a polyline from Google,
-              // try fetching real track geometry from OpenStreetMap.
+              // For train/bus/tube legs, prefer our seeded rail network
+              // polylines over Google Transit's (which are approximate and
+              // often don't follow actual UK track geometry).
               const isRailMode = tr.mode === "train" || tr.mode === "bus" || tr.mode === "tube";
-              if (isRailMode && !route?.overviewPolyline && fromPt && toPt) {
+              if (isRailMode && fromPt && toPt) {
                 const fromHub = (fromS as any)?.transport_hub;
                 const toHub = (toS as any)?.transport_hub;
                 const fromCode = fromHub?.code ?? null;
