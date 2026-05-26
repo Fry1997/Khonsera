@@ -277,9 +277,13 @@ export function NewItineraryBrief({
         const first = legs[0];
         const last = legs[legs.length - 1];
         // Resolve station names → transport hub IDs for route previews
-        const [depHub, destHub] = await Promise.all([
+        const changeoverLegs = legs.length > 1 ? legs.slice(0, -1) : [];
+        const [depHub, destHub, ...coHubs] = await Promise.all([
           first?.from_station ? resolveHubByName(first.from_station) : null,
           last?.to_station ? resolveHubByName(last.to_station) : null,
+          ...changeoverLegs.map((seg) =>
+            seg.to_station ? resolveHubByName(seg.to_station) : null,
+          ),
         ]);
         return {
           ...emptyTransportBookingItem(),
@@ -289,13 +293,11 @@ export function NewItineraryBrief({
           destinationHub: { id: destHub?.id ?? null, label: last?.to_station ?? null },
           departTime: first?.departure_time ?? "",
           arriveTime: last?.arrival_time ?? "",
-          changeovers: legs.length > 1
-            ? legs.slice(0, -1).map((seg, i) => ({
-                hub: { id: null, label: seg.to_station },
-                arriveTime: seg.arrival_time,
-                departTime: legs[i + 1]?.departure_time ?? "",
-              }))
-            : [],
+          changeovers: changeoverLegs.map((seg, i) => ({
+            hub: { id: coHubs[i]?.id ?? null, label: seg.to_station },
+            arriveTime: seg.arrival_time,
+            departTime: legs[i + 1]?.departure_time ?? "",
+          })),
           serviceNumber: first?.service_number ?? "",
           reference: b.booking_reference ?? "",
           seat: first?.seat ?? "",
