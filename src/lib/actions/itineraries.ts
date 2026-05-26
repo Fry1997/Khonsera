@@ -1337,7 +1337,7 @@ export async function createItineraryFromBrief(
                 const patch: Record<string, unknown> = {};
                 if (route.overviewPolyline)
                   patch.overview_polyline = route.overviewPolyline;
-                if (route.totalDurationMinutes != null)
+                if (route.totalDurationMinutes != null && !tr.is_locked)
                   patch.computed_duration_minutes = Math.round(route.totalDurationMinutes);
                 if (route.totalDistanceMiles != null)
                   patch.distance_miles = route.totalDistanceMiles;

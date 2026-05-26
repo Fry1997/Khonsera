@@ -507,7 +507,7 @@ export function buildStaticMapUrl(args: {
       const parts = [
         `weight:${p.weight ?? 4}`,
         `color:0x${p.color ?? "c25c3a"}`,
-        `enc:${p.encoded}`,
+        `enc:${p.encoded.replace(/\|/g, "%7C")}`,
       ];
       url.searchParams.append("path", parts.join("|"));
     } else if (p.points && p.points.length >= 2) {
