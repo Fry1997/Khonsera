@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Protocol } from "pmtiles";
 
 import type { JourneyMapProps } from "./types";
 import { THEMES } from "./themes";
@@ -11,16 +10,6 @@ import { buildMapStyle } from "./map-style/build-map-style";
 import { computeBounds } from "./utils/compute-bounds";
 import { useMapProjection } from "./hooks/use-map-projection";
 import { JourneyOverlay } from "./overlay/journey-overlay";
-
-// Register the pmtiles protocol once at module level.
-// Guard against double-registration in dev mode (HMR).
-let protocolRegistered = false;
-function ensureProtocol() {
-  if (protocolRegistered) return;
-  const protocol = new Protocol();
-  maplibregl.addProtocol("pmtiles", protocol.tile);
-  protocolRegistered = true;
-}
 
 /**
  * JourneyMap — interactive MapLibre-based map for Khonsera itineraries.
@@ -53,7 +42,6 @@ export function JourneyMap({
   // Initialise MapLibre
   useEffect(() => {
     if (!containerRef.current) return;
-    ensureProtocol();
 
     const style = buildMapStyle(theme);
     const bounds = computeBounds(journey);
