@@ -18,7 +18,8 @@ type Edge = {
 export async function seedRailEdges(
   edges: Edge[],
 ): Promise<{ inserted: number }> {
-  await requireUserContext();
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) throw new Error("Admin only");
   if (edges.length === 0) return { inserted: 0 };
 
   const supabase = await createClient();
@@ -47,7 +48,8 @@ export async function getRailNetworkStats(): Promise<{
  * Truncate the rail network table so the user can re-seed.
  */
 export async function clearRailNetwork(): Promise<void> {
-  await requireUserContext();
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) throw new Error("Admin only");
   const supabase = await createClient();
   // Delete all rows — Supabase JS doesn't have TRUNCATE, but
   // a broad delete with a tautological filter does the job.

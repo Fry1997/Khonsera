@@ -1,10 +1,13 @@
+import { redirect } from "next/navigation";
 import { PageShell } from "@/components/ui/page-shell";
 import { requireUserContext } from "@/lib/auth";
 import { getRailNetworkStats } from "@/lib/actions/rail-network";
 import { RailNetworkSeeder } from "./rail-network-seeder";
 
 export default async function RailNetworkPage() {
-  await requireUserContext();
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) redirect("/settings");
+
   const stats = await getRailNetworkStats();
 
   return (
