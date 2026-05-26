@@ -20,6 +20,7 @@ export type PlanningTimelineInput = {
   previewsForPair: (fromId: string, toId: string) => ModePreviewMap;
   gapPreviewsForPair: (fromId: string, toId: string) => Partial<Record<GapMode, GapPreview>>;
   onSetGapMode: (fromId: string, toId: string, mode: GapMode) => void;
+  getGapModeSelected: (fromId: string, toId: string, dbMode: string) => GapMode | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   computeStopoverBackCalc: (...args: any[]) => StopoverBackCalc;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,6 +75,7 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     previewsForPair,
     gapPreviewsForPair,
     onSetGapMode,
+    getGapModeSelected,
     computeStopoverBackCalc,
     computeFeasibility,
     routePreviews,
@@ -90,13 +92,10 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
       // Home → station: show GapModePicker (walk/drive/taxi to station)
       const toLabel = first.stop.title ?? "station";
       const fromLabel = startStop.location?.name ?? startStop.title ?? "Home";
-      const trans = planningTransitions.get(
-        transitionKey(startStop.id, uidOf(first)),
-      ) ?? emptyTransition();
-      const currentMode = trans.mode as string;
-      const selectedGap: GapMode | null =
-        currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
-          ? currentMode : null;
+      const selectedGap = getGapModeSelected(
+        startStop.id, uidOf(first),
+        (planningTransitions.get(transitionKey(startStop.id, uidOf(first))) ?? emptyTransition()).mode,
+      );
       result.push({
         kind: "gap-mode",
         fromLabel,
@@ -170,13 +169,10 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
         const toLabel = afterGroup.kind === "anchor"
           ? (afterGroup.anchor.place?.label ?? afterGroup.stop.title ?? "destination")
           : (afterGroup.stop.title ?? "destination");
-        const trans = planningTransitions.get(
-          transitionKey(groupEndItem.stop.id, afterGroup.stop.id),
-        ) ?? emptyTransition();
-        const currentMode = trans.mode as string;
-        const selectedGap: GapMode | null =
-          currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
-            ? currentMode : null;
+        const selectedGap = getGapModeSelected(
+          groupEndItem.stop.id, afterGroup.stop.id,
+          (planningTransitions.get(transitionKey(groupEndItem.stop.id, afterGroup.stop.id)) ?? emptyTransition()).mode,
+        );
         result.push({
           kind: "gap-mode",
           fromLabel,
@@ -273,11 +269,7 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
       if (nextItem.kind === "transit" && !transition.booked) {
         const fromLabel = fromAnchor.place?.label ?? stop.title ?? "here";
         const toLabel = nextItem.stop.title ?? "station";
-        const currentMode = transition.mode as GapMode | string;
-        const selectedGap: GapMode | null =
-          currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
-            ? currentMode
-            : null;
+        const selectedGap = getGapModeSelected(stop.id, uidOf(nextItem), transition.mode);
         result.push({
           kind: "gap-mode",
           fromLabel,
@@ -369,13 +361,10 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
   if (lastTransitArr && endStop) {
     const fromLabel = lastTransitArr.title ?? "station";
     const toLabel = endStop.location?.name ?? endStop.title ?? "Home";
-    const trans = planningTransitions.get(
-      transitionKey(lastTransitArr.id, endStop.id),
-    ) ?? emptyTransition();
-    const currentMode = trans.mode as string;
-    const selectedGap: GapMode | null =
-      currentMode === "walk" || currentMode === "drive" || currentMode === "taxi"
-        ? currentMode : null;
+    const selectedGap = getGapModeSelected(
+      lastTransitArr.id, endStop.id,
+      (planningTransitions.get(transitionKey(lastTransitArr.id, endStop.id)) ?? emptyTransition()).mode,
+    );
     result.push({
       kind: "gap-mode",
       fromLabel,

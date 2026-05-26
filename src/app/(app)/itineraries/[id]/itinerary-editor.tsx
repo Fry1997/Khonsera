@@ -377,16 +377,47 @@ export function ItineraryEditor({
     return out;
   };
 
+  // Gap mode selection — optimistic local state + server persist.
+  // The local state ensures the badge highlights immediately without
+  // waiting for the server round-trip.
+  const [gapModeOverrides, setGapModeOverrides] = useState<Map<string, string>>(new Map());
   const handleSetGapMode = (fromId: string, toId: string, mode: string) => {
+    const key = `${fromId}::${toId}`;
+    setGapModeOverrides((prev) => new Map(prev).set(key, mode));
     startTransition(async () => {
-      await upsertTransition({
+      setError(null);
+      const result = await upsertTransition({
         itinerary_id: itinerary.id,
         from_stop_id: fromId,
         to_stop_id: toId,
         mode: mode as "walk" | "drive" | "taxi",
       });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        setGapModeOverrides((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+        return;
+      }
       router.refresh();
     });
+  };
+
+  const gapPreviewsForPairWithOverride = (
+    fromStopId: string,
+    toStopId: string,
+  ): Partial<Record<import("@/components/gap-mode-picker").GapMode, import("@/components/gap-mode-picker").GapPreview>> => {
+    return gapPreviewsForPair(fromStopId, toStopId);
+  };
+
+  const getGapModeSelected = (fromId: string, toId: string, dbMode: string): import("@/components/gap-mode-picker").GapMode | null => {
+    const key = `${fromId}::${toId}`;
+    const override = gapModeOverrides.get(key);
+    const mode = override ?? dbMode;
+    if (mode === "walk" || mode === "drive" || mode === "taxi") return mode;
+    return null;
   };
 
   // Track the most recently created stop so we can auto-expand it
@@ -1152,7 +1183,14 @@ export function ItineraryEditor({
                 const travelTrans = transitions.find(
                   (t) => t.from_stop_id === startStop.id && t.to_stop_id === first.stop.id,
                 );
-                const travelMin = travelTrans?.computed_duration_minutes ?? 0;
+                let travelMin = travelTrans?.computed_duration_minutes ?? 0;
+                if (!travelMin) {
+                  const mode = travelTrans?.mode ?? "walk";
+                  const preview = routePreviews.get(startStop.id, first.stop.id, mode as any);
+                  if (preview && preview !== "pending" && preview.durationMinutes) {
+                    travelMin = preview.durationMinutes;
+                  }
+                }
                 const leaveMin = depMin - travelMin - 10;
                 if (leaveMin > 0) {
                   const lh = Math.floor(leaveMin / 60) % 24;
@@ -1249,6 +1287,7 @@ export function ItineraryEditor({
                   gapPreviewsForPair,
                   onSetGapMode: (fromId: string, toId: string, mode: import("@/components/gap-mode-picker").GapMode) =>
                     handleSetGapMode(fromId, toId, mode),
+                  getGapModeSelected,
                   computeStopoverBackCalc,
                   computeFeasibility,
                   routePreviews,
