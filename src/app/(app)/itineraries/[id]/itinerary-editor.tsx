@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useMemo, useEffect, useRef } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { RouteMap } from "@/components/route-map";
 import { FormError } from "@/components/ui/form";
@@ -14,9 +14,7 @@ import {
   insertTransitLeg,
   upsertTransition,
   setTransitionMode,
-  storeRailPolyline,
 } from "@/lib/actions/transitions";
-import { fetchRailPolylineFromBrowser } from "@/lib/osm/rail-routes-client";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
@@ -547,48 +545,6 @@ export function ItineraryEditor({
     // routePreviews.fetchPreviewsBatch is stable (memoised inside).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planningTimeline, transitions, stops]);
-
-  // Backfill rail polylines for locked transit legs missing them.
-  // Fetches from Overpass CLIENT-SIDE (Overpass blocks cloud IPs but
-  // allows home broadband), then stores via server action.
-  const backfillRan = useRef(false);
-  useEffect(() => {
-    if (backfillRan.current) return;
-    const locked = transitions.filter((t) => t.is_locked && !t.overview_polyline);
-    if (locked.length === 0) return;
-    backfillRan.current = true;
-
-    const coordById = new Map<string, { lat: number; lng: number; code?: string }>();
-    for (const s of stops) {
-      const hub = (s as any).transport_hub;
-      const h = Array.isArray(hub) ? hub[0] : hub;
-      if (h?.latitude && h?.longitude) {
-        coordById.set(s.id, { lat: Number(h.latitude), lng: Number(h.longitude), code: h.code ?? undefined });
-      }
-    }
-
-    (async () => {
-      let filled = 0;
-      for (const t of locked) {
-        const from = coordById.get(t.from_stop_id);
-        const to = coordById.get(t.to_stop_id);
-        if (!from || !to) continue;
-
-        const result = await fetchRailPolylineFromBrowser(from.lat, from.lng, to.lat, to.lng);
-        if (!result) continue;
-
-        await storeRailPolyline({
-          transitionId: t.id,
-          polyline: result.encoded,
-          fromCode: from.code,
-          toCode: to.code,
-          pointCount: result.pointCount,
-        });
-        filled++;
-      }
-      if (filled > 0) router.refresh();
-    })();
-  }, [transitions, stops, itinerary.id, router]);
 
   // editedAnchors holds the per-anchor in-flight patch while a card
   // is in expanded mode. We seed each entry from the DB anchor on
