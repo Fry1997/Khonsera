@@ -41,27 +41,13 @@ export function RouteMap({
   if (segments && segments.length > 0) {
     for (const seg of segments) {
       if (seg.type === "encoded") {
-        paths.push({ encoded: seg.polyline, color: "936820", weight: 5 });
-      } else {
-        paths.push({
-          points: [seg.from, seg.to],
-          color: "936820",
-          weight: 4,
-        });
+        paths.push({ encoded: seg.polyline, color: "93682080", weight: 3 });
       }
     }
   } else if (polylines && polylines.length > 0) {
     for (const encoded of polylines) {
-      paths.push({ encoded, color: "936820", weight: 5 });
+      paths.push({ encoded, color: "93682080", weight: 3 });
     }
-  }
-
-  if (paths.length === 0 && stops.length >= 2) {
-    paths.push({
-      points: stops.map((s) => ({ lat: s.lat, lng: s.lng })),
-      color: "936820",
-      weight: 4,
-    });
   }
 
   const spec = JSON.stringify({

@@ -1027,24 +1027,14 @@ export function ItineraryEditor({
   }, [sortedStops]);
 
   const mapSegments = useMemo(() => {
-    const coordById = new Map<string, { lat: number; lng: number }>();
-    for (const s of sortedStops) {
-      const lat = s.customer_site?.latitude ?? s.location?.latitude ?? (s as any).transport_hub?.latitude;
-      const lng = s.customer_site?.longitude ?? s.location?.longitude ?? (s as any).transport_hub?.longitude;
-      if (lat != null && lng != null) coordById.set(s.id, { lat: Number(lat), lng: Number(lng) });
-    }
-    const segs: Array<{ type: "encoded"; polyline: string } | { type: "straight"; from: { lat: number; lng: number }; to: { lat: number; lng: number } }> = [];
+    const segs: Array<{ type: "encoded"; polyline: string }> = [];
     for (const t of transitions) {
       if (t.overview_polyline) {
         segs.push({ type: "encoded", polyline: t.overview_polyline });
-      } else {
-        const from = coordById.get(t.from_stop_id);
-        const to = coordById.get(t.to_stop_id);
-        if (from && to) segs.push({ type: "straight", from, to });
       }
     }
     return segs;
-  }, [transitions, sortedStops]);
+  }, [transitions]);
 
   const currentStatusIndex = STATUS_FLOW.indexOf(itinerary.status);
   const canAdvance =
