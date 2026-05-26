@@ -28,6 +28,50 @@ export async function seedRailEdges(
   return { inserted: edges.length };
 }
 
+export type RouteSegment = {
+  osm_relation_id: number;
+  route_name: string | null;
+  operator: string | null;
+  from_station_name: string;
+  to_station_name: string;
+  from_station_code: string | null;
+  to_station_code: string | null;
+  encoded_polyline: string;
+  point_count: number;
+};
+
+export async function seedRouteSegments(
+  segments: RouteSegment[],
+): Promise<{ inserted: number }> {
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (segments.length === 0) return { inserted: 0 };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("rail_named_route_segments")
+    .upsert(segments, { onConflict: "from_station_code,to_station_code" });
+  if (error) throw new Error(`seedRouteSegments: ${error.message}`);
+  return { inserted: segments.length };
+}
+
+export async function getRouteSegmentStats(): Promise<{ count: number } | null> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("rail_named_route_segments")
+    .select("id", { count: "exact", head: true });
+  if (error) return null;
+  return { count: count ?? 0 };
+}
+
+export async function clearRouteSegments(): Promise<void> {
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) throw new Error("Admin only");
+  const supabase = await createClient();
+  await supabase.from("rail_named_route_segments").delete().gte("id", "00000000-0000-0000-0000-000000000000");
+}
+
 /**
  * Return the count of stored edges (null if table is empty / not seeded).
  */

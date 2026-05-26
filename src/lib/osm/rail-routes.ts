@@ -25,6 +25,18 @@ export async function getRailPolyline(
     const supabase = await createSupabaseClient();
     const hasWaypoints = waypoints && waypoints.length > 0;
 
+    // L0: named route lookup — authoritative OSM route relation geometry.
+    // No routing needed; the polyline comes directly from the relation.
+    if (fromCode && toCode) {
+      const { data: named } = await supabase
+        .from("rail_named_route_segments")
+        .select("encoded_polyline")
+        .eq("from_station_code", fromCode)
+        .eq("to_station_code", toCode)
+        .maybeSingle();
+      if (named?.encoded_polyline) return named.encoded_polyline;
+    }
+
     // L1: code-pair cache lookup (skip when waypoints constrain the route)
     if (fromCode && toCode && !hasWaypoints) {
       const { data } = await supabase
