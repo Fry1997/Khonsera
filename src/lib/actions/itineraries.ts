@@ -1412,7 +1412,7 @@ export async function createItineraryFromBrief(
               const { data: trStops } = await supabase
                 .from("stops")
                 .select(
-                  `id, transport_hub_id,
+                  `id, transport_hub_id, metadata,
                    location:locations(latitude, longitude),
                    customer_site:customer_sites(latitude, longitude),
                    transport_hub:transport_hubs(latitude, longitude, code)`,
@@ -1451,10 +1451,19 @@ export async function createItineraryFromBrief(
                 const toHub = (toS as any)?.transport_hub;
                 const fromCode = fromHub?.code ?? null;
                 const toCode = toHub?.code ?? null;
+                // Extract calling point waypoints from departure stop metadata
+                const fromMeta = fromS?.metadata as Record<string, unknown> | null;
+                const rawCps = fromMeta?.calling_points;
+                const wpArr = Array.isArray(rawCps)
+                  ? (rawCps as Array<{ lat?: number; lng?: number }>)
+                      .filter((cp) => cp.lat && cp.lng)
+                      .map((cp) => ({ lat: cp.lat!, lng: cp.lng! }))
+                  : undefined;
                 const railPoly = await getRailPolyline(
                   fromPt.lat, fromPt.lng,
                   toPt.lat, toPt.lng,
                   fromCode, toCode,
+                  wpArr && wpArr.length > 0 ? wpArr : undefined,
                 );
                 if (railPoly) {
                   await supabase

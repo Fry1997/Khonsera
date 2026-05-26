@@ -22,6 +22,7 @@ import {
 import {
   upsertTransition,
   setTransitionMode,
+  backfillRailPolylines,
 } from "@/lib/actions/transitions";
 import { addFullTransportBooking } from "@/lib/actions/bookings";
 import { reEnrichItineraryFromGmail } from "@/lib/actions/gmail";
@@ -285,6 +286,7 @@ export function ItineraryEditor({
   // the card renders in a modal. On "Done" (confirmed: true), we call
   // the server action and dismiss.
   const [editingTransport, setEditingTransport] = useState<BriefTransportBooking | null>(null);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const handleTransportCardChange = (patch: Partial<BriefTransportBooking>) => {
     setEditingTransport((prev) => {
       if (!prev) return prev;
@@ -1293,7 +1295,8 @@ export function ItineraryEditor({
                       setError(feedbackFromError(result.error).message);
                       return;
                     }
-                    if (result.value.enriched > 0) router.refresh();
+                    await backfillRailPolylines(itinerary.id, true);
+                    router.refresh();
                   });
                 }}
                 disabled={pending}
@@ -1504,7 +1507,7 @@ export function ItineraryEditor({
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
             {journeyMapData && journeyMapData.legs.length > 0 ? (
-              <div className="route-map-card">
+              <div className={`route-map-card${mapExpanded ? " map-expanded" : ""}`}>
                 <div className="route-map-header">
                   <span className="route-map-eyebrow">Door-to-door</span>
                   <span className="route-map-headline">
@@ -1512,12 +1515,28 @@ export function ItineraryEditor({
                     {totalMiles > 0 && totalMinutes > 0 && " · "}
                     {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
                   </span>
+                  <button
+                    type="button"
+                    className="map-expand-btn"
+                    onClick={() => setMapExpanded((v) => !v)}
+                    title={mapExpanded ? "Collapse map" : "Expand map"}
+                  >
+                    {mapExpanded ? (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M10 2v4h4M2 10h4v4M14 2l-4 4M2 14l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M10 2v4h4M2 10h4v4M6 6L2 2M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                  </button>
                 </div>
-                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined }}>
                   <JourneyMap
                     journey={journeyMapData}
                     mode="planning"
-                    height={320}
+                    height={mapExpanded ? undefined : 320}
                   />
                 </div>
               </div>

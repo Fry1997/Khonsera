@@ -19,12 +19,14 @@ export async function getRailPolyline(
   toLng: number,
   fromCode?: string | null,
   toCode?: string | null,
+  waypoints?: Array<{ lat: number; lng: number }>,
 ): Promise<string | null> {
   try {
     const supabase = await createSupabaseClient();
+    const hasWaypoints = waypoints && waypoints.length > 0;
 
-    // L1: code-pair cache lookup
-    if (fromCode && toCode) {
+    // L1: code-pair cache lookup (skip when waypoints constrain the route)
+    if (fromCode && toCode && !hasWaypoints) {
       const { data } = await supabase
         .from("rail_route_cache")
         .select("encoded_polyline")
@@ -34,11 +36,13 @@ export async function getRailPolyline(
       if (data?.encoded_polyline) return data.encoded_polyline;
     }
 
-    // L2: BFS through the stored rail network graph
-    const polyline = await routeRailPath(fromLat, fromLng, toLat, toLng);
+    // L2: Dijkstra through the stored rail network graph
+    const polyline = await routeRailPath(
+      fromLat, fromLng, toLat, toLng, waypoints,
+    );
     if (!polyline) return null;
 
-    // Cache the result for next time (best-effort, don't fail the caller)
+    // Cache the result for next time
     if (fromCode && toCode) {
       await supabase.from("rail_route_cache").upsert(
         {

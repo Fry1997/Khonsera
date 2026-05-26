@@ -70,10 +70,89 @@ function coordKey(lat: number, lng: number): string {
 
 /**
  * Route between two points using the stored rail network graph.
- * Loads edges in the bounding box, builds an adjacency list, runs BFS,
- * trims to station boundaries, and returns an encoded Google polyline.
+ * Loads edges in the bounding box, builds an adjacency list, runs
+ * Dijkstra, trims to station boundaries, and returns an encoded
+ * Google polyline.
+ *
+ * When waypoints are provided, routes through each sequentially
+ * (from → wp1 → wp2 → ... → to) and concatenates the path segments.
+ * This forces the path through the correct branch at junctions.
  */
 export async function routeRailPath(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  waypoints?: Array<{ lat: number; lng: number }>,
+): Promise<string | null> {
+  if (waypoints && waypoints.length > 0) {
+    return routeRailPathViaWaypoints(fromLat, fromLng, toLat, toLng, waypoints);
+  }
+  return routeRailPathDirect(fromLat, fromLng, toLat, toLng);
+}
+
+async function routeRailPathViaWaypoints(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  waypoints: Array<{ lat: number; lng: number }>,
+): Promise<string | null> {
+  const allPoints: Array<{ lat: number; lng: number }> = [
+    { lat: fromLat, lng: fromLng },
+    ...waypoints,
+    { lat: toLat, lng: toLng },
+  ];
+
+  const allSegmentPoints: LatLng[] = [];
+  for (let i = 0; i < allPoints.length - 1; i++) {
+    const seg = await routeRailPathDirect(
+      allPoints[i].lat, allPoints[i].lng,
+      allPoints[i + 1].lat, allPoints[i + 1].lng,
+    );
+    if (!seg) continue;
+    const decoded = decodePolylineInternal(seg);
+    if (i > 0 && allSegmentPoints.length > 0 && decoded.length > 0) {
+      decoded.shift();
+    }
+    allSegmentPoints.push(...decoded);
+  }
+
+  if (allSegmentPoints.length < 2) return null;
+  return encodePolyline(allSegmentPoints);
+}
+
+function decodePolylineInternal(encoded: string): LatLng[] {
+  const points: LatLng[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+
+async function routeRailPathDirect(
   fromLat: number,
   fromLng: number,
   toLat: number,

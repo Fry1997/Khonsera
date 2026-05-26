@@ -578,5 +578,11 @@ export async function reEnrichItineraryFromGmail(
     }
   }
 
+  // Regenerate rail polylines using the updated calling points as waypoints
+  if (enrichedCount > 0) {
+    const { backfillRailPolylines } = await import("@/lib/actions/transitions");
+    await backfillRailPolylines(itineraryId, true);
+  }
+
   return ok({ enriched: enrichedCount });
 }

@@ -657,36 +657,29 @@ function pickPoint(stop: unknown): { lat: number; lng: number } | null {
 
 export async function backfillRailPolylines(
   itineraryId: string,
+  force?: boolean,
 ): Promise<{ filled: number }> {
   await requireUserContext();
   const supabase = await createClient();
 
-  // Find locked transit transitions without polylines
-  const { data: missing } = await supabase
+  let query = supabase
     .from("transitions")
     .select("id, mode, from_stop_id, to_stop_id")
     .eq("itinerary_id", itineraryId)
-    .eq("is_locked", true)
-    .is("overview_polyline", null);
+    .eq("is_locked", true);
+  if (!force) query = query.is("overview_polyline", null);
+  const { data: targets } = await query;
 
-  console.log("[rail-routes] backfill: found", missing?.length ?? 0, "transitions missing polylines");
-  if (!missing || missing.length === 0) return { filled: 0 };
+  if (!targets || targets.length === 0) return { filled: 0 };
 
   let filled = 0;
-  for (const t of missing) {
+  for (const t of targets) {
     const { data: stops, error: stopsErr } = await supabase
       .from("stops")
-      .select("id, transport_hub_id, transport_hub:transport_hubs(latitude, longitude, code)")
+      .select("id, metadata, transport_hub_id, transport_hub:transport_hubs(latitude, longitude, code)")
       .in("id", [t.from_stop_id, t.to_stop_id]);
 
-    if (stopsErr) {
-      console.error("[rail-routes] stops query error:", stopsErr.message);
-      continue;
-    }
-    if (!stops || stops.length < 2) {
-      console.log("[rail-routes] skipping transition", t.id, "- only", stops?.length ?? 0, "stops found");
-      continue;
-    }
+    if (stopsErr || !stops || stops.length < 2) continue;
     const fromStop = stops.find((s) => s.id === t.from_stop_id);
     const toStop = stops.find((s) => s.id === t.to_stop_id);
     const fh = first(fromStop?.transport_hub) as
@@ -695,19 +688,24 @@ export async function backfillRailPolylines(
     const th = first(toStop?.transport_hub) as
       | { latitude?: number | null; longitude?: number | null; code?: string | null }
       | null;
-    console.log("[rail-routes] from hub:", fh, "to hub:", th);
-    if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) {
-      console.log("[rail-routes] skipping - missing coordinates");
-      continue;
-    }
+    if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) continue;
+
+    // Extract calling point waypoints from departure stop metadata
+    const fromMeta = fromStop?.metadata as Record<string, unknown> | null;
+    const rawCps = fromMeta?.calling_points;
+    const waypoints = Array.isArray(rawCps)
+      ? (rawCps as Array<{ lat?: number; lng?: number }>)
+          .filter((cp) => cp.lat && cp.lng)
+          .map((cp) => ({ lat: cp.lat!, lng: cp.lng! }))
+      : undefined;
 
     try {
       const poly = await getRailPolyline(
         Number(fh.latitude), Number(fh.longitude),
         Number(th.latitude), Number(th.longitude),
         (fh.code as string) ?? null, (th.code as string) ?? null,
+        waypoints && waypoints.length > 0 ? waypoints : undefined,
       );
-      console.log("[rail-routes] polyline result for", t.id, ":", poly ? `${poly.length} chars` : "null");
       if (poly) {
         await supabase
           .from("transitions")
@@ -715,11 +713,10 @@ export async function backfillRailPolylines(
           .eq("id", t.id);
         filled++;
       }
-    } catch (err) {
-      console.error("[rail-routes] error for transition", t.id, ":", err);
+    } catch {
+      // Best-effort
     }
   }
-  console.log("[rail-routes] backfill complete:", filled, "filled");
   return { filled };
 }
 
