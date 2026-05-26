@@ -722,3 +722,41 @@ export async function backfillRailPolylines(
   console.log("[rail-routes] backfill complete:", filled, "filled");
   return { filled };
 }
+
+const storePolylineSchema = z.object({
+  transitionId: z.string().uuid(),
+  polyline: z.string().min(1).max(100_000),
+  fromCode: z.string().max(10).optional(),
+  toCode: z.string().max(10).optional(),
+  pointCount: z.number().int().min(2).optional(),
+});
+
+export async function storeRailPolyline(
+  input: z.infer<typeof storePolylineSchema>,
+): Promise<{ ok: boolean }> {
+  const ctx = await requireUserContext();
+  const parsed = storePolylineSchema.parse(input);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("transitions")
+    .update({ overview_polyline: parsed.polyline })
+    .eq("id", parsed.transitionId)
+    .eq("workspace_id", ctx.workspaceId);
+
+  if (error) return { ok: false };
+
+  if (parsed.fromCode && parsed.toCode) {
+    await supabase.from("rail_route_cache").upsert(
+      {
+        from_station_code: parsed.fromCode,
+        to_station_code: parsed.toCode,
+        encoded_polyline: parsed.polyline,
+        point_count: parsed.pointCount ?? 0,
+      },
+      { onConflict: "from_station_code,to_station_code" },
+    );
+  }
+
+  return { ok: true };
+}
