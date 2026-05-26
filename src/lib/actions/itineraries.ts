@@ -10,6 +10,7 @@ import { solveTimes } from "@/lib/itinerary/solver";
 import { ok, type Result } from "@/lib/errors";
 import type { ItineraryStatus } from "@/lib/types/domain";
 import { routeForTransition as routeForTransitionFn } from "@/lib/integrations/routing";
+import { getRailPolyline } from "@/lib/osm/rail-routes";
 
 const createSchema = z
   .object({
@@ -1317,7 +1318,7 @@ export async function createItineraryFromBrief(
                   `id, transport_hub_id,
                    location:locations(latitude, longitude),
                    customer_site:customer_sites(latitude, longitude),
-                   transport_hub:transport_hubs(latitude, longitude)`,
+                   transport_hub:transport_hubs(latitude, longitude, code)`,
                 )
                 .in("id", [tr.from_stop_id, tr.to_stop_id])
                 .eq("workspace_id", ctx.workspaceId);
@@ -1342,6 +1343,27 @@ export async function createItineraryFromBrief(
                   patch.distance_miles = route.totalDistanceMiles;
                 if (Object.keys(patch).length > 0)
                   await supabase.from("transitions").update(patch).eq("id", tr.id);
+              }
+
+              // For train/bus/tube legs without a polyline from Google,
+              // try fetching real track geometry from OpenStreetMap.
+              const isRailMode = tr.mode === "train" || tr.mode === "bus" || tr.mode === "tube";
+              if (isRailMode && !route?.overviewPolyline && fromPt && toPt) {
+                const fromHub = (fromS as any)?.transport_hub;
+                const toHub = (toS as any)?.transport_hub;
+                const fromCode = fromHub?.code ?? null;
+                const toCode = toHub?.code ?? null;
+                const railPoly = await getRailPolyline(
+                  fromPt.lat, fromPt.lng,
+                  toPt.lat, toPt.lng,
+                  fromCode, toCode,
+                );
+                if (railPoly) {
+                  await supabase
+                    .from("transitions")
+                    .update({ overview_polyline: railPoly })
+                    .eq("id", tr.id);
+                }
               }
             } catch {
               // Route fetch is best-effort — map renders without polyline
