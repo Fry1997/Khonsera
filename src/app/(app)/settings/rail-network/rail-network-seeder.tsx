@@ -26,17 +26,25 @@ const REGIONS: Array<{
   north: number;
   east: number;
 }> = [
-  { label: "Southern England", south: 50.0, west: -6.0, north: 51.8, east: 2.0 },
-  { label: "London and SE", south: 51.0, west: -2.0, north: 52.0, east: 1.5 },
-  { label: "Midlands", south: 51.8, west: -3.5, north: 53.0, east: 0.5 },
-  { label: "North England", south: 53.0, west: -3.5, north: 55.0, east: 0.0 },
-  { label: "Scotland South", south: 55.0, west: -6.0, north: 56.5, east: -1.0 },
-  { label: "Scotland North", south: 56.5, west: -6.0, north: 59.0, east: -1.0 },
+  { label: "South West", south: 50.0, west: -6.0, north: 51.5, east: -2.0 },
+  { label: "South Central", south: 50.5, west: -2.0, north: 51.5, east: 0.0 },
+  { label: "South East", south: 50.5, west: 0.0, north: 51.5, east: 2.0 },
+  { label: "London West", south: 51.2, west: -2.0, north: 52.0, east: -0.2 },
+  { label: "London East", south: 51.2, west: -0.3, north: 52.0, east: 1.5 },
+  { label: "East Anglia", south: 51.8, west: 0.0, north: 53.0, east: 2.0 },
+  { label: "West Midlands", south: 51.8, west: -3.5, north: 53.0, east: -1.0 },
+  { label: "East Midlands", south: 51.8, west: -1.5, north: 53.0, east: 0.5 },
   { label: "Wales", south: 51.3, west: -5.5, north: 53.5, east: -2.5 },
+  { label: "North West", south: 53.0, west: -3.5, north: 54.5, east: -1.5 },
+  { label: "Yorkshire", south: 53.0, west: -2.0, north: 54.5, east: 0.0 },
+  { label: "North East", south: 54.5, west: -3.0, north: 55.8, east: 0.0 },
+  { label: "Scotland Central", south: 55.5, west: -5.5, north: 56.5, east: -3.0 },
+  { label: "Scotland East", south: 55.5, west: -3.5, north: 57.0, east: -1.0 },
+  { label: "Scotland North", south: 56.5, west: -6.0, north: 59.0, east: -2.0 },
 ];
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
-const BATCH_SIZE = 5000;
+const BATCH_SIZE = 2000;
 
 type Edge = { from_lat: number; from_lng: number; to_lat: number; to_lng: number };
 
