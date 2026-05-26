@@ -83,11 +83,8 @@ export async function routeRailPath(
   fromLng: number,
   toLat: number,
   toLng: number,
-  waypoints?: Array<{ lat: number; lng: number }>,
+  _waypoints?: Array<{ lat: number; lng: number }>,
 ): Promise<string | null> {
-  if (waypoints && waypoints.length > 0) {
-    return routeRailPathViaWaypoints(fromLat, fromLng, toLat, toLng, waypoints);
-  }
   return routeRailPathDirect(fromLat, fromLng, toLat, toLng);
 }
 
@@ -162,8 +159,7 @@ async function routeRailPathDirect(
   await requireUserContext();
   const supabase = await createClient();
 
-  // Bounding box with padding
-  const pad = 0.05;
+  const pad = 0.1;
   const minLat = Math.min(fromLat, toLat) - pad;
   const maxLat = Math.max(fromLat, toLat) + pad;
   const minLng = Math.min(fromLng, toLng) - pad;
@@ -218,12 +214,12 @@ async function routeRailPathDirect(
   const endKey = findNearestKey(coordMap, toLat, toLng);
   if (!startKey || !endKey || startKey === endKey) return null;
 
-  // Weighted A* — biases toward the destination so the path prefers
-  // branches heading toward the target. Pure Dijkstra picks the
-  // geometrically shortest path which can detour through a nearby
-  // branch (e.g. via Beeston/Nottingham instead of direct to Derby).
-  // Epsilon > 1 trades slight optimality for directness.
-  const EPSILON = 1.3;
+  // Weighted A* — strongly biases toward the destination. At junctions
+  // like Trent Junction, this forces the path along the branch heading
+  // toward the destination rather than a nearby parallel line.
+  // High epsilon (3.0) sacrifices distance-optimality for directness —
+  // acceptable for rail where we want geometry, not shortest path.
+  const EPSILON = 3.0;
   const endPt = coordMap.get(endKey)!;
 
   const gScore = new Map<string, number>();
