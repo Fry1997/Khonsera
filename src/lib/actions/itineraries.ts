@@ -1302,7 +1302,7 @@ export async function createItineraryFromBrief(
       if (newTransitions.length > 0) {
         const { data: inserted } = await supabase
           .from("transitions")
-          .insert(newTransitions)
+          .upsert(newTransitions, { onConflict: "from_stop_id,to_stop_id", ignoreDuplicates: false })
           .select("id, from_stop_id, to_stop_id, mode, is_locked");
 
         // Fetch route data for transitions with explicit modes — locked
