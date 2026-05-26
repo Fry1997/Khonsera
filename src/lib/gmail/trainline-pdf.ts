@@ -225,6 +225,16 @@ const SKIP_LINES = new Set([
   "standard class",
   "first class",
   "quiet coach",
+  "railway",
+  "express",
+  "trains",
+  "coast",
+]);
+
+// Individual words that are part of operator names and should never be
+// treated as station names when they appear on their own line.
+const OPERATOR_FRAGMENTS = new Set([
+  "railway", "express", "trains", "coast",
 ]);
 
 function parseItineraryCallingPoints(

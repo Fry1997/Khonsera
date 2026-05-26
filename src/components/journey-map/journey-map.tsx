@@ -41,6 +41,7 @@ export function JourneyMap({
       }
       if (leg.waypoints) {
         for (const wp of leg.waypoints) {
+          if (!wp.lat || !wp.lng) continue;
           const wk = `${wp.lat.toFixed(4)},${wp.lng.toFixed(4)}`;
           if (!seen.has(wk)) {
             seen.add(wk);

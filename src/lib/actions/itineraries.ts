@@ -697,7 +697,8 @@ export async function createItineraryFromBrief(
     const { data: hubs } = await supabase
       .from("transport_hubs")
       .select("code, latitude, longitude")
-      .in("code", [...allCpCodes]);
+      .in("code", [...allCpCodes])
+      .eq("kind", "rail_station");
     for (const h of hubs ?? []) {
       if (h.latitude && h.longitude) {
         cpHubCoords.set(h.code, { lat: Number(h.latitude), lng: Number(h.longitude) });

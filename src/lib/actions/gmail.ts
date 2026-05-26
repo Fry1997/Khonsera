@@ -550,7 +550,8 @@ export async function reEnrichItineraryFromGmail(
           const { data: hubs } = await supabase
             .from("transport_hubs")
             .select("code, latitude, longitude")
-            .in("code", cpCodes);
+            .in("code", cpCodes)
+            .eq("kind", "rail_station");
           for (const h of hubs ?? []) {
             if (h.latitude && h.longitude) {
               cpCoords.set(h.code, { lat: Number(h.latitude), lng: Number(h.longitude) });
