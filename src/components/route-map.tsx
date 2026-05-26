@@ -30,17 +30,29 @@ export function RouteMap({
   const { center, zoom } = fitBounds(stops, width, height);
   const mapScale = 2;
 
+  // Build paths: use encoded polylines when available, otherwise draw
+  // straight lines between consecutive stops as a fallback.
+  const paths: Array<{ encoded?: string; points?: Array<{ lat: number; lng: number }>; color: string; weight: number }> = [];
+  if (polylines.length > 0) {
+    for (const encoded of polylines) {
+      paths.push({ encoded, color: "936820", weight: 5 });
+    }
+  }
+  if (paths.length === 0 && stops.length >= 2) {
+    paths.push({
+      points: stops.map((s) => ({ lat: s.lat, lng: s.lng })),
+      color: "936820",
+      weight: 4,
+    });
+  }
+
   const spec = JSON.stringify({
     width,
     height,
     zoom,
     center,
     markers: [],
-    paths: polylines.map((encoded) => ({
-      encoded,
-      color: "936820",
-      weight: 5,
-    })),
+    paths,
     style: "journies",
   });
   const b64 = btoa(unescape(encodeURIComponent(spec)))

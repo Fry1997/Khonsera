@@ -881,14 +881,27 @@ export function ItineraryEditor({
       ),
     [transitions],
   );
-  const totalMiles = useMemo(
-    () =>
-      transitions.reduce(
-        (sum, t) => sum + (Number(t.distance_miles) || 0),
-        0,
-      ),
-    [transitions],
-  );
+  const totalMiles = useMemo(() => {
+    const dbMiles = transitions.reduce(
+      (sum, t) => sum + (Number(t.distance_miles) || 0),
+      0,
+    );
+    if (dbMiles > 5) return dbMiles;
+    // Fallback: haversine sum between consecutive stops with coordinates
+    let miles = 0;
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const a = sortedStops[i];
+      const b = sortedStops[i + 1];
+      const aLat = a.customer_site?.latitude ?? a.location?.latitude ?? (a as any).transport_hub?.latitude;
+      const aLng = a.customer_site?.longitude ?? a.location?.longitude ?? (a as any).transport_hub?.longitude;
+      const bLat = b.customer_site?.latitude ?? b.location?.latitude ?? (b as any).transport_hub?.latitude;
+      const bLng = b.customer_site?.longitude ?? b.location?.longitude ?? (b as any).transport_hub?.longitude;
+      if (aLat != null && aLng != null && bLat != null && bLng != null) {
+        miles += haversine(Number(aLat), Number(aLng), Number(bLat), Number(bLng));
+      }
+    }
+    return miles;
+  }, [transitions, sortedStops]);
   const stopCount = useMemo(
     () =>
       sortedStops.filter(
@@ -1633,6 +1646,18 @@ function computeFeasibility(
     return { severity: "tight", message: `Tight: ${result.message}` };
   }
   return null;
+}
+
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 function fmtDuration(minutes: number): string {
