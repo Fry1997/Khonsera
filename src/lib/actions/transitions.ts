@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { routeForTransition, type TransitionRoute } from "@/lib/integrations/routing";
+import { getRailPolyline } from "@/lib/osm/rail-routes";
 import { resolveItineraryTimes } from "./itineraries";
 import { dbResult, parseInput } from "./_helpers";
 import { err, errors, ok, type Result } from "@/lib/errors";
@@ -652,4 +653,56 @@ function pickPoint(stop: unknown): { lat: number; lng: number } | null {
   if (hub?.latitude != null && hub?.longitude != null)
     return { lat: hub.latitude, lng: hub.longitude };
   return null;
+}
+
+export async function backfillRailPolylines(
+  itineraryId: string,
+): Promise<{ filled: number }> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: missing } = await supabase
+    .from("transitions")
+    .select(
+      `id, mode, from_stop_id, to_stop_id,
+       from_stop:from_stop_id(
+         transport_hub_id,
+         transport_hub:transport_hubs(latitude, longitude, code)
+       ),
+       to_stop:to_stop_id(
+         transport_hub_id,
+         transport_hub:transport_hubs(latitude, longitude, code)
+       )`,
+    )
+    .eq("itinerary_id", itineraryId)
+    .eq("is_locked", true)
+    .is("overview_polyline", null);
+
+  if (!missing || missing.length === 0) return { filled: 0 };
+
+  let filled = 0;
+  for (const t of missing) {
+    const fromHub = first(t.from_stop)?.transport_hub;
+    const toHub = first(t.to_stop)?.transport_hub;
+    const fh = first(fromHub) as { latitude?: number; longitude?: number; code?: string } | null;
+    const th = first(toHub) as { latitude?: number; longitude?: number; code?: string } | null;
+    if (!fh?.latitude || !fh?.longitude || !th?.latitude || !th?.longitude) continue;
+    try {
+      const poly = await getRailPolyline(
+        fh.latitude, fh.longitude,
+        th.latitude, th.longitude,
+        fh.code ?? null, th.code ?? null,
+      );
+      if (poly) {
+        await supabase
+          .from("transitions")
+          .update({ overview_polyline: poly })
+          .eq("id", t.id);
+        filled++;
+      }
+    } catch {
+      // Best-effort
+    }
+  }
+  return { filled };
 }

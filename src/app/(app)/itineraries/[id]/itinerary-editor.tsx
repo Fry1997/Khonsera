@@ -14,6 +14,7 @@ import {
   insertTransitLeg,
   upsertTransition,
   setTransitionMode,
+  backfillRailPolylines,
 } from "@/lib/actions/transitions";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
@@ -545,6 +546,23 @@ export function ItineraryEditor({
     // routePreviews.fetchPreviewsBatch is stable (memoised inside).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planningTimeline, transitions, stops]);
+
+  // Backfill rail polylines for locked transit legs missing them.
+  // Runs once on mount — existing itineraries get real track geometry
+  // without needing to re-create from the brief.
+  const backfillRan = useRef(false);
+  useEffect(() => {
+    if (backfillRan.current) return;
+    const hasLockedWithoutPoly = transitions.some(
+      (t) => t.is_locked && !t.overview_polyline,
+    );
+    if (!hasLockedWithoutPoly) return;
+    backfillRan.current = true;
+    backfillRailPolylines(itinerary.id).then((res) => {
+      if (res.filled > 0) router.refresh();
+    });
+  }, [transitions, itinerary.id, router]);
+
   // editedAnchors holds the per-anchor in-flight patch while a card
   // is in expanded mode. We seed each entry from the DB anchor on
   // first expand; onChange writes here; clicking Done flushes the
