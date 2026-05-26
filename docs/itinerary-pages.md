@@ -1,6 +1,6 @@
 # Itinerary Pages — Design & Technical Reference
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 ---
 
@@ -124,7 +124,7 @@ Two-column grid:
       - Inline adds (+ stop, + stopover, + transport between entries)
     Bottom InlineAddsRow (add at end of trip)
   RIGHT:
-    Map (Google Static Maps with markers + polylines)
+    JourneyMap (MapLibre interactive map with SVG overlay, falls back to RouteMap)
     Day digest (on-site window, travel time, distance, costs)
 ```
 
@@ -298,3 +298,12 @@ The app never uses emojis anywhere.
 | Server actions | `src/lib/actions/itineraries.ts` | createItineraryFromBrief, solver |
 | Feasibility | `src/lib/feasibility/check.ts` | Leg feasibility computation |
 | Hub search | `src/lib/actions/travel-profile.ts` | Station/airport autocomplete |
+| Journey map | `src/components/journey-map/` | MapLibre-based interactive map |
+| Journey map entry | `src/components/journey-map/index.tsx` | Public exports |
+| Journey map core | `src/components/journey-map/journey-map.tsx` | Main component (use client, MapLibre) |
+| Map themes | `src/components/journey-map/themes/` | dusk, midnight, sahara theme objects |
+| Map style builder | `src/components/journey-map/map-style/build-map-style.ts` | Theme to MapLibre style JSON (Protomaps tiles) |
+| Map overlay | `src/components/journey-map/overlay/` | SVG journey-overlay, leg-path, station-marker |
+| Map hooks | `src/components/journey-map/hooks/use-map-projection.ts` | project(lngLat) from MapLibre camera |
+| Map utils | `src/components/journey-map/utils/` | decode-polyline, compute-bounds |
+| Route map (legacy) | `src/components/route-map.tsx` | Google Static Maps fallback |

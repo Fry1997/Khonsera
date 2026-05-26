@@ -3,7 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { RouteMap } from "@/components/route-map";
+import { decodePolyline } from "@/components/journey-map";
+import type { Journey, Leg, Station, LegMode } from "@/components/journey-map";
+
+// MapLibre needs browser APIs — dynamic import with ssr: false
+const JourneyMap = dynamic(
+  () => import("@/components/journey-map").then((m) => m.JourneyMap),
+  { ssr: false },
+);
 import { FormError } from "@/components/ui/form";
 import {
   deleteStop,
@@ -997,6 +1006,103 @@ export function ItineraryEditor({
     return segs;
   }, [transitions]);
 
+  // Build a Journey object for the JourneyMap component. Converts the
+  // existing stops + transitions into the component's domain types.
+  const journeyMapData = useMemo<Journey | null>(() => {
+    if (sortedStops.length < 2) return null;
+
+    const legs: Leg[] = [];
+
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const fromStop = sortedStops[i];
+      const toStop = sortedStops[i + 1];
+      const transition = transitionByFrom.get(fromStop.id);
+      if (!transition) continue;
+
+      // Extract coordinates for from/to
+      const fromLat = Number(
+        fromStop.customer_site?.latitude ??
+        fromStop.location?.latitude ??
+        (fromStop as any).transport_hub?.latitude ?? 0,
+      );
+      const fromLng = Number(
+        fromStop.customer_site?.longitude ??
+        fromStop.location?.longitude ??
+        (fromStop as any).transport_hub?.longitude ?? 0,
+      );
+      const toLat = Number(
+        toStop.customer_site?.latitude ??
+        toStop.location?.latitude ??
+        (toStop as any).transport_hub?.latitude ?? 0,
+      );
+      const toLng = Number(
+        toStop.customer_site?.longitude ??
+        toStop.location?.longitude ??
+        (toStop as any).transport_hub?.longitude ?? 0,
+      );
+
+      // Skip legs with no coordinates on either end
+      if (fromLat === 0 && fromLng === 0) continue;
+      if (toLat === 0 && toLng === 0) continue;
+
+      const fromStation: Station = {
+        name: fromStop.title ?? fromStop.location?.name ?? (fromStop as any).transport_hub?.name ?? "",
+        code: (fromStop as any).transport_hub?.code ?? undefined,
+        lat: fromLat,
+        lng: fromLng,
+      };
+
+      const toStation: Station = {
+        name: toStop.title ?? toStop.location?.name ?? (toStop as any).transport_hub?.name ?? "",
+        code: (toStop as any).transport_hub?.code ?? undefined,
+        lat: toLat,
+        lng: toLng,
+      };
+
+      // Decode the polyline track, or fall back to a straight line
+      let track: [number, number][];
+      if (transition.overview_polyline) {
+        track = decodePolyline(transition.overview_polyline);
+      } else {
+        track = [[fromLat, fromLng], [toLat, toLng]];
+      }
+
+      // Map DB mode to JourneyMap leg mode
+      const modeMap: Record<string, LegMode> = {
+        walk: "walk",
+        drive: "road",
+        taxi: "road",
+        train: "rail",
+        bus: "transit",
+        mixed: "road",
+        cycle: "road",
+      };
+      const legMode: LegMode = modeMap[transition.mode] ?? "road";
+
+      const durationMins = transition.computed_duration_minutes ?? 0;
+      const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : "";
+
+      legs.push({
+        mode: legMode,
+        from: fromStation,
+        to: toStation,
+        track,
+        durationLabel,
+        durationMinutes: durationMins || undefined,
+      });
+    }
+
+    if (legs.length === 0) return null;
+
+    return {
+      id: itinerary.id,
+      eyebrow: `${formatDate(itinerary.date_start, timezone, { weekday: "long" }).toUpperCase()} / DOOR TO DOOR`,
+      totalDistanceMi: totalMiles,
+      totalDurationLabel: fmtDuration(totalMinutes),
+      legs,
+    };
+  }, [sortedStops, transitionByFrom, itinerary.id, itinerary.date_start, timezone, totalMiles, totalMinutes]);
+
   const currentStatusIndex = STATUS_FLOW.indexOf(itinerary.status);
   const canAdvance =
     itinerary.status !== "completed" &&
@@ -1342,7 +1448,25 @@ export function ItineraryEditor({
 
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
-            {mapStops.length > 0 ? (
+            {journeyMapData && journeyMapData.legs.length > 0 ? (
+              <div className="route-map-card">
+                <div className="route-map-header">
+                  <span className="route-map-eyebrow">Door-to-door</span>
+                  <span className="route-map-headline">
+                    {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
+                    {totalMiles > 0 && totalMinutes > 0 && " · "}
+                    {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
+                  </span>
+                </div>
+                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                  <JourneyMap
+                    journey={journeyMapData}
+                    mode="planning"
+                    height={320}
+                  />
+                </div>
+              </div>
+            ) : mapStops.length > 0 ? (
               <RouteMap
                 stops={mapStops}
                 segments={mapSegments}
