@@ -810,7 +810,7 @@ export function ItineraryEditor({
   const handleAnchorPatch = (uid: string, patch: Partial<Anchor>) => {
     setEditedAnchors((prev) => {
       const next = new Map(prev);
-      const current = next.get(uid);
+      const current = next.get(uid) ?? planningAnchors.find((a) => a.uid === uid);
       if (!current) return prev;
       next.set(uid, { ...current, ...patch });
       return next;
@@ -865,7 +865,8 @@ export function ItineraryEditor({
   const handleStopoverPatch = (uid: string, patch: Partial<Stopover>) => {
     setEditedStopovers((prev) => {
       const next = new Map(prev);
-      const current = next.get(uid);
+      const current = next.get(uid)
+        ?? (planningTimeline.find((it) => it.kind === "stopover" && it.stopover.uid === uid) as any)?.stopover;
       if (!current) return prev;
       next.set(uid, { ...current, ...patch });
       return next;
@@ -1696,7 +1697,7 @@ export function ItineraryEditor({
 
             <div className="digest-panel">
               <div className="h">Day · digest</div>
-              {totalMinutes === 0 && totalMiles === 0 && !onSiteWindow ? (
+              {totalMinutes === 0 && totalMiles === 0 && (!onSiteWindow || !onSiteWindow.from) ? (
                 <p style={{ fontSize: 12, color: "var(--ink-faint)", fontStyle: "italic", margin: "8px 0 0" }}>
                   Stats appear as you add stops and connections
                 </p>

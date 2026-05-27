@@ -85,11 +85,13 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
 
   const result: TimelineEntry[] = [];
 
-  // Home → first item gap
+  // Home → first-anchor gap is rendered manually by the editor (it
+  // needs leave-by calculation + startStop rendering). But when the
+  // first item is a transit stop (train station), the editor doesn't
+  // render the gap — we handle it here with a GapModePicker.
   if (startStop && planningTimeline.length > 0) {
     const first = planningTimeline[0];
     if (first.kind === "transit") {
-      // Home → station: show GapModePicker (walk/drive/taxi to station)
       const toLabel = first.stop.title ?? "station";
       const fromLabel = startStop.location?.name ?? startStop.title ?? "Home";
       const selectedGap = getGapModeSelected(
@@ -106,24 +108,6 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
           if (mode === "walk" || mode === "drive" || mode === "taxi") {
             onSetGapMode(startStop.id, uidOf(first), mode);
           }
-        },
-      });
-    } else {
-      const toAnchor = first.kind === "anchor"
-        ? first.anchor
-        : stopoverAsAnchor(first.stopover, first.stopover.uid);
-      result.push({
-        kind: "gap-transition",
-        from: null,
-        to: toAnchor,
-        transition: planningTransitions.get(
-          transitionKey(startStop.id, uidOf(first)),
-        ) ?? emptyTransition(),
-        fromVirtualLabel: startStop.location?.name ?? startStop.title ?? "Home",
-        modePreviews: previewsForPair(startStop.id, uidOf(first)),
-        onChange: (patch) => handlers.handleTransitionPatch(startStop.id, uidOf(first), patch),
-        onOpenChange: (open) => {
-          if (open) handlers.prefetchPair(startStop.id, uidOf(first));
         },
       });
     }
@@ -144,15 +128,6 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     } else {
       transitGroupStart.set(i, i);
     }
-  }
-
-  // Insert-above for the first timeline item
-  if (planningTimeline.length > 0) {
-    const first = planningTimeline[0];
-    result.push({
-      kind: "inline-adds",
-      onAddAnchor: () => handlers.handleInsertAnchorAt(first.stop.sequence),
-    });
   }
 
   // Walk through timeline items

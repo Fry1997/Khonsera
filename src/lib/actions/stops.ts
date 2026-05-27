@@ -249,7 +249,10 @@ export async function insertStopAt(
       action: "create",
       after: result.value,
     });
-    await resolveItineraryTimes(result.value.itinerary_id);
+    const hasTime = fields.start_time || fields.end_time || fields.duration_minutes;
+    if (hasTime) {
+      await resolveItineraryTimes(result.value.itinerary_id);
+    }
   }
   return result;
 }
