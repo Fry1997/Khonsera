@@ -12,20 +12,6 @@ import {
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 const BATCH_SIZE = 50;
 
-const REGIONS: Array<{
-  label: string;
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-}> = [
-  { label: "South England", south: 50.0, west: -6.0, north: 52.0, east: 2.0 },
-  { label: "Midlands", south: 51.8, west: -3.5, north: 53.5, east: 1.0 },
-  { label: "North England", south: 53.0, west: -3.5, north: 55.8, east: 0.0 },
-  { label: "Wales", south: 51.3, west: -5.5, north: 53.5, east: -2.5 },
-  { label: "Scotland", south: 55.0, west: -6.0, north: 59.0, east: -1.0 },
-];
-
 type Status =
   | { phase: "idle" }
   | { phase: "fetching"; region: string; regionIdx: number }
@@ -48,45 +34,36 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
   const [status, setStatus] = useState<Status>({ phase: "idle" });
 
   const handleSeed = useCallback(async () => {
-    setStatus({ phase: "fetching", region: REGIONS[0].label, regionIdx: 0 });
+    setStatus({ phase: "fetching", region: "United Kingdom", regionIdx: 0 });
 
     try {
       const allNodes = new Map<number, { lat: number; lon: number; tags?: Record<string, string> }>();
       const allWays = new Map<number, number[]>();
       const allRelations: OsmRelation[] = [];
-      const seenRelations = new Set<number>();
 
-      for (let i = 0; i < REGIONS.length; i++) {
-        const r = REGIONS[i];
-        setStatus({ phase: "fetching", region: r.label, regionIdx: i });
+      const query = `[out:json][timeout:300];area["ISO3166-1"="GB"]->.uk;(relation(area.uk)["type"="route"]["route"="train"];);out body;>;out skel qt;`;
+      const resp = await fetch(OVERPASS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(300_000),
+      });
 
-        const query = `[out:json][timeout:120];relation["type"="route"]["route"="train"](${r.south},${r.west},${r.north},${r.east});(._;>;);out body;`;
-        const resp = await fetch(OVERPASS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `data=${encodeURIComponent(query)}`,
-          signal: AbortSignal.timeout(120_000),
-        });
+      if (!resp.ok) {
+        setStatus({ phase: "error", message: `Overpass HTTP ${resp.status}. Wait a minute and retry.` });
+        return;
+      }
 
-        if (!resp.ok) {
-          setStatus({ phase: "error", message: `Overpass HTTP ${resp.status} for ${r.label}. Wait a minute and retry.` });
-          return;
-        }
+      setStatus({ phase: "processing", message: "Parsing response..." });
+      const json = await resp.json();
 
-        const json = await resp.json();
-        for (const el of json.elements ?? []) {
-          if (el.type === "node" && el.lat != null && el.lon != null) {
-            allNodes.set(el.id, { lat: el.lat, lon: el.lon, tags: el.tags });
-          } else if (el.type === "way" && el.nodes) {
-            allWays.set(el.id, el.nodes);
-          } else if (el.type === "relation" && !seenRelations.has(el.id)) {
-            seenRelations.add(el.id);
-            allRelations.push(el as OsmRelation);
-          }
-        }
-
-        if (i < REGIONS.length - 1) {
-          await new Promise((r) => setTimeout(r, 5000));
+      for (const el of json.elements ?? []) {
+        if (el.type === "node" && el.lat != null && el.lon != null) {
+          allNodes.set(el.id, { lat: el.lat, lon: el.lon, tags: el.tags });
+        } else if (el.type === "way" && el.nodes) {
+          allWays.set(el.id, el.nodes);
+        } else if (el.type === "relation") {
+          allRelations.push(el as OsmRelation);
         }
       }
 
@@ -250,8 +227,7 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
 
       {status.phase === "fetching" && (
         <ProgressBox color="gold">
-          Fetching region {status.regionIdx + 1}/{REGIONS.length}: {status.region}
-          <ProgressBar value={(status.regionIdx + 1) / REGIONS.length} />
+          Fetching all UK train route relations from Overpass...
         </ProgressBox>
       )}
 
