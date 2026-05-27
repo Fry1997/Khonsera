@@ -22,6 +22,7 @@ const stopTypeEnum = z.enum([
   // added stopover). Kept in lock-step here so editor patches for
   // those stop types pass validation.
   "transit_departure",
+  "transit_changeover",
   "stopover",
   "other",
 ]);
@@ -200,20 +201,15 @@ export async function insertStopAt(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Batch-bump all later stops in one query instead of N individual updates
-  await supabase.rpc("bump_stop_sequences" as any, {
+  // Batch-bump all later stops in one query via RPC
+  const { error: rpcErr } = await supabase.rpc("bump_stop_sequences" as any, {
     p_itinerary_id: parsed.value.itinerary_id,
     p_workspace_id: ctx.workspaceId,
     p_from_sequence: parsed.value.sequence,
-  }).then(() => {}, async () => {
-    // Fallback if RPC doesn't exist: single UPDATE with gte filter
-    await supabase
-      .from("stops")
-      .update({ sequence: -1 } as any)
-      .eq("itinerary_id", parsed.value.itinerary_id)
-      .eq("workspace_id", ctx.workspaceId)
-      .gte("sequence", parsed.value.sequence);
-    // The above won't work for incrementing. Use the loop as last resort.
+  });
+
+  if (rpcErr) {
+    // Fallback: sequential updates (slow but correct)
     const { data: shiftRows } = await supabase
       .from("stops")
       .select("id, sequence")
@@ -228,7 +224,7 @@ export async function insertStopAt(
         .eq("id", r.id as string)
         .eq("workspace_id", ctx.workspaceId);
     }
-  });
+  }
 
   const { itinerary_id, sequence, ...fields } = parsed.value;
   const { data, error } = await supabase
@@ -249,6 +245,7 @@ export async function insertStopAt(
       action: "create",
       after: result.value,
     });
+    await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }

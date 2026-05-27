@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { RouteMap } from "@/components/route-map";
 import { decodePolyline } from "@/components/journey-map";
 import type { Journey, Leg, Station, LegMode } from "@/components/journey-map";
 
@@ -130,6 +129,7 @@ const STOP_ICON: Record<StopType, React.ReactNode> = {
   transport_booked: Icon.train,
   transit_arrival: Icon.plane,
   transit_departure: Icon.train,
+  transit_changeover: Icon.train,
   stopover: Icon.pin,
   other: Icon.pin,
 };
@@ -144,6 +144,7 @@ const STOP_LABEL: Record<StopType, string> = {
   transport_booked: "Transport",
   transit_arrival: "Arrive",
   transit_departure: "Depart",
+  transit_changeover: "Change",
   stopover: "Stopover",
   other: "Point",
 };
@@ -709,10 +710,27 @@ export function ItineraryEditor({
     if (!window.confirm("Delete this point?")) return;
     startTransition(async () => {
       setError(null);
-      const result = await deleteStop(stopId);
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
+      // If this is a transit_departure, also delete its changeover + arrival siblings
+      const stop = sortedStops.find((s) => s.id === stopId);
+      const idsToDelete = [stopId];
+      if (stop?.type === "transit_departure") {
+        const seq = stop.sequence;
+        for (const s of sortedStops) {
+          if (s.id === stopId) continue;
+          if (s.sequence > seq && (s.type === "transit_changeover" || s.type === "transit_arrival")) {
+            idsToDelete.push(s.id);
+            if (s.type === "transit_arrival") break;
+          } else if (s.sequence > seq && s.type !== "transit_changeover") {
+            break;
+          }
+        }
+      }
+      for (const id of idsToDelete) {
+        const result = await deleteStop(id);
+        if (!result.ok) {
+          setError(feedbackFromError(result.error).message);
+          break;
+        }
       }
       router.refresh();
     });
