@@ -146,6 +146,15 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
     }
   }
 
+  // Insert-above for the first timeline item
+  if (planningTimeline.length > 0) {
+    const first = planningTimeline[0];
+    result.push({
+      kind: "inline-adds",
+      onAddAnchor: () => handlers.handleInsertAnchorAt(first.stop.sequence),
+    });
+  }
+
   // Walk through timeline items
   for (let i = 0; i < planningTimeline.length; i++) {
     if (consumedByGroup.has(i)) continue;

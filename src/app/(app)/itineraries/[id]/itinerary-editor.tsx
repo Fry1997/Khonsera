@@ -1696,39 +1696,47 @@ export function ItineraryEditor({
 
             <div className="digest-panel">
               <div className="h">Day · digest</div>
-              {onSiteWindow ? (
-                <div className="row">
-                  <span className="l">On-site window</span>
-                  <span className="v">
-                    {fmtTime(onSiteWindow.from, timezone)}
-                    {onSiteWindow.to && onSiteWindow.to !== onSiteWindow.from
-                      ? ` – ${fmtTime(onSiteWindow.to, timezone)}`
-                      : ""}
-                  </span>
-                </div>
-              ) : null}
-              <div className="row">
-                <span className="l">Travel time</span>
-                <span className="v">{fmtDuration(totalMinutes)}</span>
-              </div>
-              <div className="row">
-                <span className="l">Distance</span>
-                <span className="v">{totalMiles.toFixed(1)} mi</span>
-              </div>
-              {totals.cost > 0 ? (
-                <div className="row total">
-                  <span className="l">Costs</span>
-                  <span className="v">
-                    {fmtCurrency(totals.cost, totals.currency)}
-                  </span>
-                </div>
+              {totalMinutes === 0 && totalMiles === 0 && !onSiteWindow ? (
+                <p style={{ fontSize: 12, color: "var(--ink-faint)", fontStyle: "italic", margin: "8px 0 0" }}>
+                  Stats appear as you add stops and connections
+                </p>
               ) : (
-                <div className="row">
-                  <span className="l">Costs</span>
-                  <span className="v" style={{ color: "var(--ink-faint)" }}>
-                    —
-                  </span>
-                </div>
+                <>
+                  {onSiteWindow ? (
+                    <div className="row">
+                      <span className="l">On-site window</span>
+                      <span className="v">
+                        {fmtTime(onSiteWindow.from, timezone)}
+                        {onSiteWindow.to && onSiteWindow.to !== onSiteWindow.from
+                          ? ` – ${fmtTime(onSiteWindow.to, timezone)}`
+                          : ""}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="row">
+                    <span className="l">Travel time</span>
+                    <span className="v">{fmtDuration(totalMinutes)}</span>
+                  </div>
+                  <div className="row">
+                    <span className="l">Distance</span>
+                    <span className="v">{totalMiles.toFixed(1)} mi</span>
+                  </div>
+                  {totals.cost > 0 ? (
+                    <div className="row total">
+                      <span className="l">Costs</span>
+                      <span className="v">
+                        {fmtCurrency(totals.cost, totals.currency)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="row">
+                      <span className="l">Costs</span>
+                      <span className="v" style={{ color: "var(--ink-faint)" }}>
+                        —
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </aside>
