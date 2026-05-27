@@ -1048,11 +1048,10 @@ export function ItineraryEditor({
 
   // Build a Journey object for the JourneyMap component. Converts the
   // existing stops + transitions into the component's domain types.
-  const journeyMapData = useMemo<Journey | null>(() => {
-    if (sortedStops.length < 2) return null;
-
+  const journeyMapData = useMemo<Journey>(() => {
     const legs: Leg[] = [];
 
+    if (sortedStops.length >= 2) {
     for (let i = 0; i < sortedStops.length - 1; i++) {
       const fromStop = sortedStops[i];
       const toStop = sortedStops[i + 1];
@@ -1151,8 +1150,7 @@ export function ItineraryEditor({
         ...(waypoints.length > 0 ? { waypoints } : {}),
       });
     }
-
-    if (legs.length === 0) return null;
+    } // close sortedStops.length >= 2
 
     return {
       id: itinerary.id,
@@ -1623,56 +1621,39 @@ export function ItineraryEditor({
 
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
-            {journeyMapData && journeyMapData.legs.length > 0 ? (
-              <div className={`route-map-card${mapExpanded ? " map-expanded" : ""}`}>
-                <div className="route-map-header">
-                  <span className="route-map-eyebrow">Door-to-door</span>
-                  <span className="route-map-headline">
-                    {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
-                    {totalMiles > 0 && totalMinutes > 0 && " · "}
-                    {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
-                  </span>
-                  <button
-                    type="button"
-                    className="map-expand-btn"
-                    onClick={() => setMapExpanded((v) => !v)}
-                    title={mapExpanded ? "Collapse map" : "Expand map"}
-                  >
-                    {mapExpanded ? (
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M10 2v4h4M2 10h4v4M14 2l-4 4M2 14l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M10 2v4h4M2 10h4v4M6 6L2 2M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined }}>
-                  <JourneyMap
-                    journey={journeyMapData}
-                    mode="planning"
-                    height={mapExpanded ? undefined : 320}
-                  />
-                </div>
-              </div>
-            ) : mapStops.length > 0 ? (
-              <RouteMap
-                stops={mapStops}
-                segments={mapSegments}
-                totalMiles={totalMiles}
-                totalMinutes={totalMinutes}
-              />
-            ) : (
-              <div
-                className="flex h-[320px] items-center justify-center rounded-md border border-dashed border-rule-2 bg-card-2 text-center"
-              >
-                <span className="small px-6">
-                  Map appears once stops have addresses.
+            <div className={`route-map-card${mapExpanded ? " map-expanded" : ""}`}>
+              <div className="route-map-header">
+                <span className="route-map-eyebrow">Door-to-door</span>
+                <span className="route-map-headline">
+                  {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
+                  {totalMiles > 0 && totalMinutes > 0 && " · "}
+                  {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
                 </span>
+                <button
+                  type="button"
+                  className="map-expand-btn"
+                  onClick={() => setMapExpanded((v) => !v)}
+                  title={mapExpanded ? "Collapse map" : "Expand map"}
+                >
+                  {mapExpanded ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M10 2v4h4M2 10h4v4M14 2l-4 4M2 14l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M10 2v4h4M2 10h4v4M6 6L2 2M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  )}
+                </button>
               </div>
-            )}
+              <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined }}>
+                <JourneyMap
+                  journey={journeyMapData}
+                  mode="planning"
+                  height={mapExpanded ? undefined : 320}
+                />
+              </div>
+            </div>
 
             <div className="digest-panel">
               <div className="h">Day · digest</div>
