@@ -26,7 +26,7 @@ import {
 } from "@/lib/actions/transitions";
 import { addFullTransportBooking } from "@/lib/actions/bookings";
 import { reEnrichItineraryFromGmail } from "@/lib/actions/gmail";
-import { transitionItineraryStatus } from "@/lib/actions/itineraries";
+import { transitionItineraryStatus, updateItinerary } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { feedbackFromError } from "@/lib/actions/_form";
@@ -287,6 +287,30 @@ export function ItineraryEditor({
   // the server action and dismiss.
   const [editingTransport, setEditingTransport] = useState<BriefTransportBooking | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [editingMasthead, setEditingMasthead] = useState(false);
+  const [mastheadTitle, setMastheadTitle] = useState(itinerary.title ?? "");
+  const [mastheadNotes, setMastheadNotes] = useState(itinerary.notes ?? "");
+  const [mastheadDateStart, setMastheadDateStart] = useState(itinerary.date_start);
+  const [mastheadDateEnd, setMastheadDateEnd] = useState(itinerary.date_end);
+
+  const saveMasthead = () => {
+    startTransition(async () => {
+      setError(null);
+      const result = await updateItinerary({
+        id: itinerary.id,
+        title: mastheadTitle.trim() || null,
+        date_start: mastheadDateStart,
+        date_end: mastheadDateEnd || mastheadDateStart,
+        notes: mastheadNotes.trim() || null,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      setEditingMasthead(false);
+      router.refresh();
+    });
+  };
   const handleTransportCardChange = (patch: Partial<BriefTransportBooking>) => {
     setEditingTransport((prev) => {
       if (!prev) return prev;
@@ -1204,17 +1228,110 @@ export function ItineraryEditor({
         {/* ── Masthead: headline + standfirst + stat columns ─────────── */}
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
           <div className="flex flex-col gap-4">
-            <h1 className="masthead-title">
-              <MastheadHeadline
-                customerName={subject.customerName}
-                placePart={subject.placePart}
-                fallback={itinerary.title}
-                date={dateLabel}
-              />
-            </h1>
-            {itinerary.notes ? (
-              <p className="standfirst">{itinerary.notes}</p>
-            ) : null}
+            {editingMasthead ? (
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  className="masthead-title-input"
+                  value={mastheadTitle}
+                  onChange={(e) => setMastheadTitle(e.target.value)}
+                  placeholder="Trip title"
+                  style={{
+                    fontFamily: "var(--display)",
+                    fontSize: 28,
+                    fontWeight: 500,
+                    fontStyle: "italic",
+                    color: "var(--ink)",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: "1px solid var(--rule)",
+                    outline: "none",
+                    padding: "4px 0",
+                    width: "100%",
+                  }}
+                />
+                <div className="flex gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="uc" style={{ fontSize: 9 }}>Start date</label>
+                    <input
+                      type="date"
+                      value={mastheadDateStart}
+                      onChange={(e) => setMastheadDateStart(e.target.value)}
+                      className="brief-input"
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="uc" style={{ fontSize: 9 }}>End date</label>
+                    <input
+                      type="date"
+                      value={mastheadDateEnd}
+                      onChange={(e) => setMastheadDateEnd(e.target.value)}
+                      className="brief-input"
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+                </div>
+                <textarea
+                  value={mastheadNotes}
+                  onChange={(e) => setMastheadNotes(e.target.value)}
+                  placeholder="Trip notes (optional)"
+                  rows={2}
+                  className="brief-input"
+                  style={{ fontSize: 13, resize: "vertical" }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ fontSize: 12, padding: "6px 14px" }}
+                    onClick={saveMasthead}
+                    disabled={pending}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ fontSize: 12 }}
+                    onClick={() => {
+                      setEditingMasthead(false);
+                      setMastheadTitle(itinerary.title ?? "");
+                      setMastheadNotes(itinerary.notes ?? "");
+                      setMastheadDateStart(itinerary.date_start);
+                      setMastheadDateEnd(itinerary.date_end);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1
+                  className="masthead-title"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setEditingMasthead(true)}
+                  title="Click to edit title, dates, and notes"
+                >
+                  <MastheadHeadline
+                    customerName={subject.customerName}
+                    placePart={subject.placePart}
+                    fallback={itinerary.title}
+                    date={dateLabel}
+                  />
+                </h1>
+                {itinerary.notes ? (
+                  <p
+                    className="standfirst"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setEditingMasthead(true)}
+                  >
+                    {itinerary.notes}
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
 
           <div className="flex items-end justify-start gap-6 lg:justify-end">
