@@ -503,6 +503,17 @@ function SpineTransportBooking({
             {tb.departTime ? ` · ${tb.departTime}` : ""}
             {tb.arriveTime ? ` → ${tb.arriveTime}` : ""}
           </p>
+          {(() => {
+            const allCps = (tb.segmentCallingPoints ?? []).flat();
+            if (allCps.length === 0) return null;
+            const names = allCps.map((cp) => cp.station_code ?? cp.station);
+            const summary = names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2} more`;
+            return (
+              <p className="tl-sub" style={{ marginTop: 2, fontSize: 10, color: "var(--ink-faint)" }}>
+                calling at {summary}
+              </p>
+            );
+          })()}
         </button>
         {expanded ? (
           <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -524,6 +535,7 @@ function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
 
   if (tb.changeovers.length === 0) {
     const bc = tb.barcodes[0];
+    const cp = tb.segmentCallingPoints?.[0];
     return [{
       from_station: tb.departureHub?.label ?? "?",
       to_station: tb.destinationHub?.label ?? "?",
@@ -540,6 +552,7 @@ function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
       barcode_ref: bc?.ref ?? (tb.reference || null),
       barcode_data: bc?.data ?? null,
       price: tb.price ? Number(tb.price) : null,
+      calling_points: cp && cp.length > 0 ? cp : null,
     }];
   }
 
@@ -551,6 +564,7 @@ function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
   ];
   for (let i = 0; i < stops.length - 1; i++) {
     const bc = tb.barcodes[i];
+    const cp = tb.segmentCallingPoints?.[i];
     segments.push({
       from_station: stops[i].label,
       to_station: stops[i + 1].label,
@@ -567,6 +581,7 @@ function buildSpineTicketSegments(tb: BriefTransportBooking): TicketSegment[] {
       barcode_ref: bc?.ref ?? null,
       barcode_data: bc?.data ?? null,
       price: i === 0 && tb.price ? Number(tb.price) : null,
+      calling_points: cp && cp.length > 0 ? cp : null,
     });
   }
   return segments;

@@ -36,6 +36,12 @@ export type SegmentBarcode = {
   data: string | null;
 };
 
+export type SegmentCallingPoint = {
+  station: string;
+  station_code: string | null;
+  time: string;
+};
+
 export type BookingSource = "manual" | "imported" | "suggested" | "booked";
 
 export type BriefTransportBooking = {
@@ -57,6 +63,7 @@ export type BriefTransportBooking = {
   ticketType: string | null;
   routeRestriction: string | null;
   barcodes: SegmentBarcode[];
+  segmentCallingPoints: SegmentCallingPoint[][];
 };
 
 export function emptyTransportBookingItem(): BriefTransportBooking {
@@ -79,6 +86,7 @@ export function emptyTransportBookingItem(): BriefTransportBooking {
     ticketType: null,
     routeRestriction: null,
     barcodes: [],
+    segmentCallingPoints: [],
   };
 }
 
@@ -105,6 +113,7 @@ export function returnTransportBooking(
     ticketType: from.ticketType,
     routeRestriction: from.routeRestriction,
     barcodes: [],
+    segmentCallingPoints: [],
   };
 }
 

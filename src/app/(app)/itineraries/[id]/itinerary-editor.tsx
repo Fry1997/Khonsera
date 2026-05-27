@@ -20,10 +20,12 @@ import {
   updateStop,
 } from "@/lib/actions/stops";
 import {
-  insertTransitLeg,
   upsertTransition,
   setTransitionMode,
+  backfillRailPolylines,
 } from "@/lib/actions/transitions";
+import { addFullTransportBooking } from "@/lib/actions/bookings";
+import { reEnrichItineraryFromGmail } from "@/lib/actions/gmail";
 import { transitionItineraryStatus } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
@@ -284,6 +286,7 @@ export function ItineraryEditor({
   // the card renders in a modal. On "Done" (confirmed: true), we call
   // the server action and dismiss.
   const [editingTransport, setEditingTransport] = useState<BriefTransportBooking | null>(null);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const handleTransportCardChange = (patch: Partial<BriefTransportBooking>) => {
     setEditingTransport((prev) => {
       if (!prev) return prev;
@@ -296,8 +299,7 @@ export function ItineraryEditor({
     });
   };
   const submitTransportBooking = (b: BriefTransportBooking) => {
-    const lastStop = sortedStops[sortedStops.length - 1];
-    if (!lastStop || !b.departureHub.id || !b.destinationHub.id) return;
+    if (!b.departureHub.id || !b.destinationHub.id) return;
     const departIso = b.date && b.departTime
       ? new Date(`${b.date}T${b.departTime}`).toISOString()
       : new Date().toISOString();
@@ -306,10 +308,8 @@ export function ItineraryEditor({
       : new Date().toISOString();
     startTransition(async () => {
       setError(null);
-      const result = await insertTransitLeg({
+      const result = await addFullTransportBooking({
         itinerary_id: itinerary.id,
-        before_stop_id: lastStop.id,
-        after_stop_id: null,
         mode: b.mode ?? "train",
         depart_hub_id: b.departureHub.id!,
         depart_label: b.departureHub.label ?? "Departure",
@@ -317,7 +317,23 @@ export function ItineraryEditor({
         arrive_hub_id: b.destinationHub.id!,
         arrive_label: b.destinationHub.label ?? "Arrival",
         arrive_time: arriveIso,
+        changeovers: b.changeovers
+          .filter((co) => co.hub.id || co.hub.label)
+          .map((co) => ({
+            hub_id: co.hub.id,
+            hub_label: co.hub.label ?? "Changeover",
+            arrive_time: co.arriveTime ? new Date(`${b.date}T${co.arriveTime}`).toISOString() : departIso,
+            depart_time: co.departTime ? new Date(`${b.date}T${co.departTime}`).toISOString() : departIso,
+          })),
         service_number: b.serviceNumber?.trim() || null,
+        reference: b.reference?.trim() || null,
+        seat: b.seat?.trim() || null,
+        price: b.price ? Number(b.price) : null,
+        operator: b.operator,
+        ticket_type: b.ticketType,
+        route_restriction: b.routeRestriction,
+        barcodes: b.barcodes,
+        segment_calling_points: b.segmentCallingPoints,
       });
       if (!result.ok) {
         setError(feedbackFromError(result.error).message);
@@ -1082,6 +1098,25 @@ export function ItineraryEditor({
       const durationMins = transition.computed_duration_minutes ?? 0;
       const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : "";
 
+      // Extract calling points from stop metadata as map waypoints
+      const meta = fromStop.metadata as Record<string, unknown> | null;
+      const rawCps = meta?.calling_points;
+      const waypoints: Station[] = [];
+      if (Array.isArray(rawCps)) {
+        for (const cp of rawCps) {
+          const cpLat = Number(cp.lat);
+          const cpLng = Number(cp.lng);
+          if (cpLat && cpLng) {
+            waypoints.push({
+              name: cp.station ?? "",
+              code: cp.station_code ?? undefined,
+              lat: cpLat,
+              lng: cpLng,
+            });
+          }
+        }
+      }
+
       legs.push({
         mode: legMode,
         from: fromStation,
@@ -1089,6 +1124,7 @@ export function ItineraryEditor({
         track,
         durationLabel,
         durationMinutes: durationMins || undefined,
+        ...(waypoints.length > 0 ? { waypoints } : {}),
       });
     }
 
@@ -1236,16 +1272,38 @@ export function ItineraryEditor({
             + Accommodation
           </button>
           {gmailConnected ? (
-            <button
-              type="button"
-              className="btn-ghost"
-              style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
-              onClick={() => setGmailImportOpen(true)}
-              disabled={pending}
-            >
-              {Icon.ticket}
-              Scan for tickets
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+                onClick={() => setGmailImportOpen(true)}
+                disabled={pending}
+              >
+                {Icon.ticket}
+                Scan for tickets
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: 12 }}
+                onClick={() => {
+                  startTransition(async () => {
+                    setError(null);
+                    const result = await reEnrichItineraryFromGmail(itinerary.id);
+                    if (!result.ok) {
+                      setError(feedbackFromError(result.error).message);
+                      return;
+                    }
+                    await backfillRailPolylines(itinerary.id, true);
+                    router.refresh();
+                  });
+                }}
+                disabled={pending}
+              >
+                Refresh ticket details
+              </button>
+            </>
           ) : null}
           <span style={{ marginLeft: "auto" }}>
             <DeleteItineraryButton
@@ -1449,7 +1507,7 @@ export function ItineraryEditor({
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
             {journeyMapData && journeyMapData.legs.length > 0 ? (
-              <div className="route-map-card">
+              <div className={`route-map-card${mapExpanded ? " map-expanded" : ""}`}>
                 <div className="route-map-header">
                   <span className="route-map-eyebrow">Door-to-door</span>
                   <span className="route-map-headline">
@@ -1457,12 +1515,28 @@ export function ItineraryEditor({
                     {totalMiles > 0 && totalMinutes > 0 && " · "}
                     {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
                   </span>
+                  <button
+                    type="button"
+                    className="map-expand-btn"
+                    onClick={() => setMapExpanded((v) => !v)}
+                    title={mapExpanded ? "Collapse map" : "Expand map"}
+                  >
+                    {mapExpanded ? (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M10 2v4h4M2 10h4v4M14 2l-4 4M2 14l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M10 2v4h4M2 10h4v4M6 6L2 2M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                  </button>
                 </div>
-                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined }}>
                   <JourneyMap
                     journey={journeyMapData}
                     mode="planning"
-                    height={320}
+                    height={mapExpanded ? undefined : 320}
                   />
                 </div>
               </div>

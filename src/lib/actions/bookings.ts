@@ -428,6 +428,11 @@ const transportSegmentSchema = z.object({
   seat: z.string().trim().max(20).nullable().optional(),
   barcode_ref: z.string().trim().max(40).nullable().optional(),
   barcode_data: z.string().max(500).nullable().optional(),
+  calling_points: z.array(z.object({
+    station: z.string().max(200),
+    station_code: z.string().max(10).nullable().optional(),
+    time: z.string().max(10).optional().default(""),
+  })).nullable().optional(),
 });
 
 const attachTransportBookingSchema = z
@@ -630,6 +635,7 @@ export async function attachTransportBookingToStop(
     seat: s.seat ?? null,
     barcode_ref: s.barcode_ref ?? null,
     barcode_data: s.barcode_data ?? null,
+    calling_points: s.calling_points ?? null,
   }));
   await supabase.from("travel_booking_segments").insert(segmentRows);
 
@@ -649,6 +655,7 @@ export async function attachTransportBookingToStop(
         route_restriction: first.route_restriction ?? null,
         barcode_ref: first.barcode_ref ?? null,
         barcode_data: first.barcode_data ?? null,
+        calling_points: first.calling_points ?? null,
       },
     })
     .eq("id", parsed.value.from_stop_id)
@@ -1068,4 +1075,294 @@ export async function recordTravelBooking(
     }
   }
   return result;
+}
+
+// ── addFullTransportBooking ──────────────────────────────────────────
+// Creates a full transport booking on an existing itinerary: departure
+// stop, changeover stops, arrival stop, locked transitions, booking
+// entities, segments — everything. Used by the planning page's
+// "+ Transport" flow and as the foundation for adding bookings outside
+// the brief.
+
+const addFullTransportBookingSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  mode: z.enum(["train", "flight", "taxi", "bus", "tube", "drive"]),
+  depart_hub_id: z.string().uuid(),
+  depart_label: z.string().trim().max(200),
+  depart_time: z.string().datetime(),
+  arrive_hub_id: z.string().uuid(),
+  arrive_label: z.string().trim().max(200),
+  arrive_time: z.string().datetime(),
+  changeovers: z.array(z.object({
+    hub_id: z.string().uuid().nullable().optional(),
+    hub_label: z.string().max(200),
+    arrive_time: z.string().datetime(),
+    depart_time: z.string().datetime(),
+  })).optional().default([]),
+  service_number: z.string().max(100).nullable().optional(),
+  reference: z.string().max(200).nullable().optional(),
+  seat: z.string().max(200).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
+  operator: z.string().max(200).nullable().optional(),
+  ticket_type: z.string().max(200).nullable().optional(),
+  route_restriction: z.string().max(200).nullable().optional(),
+  barcodes: z.array(z.object({
+    ref: z.string().nullable(),
+    data: z.string().nullable(),
+  })).optional().default([]),
+  segment_calling_points: z.array(z.array(z.object({
+    station: z.string().max(200),
+    station_code: z.string().max(10).nullable().optional(),
+    time: z.string().max(10).optional().default(""),
+  }))).optional().default([]),
+});
+
+export async function addFullTransportBooking(
+  input: z.input<typeof addFullTransportBookingSchema>,
+): Promise<Result<{ depart_stop_id: string; arrive_stop_id: string }>> {
+  const parsed = parseInput(addFullTransportBookingSchema, input);
+  if (!parsed.ok) return parsed;
+  const v = parsed.value;
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: itin } = await supabase
+    .from("itineraries")
+    .select("id")
+    .eq("id", v.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!itin) return err(errors.notFound("itinerary"));
+
+  // Resolve calling point coordinates
+  const allCpCodes = new Set<string>();
+  for (const segCps of v.segment_calling_points) {
+    for (const cp of segCps) {
+      if (cp.station_code) allCpCodes.add(cp.station_code);
+    }
+  }
+  const cpCoords = new Map<string, { lat: number; lng: number }>();
+  if (allCpCodes.size > 0) {
+    const { data: hubs } = await supabase
+      .from("transport_hubs")
+      .select("code, latitude, longitude")
+      .in("code", [...allCpCodes])
+      .eq("kind", "rail_station");
+    for (const h of hubs ?? []) {
+      if (h.latitude && h.longitude) {
+        cpCoords.set(h.code, { lat: Number(h.latitude), lng: Number(h.longitude) });
+      }
+    }
+  }
+  const namesToResolve = new Set<string>();
+  for (const segCps of v.segment_calling_points) {
+    for (const cp of segCps) {
+      if (!cp.station_code && !cpCoords.has(cp.station)) namesToResolve.add(cp.station);
+    }
+  }
+  for (const name of namesToResolve) {
+    const { data: hub } = await supabase
+      .from("transport_hubs")
+      .select("code, latitude, longitude")
+      .ilike("name", name)
+      .limit(1)
+      .maybeSingle();
+    if (hub?.latitude && hub?.longitude) {
+      cpCoords.set(name, { lat: Number(hub.latitude), lng: Number(hub.longitude) });
+    }
+  }
+
+  function enrichCps(
+    cps: Array<{ station: string; station_code?: string | null; time?: string }> | undefined,
+  ) {
+    if (!cps || cps.length === 0) return null;
+    return cps.map((cp) => {
+      const coords = cpCoords.get(cp.station_code ?? "") ?? cpCoords.get(cp.station);
+      return { station: cp.station, station_code: cp.station_code ?? null, time: cp.time ?? "", lat: coords?.lat ?? null, lng: coords?.lng ?? null };
+    });
+  }
+
+  // Append at end of existing stops
+  const { data: maxRow } = await supabase
+    .from("stops")
+    .select("sequence")
+    .eq("itinerary_id", v.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .order("sequence", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  let seq = ((maxRow?.sequence as number | undefined) ?? -1) + 1;
+
+  const { data: departStop, error: dErr } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id: v.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: seq++,
+      type: "transit_departure",
+      title: v.depart_label,
+      transport_hub_id: v.depart_hub_id,
+      start_time: v.depart_time,
+      end_time: v.depart_time,
+      is_time_fixed: true,
+      metadata: {
+        kind: "transit_departure",
+        transport_mode: v.mode,
+        service_number: v.service_number,
+        booking_reference: v.reference,
+        seat: v.seat,
+        price: v.price,
+        operator: v.operator,
+        ticket_type: v.ticket_type,
+        route_restriction: v.route_restriction,
+        barcode_ref: v.barcodes[0]?.ref ?? null,
+        barcode_data: v.barcodes[0]?.data ?? null,
+        calling_points: enrichCps(v.segment_calling_points[0]),
+      },
+    })
+    .select("id")
+    .single();
+  if (dErr || !departStop) return err(errors.notFound("stop"));
+
+  const changeovers = v.changeovers;
+  for (let coIdx = 0; coIdx < changeovers.length; coIdx++) {
+    const co = changeovers[coIdx];
+    const coBarcode = v.barcodes[coIdx + 1];
+    await supabase.from("stops").insert({
+      itinerary_id: v.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: seq++,
+      type: "transit_changeover",
+      title: co.hub_label,
+      transport_hub_id: co.hub_id ?? null,
+      start_time: co.arrive_time,
+      end_time: co.depart_time,
+      is_time_fixed: true,
+      metadata: {
+        kind: "transit_changeover",
+        transport_mode: v.mode,
+        operator: v.operator,
+        barcode_ref: coBarcode?.ref ?? null,
+        barcode_data: coBarcode?.data ?? null,
+        calling_points: enrichCps(v.segment_calling_points[coIdx + 1]),
+      },
+    });
+  }
+
+  const { data: arriveStop, error: aErr } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id: v.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: seq++,
+      type: "transit_arrival",
+      title: v.arrive_label,
+      transport_hub_id: v.arrive_hub_id,
+      start_time: v.arrive_time,
+      end_time: v.arrive_time,
+      is_time_fixed: true,
+      metadata: { kind: "transit_arrival", transport_mode: v.mode },
+    })
+    .select("id")
+    .single();
+  if (aErr || !arriveStop) return err(errors.notFound("stop"));
+
+  // Booking entities
+  const provider = v.mode === "train" ? "trainline" : v.mode;
+  const { data: intent } = await supabase
+    .from("booking_intents")
+    .insert({
+      stop_id: departStop.id,
+      itinerary_id: v.itinerary_id,
+      workspace_id: ctx.workspaceId,
+      provider,
+      status: "booked",
+      currency: "GBP",
+    })
+    .select("id")
+    .single();
+  if (!intent) return err(errors.notFound("booking_intent"));
+
+  const { data: booking } = await supabase
+    .from("travel_bookings")
+    .insert({
+      booking_intent_id: intent.id,
+      workspace_id: ctx.workspaceId,
+      provider,
+      booking_reference: v.reference ?? null,
+      ticket_status: "booked",
+      actual_price: v.price ?? null,
+      currency: "GBP",
+      booked_at: new Date().toISOString(),
+      departure_at: v.depart_time,
+      arrival_at: v.arrive_time,
+      seat_reservation: v.seat ?? null,
+    })
+    .select("id")
+    .single();
+  if (!booking) return err(errors.notFound("travel_booking"));
+
+  // Segments
+  const segStops = [
+    { label: v.depart_label, time: v.depart_time },
+    ...changeovers.map((co) => ({ label: co.hub_label, time: co.depart_time })),
+    { label: v.arrive_label, time: v.arrive_time },
+  ];
+  const dbSegs = [];
+  for (let i = 0; i < segStops.length - 1; i++) {
+    const bc = v.barcodes[i];
+    const cpArr = v.segment_calling_points[i];
+    dbSegs.push({
+      travel_booking_id: booking.id,
+      workspace_id: ctx.workspaceId,
+      sequence: i,
+      from_location_name: segStops[i].label,
+      to_location_name: segStops[i + 1].label,
+      departure_at: i === 0 ? v.depart_time : changeovers[i - 1].depart_time,
+      arrival_at: i < changeovers.length ? changeovers[i].arrive_time : v.arrive_time,
+      train_number: v.service_number ?? null,
+      operator: v.operator ?? null,
+      ticket_type: v.ticket_type ?? null,
+      route_restriction: v.route_restriction ?? null,
+      seat: i === 0 ? (v.seat ?? null) : null,
+      barcode_ref: bc?.ref ?? null,
+      barcode_data: bc?.data ?? null,
+      calling_points: cpArr && cpArr.length > 0 ? cpArr : null,
+    });
+  }
+  if (dbSegs.length > 0) {
+    await supabase.from("travel_booking_segments").insert(dbSegs);
+  }
+
+  // Locked transition
+  const totalMins = Math.max(1, Math.round(
+    (new Date(v.arrive_time).getTime() - new Date(v.depart_time).getTime()) / 60_000,
+  ));
+  await supabase.from("transitions").insert({
+    itinerary_id: v.itinerary_id,
+    workspace_id: ctx.workspaceId,
+    from_stop_id: departStop.id,
+    to_stop_id: arriveStop.id,
+    mode: v.mode,
+    is_locked: true,
+    start_time: v.depart_time,
+    end_time: v.arrive_time,
+    computed_duration_minutes: totalMins,
+    notes: v.service_number ? `khonsera:service=${v.service_number}` : null,
+  });
+
+  if (v.price != null && v.price > 0) {
+    await supabase.from("expense_records").insert({
+      itinerary_id: v.itinerary_id,
+      stop_id: departStop.id,
+      workspace_id: ctx.workspaceId,
+      user_id: ctx.userId,
+      type: "rail_ticket",
+      amount: v.price,
+      currency: "GBP",
+      notes: v.reference ? `Booking ref: ${v.reference}` : null,
+    });
+  }
+
+  return ok({ depart_stop_id: departStop.id, arrive_stop_id: arriveStop.id });
 }

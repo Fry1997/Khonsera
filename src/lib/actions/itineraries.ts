@@ -338,6 +338,11 @@ const briefTransportBookingSchema = z.object({
     ref: z.string().nullable(),
     data: z.string().nullable(),
   })).optional().default([]),
+  segment_calling_points: z.array(z.array(z.object({
+    station: z.string().max(200),
+    station_code: z.string().max(10).nullable().optional(),
+    time: z.string().regex(/^\d{1,2}:\d{2}$/).optional().default(""),
+  }))).optional().default([]),
 });
 
 const briefAccommodationBookingSchema = z.object({
@@ -678,6 +683,71 @@ export async function createItineraryFromBrief(
     });
   }
 
+  // Batch-resolve calling point station codes → coordinates for map waypoints.
+  const allCpCodes = new Set<string>();
+  for (const tb of parsed.value.transport_bookings) {
+    for (const segCps of tb.segment_calling_points ?? []) {
+      for (const cp of segCps) {
+        if (cp.station_code) allCpCodes.add(cp.station_code);
+      }
+    }
+  }
+  const cpHubCoords = new Map<string, { lat: number; lng: number }>();
+  if (allCpCodes.size > 0) {
+    const { data: hubs } = await supabase
+      .from("transport_hubs")
+      .select("code, latitude, longitude")
+      .in("code", [...allCpCodes])
+      .eq("kind", "rail_station");
+    for (const h of hubs ?? []) {
+      if (h.latitude && h.longitude) {
+        cpHubCoords.set(h.code, { lat: Number(h.latitude), lng: Number(h.longitude) });
+      }
+    }
+  }
+
+  // Also try name-based resolution for calling points without codes
+  const cpNamesToResolve: string[] = [];
+  for (const tb of parsed.value.transport_bookings) {
+    for (const segCps of tb.segment_calling_points ?? []) {
+      for (const cp of segCps) {
+        if (!cp.station_code && !cpHubCoords.has(cp.station)) {
+          cpNamesToResolve.push(cp.station);
+        }
+      }
+    }
+  }
+  if (cpNamesToResolve.length > 0) {
+    const uniqueNames = [...new Set(cpNamesToResolve)];
+    for (const name of uniqueNames) {
+      const { data: hub } = await supabase
+        .from("transport_hubs")
+        .select("code, latitude, longitude")
+        .ilike("name", name)
+        .limit(1)
+        .maybeSingle();
+      if (hub?.latitude && hub?.longitude) {
+        cpHubCoords.set(name, { lat: Number(hub.latitude), lng: Number(hub.longitude) });
+      }
+    }
+  }
+
+  function enrichCallingPoints(
+    cps: Array<{ station: string; station_code?: string | null; time?: string }> | undefined,
+  ) {
+    if (!cps || cps.length === 0) return null;
+    return cps.map((cp) => {
+      const coords = cpHubCoords.get(cp.station_code ?? "") ?? cpHubCoords.get(cp.station);
+      return {
+        station: cp.station,
+        station_code: cp.station_code ?? null,
+        time: cp.time ?? "",
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      };
+    });
+  }
+
   // Transport bookings → departure + arrival stops with a locked
   // transition between them. The booking data is stored in metadata
   // so the planning page can display it.
@@ -718,6 +788,7 @@ export async function createItineraryFromBrief(
         barcode_data: tb.barcodes[0]?.data ?? null,
         departure_hub_id: tb.departure_hub_id,
         destination_hub_id: tb.destination_hub_id,
+        calling_points: enrichCallingPoints(tb.segment_calling_points?.[0]),
       },
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
@@ -757,6 +828,7 @@ export async function createItineraryFromBrief(
           route_restriction: tb.route_restriction,
           barcode_ref: coBarcode?.ref ?? null,
           barcode_data: coBarcode?.data ?? null,
+          calling_points: enrichCallingPoints(tb.segment_calling_points?.[coIdx + 1]),
         },
         itinerary_id: itinerary.id,
         workspace_id: ctx.workspaceId,
@@ -1340,7 +1412,7 @@ export async function createItineraryFromBrief(
               const { data: trStops } = await supabase
                 .from("stops")
                 .select(
-                  `id, transport_hub_id,
+                  `id, transport_hub_id, metadata,
                    location:locations(latitude, longitude),
                    customer_site:customer_sites(latitude, longitude),
                    transport_hub:transport_hubs(latitude, longitude, code)`,
@@ -1379,10 +1451,19 @@ export async function createItineraryFromBrief(
                 const toHub = (toS as any)?.transport_hub;
                 const fromCode = fromHub?.code ?? null;
                 const toCode = toHub?.code ?? null;
+                // Extract calling point waypoints from departure stop metadata
+                const fromMeta = fromS?.metadata as Record<string, unknown> | null;
+                const rawCps = fromMeta?.calling_points;
+                const wpArr = Array.isArray(rawCps)
+                  ? (rawCps as Array<{ lat?: number; lng?: number }>)
+                      .filter((cp) => cp.lat && cp.lng)
+                      .map((cp) => ({ lat: cp.lat!, lng: cp.lng! }))
+                  : undefined;
                 const railPoly = await getRailPolyline(
                   fromPt.lat, fromPt.lng,
                   toPt.lat, toPt.lng,
                   fromCode, toCode,
+                  wpArr && wpArr.length > 0 ? wpArr : undefined,
                 );
                 if (railPoly) {
                   await supabase

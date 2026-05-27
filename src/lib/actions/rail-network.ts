@@ -28,6 +28,65 @@ export async function seedRailEdges(
   return { inserted: edges.length };
 }
 
+export type RouteSegment = {
+  osm_relation_id: number;
+  route_name: string | null;
+  operator: string | null;
+  from_station_name: string;
+  to_station_name: string;
+  from_station_code: string | null;
+  to_station_code: string | null;
+  encoded_polyline: string;
+  point_count: number;
+};
+
+export async function seedRouteSegments(
+  segments: RouteSegment[],
+): Promise<{ inserted: number }> {
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (segments.length === 0) return { inserted: 0 };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("rail_named_route_segments")
+    .upsert(segments, { onConflict: "from_station_code,to_station_code" });
+  if (error) throw new Error(`seedRouteSegments: ${error.message}`);
+  return { inserted: segments.length };
+}
+
+export async function getRouteSegmentStats(): Promise<{ count: number } | null> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("rail_named_route_segments")
+    .select("id", { count: "exact", head: true });
+  if (error) return null;
+  return { count: count ?? 0 };
+}
+
+export async function clearRouteSegments(): Promise<void> {
+  const ctx = await requireUserContext();
+  if (!ctx.isAdmin) throw new Error("Admin only");
+  const supabase = await createClient();
+  await supabase.from("rail_named_route_segments").delete().gte("id", "00000000-0000-0000-0000-000000000000");
+}
+
+export async function getAllRailStationCodes(): Promise<Map<string, string>> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("transport_hubs")
+    .select("name, code")
+    .eq("kind", "rail_station")
+    .not("code", "is", null);
+  const map = new Map<string, string>();
+  for (const h of data ?? []) {
+    if (h.code) map.set(h.name.toLowerCase(), h.code);
+  }
+  return Object.fromEntries(map) as any;
+}
+
 /**
  * Return the count of stored edges (null if table is empty / not seeded).
  */
@@ -70,10 +129,102 @@ function coordKey(lat: number, lng: number): string {
 
 /**
  * Route between two points using the stored rail network graph.
- * Loads edges in the bounding box, builds an adjacency list, runs BFS,
- * trims to station boundaries, and returns an encoded Google polyline.
+ * Loads edges in the bounding box, builds an adjacency list, runs
+ * Dijkstra, trims to station boundaries, and returns an encoded
+ * Google polyline.
+ *
+ * When waypoints are provided, routes through each sequentially
+ * (from → wp1 → wp2 → ... → to) and concatenates the path segments.
+ * This forces the path through the correct branch at junctions.
  */
 export async function routeRailPath(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  waypoints?: Array<{ lat: number; lng: number }>,
+): Promise<string | null> {
+  if (waypoints && waypoints.length > 0) {
+    return routeRailPathViaWaypoints(fromLat, fromLng, toLat, toLng, waypoints);
+  }
+  return routeRailPathDirect(fromLat, fromLng, toLat, toLng);
+}
+
+async function routeRailPathViaWaypoints(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  waypoints: Array<{ lat: number; lng: number }>,
+): Promise<string | null> {
+  const allPts = [
+    { lat: fromLat, lng: fromLng },
+    ...waypoints,
+    { lat: toLat, lng: toLng },
+  ];
+
+  const allPoints: LatLng[] = [];
+  // Track the actual endpoint of the previous segment so the next
+  // segment starts from where the track actually is, not from the
+  // station entrance coordinates. This eliminates zigzag at junctions.
+  let prevEndpoint: { lat: number; lng: number } | null = null;
+
+  for (let i = 0; i < allPts.length - 1; i++) {
+    const startPt = prevEndpoint ?? allPts[i];
+    const endPt = allPts[i + 1];
+
+    const segPoly = await routeRailPathDirect(
+      startPt.lat, startPt.lng,
+      endPt.lat, endPt.lng,
+    );
+    if (!segPoly) {
+      prevEndpoint = null;
+      continue;
+    }
+    const decoded = decodePolylineInternal(segPoly);
+    if (decoded.length === 0) continue;
+
+    // Capture the actual last track point for the next segment's start
+    prevEndpoint = decoded[decoded.length - 1];
+
+    // Skip the first point of subsequent segments to avoid duplicates
+    if (i > 0 && allPoints.length > 0) decoded.shift();
+    allPoints.push(...decoded);
+  }
+
+  if (allPoints.length < 2) return null;
+  return encodePolyline(allPoints);
+}
+
+function decodePolylineInternal(encoded: string): LatLng[] {
+  const points: LatLng[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+
+async function routeRailPathDirect(
   fromLat: number,
   fromLng: number,
   toLat: number,
@@ -82,8 +233,7 @@ export async function routeRailPath(
   await requireUserContext();
   const supabase = await createClient();
 
-  // Bounding box with padding
-  const pad = 0.05;
+  const pad = 0.1;
   const minLat = Math.min(fromLat, toLat) - pad;
   const maxLat = Math.max(fromLat, toLat) + pad;
   const minLng = Math.min(fromLng, toLng) - pad;
@@ -133,43 +283,78 @@ export async function routeRailPath(
 
   if (adj.size === 0) return null;
 
+  // Corridor pruning: remove graph nodes that are too far from the
+  // direct origin→destination line. This eliminates parallel branches
+  // (e.g. the Beeston/Nottingham line when routing Leicester→Derby).
+  const directDistKm = haversineKm(fromLat, fromLng, toLat, toLng);
+  if (directDistKm > 10) {
+    const corridorKm = Math.max(6, Math.min(15, directDistKm * 0.25));
+    const dLat = toLat - fromLat;
+    const dLng = toLng - fromLng;
+    const len2 = dLat * dLat + dLng * dLng;
+    const toRemove: string[] = [];
+    for (const [key, pt] of coordMap) {
+      const t = ((pt.lat - fromLat) * dLat + (pt.lng - fromLng) * dLng) / len2;
+      const projLat = fromLat + Math.max(0, Math.min(1, t)) * dLat;
+      const projLng = fromLng + Math.max(0, Math.min(1, t)) * dLng;
+      const perpDist = haversineKm(pt.lat, pt.lng, projLat, projLng);
+      if (perpDist > corridorKm) toRemove.push(key);
+    }
+    for (const key of toRemove) {
+      coordMap.delete(key);
+      adj.delete(key);
+      for (const neighbors of adj.values()) neighbors.delete(key);
+    }
+  }
+
+  if (adj.size === 0) return null;
+
   // Find nearest graph nodes to from/to stations
   const startKey = findNearestKey(coordMap, fromLat, fromLng);
   const endKey = findNearestKey(coordMap, toLat, toLng);
   if (!startKey || !endKey || startKey === endKey) return null;
 
-  // Dijkstra — shortest path by geographic distance (haversine).
-  // Plain BFS uses node-count which can prefer a longer route through
-  // a branch with fewer nodes (e.g., via Beeston instead of direct to Derby).
-  const dist = new Map<string, number>();
-  const parent = new Map<string, string>();
-  dist.set(startKey, 0);
+  // Weighted A* — strongly biases toward the destination. At junctions
+  // like Trent Junction, this forces the path along the branch heading
+  // toward the destination rather than a nearby parallel line.
+  // High epsilon (3.0) sacrifices distance-optimality for directness —
+  // acceptable for rail where we want geometry, not shortest path.
+  const EPSILON = 3.0;
+  const endPt = coordMap.get(endKey)!;
 
-  // Simple priority queue (array sorted on insert — fine for ~50k nodes)
-  const pq: Array<{ key: string; d: number }> = [{ key: startKey, d: 0 }];
+  const gScore = new Map<string, number>();
+  const parent = new Map<string, string>();
+  gScore.set(startKey, 0);
+
+  const startPt = coordMap.get(startKey)!;
+  const startH = haversineKm(startPt.lat, startPt.lng, endPt.lat, endPt.lng);
+  const pq: Array<{ key: string; f: number; g: number }> = [
+    { key: startKey, f: EPSILON * startH, g: 0 },
+  ];
 
   let found = false;
   while (pq.length > 0) {
-    pq.sort((a, b) => a.d - b.d);
-    const { key: current, d: currentDist } = pq.shift()!;
+    pq.sort((a, b) => a.f - b.f);
+    const { key: current, g: currentG } = pq.shift()!;
 
     if (current === endKey) {
       found = true;
       break;
     }
 
-    if (currentDist > (dist.get(current) ?? Infinity)) continue;
+    if (currentG > (gScore.get(current) ?? Infinity)) continue;
 
     const currentPt = coordMap.get(current)!;
     for (const neighbor of adj.get(current) ?? []) {
       const neighborPt = coordMap.get(neighbor);
       if (!neighborPt) continue;
       const edgeDist = haversineKm(currentPt.lat, currentPt.lng, neighborPt.lat, neighborPt.lng);
-      const newDist = currentDist + edgeDist;
-      if (newDist < (dist.get(neighbor) ?? Infinity)) {
-        dist.set(neighbor, newDist);
+      const newG = currentG + edgeDist;
+      if (newG < (gScore.get(neighbor) ?? Infinity)) {
+        gScore.set(neighbor, newG);
         parent.set(neighbor, current);
-        pq.push({ key: neighbor, d: newDist });
+        const h = haversineKm(neighborPt.lat, neighborPt.lng, endPt.lat, endPt.lng);
+        pq.push({ key: neighbor, f: newG + EPSILON * h, g: newG });
       }
     }
   }

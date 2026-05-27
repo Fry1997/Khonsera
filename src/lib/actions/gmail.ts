@@ -439,3 +439,150 @@ export async function debugFetchEmail(messageId: string): Promise<
     parsed,
   });
 }
+
+// ── reEnrichItineraryFromGmail ────────────────────────────────────────
+// Re-fetches Trainline PDF attachments from Gmail for an existing
+// itinerary's transit stops. Re-parses with the updated parser (which
+// now extracts calling points) and patches stop metadata + segments.
+
+export async function reEnrichItineraryFromGmail(
+  itineraryId: string,
+): Promise<Result<{ enriched: number }>> {
+  const ctx = await requireUserContext();
+  const gmail = await getValidGmailAccessToken();
+  if (!gmail) {
+    return err(errors.integration("gmail", "Gmail not connected. Connect in Settings."));
+  }
+  const supabase = await createClient();
+
+  // Find transit_departure stops for this itinerary
+  const { data: transitStops } = await supabase
+    .from("stops")
+    .select("id, metadata, transport_hub_id")
+    .eq("itinerary_id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .in("type", ["transit_departure", "transit_changeover"]);
+
+  if (!transitStops || transitStops.length === 0) return ok({ enriched: 0 });
+
+  // Filter to stops that don't already have calling_points
+  const stopsToEnrich = transitStops.filter((s) => {
+    const meta = s.metadata as Record<string, unknown> | null;
+    return meta && !meta.calling_points;
+  });
+  if (stopsToEnrich.length === 0) return ok({ enriched: 0 });
+
+  // Collect gmail_message_ids from the scan cache that match our booking refs
+  const bookingRefs = new Set<string>();
+  for (const s of stopsToEnrich) {
+    const meta = s.metadata as Record<string, unknown> | null;
+    if (meta?.booking_reference) bookingRefs.add(meta.booking_reference as string);
+    if (meta?.barcode_ref) bookingRefs.add(meta.barcode_ref as string);
+  }
+
+  // Search Gmail for Trainline emails (re-use the same broad search)
+  const query = buildSearchQuery();
+  let messageRefs;
+  try {
+    messageRefs = await gmailSearchMessages({
+      accessToken: gmail.accessToken,
+      query,
+    });
+  } catch {
+    return err(errors.integration("gmail", "Failed to search Gmail."));
+  }
+
+  let enrichedCount = 0;
+
+  // Process each message — fetch, parse PDFs, look for calling points
+  for (const ref of messageRefs.slice(0, 20)) {
+    let msg;
+    try {
+      msg = await gmailGetMessage({ accessToken: gmail.accessToken, messageId: ref.id });
+    } catch { continue; }
+
+    const attachments = extractAttachments(msg);
+    const pdfs = attachments.filter(
+      (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+    );
+    if (pdfs.length === 0) continue;
+
+    // Fetch and parse each PDF
+    for (const pdf of pdfs) {
+      let buf: Buffer;
+      try {
+        buf = await gmailGetAttachment({
+          accessToken: gmail.accessToken,
+          messageId: ref.id,
+          attachmentId: pdf.attachmentId,
+        });
+      } catch { continue; }
+
+      const { extractText } = await import("unpdf").catch(() => ({ extractText: null }));
+      if (!extractText) continue;
+
+      let ticket;
+      try {
+        const result = await extractText(new Uint8Array(buf).buffer);
+        const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
+        ticket = parseTrainlinePdfText(pdfText);
+      } catch { continue; }
+      if (!ticket || ticket.calling_points.length === 0) continue;
+
+      // Match this ticket to a stop by barcode_ref or station codes
+      for (const stop of stopsToEnrich) {
+        const meta = stop.metadata as Record<string, unknown> | null;
+        if (!meta) continue;
+
+        const matchByBarcode = meta.barcode_ref && ticket.barcode_ref &&
+          meta.barcode_ref === ticket.barcode_ref;
+        const matchByRef = meta.booking_reference && ticket.nrs_ref &&
+          meta.booking_reference === ticket.nrs_ref;
+
+        if (!matchByBarcode && !matchByRef) continue;
+
+        // Resolve calling point coordinates
+        const cpCodes = ticket.calling_points
+          .filter((cp) => cp.station_code)
+          .map((cp) => cp.station_code!);
+        const cpCoords = new Map<string, { lat: number; lng: number }>();
+        if (cpCodes.length > 0) {
+          const { data: hubs } = await supabase
+            .from("transport_hubs")
+            .select("code, latitude, longitude")
+            .in("code", cpCodes)
+            .eq("kind", "rail_station");
+          for (const h of hubs ?? []) {
+            if (h.latitude && h.longitude) {
+              cpCoords.set(h.code, { lat: Number(h.latitude), lng: Number(h.longitude) });
+            }
+          }
+        }
+
+        const enrichedCps = ticket.calling_points.map((cp) => {
+          const coords = cpCoords.get(cp.station_code ?? "");
+          return { ...cp, lat: coords?.lat ?? null, lng: coords?.lng ?? null };
+        });
+
+        // Patch the stop metadata
+        await supabase
+          .from("stops")
+          .update({
+            metadata: { ...meta, calling_points: enrichedCps },
+          })
+          .eq("id", stop.id)
+          .eq("workspace_id", ctx.workspaceId);
+
+        enrichedCount++;
+      }
+    }
+  }
+
+  // Regenerate rail polylines using the updated calling points as waypoints
+  if (enrichedCount > 0) {
+    const { backfillRailPolylines } = await import("@/lib/actions/transitions");
+    await backfillRailPolylines(itineraryId, true);
+  }
+
+  return ok({ enriched: enrichedCount });
+}

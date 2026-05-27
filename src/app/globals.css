@@ -3618,6 +3618,41 @@
 
 .route-map-header {
   padding: 20px 22px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.route-map-header .route-map-eyebrow { width: 100%; }
+
+.map-expand-btn {
+  display: none;
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--ink-dim);
+  line-height: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.map-expand-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
+@media (min-width: 1024px) {
+  .map-expand-btn { display: inline-flex; }
+  .route-map-card.map-expanded {
+    position: fixed;
+    inset: 24px;
+    z-index: 40;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  .route-map-card.map-expanded .route-map-header { flex-shrink: 0; }
+  .route-map-card.map-expanded > div:last-child {
+    flex: 1;
+    border-radius: 0 0 12px 12px;
+  }
 }
 
 .route-map-eyebrow {

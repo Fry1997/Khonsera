@@ -134,6 +134,8 @@ Two-column grid:
 
 **Transit groups** — consecutive locked transit stops (departure → changeover → arrival) render as a single transport entry with ticket cards per leg. This grouping is handled by `buildPlanningTimeline`.
 
+**Calling points** — intermediate stations parsed from Trainline PDF etickets. Stored in stop metadata as `calling_points` (with lat/lng resolved from transport_hubs at insert time). Rendered on the `TrainTicketCard` as a subtle strip (time, dot, station code) between station names and ticket details. On the JourneyMap, calling points populate `Leg.waypoints` and render as small gold-bordered markers (5px) along the rail line.
+
 **TransitionMeta** — below each transition row, shows computed duration, distance in miles, and a feasibility badge (tight/infeasible) when travel time doesn't fit between two time-fixed stops.
 
 **Stopovers with back-calc** — the planning page computes the available window for stopovers based on surrounding anchors' times and leg transition durations. Shows "fits", "tight", or "infeasible" status.
