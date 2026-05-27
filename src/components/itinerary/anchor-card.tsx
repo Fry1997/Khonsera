@@ -138,7 +138,7 @@ export function AnchorCard({
   }
 
   return (
-    <section className={first ? "brief-card brief-card-hero" : "brief-card"}>
+    <section className={`${first ? "brief-card brief-card-hero" : "brief-card"} brief-card-expanded`}>
       <header
         style={{
           display: "flex",
@@ -513,9 +513,6 @@ function KindBadge({
         >
           <KindDot kind={kind} />
           <span>{kindLabel}</span>
-          {kindOverridden ? (
-            <span className="kind-badge-flag">overridden</span>
-          ) : null}
           <ChevDown />
         </button>
         {openKind ? (
@@ -547,9 +544,6 @@ function KindBadge({
             onClick={() => setOpenRole((v) => !v)}
           >
             <span>{roleLabel}</span>
-            {roleOverridden ? (
-              <span className="kind-badge-flag">overridden</span>
-            ) : null}
             <ChevDown />
           </button>
           {openRole ? (

@@ -6,7 +6,7 @@ import { RailNetworkSeeder } from "./rail-network-seeder";
 
 export default async function RailNetworkPage() {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) redirect("/settings");
+  if (!ctx.isSuperUser) redirect("/settings");
 
   const stats = await getRailNetworkStats();
 

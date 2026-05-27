@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { RouteMap } from "@/components/route-map";
 import { decodePolyline } from "@/components/journey-map";
 import type { Journey, Leg, Station, LegMode } from "@/components/journey-map";
 
@@ -18,6 +17,7 @@ import {
   deleteStop,
   insertStopAt,
   updateStop,
+  deleteStops,
 } from "@/lib/actions/stops";
 import {
   upsertTransition,
@@ -26,7 +26,7 @@ import {
 } from "@/lib/actions/transitions";
 import { addFullTransportBooking } from "@/lib/actions/bookings";
 import { reEnrichItineraryFromGmail } from "@/lib/actions/gmail";
-import { transitionItineraryStatus } from "@/lib/actions/itineraries";
+import { transitionItineraryStatus, updateItinerary } from "@/lib/actions/itineraries";
 import type { InitialPreviewSeed } from "@/components/itinerary/use-route-preview";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { feedbackFromError } from "@/lib/actions/_form";
@@ -130,6 +130,7 @@ const STOP_ICON: Record<StopType, React.ReactNode> = {
   transport_booked: Icon.train,
   transit_arrival: Icon.plane,
   transit_departure: Icon.train,
+  transit_changeover: Icon.train,
   stopover: Icon.pin,
   other: Icon.pin,
 };
@@ -144,6 +145,7 @@ const STOP_LABEL: Record<StopType, string> = {
   transport_booked: "Transport",
   transit_arrival: "Arrive",
   transit_departure: "Depart",
+  transit_changeover: "Change",
   stopover: "Stopover",
   other: "Point",
 };
@@ -287,6 +289,30 @@ export function ItineraryEditor({
   // the server action and dismiss.
   const [editingTransport, setEditingTransport] = useState<BriefTransportBooking | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [editingMasthead, setEditingMasthead] = useState(false);
+  const [mastheadTitle, setMastheadTitle] = useState(itinerary.title ?? "");
+  const [mastheadNotes, setMastheadNotes] = useState(itinerary.notes ?? "");
+  const [mastheadDateStart, setMastheadDateStart] = useState(itinerary.date_start);
+  const [mastheadDateEnd, setMastheadDateEnd] = useState(itinerary.date_end);
+
+  const saveMasthead = () => {
+    startTransition(async () => {
+      setError(null);
+      const result = await updateItinerary({
+        id: itinerary.id,
+        title: mastheadTitle.trim() || null,
+        date_start: mastheadDateStart,
+        date_end: mastheadDateEnd || mastheadDateStart,
+        notes: mastheadNotes.trim() || null,
+      });
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
+        return;
+      }
+      setEditingMasthead(false);
+      router.refresh();
+    });
+  };
   const handleTransportCardChange = (patch: Partial<BriefTransportBooking>) => {
     setEditingTransport((prev) => {
       if (!prev) return prev;
@@ -350,19 +376,28 @@ export function ItineraryEditor({
     return m;
   }, [transitions]);
 
+  // Optimistic local stops — inserted immediately from insertStopAt's
+  // return value so the card appears without waiting for router.refresh.
+  const [localStops, setLocalStops] = useState<StopRow[]>([]);
+  const mergedStops = useMemo(() => {
+    const serverIds = new Set(stops.map((s) => s.id));
+    const extras = localStops.filter((s) => !serverIds.has(s.id));
+    return [...stops, ...extras];
+  }, [stops, localStops]);
+
   // Planning-view state: shared-component cards derived from the DB
   // rows above. Anchors get a per-card "expanded" toggle so the user
   // sees a tidy summary by default and clicks Edit to flip back to
   // the full brief form. Multiple anchors can be expanded at once.
   const planningAnchors = useMemo<Anchor[]>(
-    () => anchorsFromStops(stops as DbStop[], timezone),
-    [stops, timezone],
+    () => anchorsFromStops(mergedStops as DbStop[], timezone),
+    [mergedStops, timezone],
   );
   // Full timeline including stopovers — used when rendering so we can
   // slot StopoverCard rows between the anchors they sit between.
   const planningTimeline = useMemo<EditorTimelineItem[]>(
-    () => timelineFromStops(stops as DbStop[], timezone),
-    [stops, timezone],
+    () => timelineFromStops(mergedStops as DbStop[], timezone),
+    [mergedStops, timezone],
   );
 
   // Route previews — populated lazily when the user opens a
@@ -455,33 +490,49 @@ export function ItineraryEditor({
   const [pendingExpandUid, setPendingExpandUid] = useState<string | null>(null);
   useEffect(() => {
     if (!pendingExpandUid) return;
-    // Reference the raw `stops` prop rather than sortedStops, which
-    // is declared further down (hoisting issue). Either contains the
-    // newly-created stop after router.refresh.
-    if (stops.find((s) => s.id === pendingExpandUid)) {
+    if (mergedStops.find((s) => s.id === pendingExpandUid)) {
       setExpandedUids((prev) => new Set(prev).add(pendingExpandUid));
       setPendingExpandUid(null);
     }
-  }, [pendingExpandUid, stops]);
+  }, [pendingExpandUid, mergedStops]);
 
   // Insert a new appointment anchor at the given sequence. AddBetween
   // wraps this via the brief's UI pattern: a small dashed pill
   // between cards.
-  const handleInsertAnchorAt = (sequence: number) => {
-    startTransition(async () => {
-      setError(null);
-      const result = await insertStopAt({
-        itinerary_id: itinerary.id,
-        sequence,
-        type: "appointment",
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      setPendingExpandUid(result.value.id);
-      router.refresh();
+  const handleInsertAnchorAt = async (sequence: number) => {
+    setError(null);
+    const result = await insertStopAt({
+      itinerary_id: itinerary.id,
+      sequence,
+      type: "appointment",
     });
+    if (!result.ok) {
+      setError(feedbackFromError(result.error).message);
+      return;
+    }
+    const s = result.value;
+    const optimistic: StopRow = {
+      id: s.id,
+      sequence: s.sequence,
+      type: s.type as StopType,
+      title: s.title ?? null,
+      start_time: s.start_time ?? null,
+      end_time: s.end_time ?? null,
+      duration_minutes: s.duration_minutes ?? null,
+      is_time_fixed: s.is_time_fixed ?? false,
+      location_id: s.location_id ?? null,
+      customer_id: s.customer_id ?? null,
+      customer_site_id: s.customer_site_id ?? null,
+      external_reference: s.external_reference ?? null,
+      notes: s.notes ?? null,
+      location: null,
+      customer: null,
+      customer_site: null,
+      metadata: s.metadata ?? null,
+    };
+    setLocalStops((prev) => [...prev, optimistic]);
+    setPendingExpandUid(s.id);
+    router.refresh();
   };
 
   // Insert a new stopover between two existing anchor stops.
@@ -614,8 +665,8 @@ export function ItineraryEditor({
   }, [journeyLegs]);
 
   const sortedStops = useMemo(
-    () => [...stops].sort((a, b) => a.sequence - b.sequence),
-    [stops],
+    () => [...mergedStops].sort((a, b) => a.sequence - b.sequence),
+    [mergedStops],
   );
 
   // Roll up feasibility flags across every adjacent pair of stops
@@ -685,10 +736,23 @@ export function ItineraryEditor({
     if (!window.confirm("Delete this point?")) return;
     startTransition(async () => {
       setError(null);
-      const result = await deleteStop(stopId);
+      const stop = sortedStops.find((s) => s.id === stopId);
+      const idsToDelete = [stopId];
+      if (stop?.type === "transit_departure") {
+        const seq = stop.sequence;
+        for (const s of sortedStops) {
+          if (s.id === stopId) continue;
+          if (s.sequence > seq && (s.type === "transit_changeover" || s.type === "transit_arrival")) {
+            idsToDelete.push(s.id);
+            if (s.type === "transit_arrival") break;
+          } else if (s.sequence > seq && s.type !== "transit_changeover") {
+            break;
+          }
+        }
+      }
+      const result = await deleteStops(idsToDelete);
       if (!result.ok) {
         setError(feedbackFromError(result.error).message);
-        return;
       }
       router.refresh();
     });
@@ -764,7 +828,7 @@ export function ItineraryEditor({
   const handleAnchorPatch = (uid: string, patch: Partial<Anchor>) => {
     setEditedAnchors((prev) => {
       const next = new Map(prev);
-      const current = next.get(uid);
+      const current = next.get(uid) ?? planningAnchors.find((a) => a.uid === uid);
       if (!current) return prev;
       next.set(uid, { ...current, ...patch });
       return next;
@@ -819,7 +883,8 @@ export function ItineraryEditor({
   const handleStopoverPatch = (uid: string, patch: Partial<Stopover>) => {
     setEditedStopovers((prev) => {
       const next = new Map(prev);
-      const current = next.get(uid);
+      const current = next.get(uid)
+        ?? (planningTimeline.find((it) => it.kind === "stopover" && it.stopover.uid === uid) as any)?.stopover;
       if (!current) return prev;
       next.set(uid, { ...current, ...patch });
       return next;
@@ -1024,11 +1089,10 @@ export function ItineraryEditor({
 
   // Build a Journey object for the JourneyMap component. Converts the
   // existing stops + transitions into the component's domain types.
-  const journeyMapData = useMemo<Journey | null>(() => {
-    if (sortedStops.length < 2) return null;
-
+  const journeyMapData = useMemo<Journey>(() => {
     const legs: Leg[] = [];
 
+    if (sortedStops.length >= 2) {
     for (let i = 0; i < sortedStops.length - 1; i++) {
       const fromStop = sortedStops[i];
       const toStop = sortedStops[i + 1];
@@ -1127,8 +1191,7 @@ export function ItineraryEditor({
         ...(waypoints.length > 0 ? { waypoints } : {}),
       });
     }
-
-    if (legs.length === 0) return null;
+    } // close sortedStops.length >= 2
 
     return {
       id: itinerary.id,
@@ -1204,17 +1267,110 @@ export function ItineraryEditor({
         {/* ── Masthead: headline + standfirst + stat columns ─────────── */}
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
           <div className="flex flex-col gap-4">
-            <h1 className="masthead-title">
-              <MastheadHeadline
-                customerName={subject.customerName}
-                placePart={subject.placePart}
-                fallback={itinerary.title}
-                date={dateLabel}
-              />
-            </h1>
-            {itinerary.notes ? (
-              <p className="standfirst">{itinerary.notes}</p>
-            ) : null}
+            {editingMasthead ? (
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  className="masthead-title-input"
+                  value={mastheadTitle}
+                  onChange={(e) => setMastheadTitle(e.target.value)}
+                  placeholder="Trip title"
+                  style={{
+                    fontFamily: "var(--display)",
+                    fontSize: 28,
+                    fontWeight: 500,
+                    fontStyle: "italic",
+                    color: "var(--ink)",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: "1px solid var(--rule)",
+                    outline: "none",
+                    padding: "4px 0",
+                    width: "100%",
+                  }}
+                />
+                <div className="flex gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="uc" style={{ fontSize: 9 }}>Start date</label>
+                    <input
+                      type="date"
+                      value={mastheadDateStart}
+                      onChange={(e) => setMastheadDateStart(e.target.value)}
+                      className="brief-input"
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="uc" style={{ fontSize: 9 }}>End date</label>
+                    <input
+                      type="date"
+                      value={mastheadDateEnd}
+                      onChange={(e) => setMastheadDateEnd(e.target.value)}
+                      className="brief-input"
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+                </div>
+                <textarea
+                  value={mastheadNotes}
+                  onChange={(e) => setMastheadNotes(e.target.value)}
+                  placeholder="Trip notes (optional)"
+                  rows={2}
+                  className="brief-input"
+                  style={{ fontSize: 13, resize: "vertical" }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ fontSize: 12, padding: "6px 14px" }}
+                    onClick={saveMasthead}
+                    disabled={pending}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ fontSize: 12 }}
+                    onClick={() => {
+                      setEditingMasthead(false);
+                      setMastheadTitle(itinerary.title ?? "");
+                      setMastheadNotes(itinerary.notes ?? "");
+                      setMastheadDateStart(itinerary.date_start);
+                      setMastheadDateEnd(itinerary.date_end);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1
+                  className="masthead-title"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setEditingMasthead(true)}
+                  title="Click to edit title, dates, and notes"
+                >
+                  <MastheadHeadline
+                    customerName={subject.customerName}
+                    placePart={subject.placePart}
+                    fallback={itinerary.title}
+                    date={dateLabel}
+                  />
+                </h1>
+                {itinerary.notes ? (
+                  <p
+                    className="standfirst"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setEditingMasthead(true)}
+                  >
+                    {itinerary.notes}
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
 
           <div className="flex items-end justify-start gap-6 lg:justify-end">
@@ -1239,8 +1395,8 @@ export function ItineraryEditor({
           </div>
         </section>
 
-        {/* ── Primary action row ─────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* ── Action rows ─────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
           {nextStatus ? (
             <button
               type="button"
@@ -1252,33 +1408,28 @@ export function ItineraryEditor({
               {Icon.arrow}
             </button>
           ) : null}
-          <span className={`sb ${STATUS_SB[itinerary.status]}`}>
-            {STATUS_LABEL[itinerary.status]}
-          </span>
           <button
             type="button"
             className="btn-ghost"
-            style={{ fontSize: 13 }}
             onClick={() => setEditingTransport(emptyTransportBookingItem())}
           >
-            + Transport
+            + Booked transport
           </button>
           <button
             type="button"
             className="btn-ghost"
-            style={{ fontSize: 13 }}
             onClick={() => setShowAddAccommodation(true)}
           >
-            + Accommodation
+            + Hotel booking
           </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           {gmailConnected ? (
             <>
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
                 onClick={() => setGmailImportOpen(true)}
-                disabled={pending}
               >
                 {Icon.ticket}
                 Scan for tickets
@@ -1286,7 +1437,6 @@ export function ItineraryEditor({
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: 12 }}
                 onClick={() => {
                   startTransition(async () => {
                     setError(null);
@@ -1299,7 +1449,6 @@ export function ItineraryEditor({
                     router.refresh();
                   });
                 }}
-                disabled={pending}
               >
                 Refresh ticket details
               </button>
@@ -1492,13 +1641,10 @@ export function ItineraryEditor({
 
             {(() => {
               const last = sortedStops[sortedStops.length - 1];
+              const seq = last ? (last.sequence ?? -1) + 1 : 0;
               return (
                 <div className="anchor-inline-adds">
-                  <AddBetween
-                    onAdd={() => handleInsertAnchorAt(
-                      last ? (last.sequence ?? -1) + 1 : 0,
-                    )}
-                  />
+                  <AddBetween onAdd={() => handleInsertAnchorAt(seq)} />
                 </div>
               );
             })()}
@@ -1506,92 +1652,101 @@ export function ItineraryEditor({
 
           {/* Right: map + day digest */}
           <aside className="flex flex-col gap-5">
-            {journeyMapData && journeyMapData.legs.length > 0 ? (
-              <div className={`route-map-card${mapExpanded ? " map-expanded" : ""}`}>
-                <div className="route-map-header">
-                  <span className="route-map-eyebrow">Door-to-door</span>
-                  <span className="route-map-headline">
-                    {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
-                    {totalMiles > 0 && totalMinutes > 0 && " · "}
-                    {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
-                  </span>
-                  <button
-                    type="button"
-                    className="map-expand-btn"
-                    onClick={() => setMapExpanded((v) => !v)}
-                    title={mapExpanded ? "Collapse map" : "Expand map"}
-                  >
-                    {mapExpanded ? (
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M10 2v4h4M2 10h4v4M14 2l-4 4M2 14l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M10 2v4h4M2 10h4v4M6 6L2 2M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined }}>
-                  <JourneyMap
-                    journey={journeyMapData}
-                    mode="planning"
-                    height={mapExpanded ? undefined : 320}
-                  />
-                </div>
-              </div>
-            ) : mapStops.length > 0 ? (
-              <RouteMap
-                stops={mapStops}
-                segments={mapSegments}
-                totalMiles={totalMiles}
-                totalMinutes={totalMinutes}
-              />
-            ) : (
-              <div
-                className="flex h-[320px] items-center justify-center rounded-md border border-dashed border-rule-2 bg-card-2 text-center"
-              >
-                <span className="small px-6">
-                  Map appears once stops have addresses.
+            <div className={`route-map-card${mapExpanded ? " map-expanded" : ""}`}>
+              <div className="route-map-header">
+                <span className="route-map-eyebrow">Door-to-door</span>
+                <span className="route-map-headline">
+                  {totalMiles > 0 || totalMinutes > 0 ? (
+                    <>
+                      {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
+                      {totalMiles > 0 && totalMinutes > 0 && " · "}
+                      {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
+                    </>
+                  ) : (
+                    <span style={{ color: "var(--ink-faint)", fontStyle: "italic" }}>Add stops to see your route</span>
+                  )}
                 </span>
+                <button
+                  type="button"
+                  className="map-expand-btn"
+                  onClick={() => setMapExpanded((v) => !v)}
+                  title={mapExpanded ? "Collapse map" : "Expand map"}
+                >
+                  {mapExpanded ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M10 2v4h4M2 10h4v4M14 2l-4 4M2 14l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M10 2v4h4M2 10h4v4M6 6L2 2M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  )}
+                </button>
               </div>
-            )}
+              <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined, position: "relative" }}>
+                <JourneyMap
+                  journey={journeyMapData}
+                  mode="planning"
+                  height={mapExpanded ? undefined : 320}
+                />
+                {journeyMapData.legs.length === 0 && (
+                  <div style={{
+                    position: "absolute", inset: 0, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    background: "var(--card)", opacity: 0.85,
+                    pointerEvents: "none",
+                  }}>
+                    <p className="serif-i" style={{ color: "var(--ink-dim)", fontSize: 15, textAlign: "center", padding: "0 24px" }}>
+                      Add stops with locations to see your route on the map
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="digest-panel">
               <div className="h">Day · digest</div>
-              {onSiteWindow ? (
-                <div className="row">
-                  <span className="l">On-site window</span>
-                  <span className="v">
-                    {fmtTime(onSiteWindow.from, timezone)}
-                    {onSiteWindow.to && onSiteWindow.to !== onSiteWindow.from
-                      ? ` – ${fmtTime(onSiteWindow.to, timezone)}`
-                      : ""}
-                  </span>
-                </div>
-              ) : null}
-              <div className="row">
-                <span className="l">Travel time</span>
-                <span className="v">{fmtDuration(totalMinutes)}</span>
-              </div>
-              <div className="row">
-                <span className="l">Distance</span>
-                <span className="v">{totalMiles.toFixed(1)} mi</span>
-              </div>
-              {totals.cost > 0 ? (
-                <div className="row total">
-                  <span className="l">Costs</span>
-                  <span className="v">
-                    {fmtCurrency(totals.cost, totals.currency)}
-                  </span>
-                </div>
+              {totalMinutes === 0 && totalMiles === 0 && (!onSiteWindow || !onSiteWindow.from) ? (
+                <p style={{ fontSize: 12, color: "var(--ink-faint)", fontStyle: "italic", margin: "8px 0 0" }}>
+                  Stats appear as you add stops and connections
+                </p>
               ) : (
-                <div className="row">
-                  <span className="l">Costs</span>
-                  <span className="v" style={{ color: "var(--ink-faint)" }}>
-                    —
-                  </span>
-                </div>
+                <>
+                  {onSiteWindow ? (
+                    <div className="row">
+                      <span className="l">On-site window</span>
+                      <span className="v">
+                        {fmtTime(onSiteWindow.from, timezone)}
+                        {onSiteWindow.to && onSiteWindow.to !== onSiteWindow.from
+                          ? ` – ${fmtTime(onSiteWindow.to, timezone)}`
+                          : ""}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="row">
+                    <span className="l">Travel time</span>
+                    <span className="v">{fmtDuration(totalMinutes)}</span>
+                  </div>
+                  <div className="row">
+                    <span className="l">Distance</span>
+                    <span className="v">{totalMiles.toFixed(1)} mi</span>
+                  </div>
+                  {totals.cost > 0 ? (
+                    <div className="row total">
+                      <span className="l">Costs</span>
+                      <span className="v">
+                        {fmtCurrency(totals.cost, totals.currency)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="row">
+                      <span className="l">Costs</span>
+                      <span className="v" style={{ color: "var(--ink-faint)" }}>
+                        —
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </aside>
@@ -1670,7 +1825,7 @@ export function ItineraryEditor({
             <div className="my-8 w-full max-w-2xl">
               <AddAccommodationBookingForm
                 afterStopId={sortedStops[sortedStops.length - 1]?.id}
-                afterStopLabel="end of timeline"
+                afterStopLabel={sortedStops[sortedStops.length - 1]?.title ?? "your last stop"}
                 customers={customers}
                 customerSites={customerSites}
                 locations={locations}
@@ -1684,6 +1839,67 @@ export function ItineraryEditor({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function TimingModePicker({
+  onPick,
+  onCancel,
+}: {
+  onPick: (mode: string) => void;
+  onCancel: () => void;
+}) {
+  const options = [
+    { mode: "arrive_by", label: "I need to be there by...", icon: ">" },
+    { mode: "leave_by", label: "I need to leave by...", icon: "<" },
+    { mode: "around_then", label: "I'll be there around...", icon: "~" },
+    { mode: "maximize", label: "As long as possible", icon: "+" },
+  ];
+  return (
+    <div className="timing-picker" style={{
+      display: "grid", gap: 6,
+      padding: 12, background: "var(--card)", border: "1px solid var(--rule)",
+      borderRadius: 10,
+    }}>
+      {options.map((o) => (
+        <button
+          key={o.mode}
+          type="button"
+          onClick={() => onPick(o.mode)}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 12px", borderRadius: 8,
+            border: "1px solid var(--rule)", background: "var(--card-2)",
+            cursor: "pointer", fontSize: 12, color: "var(--ink)",
+            fontFamily: "var(--sans)", textAlign: "left",
+            transition: "border-color 0.15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--gold)")}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--rule)")}
+        >
+          <span style={{
+            width: 24, height: 24, borderRadius: "50%",
+            background: "var(--gold-2)", color: "var(--gold)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 600, flexShrink: 0,
+          }}>
+            {o.icon}
+          </span>
+          <span>{o.label}</span>
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onCancel}
+        style={{
+          gridColumn: "1 / -1", padding: "6px 0", fontSize: 11,
+          color: "var(--ink-faint)", background: "none", border: "none",
+          cursor: "pointer",
+        }}
+      >
+        Cancel
+      </button>
     </div>
   );
 }

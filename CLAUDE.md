@@ -6,10 +6,20 @@
 
 After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.
 
-## Known Bugs (as of 2026-05-26)
+## Known Bugs (as of 2026-05-27)
 
-### Planning page after brief submit
+### Planning page
 - All previously listed bugs FIXED (see git history)
+- ~~Location selection silently dropped on new anchors~~ FIXED: handleAnchorPatch falls back to planningAnchors when editedAnchors has no entry
+- ~~Ghost "via Walk" + duplicate add buttons~~ FIXED: removed duplicate home→first gap from buildPlanningTimeline (editor renders it manually)
+- ~~10s+ anchor card insert latency~~ FIXED: optimistic local insertion (card appears from server action return, router.refresh runs in background); solver skipped for empty stops
+- ~~disabled={pending} blocks all buttons~~ FIXED: only advance-status and masthead-save disable during their own action
+
+### Planned pivot (2026-05-27)
+- User is considering a "facts-first" model: events, bookings, hotels are thrown at the app and stick to their dates. Days emerge from accumulated facts rather than being planned upfront.
+- The current planning page layout (timeline + map + transitions) would become a **day view** — a read slice through all facts touching that date.
+- The brief's linear workflow (brief → planning → planned → live) would be replaced by a calendar-like home screen where days light up as facts accumulate.
+- This pivot leverages most existing components (anchor cards, transport bookings, accommodation bookings, timeline renderer, map, solver). The change is primarily in the entry flow and home surface.
 - ~~Batch transition insert crashed on unique constraint~~ FIXED: `.insert()` → `.upsert()` with onConflict
 - ~~Changeover stops (Leicester) had no transport_hub_id~~ FIXED: Gmail import now resolves changeover station names via resolveHubByName
 - ~~Google Transit duration overwrites booked train times~~ FIXED: skip `computed_duration_minutes` overwrite for locked (is_locked=true) legs
@@ -150,13 +160,14 @@ Two-tier: `rail_route_cache` (L1, by CRS code pair) → `routeRailPath` BFS (L2,
 ### Pipe characters in polylines
 Google's encoded polyline format can produce `|` characters. Google Static Maps uses `|` as a path parameter delimiter. The `buildStaticMapUrl` function in `src/lib/google/maps.ts` uses `encodeURIComponent` on the polyline and manually appends path params (NOT `URLSearchParams`, which double-encodes `%7C`).
 
-## Admin Role
+## Roles
 
-`is_admin` boolean on `profiles` table (migration 0026). Separate from `is_staff`:
-- **Staff**: demo mode, palette picker, feature testing
-- **Admin**: system tools (rail network seeding, data management)
+Three role flags on `profiles` table, each independent:
+- **Staff** (`is_staff`): demo mode, palette picker, feature testing
+- **Admin** (`is_admin`): workspace-level administration (managing users, workspace settings)
+- **Super User** (`is_super_user`, migration 0029): developer/system tools (rail network seeding, rail route relations, data management)
 
-`requireUserContext()` returns `isAdmin` alongside `isStaff`. Admin pages redirect non-admins. Admin server actions reject non-admins.
+`requireUserContext()` returns `isStaff`, `isAdmin`, `isSuperUser`. Super user pages (`/settings/rail-network`, `/settings/rail-routes`) redirect non-super-users. Server actions reject non-super-users.
 
 ## JourneyMap (MapLibre)
 

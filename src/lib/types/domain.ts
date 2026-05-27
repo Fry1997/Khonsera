@@ -49,6 +49,7 @@ export type StopType =
   | "transport_booked"
   | "transit_arrival"
   | "transit_departure"
+  | "transit_changeover"
   | "stopover"
   | "other";
 

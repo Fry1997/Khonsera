@@ -20,6 +20,7 @@ export type CurrentUserContext = {
   fullName: string | null;
   isStaff: boolean;
   isAdmin: boolean;
+  isSuperUser: boolean;
   workspaceId: string;
 };
 
@@ -30,7 +31,7 @@ export const requireUserContext = cache(
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, email, full_name, is_staff, is_admin, default_workspace_id")
+      .select("id, email, full_name, is_staff, is_admin, is_super_user, default_workspace_id")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -46,6 +47,7 @@ export const requireUserContext = cache(
       fullName: profile.full_name,
       isStaff: profile.is_staff,
       isAdmin: profile.is_admin,
+      isSuperUser: profile.is_super_user,
       workspaceId: profile.default_workspace_id,
     };
   },

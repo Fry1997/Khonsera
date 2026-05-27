@@ -22,6 +22,7 @@ const stopTypeEnum = z.enum([
   // added stopover). Kept in lock-step here so editor patches for
   // those stop types pass validation.
   "transit_departure",
+  "transit_changeover",
   "stopover",
   "other",
 ]);
@@ -175,7 +176,11 @@ export async function updateStop(
       before,
       after: result.value,
     });
-    await resolveItineraryTimes(result.value.itinerary_id);
+    const timeFields = new Set(["start_time", "end_time", "duration_minutes", "is_time_fixed"]);
+    const touchesTime = Object.keys(patch).some((k) => timeFields.has(k));
+    if (touchesTime) {
+      await resolveItineraryTimes(result.value.itinerary_id);
+    }
   }
   return result;
 }
@@ -200,22 +205,29 @@ export async function insertStopAt(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Bump every stop at sequence >= target by +1 to make room. Order
-  // by sequence desc so the writes don't collide with each other on
-  // any in-flight uniqueness assumptions.
-  const { data: shiftRows } = await supabase
-    .from("stops")
-    .select("id, sequence")
-    .eq("itinerary_id", parsed.value.itinerary_id)
-    .eq("workspace_id", ctx.workspaceId)
-    .gte("sequence", parsed.value.sequence)
-    .order("sequence", { ascending: false });
-  for (const r of shiftRows ?? []) {
-    await supabase
+  // Batch-bump all later stops in one query via RPC
+  const { error: rpcErr } = await supabase.rpc("bump_stop_sequences" as any, {
+    p_itinerary_id: parsed.value.itinerary_id,
+    p_workspace_id: ctx.workspaceId,
+    p_from_sequence: parsed.value.sequence,
+  });
+
+  if (rpcErr) {
+    // Fallback: sequential updates (slow but correct)
+    const { data: shiftRows } = await supabase
       .from("stops")
-      .update({ sequence: (r.sequence as number) + 1 })
-      .eq("id", r.id as string)
-      .eq("workspace_id", ctx.workspaceId);
+      .select("id, sequence")
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .gte("sequence", parsed.value.sequence)
+      .order("sequence", { ascending: false });
+    for (const r of shiftRows ?? []) {
+      await supabase
+        .from("stops")
+        .update({ sequence: (r.sequence as number) + 1 })
+        .eq("id", r.id as string)
+        .eq("workspace_id", ctx.workspaceId);
+    }
   }
 
   const { itinerary_id, sequence, ...fields } = parsed.value;
@@ -237,12 +249,15 @@ export async function insertStopAt(
       action: "create",
       after: result.value,
     });
-    await resolveItineraryTimes(result.value.itinerary_id);
+    const hasTime = fields.start_time || fields.end_time || fields.duration_minutes;
+    if (hasTime) {
+      await resolveItineraryTimes(result.value.itinerary_id);
+    }
   }
   return result;
 }
 
-export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
+export async function deleteStop(id: string, skipSolver?: boolean): Promise<Result<{ id: string }>> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
@@ -266,10 +281,45 @@ export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
     action: "delete",
     before,
   });
-  if (before?.itinerary_id) {
+  if (before?.itinerary_id && !skipSolver) {
     await resolveItineraryTimes(before.itinerary_id);
   }
   return ok({ id });
+}
+
+export async function deleteStops(ids: string[]): Promise<Result<{ ids: string[] }>> {
+  if (ids.length === 0) return ok({ ids: [] });
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, itinerary_id")
+    .in("id", ids)
+    .eq("workspace_id", ctx.workspaceId);
+
+  const itineraryId = rows?.[0]?.itinerary_id ?? null;
+
+  const { error } = await supabase
+    .from("stops")
+    .delete()
+    .in("id", ids)
+    .eq("workspace_id", ctx.workspaceId);
+
+  if (error) return dbResult<{ ids: string[] }>(null, error, "stop");
+
+  await recordAudit({
+    entityType: "stop",
+    entityId: ids[0],
+    action: "delete",
+    before: { deleted_ids: ids },
+  });
+
+  if (itineraryId) {
+    await resolveItineraryTimes(itineraryId);
+  }
+
+  return ok({ ids });
 }
 
 export async function reorderStops(

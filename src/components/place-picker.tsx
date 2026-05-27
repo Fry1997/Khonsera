@@ -223,7 +223,7 @@ export function PlacePicker({
       } finally {
         if (!cancelled) setGoogleLoading(false);
       }
-    }, 160);
+    }, 300);
     return () => {
       cancelled = true;
       clearTimeout(timeout);
@@ -243,10 +243,9 @@ export function PlacePicker({
   }, [open]);
 
   const handleGooglePick = async (g: GoogleSuggestion) => {
+    setQuery(g.primary || g.description);
+    setGoogleSuggestions([]);
     setOpen(false);
-    // Promote into our locations table immediately so the picker always
-    // returns a location_id (downstream code can keep treating it like a
-    // regular saved place).
     setPending(true);
     setError(null);
     const result = await createInlineLocation({
@@ -255,11 +254,11 @@ export function PlacePicker({
       google_place_id: g.place_id,
       google_session_token: sessionTokenRef.current,
     });
-    // New session token for the next pick — Google's billing recommendation.
     sessionTokenRef.current = newSessionToken();
     setPending(false);
     if (!result.ok) {
       setError(feedbackFromError(result.error).message);
+      setOpen(true);
       return;
     }
     const loc = result.value;
@@ -271,7 +270,6 @@ export function PlacePicker({
       location_type: loc.type,
     });
     setQuery("");
-    setGoogleSuggestions([]);
   };
 
   const pick = (row: Row) => {
@@ -510,6 +508,9 @@ export function PlacePicker({
             </button>
           ) : null}
         </div>
+      ) : null}
+      {!open && error ? (
+        <p style={{ fontSize: 12, color: "var(--rust)", marginTop: 4 }}>{error}</p>
       ) : null}
     </div>
   );

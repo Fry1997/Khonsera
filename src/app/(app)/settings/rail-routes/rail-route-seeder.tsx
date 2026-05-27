@@ -1,64 +1,81 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { seedRouteSegments, clearRouteSegments, getAllRailStationCodes, type RouteSegment } from "@/lib/actions/rail-network";
+import { useState, useCallback } from "react";
+import {
+  seedRouteSegments,
+  clearRouteSegments,
+  getRouteSegmentStats,
+  getAllRailStationCodes,
+  type RouteSegment,
+} from "@/lib/actions/rail-network";
+
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const BATCH_SIZE = 50;
+
+type Status =
+  | { phase: "idle" }
+  | { phase: "fetching"; region: string; regionIdx: number }
+  | { phase: "processing"; message: string }
+  | { phase: "seeding"; seeded: number; total: number }
+  | { phase: "done"; total: number }
+  | { phase: "error"; message: string };
 
 type OsmNode = { type: "node"; id: number; lat: number; lon: number; tags?: Record<string, string> };
-type OsmWay = { type: "way"; id: number; nodes: number[]; tags?: Record<string, string> };
+type OsmWay = { type: "way"; id: number; nodes: number[] };
 type OsmRelation = {
   type: "relation";
   id: number;
   tags?: Record<string, string>;
   members: Array<{ type: string; ref: number; role: string }>;
 };
-type OsmElement = OsmNode | OsmWay | OsmRelation;
-
-type StationMatch = {
-  osmNodeId: number;
-  name: string;
-  code: string | null;
-  lat: number;
-  lon: number;
-  positionOnRoute: number;
-};
 
 export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
-  const [status, setStatus] = useState<string>(
-    initialCount > 0 ? `${initialCount} route segments stored` : "No route segments yet",
-  );
-  const [processing, setProcessing] = useState(false);
-  const [segments, setSegments] = useState<RouteSegment[]>([]);
-  const [seeded, setSeeded] = useState(0);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [count, setCount] = useState(initialCount);
+  const [status, setStatus] = useState<Status>({ phase: "idle" });
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setProcessing(true);
-    setStatus("Reading file...");
+  const handleSeed = useCallback(async () => {
+    setStatus({ phase: "fetching", region: "United Kingdom", regionIdx: 0 });
 
     try {
-      const text = await file.text();
-      setStatus("Parsing JSON...");
-      const data = JSON.parse(text) as { elements: OsmElement[] };
+      const allNodes = new Map<number, { lat: number; lon: number; tags?: Record<string, string> }>();
+      const allWays = new Map<number, number[]>();
+      const allRelations: OsmRelation[] = [];
 
-      const nodeMap = new Map<number, { lat: number; lon: number }>();
-      const wayMap = new Map<number, number[]>();
-      const relations: OsmRelation[] = [];
+      const query = `[out:json][timeout:300];area["ISO3166-1"="GB"]->.uk;(relation(area.uk)["type"="route"]["route"="train"];);out body;>;out skel qt;`;
+      const resp = await fetch(OVERPASS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(300_000),
+      });
 
-      for (const el of data.elements) {
-        if (el.type === "node") nodeMap.set(el.id, { lat: el.lat, lon: el.lon });
-        else if (el.type === "way") wayMap.set(el.id, el.nodes);
-        else if (el.type === "relation") relations.push(el);
+      if (!resp.ok) {
+        setStatus({ phase: "error", message: `Overpass HTTP ${resp.status}. Wait a minute and retry.` });
+        return;
       }
 
-      setStatus(`Parsed ${nodeMap.size} nodes, ${wayMap.size} ways, ${relations.length} relations. Processing routes...`);
+      setStatus({ phase: "processing", message: "Parsing response..." });
+      const json = await resp.json();
+
+      for (const el of json.elements ?? []) {
+        if (el.type === "node" && el.lat != null && el.lon != null) {
+          allNodes.set(el.id, { lat: el.lat, lon: el.lon, tags: el.tags });
+        } else if (el.type === "way" && el.nodes) {
+          allWays.set(el.id, el.nodes);
+        } else if (el.type === "relation") {
+          allRelations.push(el as OsmRelation);
+        }
+      }
+
+      setStatus({ phase: "processing", message: `${allNodes.size} nodes, ${allWays.size} ways, ${allRelations.length} relations. Loading station database...` });
+
+      const hubList = await getAllRailStationCodes();
+      setStatus({ phase: "processing", message: `${hubList.length} stations loaded. Building route segments from ${allRelations.length} relations...` });
 
       const allSegments: RouteSegment[] = [];
-      let processed = 0;
+      const seenPairs = new Set<string>();
 
-      for (const rel of relations) {
+      for (const rel of allRelations) {
         const tags = rel.tags ?? {};
         if (tags.type !== "route" || tags.route !== "train") continue;
 
@@ -67,32 +84,28 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
 
         const wayMembers = rel.members.filter((m) => m.type === "way");
         const stopMembers = rel.members.filter(
-          (m) => m.type === "node" && (m.role.includes("stop") || m.role === ""),
+          (m) => m.type === "node" && m.role.includes("stop"),
         );
 
-        if (wayMembers.length === 0) continue;
+        if (wayMembers.length === 0 || stopMembers.length < 2) continue;
 
         const routePoints: Array<{ lat: number; lon: number }> = [];
-        const usedWayIds = new Set<number>();
-
         for (const wm of wayMembers) {
-          const nodeIds = wayMap.get(wm.ref);
+          const nodeIds = allWays.get(wm.ref);
           if (!nodeIds) continue;
-          if (usedWayIds.has(wm.ref)) continue;
-          usedWayIds.add(wm.ref);
 
           const wayPts: Array<{ lat: number; lon: number }> = [];
           for (const nid of nodeIds) {
-            const nd = nodeMap.get(nid);
-            if (nd) wayPts.push(nd);
+            const nd = allNodes.get(nid);
+            if (nd) wayPts.push({ lat: nd.lat, lon: nd.lon });
           }
           if (wayPts.length === 0) continue;
 
           if (routePoints.length > 0 && wayPts.length > 0) {
             const last = routePoints[routePoints.length - 1];
-            const distToFirst = sqDist(last, wayPts[0]);
-            const distToLast = sqDist(last, wayPts[wayPts.length - 1]);
-            if (distToLast < distToFirst) wayPts.reverse();
+            const distFirst = sqDist(last, wayPts[0]);
+            const distLast = sqDist(last, wayPts[wayPts.length - 1]);
+            if (distLast < distFirst) wayPts.reverse();
             wayPts.shift();
           }
           routePoints.push(...wayPts);
@@ -100,14 +113,20 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
 
         if (routePoints.length < 2) continue;
 
-        const stations: StationMatch[] = [];
+        const stations: Array<{ name: string; code: string | null; posIdx: number }> = [];
         for (const sm of stopMembers) {
-          const nd = nodeMap.get(sm.ref);
+          const nd = allNodes.get(sm.ref);
           if (!nd) continue;
-          const nodeTags = data.elements.find(
-            (el) => el.type === "node" && el.id === sm.ref,
-          ) as OsmNode | undefined;
-          const name = nodeTags?.tags?.name ?? `Node ${sm.ref}`;
+
+          // Match stop to nearest transport hub by coordinates (within 1km)
+          let bestHub: { code: string; name: string } | null = null;
+          let bestHubDist = Infinity;
+          for (const hub of hubList) {
+            const d = sqDist(nd, { lat: hub.lat, lon: hub.lng });
+            if (d < bestHubDist) { bestHubDist = d; bestHub = hub; }
+          }
+          // ~0.01 degrees ≈ 1km — skip if no hub nearby
+          if (!bestHub || bestHubDist > 0.0001) continue;
 
           let bestIdx = 0;
           let bestDist = Infinity;
@@ -116,175 +135,174 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
             if (d < bestDist) { bestDist = d; bestIdx = i; }
           }
 
-          stations.push({
-            osmNodeId: sm.ref,
-            name,
-            code: null,
-            lat: nd.lat,
-            lon: nd.lon,
-            positionOnRoute: bestIdx,
-          });
+          stations.push({ name: bestHub.name, code: bestHub.code, posIdx: bestIdx });
         }
 
-        stations.sort((a, b) => a.positionOnRoute - b.positionOnRoute);
-        const uniqueStations = stations.filter(
-          (s, i) => i === 0 || s.positionOnRoute !== stations[i - 1].positionOnRoute,
+        stations.sort((a, b) => a.posIdx - b.posIdx);
+        const unique = stations.filter(
+          (s, i) => i === 0 || s.posIdx !== stations[i - 1].posIdx,
         );
 
-        if (uniqueStations.length < 2) continue;
+        for (let i = 0; i < unique.length - 1; i++) {
+          const from = unique[i];
+          const to = unique[i + 1];
+          if (!from.code || !to.code) continue;
+          if (to.posIdx <= from.posIdx) continue;
 
-        for (let i = 0; i < uniqueStations.length - 1; i++) {
-          const from = uniqueStations[i];
-          const to = uniqueStations[i + 1];
-          const startIdx = from.positionOnRoute;
-          const endIdx = to.positionOnRoute;
-          if (endIdx <= startIdx) continue;
+          const pairKey = `${from.code}:${to.code}`;
+          if (seenPairs.has(pairKey)) continue;
+          seenPairs.add(pairKey);
 
-          const segPts = routePoints.slice(startIdx, endIdx + 1);
+          const segPts = routePoints.slice(from.posIdx, to.posIdx + 1);
           if (segPts.length < 2) continue;
 
-          const encoded = googleEncodePolyline(segPts);
           allSegments.push({
             osm_relation_id: rel.id,
             route_name: routeName,
             operator,
             from_station_name: from.name,
             to_station_name: to.name,
-            from_station_code: null,
-            to_station_code: null,
-            encoded_polyline: encoded,
+            from_station_code: from.code,
+            to_station_code: to.code,
+            encoded_polyline: encodePolyline(segPts),
             point_count: segPts.length,
           });
         }
-
-        processed++;
-        if (processed % 10 === 0) {
-          setStatus(`Processed ${processed}/${relations.length} relations, ${allSegments.length} segments...`);
-        }
       }
 
-      setStatus(`Resolving station codes for ${allSegments.length} segments...`);
-
-      const rawMap = await getAllRailStationCodes() as unknown as Record<string, string>;
-      const nameToCode = new Map<string, string>(Object.entries(rawMap));
-
-      for (const seg of allSegments) {
-        seg.from_station_code = nameToCode.get(seg.from_station_name.toLowerCase()) ?? null;
-        seg.to_station_code = nameToCode.get(seg.to_station_name.toLowerCase()) ?? null;
+      if (allSegments.length === 0) {
+        setStatus({ phase: "error", message: "No segments with matched station codes found." });
+        return;
       }
 
-      const withCodes = allSegments.filter((s) => s.from_station_code && s.to_station_code);
-      setSegments(withCodes);
-      setStatus(`Ready: ${withCodes.length} segments with station codes (${allSegments.length - withCodes.length} skipped — no code match). Click Seed to store.`);
+      setStatus({ phase: "seeding", seeded: 0, total: allSegments.length });
+
+      let seeded = 0;
+      for (let i = 0; i < allSegments.length; i += BATCH_SIZE) {
+        const chunk = allSegments.slice(i, i + BATCH_SIZE);
+        await seedRouteSegments(chunk);
+        seeded += chunk.length;
+        setStatus({ phase: "seeding", seeded, total: allSegments.length });
+      }
+
+      const fresh = await getRouteSegmentStats();
+      setCount(fresh?.count ?? seeded);
+      setStatus({ phase: "done", total: seeded });
     } catch (err) {
-      setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setProcessing(false);
+      setStatus({ phase: "error", message: err instanceof Error ? err.message : String(err) });
     }
-  };
+  }, []);
 
-  const handleSeed = async () => {
-    if (segments.length === 0) return;
-    setProcessing(true);
-    setSeeded(0);
-
-    const chunkSize = 50;
-    let total = 0;
-    for (let i = 0; i < segments.length; i += chunkSize) {
-      const chunk = segments.slice(i, i + chunkSize);
-      try {
-        const result = await seedRouteSegments(chunk);
-        total += result.inserted;
-        setSeeded(total);
-        setStatus(`Seeded ${total}/${segments.length}...`);
-      } catch (err) {
-        setStatus(`Error at chunk ${i}: ${err instanceof Error ? err.message : String(err)}`);
-        break;
-      }
-    }
-
-    setStatus(`Done: ${total} route segments stored.`);
-    setProcessing(false);
-  };
-
-  const handleClear = async () => {
-    setProcessing(true);
+  const handleClear = useCallback(async () => {
+    if (!window.confirm("Clear all stored route segments?")) return;
     try {
       await clearRouteSegments();
-      setStatus("Cleared all route segments.");
-      setSegments([]);
-      setSeeded(0);
+      setCount(0);
+      setStatus({ phase: "idle" });
     } catch (err) {
-      setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setStatus({ phase: "error", message: err instanceof Error ? err.message : String(err) });
     }
-    setProcessing(false);
-  };
+  }, []);
+
+  const isWorking = status.phase === "fetching" || status.phase === "processing" || status.phase === "seeding";
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="small" style={{ color: "var(--ink-dim)" }}>{status}</p>
+    <div className="j-card p-6" style={{ maxWidth: 640 }}>
+      <h2 className="h3 mb-2">OSM Route Relations</h2>
+      <p className="small mb-4" style={{ color: "var(--ink-dim)" }}>
+        Fetches named train route relations from OpenStreetMap via Overpass.
+        Each relation defines which track segments belong to a specific railway
+        line. Station-to-station polylines are extracted and stored — no
+        algorithmic routing needed, no junction ambiguity.
+      </p>
 
-      <div className="flex gap-3 flex-wrap">
-        <label
-          className="btn-ghost"
-          style={{ cursor: processing ? "wait" : "pointer", fontSize: 13 }}
-        >
-          Upload Overpass JSON
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json"
-            onChange={handleFile}
-            disabled={processing}
-            style={{ display: "none" }}
-          />
-        </label>
-
-        {segments.length > 0 && (
-          <button
-            className="btn-primary"
-            onClick={handleSeed}
-            disabled={processing}
-            style={{ fontSize: 13 }}
-          >
-            Seed {segments.length} segments
-          </button>
-        )}
-
-        <button
-          className="btn-ghost"
-          onClick={handleClear}
-          disabled={processing}
-          style={{ fontSize: 13, color: "var(--rust)" }}
-        >
-          Clear all
-        </button>
+      <div
+        className="mb-4"
+        style={{
+          padding: "10px 14px",
+          borderRadius: 6,
+          fontSize: 13,
+          background: count > 0 ? "var(--sage-2)" : "var(--card-2)",
+          border: `1px solid ${count > 0 ? "var(--sage-2)" : "var(--rule-2)"}`,
+          color: count > 0 ? "var(--sage)" : "var(--ink-dim)",
+        }}
+      >
+        {count > 0 ? `${count.toLocaleString()} route segments stored` : "Not seeded yet"}
       </div>
 
-      {segments.length > 0 && (
-        <div style={{ maxHeight: 300, overflow: "auto", fontSize: 12, color: "var(--ink-dim)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid var(--rule)" }}>
-                <th style={{ padding: "4px 8px" }}>From</th>
-                <th style={{ padding: "4px 8px" }}>To</th>
-                <th style={{ padding: "4px 8px" }}>Route</th>
-                <th style={{ padding: "4px 8px" }}>Points</th>
-              </tr>
-            </thead>
-            <tbody>
-              {segments.slice(0, 100).map((s, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid var(--rule-2)" }}>
-                  <td style={{ padding: "3px 8px" }}>{s.from_station_code} {s.from_station_name}</td>
-                  <td style={{ padding: "3px 8px" }}>{s.to_station_code} {s.to_station_name}</td>
-                  <td style={{ padding: "3px 8px" }}>{s.route_name}</td>
-                  <td style={{ padding: "3px 8px" }}>{s.point_count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {status.phase === "fetching" && (
+        <ProgressBox color="gold">
+          Fetching all UK train route relations from Overpass...
+        </ProgressBox>
       )}
+
+      {status.phase === "processing" && (
+        <ProgressBox color="gold">{status.message}</ProgressBox>
+      )}
+
+      {status.phase === "seeding" && (
+        <ProgressBox color="gold">
+          Seeding {status.seeded.toLocaleString()}/{status.total.toLocaleString()} segments
+          <ProgressBar value={status.seeded / status.total} />
+        </ProgressBox>
+      )}
+
+      {status.phase === "done" && (
+        <ProgressBox color="sage">
+          Done -- {status.total.toLocaleString()} route segments stored.
+        </ProgressBox>
+      )}
+
+      {status.phase === "error" && (
+        <ProgressBox color="rust">{status.message}</ProgressBox>
+      )}
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={handleSeed}
+          disabled={isWorking}
+        >
+          {isWorking ? "Working..." : count > 0 ? "Re-seed routes" : "Seed Route Relations"}
+        </button>
+        {count > 0 && (
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={handleClear}
+            disabled={isWorking}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProgressBox({ children, color }: { children: React.ReactNode; color: string }) {
+  return (
+    <div
+      className="mb-4"
+      style={{
+        padding: "10px 14px",
+        borderRadius: 6,
+        fontSize: 13,
+        background: `var(--${color}-2)`,
+        border: `1px solid var(--${color}-2)`,
+        color: color === "rust" ? "var(--rust)" : "var(--ink)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "var(--rule-2)", overflow: "hidden" }}>
+      <div style={{ height: "100%", borderRadius: 2, background: "var(--gold)", width: `${value * 100}%`, transition: "width 0.3s ease" }} />
     </div>
   );
 }
@@ -293,7 +311,7 @@ function sqDist(a: { lat: number; lon: number }, b: { lat: number; lon: number }
   return (a.lat - b.lat) ** 2 + (a.lon - b.lon) ** 2;
 }
 
-function googleEncodePolyline(points: Array<{ lat: number; lon: number }>): string {
+function encodePolyline(points: Array<{ lat: number; lon: number }>): string {
   let encoded = "";
   let prevLat = 0;
   let prevLng = 0;

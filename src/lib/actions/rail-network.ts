@@ -19,7 +19,7 @@ export async function seedRailEdges(
   edges: Edge[],
 ): Promise<{ inserted: number }> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   if (edges.length === 0) return { inserted: 0 };
 
   const supabase = await createClient();
@@ -44,7 +44,7 @@ export async function seedRouteSegments(
   segments: RouteSegment[],
 ): Promise<{ inserted: number }> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   if (segments.length === 0) return { inserted: 0 };
 
   const supabase = await createClient();
@@ -67,24 +67,28 @@ export async function getRouteSegmentStats(): Promise<{ count: number } | null> 
 
 export async function clearRouteSegments(): Promise<void> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   const supabase = await createClient();
   await supabase.from("rail_named_route_segments").delete().gte("id", "00000000-0000-0000-0000-000000000000");
 }
 
-export async function getAllRailStationCodes(): Promise<Map<string, string>> {
+export async function getAllRailStationCodes(): Promise<
+  Array<{ code: string; name: string; lat: number; lng: number }>
+> {
   await requireUserContext();
   const supabase = await createClient();
   const { data } = await supabase
     .from("transport_hubs")
-    .select("name, code")
+    .select("name, code, latitude, longitude")
     .eq("kind", "rail_station")
-    .not("code", "is", null);
-  const map = new Map<string, string>();
-  for (const h of data ?? []) {
-    if (h.code) map.set(h.name.toLowerCase(), h.code);
-  }
-  return Object.fromEntries(map) as any;
+    .not("code", "is", null)
+    .not("latitude", "is", null);
+  return (data ?? []).map((h) => ({
+    code: h.code!,
+    name: h.name,
+    lat: Number(h.latitude),
+    lng: Number(h.longitude),
+  }));
 }
 
 /**
@@ -108,7 +112,7 @@ export async function getRailNetworkStats(): Promise<{
  */
 export async function clearRailNetwork(): Promise<void> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   const supabase = await createClient();
   // Delete all rows — Supabase JS doesn't have TRUNCATE, but
   // a broad delete with a tautological filter does the job.
