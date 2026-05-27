@@ -725,8 +725,9 @@ export function ItineraryEditor({
           }
         }
       }
-      for (const id of idsToDelete) {
-        const result = await deleteStop(id);
+      for (let i = 0; i < idsToDelete.length; i++) {
+        const isLast = i === idsToDelete.length - 1;
+        const result = await deleteStop(idsToDelete[i], !isLast);
         if (!result.ok) {
           setError(feedbackFromError(result.error).message);
           break;

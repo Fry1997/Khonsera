@@ -250,7 +250,7 @@ export async function insertStopAt(
   return result;
 }
 
-export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
+export async function deleteStop(id: string, skipSolver?: boolean): Promise<Result<{ id: string }>> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
@@ -274,7 +274,7 @@ export async function deleteStop(id: string): Promise<Result<{ id: string }>> {
     action: "delete",
     before,
   });
-  if (before?.itinerary_id) {
+  if (before?.itinerary_id && !skipSolver) {
     await resolveItineraryTimes(before.itinerary_id);
   }
   return ok({ id });
