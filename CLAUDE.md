@@ -6,10 +6,20 @@
 
 After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.
 
-## Known Bugs (as of 2026-05-26)
+## Known Bugs (as of 2026-05-27)
 
-### Planning page after brief submit
+### Planning page
 - All previously listed bugs FIXED (see git history)
+- ~~Location selection silently dropped on new anchors~~ FIXED: handleAnchorPatch falls back to planningAnchors when editedAnchors has no entry
+- ~~Ghost "via Walk" + duplicate add buttons~~ FIXED: removed duplicate home→first gap from buildPlanningTimeline (editor renders it manually)
+- ~~10s+ anchor card insert latency~~ FIXED: optimistic local insertion (card appears from server action return, router.refresh runs in background); solver skipped for empty stops
+- ~~disabled={pending} blocks all buttons~~ FIXED: only advance-status and masthead-save disable during their own action
+
+### Planned pivot (2026-05-27)
+- User is considering a "facts-first" model: events, bookings, hotels are thrown at the app and stick to their dates. Days emerge from accumulated facts rather than being planned upfront.
+- The current planning page layout (timeline + map + transitions) would become a **day view** — a read slice through all facts touching that date.
+- The brief's linear workflow (brief → planning → planned → live) would be replaced by a calendar-like home screen where days light up as facts accumulate.
+- This pivot leverages most existing components (anchor cards, transport bookings, accommodation bookings, timeline renderer, map, solver). The change is primarily in the entry flow and home surface.
 - ~~Batch transition insert crashed on unique constraint~~ FIXED: `.insert()` → `.upsert()` with onConflict
 - ~~Changeover stops (Leicester) had no transport_hub_id~~ FIXED: Gmail import now resolves changeover station names via resolveHubByName
 - ~~Google Transit duration overwrites booked train times~~ FIXED: skip `computed_duration_minutes` overwrite for locked (is_locked=true) legs

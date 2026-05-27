@@ -294,7 +294,6 @@ export function ItineraryEditor({
   const [mastheadNotes, setMastheadNotes] = useState(itinerary.notes ?? "");
   const [mastheadDateStart, setMastheadDateStart] = useState(itinerary.date_start);
   const [mastheadDateEnd, setMastheadDateEnd] = useState(itinerary.date_end);
-  const [pendingInsertAt, setPendingInsertAt] = useState<number | null>(null);
 
   const saveMasthead = () => {
     startTransition(async () => {
@@ -500,18 +499,12 @@ export function ItineraryEditor({
   // Insert a new appointment anchor at the given sequence. AddBetween
   // wraps this via the brief's UI pattern: a small dashed pill
   // between cards.
-  const showTimingPicker = (sequence: number) => {
-    setPendingInsertAt(sequence);
-  };
-
-  const handleInsertAnchorAt = async (sequence: number, timingMode?: string) => {
-    setPendingInsertAt(null);
+  const handleInsertAnchorAt = async (sequence: number) => {
     setError(null);
     const result = await insertStopAt({
       itinerary_id: itinerary.id,
       sequence,
       type: "appointment",
-      metadata: timingMode ? { timing_mode: timingMode } : undefined,
     });
     if (!result.ok) {
       setError(feedbackFromError(result.error).message);
@@ -1402,8 +1395,8 @@ export function ItineraryEditor({
           </div>
         </section>
 
-        {/* ── Primary action row ─────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* ── Action rows ─────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
           {nextStatus ? (
             <button
               type="button"
@@ -1418,7 +1411,6 @@ export function ItineraryEditor({
           <button
             type="button"
             className="btn-ghost"
-            style={{ fontSize: 13 }}
             onClick={() => setEditingTransport(emptyTransportBookingItem())}
           >
             + Booked transport
@@ -1426,17 +1418,17 @@ export function ItineraryEditor({
           <button
             type="button"
             className="btn-ghost"
-            style={{ fontSize: 13 }}
             onClick={() => setShowAddAccommodation(true)}
           >
             + Hotel booking
           </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           {gmailConnected ? (
             <>
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
                 onClick={() => setGmailImportOpen(true)}
               >
                 {Icon.ticket}
@@ -1445,7 +1437,6 @@ export function ItineraryEditor({
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: 12 }}
                 onClick={() => {
                   startTransition(async () => {
                     setError(null);
@@ -1590,7 +1581,7 @@ export function ItineraryEditor({
                   ) : null}
                   {first && first.kind === "anchor" ? (
                     <div className="anchor-inline-adds">
-                      <AddBetween between onAdd={() => showTimingPicker(first.stop.sequence)} />
+                      <AddBetween between onAdd={() => handleInsertAnchorAt(first.stop.sequence)} />
                     </div>
                   ) : null}
                 </>
@@ -1634,7 +1625,7 @@ export function ItineraryEditor({
                     handleDelete,
                     handleTransitionPatch,
                     prefetchPair,
-                    handleInsertAnchorAt: showTimingPicker,
+                    handleInsertAnchorAt,
                     handleInsertStopoverBetween,
                   },
                   startStop: sortedStops.find((s) => s.type === "start") ?? null,
@@ -1653,14 +1644,7 @@ export function ItineraryEditor({
               const seq = last ? (last.sequence ?? -1) + 1 : 0;
               return (
                 <div className="anchor-inline-adds">
-                  {pendingInsertAt === seq ? (
-                    <TimingModePicker
-                      onPick={(mode) => handleInsertAnchorAt(seq, mode)}
-                      onCancel={() => setPendingInsertAt(null)}
-                    />
-                  ) : (
-                    <AddBetween onAdd={() => setPendingInsertAt(seq)} />
-                  )}
+                  <AddBetween onAdd={() => handleInsertAnchorAt(seq)} />
                 </div>
               );
             })()}
@@ -1789,21 +1773,6 @@ export function ItineraryEditor({
                   setAccommodationBookingFor(null);
                   router.refresh();
                 }}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {/* Timing mode picker for mid-timeline inserts */}
-        {pendingInsertAt !== null && pendingInsertAt !== (sortedStops[sortedStops.length - 1]?.sequence ?? -1) + 1 ? (
-          <div
-            className="fixed inset-0 z-30 flex items-center justify-center bg-ink/20 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) setPendingInsertAt(null); }}
-          >
-            <div style={{ width: "100%", maxWidth: 360 }}>
-              <TimingModePicker
-                onPick={(mode) => handleInsertAnchorAt(pendingInsertAt, mode)}
-                onCancel={() => setPendingInsertAt(null)}
               />
             </div>
           </div>
