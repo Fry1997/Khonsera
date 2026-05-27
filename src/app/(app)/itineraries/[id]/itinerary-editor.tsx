@@ -377,19 +377,28 @@ export function ItineraryEditor({
     return m;
   }, [transitions]);
 
+  // Optimistic local stops — inserted immediately from insertStopAt's
+  // return value so the card appears without waiting for router.refresh.
+  const [localStops, setLocalStops] = useState<StopRow[]>([]);
+  const mergedStops = useMemo(() => {
+    const serverIds = new Set(stops.map((s) => s.id));
+    const extras = localStops.filter((s) => !serverIds.has(s.id));
+    return [...stops, ...extras];
+  }, [stops, localStops]);
+
   // Planning-view state: shared-component cards derived from the DB
   // rows above. Anchors get a per-card "expanded" toggle so the user
   // sees a tidy summary by default and clicks Edit to flip back to
   // the full brief form. Multiple anchors can be expanded at once.
   const planningAnchors = useMemo<Anchor[]>(
-    () => anchorsFromStops(stops as DbStop[], timezone),
-    [stops, timezone],
+    () => anchorsFromStops(mergedStops as DbStop[], timezone),
+    [mergedStops, timezone],
   );
   // Full timeline including stopovers — used when rendering so we can
   // slot StopoverCard rows between the anchors they sit between.
   const planningTimeline = useMemo<EditorTimelineItem[]>(
-    () => timelineFromStops(stops as DbStop[], timezone),
-    [stops, timezone],
+    () => timelineFromStops(mergedStops as DbStop[], timezone),
+    [mergedStops, timezone],
   );
 
   // Route previews — populated lazily when the user opens a
@@ -482,14 +491,11 @@ export function ItineraryEditor({
   const [pendingExpandUid, setPendingExpandUid] = useState<string | null>(null);
   useEffect(() => {
     if (!pendingExpandUid) return;
-    // Reference the raw `stops` prop rather than sortedStops, which
-    // is declared further down (hoisting issue). Either contains the
-    // newly-created stop after router.refresh.
-    if (stops.find((s) => s.id === pendingExpandUid)) {
+    if (mergedStops.find((s) => s.id === pendingExpandUid)) {
       setExpandedUids((prev) => new Set(prev).add(pendingExpandUid));
       setPendingExpandUid(null);
     }
-  }, [pendingExpandUid, stops]);
+  }, [pendingExpandUid, mergedStops]);
 
   // Insert a new appointment anchor at the given sequence. AddBetween
   // wraps this via the brief's UI pattern: a small dashed pill
@@ -498,23 +504,42 @@ export function ItineraryEditor({
     setPendingInsertAt(sequence);
   };
 
-  const handleInsertAnchorAt = (sequence: number, timingMode?: string) => {
+  const handleInsertAnchorAt = async (sequence: number, timingMode?: string) => {
     setPendingInsertAt(null);
-    startTransition(async () => {
-      setError(null);
-      const result = await insertStopAt({
-        itinerary_id: itinerary.id,
-        sequence,
-        type: "appointment",
-        metadata: timingMode ? { timing_mode: timingMode } : undefined,
-      });
-      if (!result.ok) {
-        setError(feedbackFromError(result.error).message);
-        return;
-      }
-      setPendingExpandUid(result.value.id);
-      router.refresh();
+    setError(null);
+    const result = await insertStopAt({
+      itinerary_id: itinerary.id,
+      sequence,
+      type: "appointment",
+      metadata: timingMode ? { timing_mode: timingMode } : undefined,
     });
+    if (!result.ok) {
+      setError(feedbackFromError(result.error).message);
+      return;
+    }
+    const s = result.value;
+    const optimistic: StopRow = {
+      id: s.id,
+      sequence: s.sequence,
+      type: s.type as StopType,
+      title: s.title ?? null,
+      start_time: s.start_time ?? null,
+      end_time: s.end_time ?? null,
+      duration_minutes: s.duration_minutes ?? null,
+      is_time_fixed: s.is_time_fixed ?? false,
+      location_id: s.location_id ?? null,
+      customer_id: s.customer_id ?? null,
+      customer_site_id: s.customer_site_id ?? null,
+      external_reference: s.external_reference ?? null,
+      notes: s.notes ?? null,
+      location: null,
+      customer: null,
+      customer_site: null,
+      metadata: s.metadata ?? null,
+    };
+    setLocalStops((prev) => [...prev, optimistic]);
+    setPendingExpandUid(s.id);
+    router.refresh();
   };
 
   // Insert a new stopover between two existing anchor stops.
@@ -647,8 +672,8 @@ export function ItineraryEditor({
   }, [journeyLegs]);
 
   const sortedStops = useMemo(
-    () => [...stops].sort((a, b) => a.sequence - b.sequence),
-    [stops],
+    () => [...mergedStops].sort((a, b) => a.sequence - b.sequence),
+    [mergedStops],
   );
 
   // Roll up feasibility flags across every adjacent pair of stops
@@ -1864,7 +1889,7 @@ function TimingModePicker({
   ];
   return (
     <div className="timing-picker" style={{
-      display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6,
+      display: "grid", gap: 6,
       padding: 12, background: "var(--card)", border: "1px solid var(--rule)",
       borderRadius: 10,
     }}>
