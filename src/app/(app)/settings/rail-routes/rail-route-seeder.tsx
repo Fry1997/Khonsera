@@ -67,12 +67,10 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
         }
       }
 
-      setStatus({ phase: "processing", message: `${allNodes.size} nodes, ${allWays.size} ways, ${allRelations.length} relations. Resolving station codes...` });
+      setStatus({ phase: "processing", message: `${allNodes.size} nodes, ${allWays.size} ways, ${allRelations.length} relations. Loading station database...` });
 
-      const rawCodes = await getAllRailStationCodes() as unknown as Record<string, string>;
-      const nameToCode = new Map<string, string>(Object.entries(rawCodes));
-
-      setStatus({ phase: "processing", message: `Building route segments from ${allRelations.length} relations...` });
+      const hubList = await getAllRailStationCodes();
+      setStatus({ phase: "processing", message: `${hubList.length} stations loaded. Building route segments from ${allRelations.length} relations...` });
 
       const allSegments: RouteSegment[] = [];
       const seenPairs = new Set<string>();
@@ -119,8 +117,16 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
         for (const sm of stopMembers) {
           const nd = allNodes.get(sm.ref);
           if (!nd) continue;
-          const name = nd.tags?.name ?? "";
-          if (!name) continue;
+
+          // Match stop to nearest transport hub by coordinates (within 1km)
+          let bestHub: { code: string; name: string } | null = null;
+          let bestHubDist = Infinity;
+          for (const hub of hubList) {
+            const d = sqDist(nd, { lat: hub.lat, lon: hub.lng });
+            if (d < bestHubDist) { bestHubDist = d; bestHub = hub; }
+          }
+          // ~0.01 degrees ≈ 1km — skip if no hub nearby
+          if (!bestHub || bestHubDist > 0.0001) continue;
 
           let bestIdx = 0;
           let bestDist = Infinity;
@@ -129,8 +135,7 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
             if (d < bestDist) { bestDist = d; bestIdx = i; }
           }
 
-          const code = nameToCode.get(name.toLowerCase()) ?? null;
-          stations.push({ name, code, posIdx: bestIdx });
+          stations.push({ name: bestHub.name, code: bestHub.code, posIdx: bestIdx });
         }
 
         stations.sort((a, b) => a.posIdx - b.posIdx);

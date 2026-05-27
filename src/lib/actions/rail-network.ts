@@ -72,19 +72,23 @@ export async function clearRouteSegments(): Promise<void> {
   await supabase.from("rail_named_route_segments").delete().gte("id", "00000000-0000-0000-0000-000000000000");
 }
 
-export async function getAllRailStationCodes(): Promise<Map<string, string>> {
+export async function getAllRailStationCodes(): Promise<
+  Array<{ code: string; name: string; lat: number; lng: number }>
+> {
   await requireUserContext();
   const supabase = await createClient();
   const { data } = await supabase
     .from("transport_hubs")
-    .select("name, code")
+    .select("name, code, latitude, longitude")
     .eq("kind", "rail_station")
-    .not("code", "is", null);
-  const map = new Map<string, string>();
-  for (const h of data ?? []) {
-    if (h.code) map.set(h.name.toLowerCase(), h.code);
-  }
-  return Object.fromEntries(map) as any;
+    .not("code", "is", null)
+    .not("latitude", "is", null);
+  return (data ?? []).map((h) => ({
+    code: h.code!,
+    name: h.name,
+    lat: Number(h.latitude),
+    lng: Number(h.longitude),
+  }));
 }
 
 /**
