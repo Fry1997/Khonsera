@@ -17,6 +17,7 @@ import {
   deleteStop,
   insertStopAt,
   updateStop,
+  deleteStops,
 } from "@/lib/actions/stops";
 import {
   upsertTransition,
@@ -293,6 +294,7 @@ export function ItineraryEditor({
   const [mastheadNotes, setMastheadNotes] = useState(itinerary.notes ?? "");
   const [mastheadDateStart, setMastheadDateStart] = useState(itinerary.date_start);
   const [mastheadDateEnd, setMastheadDateEnd] = useState(itinerary.date_end);
+  const [pendingInsertAt, setPendingInsertAt] = useState<number | null>(null);
 
   const saveMasthead = () => {
     startTransition(async () => {
@@ -492,13 +494,19 @@ export function ItineraryEditor({
   // Insert a new appointment anchor at the given sequence. AddBetween
   // wraps this via the brief's UI pattern: a small dashed pill
   // between cards.
-  const handleInsertAnchorAt = (sequence: number) => {
+  const showTimingPicker = (sequence: number) => {
+    setPendingInsertAt(sequence);
+  };
+
+  const handleInsertAnchorAt = (sequence: number, timingMode?: string) => {
+    setPendingInsertAt(null);
     startTransition(async () => {
       setError(null);
       const result = await insertStopAt({
         itinerary_id: itinerary.id,
         sequence,
         type: "appointment",
+        metadata: timingMode ? { timing_mode: timingMode } : undefined,
       });
       if (!result.ok) {
         setError(feedbackFromError(result.error).message);
@@ -710,7 +718,6 @@ export function ItineraryEditor({
     if (!window.confirm("Delete this point?")) return;
     startTransition(async () => {
       setError(null);
-      // If this is a transit_departure, also delete its changeover + arrival siblings
       const stop = sortedStops.find((s) => s.id === stopId);
       const idsToDelete = [stopId];
       if (stop?.type === "transit_departure") {
@@ -725,13 +732,9 @@ export function ItineraryEditor({
           }
         }
       }
-      for (let i = 0; i < idsToDelete.length; i++) {
-        const isLast = i === idsToDelete.length - 1;
-        const result = await deleteStop(idsToDelete[i], !isLast);
-        if (!result.ok) {
-          setError(feedbackFromError(result.error).message);
-          break;
-        }
+      const result = await deleteStops(idsToDelete);
+      if (!result.ok) {
+        setError(feedbackFromError(result.error).message);
       }
       router.refresh();
     });
@@ -1386,16 +1389,13 @@ export function ItineraryEditor({
               {Icon.arrow}
             </button>
           ) : null}
-          <span className={`sb ${STATUS_SB[itinerary.status]}`}>
-            {STATUS_LABEL[itinerary.status]}
-          </span>
           <button
             type="button"
             className="btn-ghost"
             style={{ fontSize: 13 }}
             onClick={() => setEditingTransport(emptyTransportBookingItem())}
           >
-            + Transport
+            + Booked transport
           </button>
           <button
             type="button"
@@ -1403,7 +1403,7 @@ export function ItineraryEditor({
             style={{ fontSize: 13 }}
             onClick={() => setShowAddAccommodation(true)}
           >
-            + Accommodation
+            + Hotel booking
           </button>
           {gmailConnected ? (
             <>
@@ -1412,7 +1412,6 @@ export function ItineraryEditor({
                 className="btn-ghost"
                 style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
                 onClick={() => setGmailImportOpen(true)}
-                disabled={pending}
               >
                 {Icon.ticket}
                 Scan for tickets
@@ -1433,7 +1432,6 @@ export function ItineraryEditor({
                     router.refresh();
                   });
                 }}
-                disabled={pending}
               >
                 Refresh ticket details
               </button>
@@ -1566,7 +1564,7 @@ export function ItineraryEditor({
                   ) : null}
                   {first && first.kind === "anchor" ? (
                     <div className="anchor-inline-adds">
-                      <AddBetween between onAdd={() => handleInsertAnchorAt(first.stop.sequence)} />
+                      <AddBetween between onAdd={() => showTimingPicker(first.stop.sequence)} />
                     </div>
                   ) : null}
                 </>
@@ -1610,7 +1608,7 @@ export function ItineraryEditor({
                     handleDelete,
                     handleTransitionPatch,
                     prefetchPair,
-                    handleInsertAnchorAt,
+                    handleInsertAnchorAt: showTimingPicker,
                     handleInsertStopoverBetween,
                   },
                   startStop: sortedStops.find((s) => s.type === "start") ?? null,
@@ -1626,13 +1624,17 @@ export function ItineraryEditor({
 
             {(() => {
               const last = sortedStops[sortedStops.length - 1];
+              const seq = last ? (last.sequence ?? -1) + 1 : 0;
               return (
                 <div className="anchor-inline-adds">
-                  <AddBetween
-                    onAdd={() => handleInsertAnchorAt(
-                      last ? (last.sequence ?? -1) + 1 : 0,
-                    )}
-                  />
+                  {pendingInsertAt === seq ? (
+                    <TimingModePicker
+                      onPick={(mode) => handleInsertAnchorAt(seq, mode)}
+                      onCancel={() => setPendingInsertAt(null)}
+                    />
+                  ) : (
+                    <AddBetween onAdd={() => setPendingInsertAt(seq)} />
+                  )}
                 </div>
               );
             })()}
@@ -1644,9 +1646,15 @@ export function ItineraryEditor({
               <div className="route-map-header">
                 <span className="route-map-eyebrow">Door-to-door</span>
                 <span className="route-map-headline">
-                  {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
-                  {totalMiles > 0 && totalMinutes > 0 && " · "}
-                  {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
+                  {totalMiles > 0 || totalMinutes > 0 ? (
+                    <>
+                      {totalMiles > 0 && <>{Math.round(totalMiles)} mi</>}
+                      {totalMiles > 0 && totalMinutes > 0 && " · "}
+                      {totalMinutes > 0 && <>{fmtDuration(totalMinutes)}</>}
+                    </>
+                  ) : (
+                    <span style={{ color: "var(--ink-faint)", fontStyle: "italic" }}>Add stops to see your route</span>
+                  )}
                 </span>
                 <button
                   type="button"
@@ -1665,12 +1673,24 @@ export function ItineraryEditor({
                   )}
                 </button>
               </div>
-              <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined }}>
+              <div style={{ borderRadius: "0 0 12px 12px", overflow: "hidden", flex: mapExpanded ? 1 : undefined, position: "relative" }}>
                 <JourneyMap
                   journey={journeyMapData}
                   mode="planning"
                   height={mapExpanded ? undefined : 320}
                 />
+                {journeyMapData.legs.length === 0 && (
+                  <div style={{
+                    position: "absolute", inset: 0, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    background: "var(--card)", opacity: 0.85,
+                    pointerEvents: "none",
+                  }}>
+                    <p className="serif-i" style={{ color: "var(--ink-dim)", fontSize: 15, textAlign: "center", padding: "0 24px" }}>
+                      Add stops with locations to see your route on the map
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1740,6 +1760,21 @@ export function ItineraryEditor({
           </div>
         ) : null}
 
+        {/* Timing mode picker for mid-timeline inserts */}
+        {pendingInsertAt !== null && pendingInsertAt !== (sortedStops[sortedStops.length - 1]?.sequence ?? -1) + 1 ? (
+          <div
+            className="fixed inset-0 z-30 flex items-center justify-center bg-ink/20 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setPendingInsertAt(null); }}
+          >
+            <div style={{ width: "100%", maxWidth: 360 }}>
+              <TimingModePicker
+                onPick={(mode) => handleInsertAnchorAt(pendingInsertAt, mode)}
+                onCancel={() => setPendingInsertAt(null)}
+              />
+            </div>
+          </div>
+        ) : null}
+
         {/* Gmail import panel */}
         {gmailImportOpen ? (
           <GmailImportPanel
@@ -1787,7 +1822,7 @@ export function ItineraryEditor({
             <div className="my-8 w-full max-w-2xl">
               <AddAccommodationBookingForm
                 afterStopId={sortedStops[sortedStops.length - 1]?.id}
-                afterStopLabel="end of timeline"
+                afterStopLabel={sortedStops[sortedStops.length - 1]?.title ?? "your last stop"}
                 customers={customers}
                 customerSites={customerSites}
                 locations={locations}
@@ -1801,6 +1836,67 @@ export function ItineraryEditor({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function TimingModePicker({
+  onPick,
+  onCancel,
+}: {
+  onPick: (mode: string) => void;
+  onCancel: () => void;
+}) {
+  const options = [
+    { mode: "arrive_by", label: "I need to be there by...", icon: ">" },
+    { mode: "leave_by", label: "I need to leave by...", icon: "<" },
+    { mode: "around_then", label: "I'll be there around...", icon: "~" },
+    { mode: "maximize", label: "As long as possible", icon: "+" },
+  ];
+  return (
+    <div className="timing-picker" style={{
+      display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6,
+      padding: 12, background: "var(--card)", border: "1px solid var(--rule)",
+      borderRadius: 10,
+    }}>
+      {options.map((o) => (
+        <button
+          key={o.mode}
+          type="button"
+          onClick={() => onPick(o.mode)}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 12px", borderRadius: 8,
+            border: "1px solid var(--rule)", background: "var(--card-2)",
+            cursor: "pointer", fontSize: 12, color: "var(--ink)",
+            fontFamily: "var(--sans)", textAlign: "left",
+            transition: "border-color 0.15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--gold)")}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--rule)")}
+        >
+          <span style={{
+            width: 24, height: 24, borderRadius: "50%",
+            background: "var(--gold-2)", color: "var(--gold)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 600, flexShrink: 0,
+          }}>
+            {o.icon}
+          </span>
+          <span>{o.label}</span>
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onCancel}
+        style={{
+          gridColumn: "1 / -1", padding: "6px 0", fontSize: 11,
+          color: "var(--ink-faint)", background: "none", border: "none",
+          cursor: "pointer",
+        }}
+      >
+        Cancel
+      </button>
     </div>
   );
 }

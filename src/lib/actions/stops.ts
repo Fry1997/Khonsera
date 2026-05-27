@@ -176,7 +176,11 @@ export async function updateStop(
       before,
       after: result.value,
     });
-    await resolveItineraryTimes(result.value.itinerary_id);
+    const timeFields = new Set(["start_time", "end_time", "duration_minutes", "is_time_fixed"]);
+    const touchesTime = Object.keys(patch).some((k) => timeFields.has(k));
+    if (touchesTime) {
+      await resolveItineraryTimes(result.value.itinerary_id);
+    }
   }
   return result;
 }
@@ -278,6 +282,41 @@ export async function deleteStop(id: string, skipSolver?: boolean): Promise<Resu
     await resolveItineraryTimes(before.itinerary_id);
   }
   return ok({ id });
+}
+
+export async function deleteStops(ids: string[]): Promise<Result<{ ids: string[] }>> {
+  if (ids.length === 0) return ok({ ids: [] });
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, itinerary_id")
+    .in("id", ids)
+    .eq("workspace_id", ctx.workspaceId);
+
+  const itineraryId = rows?.[0]?.itinerary_id ?? null;
+
+  const { error } = await supabase
+    .from("stops")
+    .delete()
+    .in("id", ids)
+    .eq("workspace_id", ctx.workspaceId);
+
+  if (error) return dbResult<{ ids: string[] }>(null, error, "stop");
+
+  await recordAudit({
+    entityType: "stop",
+    entityId: ids[0],
+    action: "delete",
+    before: { deleted_ids: ids },
+  });
+
+  if (itineraryId) {
+    await resolveItineraryTimes(itineraryId);
+  }
+
+  return ok({ ids });
 }
 
 export async function reorderStops(
