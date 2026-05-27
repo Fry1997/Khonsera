@@ -223,7 +223,7 @@ export function PlacePicker({
       } finally {
         if (!cancelled) setGoogleLoading(false);
       }
-    }, 160);
+    }, 300);
     return () => {
       cancelled = true;
       clearTimeout(timeout);

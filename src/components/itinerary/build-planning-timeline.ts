@@ -253,11 +253,11 @@ export function buildPlanningTimeline(input: PlanningTimelineInput): TimelineEnt
       // Inline adds BEFORE the gap-mode picker — adding a stop between
       // the anchor and the station should come before choosing how you
       // get to the station.
-      if (item.kind === "anchor" && nextItem) {
+      if (nextItem) {
         result.push({
           kind: "inline-adds",
           onAddAnchor: () => handlers.handleInsertAnchorAt(nextItem.stop.sequence),
-          onAddStopover: nextItem.kind === "anchor"
+          onAddStopover: nextItem.kind === "anchor" || nextItem.kind === "stopover"
             ? () => handlers.handleInsertStopoverBetween(stop.id, nextItem.stop.id)
             : undefined,
         });

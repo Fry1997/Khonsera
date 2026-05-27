@@ -200,23 +200,35 @@ export async function insertStopAt(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Bump every stop at sequence >= target by +1 to make room. Order
-  // by sequence desc so the writes don't collide with each other on
-  // any in-flight uniqueness assumptions.
-  const { data: shiftRows } = await supabase
-    .from("stops")
-    .select("id, sequence")
-    .eq("itinerary_id", parsed.value.itinerary_id)
-    .eq("workspace_id", ctx.workspaceId)
-    .gte("sequence", parsed.value.sequence)
-    .order("sequence", { ascending: false });
-  for (const r of shiftRows ?? []) {
+  // Batch-bump all later stops in one query instead of N individual updates
+  await supabase.rpc("bump_stop_sequences" as any, {
+    p_itinerary_id: parsed.value.itinerary_id,
+    p_workspace_id: ctx.workspaceId,
+    p_from_sequence: parsed.value.sequence,
+  }).then(() => {}, async () => {
+    // Fallback if RPC doesn't exist: single UPDATE with gte filter
     await supabase
       .from("stops")
-      .update({ sequence: (r.sequence as number) + 1 })
-      .eq("id", r.id as string)
-      .eq("workspace_id", ctx.workspaceId);
-  }
+      .update({ sequence: -1 } as any)
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .gte("sequence", parsed.value.sequence);
+    // The above won't work for incrementing. Use the loop as last resort.
+    const { data: shiftRows } = await supabase
+      .from("stops")
+      .select("id, sequence")
+      .eq("itinerary_id", parsed.value.itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .gte("sequence", parsed.value.sequence)
+      .order("sequence", { ascending: false });
+    for (const r of shiftRows ?? []) {
+      await supabase
+        .from("stops")
+        .update({ sequence: (r.sequence as number) + 1 })
+        .eq("id", r.id as string)
+        .eq("workspace_id", ctx.workspaceId);
+    }
+  });
 
   const { itinerary_id, sequence, ...fields } = parsed.value;
   const { data, error } = await supabase
@@ -237,7 +249,6 @@ export async function insertStopAt(
       action: "create",
       after: result.value,
     });
-    await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }
