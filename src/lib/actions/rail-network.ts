@@ -72,6 +72,21 @@ export async function clearRouteSegments(): Promise<void> {
   await supabase.from("rail_named_route_segments").delete().gte("id", "00000000-0000-0000-0000-000000000000");
 }
 
+export async function getAllRailStationCodes(): Promise<Map<string, string>> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("transport_hubs")
+    .select("name, code")
+    .eq("kind", "rail_station")
+    .not("code", "is", null);
+  const map = new Map<string, string>();
+  for (const h of data ?? []) {
+    if (h.code) map.set(h.name.toLowerCase(), h.code);
+  }
+  return Object.fromEntries(map) as any;
+}
+
 /**
  * Return the count of stored edges (null if table is empty / not seeded).
  */

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { seedRouteSegments, clearRouteSegments, type RouteSegment } from "@/lib/actions/rail-network";
-import { searchTransportHubs } from "@/lib/actions/travel-profile";
+import { seedRouteSegments, clearRouteSegments, getAllRailStationCodes, type RouteSegment } from "@/lib/actions/rail-network";
 
 type OsmNode = { type: "node"; id: number; lat: number; lon: number; tags?: Record<string, string> };
 type OsmWay = { type: "way"; id: number; nodes: number[]; tags?: Record<string, string> };
@@ -166,24 +165,12 @@ export function RailRouteSeeder({ initialCount }: { initialCount: number }) {
 
       setStatus(`Resolving station codes for ${allSegments.length} segments...`);
 
-      const nameToCode = new Map<string, string>();
-      const uniqueNames = [...new Set(allSegments.flatMap((s) => [s.from_station_name, s.to_station_name]))];
-      for (const name of uniqueNames) {
-        if (nameToCode.has(name)) continue;
-        try {
-          const result = await searchTransportHubs({ query: name, kind: "rail_station" });
-          if (result.ok && result.value.length > 0) {
-            const match = result.value.find(
-              (h) => h.name.toLowerCase() === name.toLowerCase(),
-            ) ?? result.value[0];
-            if (match.code) nameToCode.set(name, match.code);
-          }
-        } catch { /* best effort */ }
-      }
+      const rawMap = await getAllRailStationCodes() as unknown as Record<string, string>;
+      const nameToCode = new Map<string, string>(Object.entries(rawMap));
 
       for (const seg of allSegments) {
-        seg.from_station_code = nameToCode.get(seg.from_station_name) ?? null;
-        seg.to_station_code = nameToCode.get(seg.to_station_name) ?? null;
+        seg.from_station_code = nameToCode.get(seg.from_station_name.toLowerCase()) ?? null;
+        seg.to_station_code = nameToCode.get(seg.to_station_name.toLowerCase()) ?? null;
       }
 
       const withCodes = allSegments.filter((s) => s.from_station_code && s.to_station_code);
