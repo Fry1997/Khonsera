@@ -138,7 +138,7 @@ export function AnchorCard({
   }
 
   return (
-    <section className={first ? "brief-card brief-card-hero" : "brief-card"}>
+    <section className={`${first ? "brief-card brief-card-hero" : "brief-card"} brief-card-expanded`}>
       <header
         style={{
           display: "flex",

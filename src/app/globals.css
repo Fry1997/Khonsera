@@ -3547,6 +3547,26 @@
      under the chip rows (the swipe gesture is enough on touch), and
      trim padding so nothing slips off the edge of the screen. */
   @media (max-width: 640px) {
+    .brief-card-expanded {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      border-radius: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+      border: none;
+      box-shadow: none;
+    }
+    .brief-card-expanded header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--card);
+      padding-bottom: 8px;
+      margin: -16px -16px 8px;
+      padding: 16px 16px 8px;
+    }
     .brief-pill-row {
       scrollbar-width: none;
     }
