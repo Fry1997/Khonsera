@@ -6,7 +6,7 @@ import { RailRouteSeeder } from "./rail-route-seeder";
 
 export default async function RailRoutesPage() {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) redirect("/settings");
+  if (!ctx.isSuperUser) redirect("/settings");
 
   const stats = await getRouteSegmentStats();
 

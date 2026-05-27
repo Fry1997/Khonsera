@@ -150,13 +150,14 @@ Two-tier: `rail_route_cache` (L1, by CRS code pair) → `routeRailPath` BFS (L2,
 ### Pipe characters in polylines
 Google's encoded polyline format can produce `|` characters. Google Static Maps uses `|` as a path parameter delimiter. The `buildStaticMapUrl` function in `src/lib/google/maps.ts` uses `encodeURIComponent` on the polyline and manually appends path params (NOT `URLSearchParams`, which double-encodes `%7C`).
 
-## Admin Role
+## Roles
 
-`is_admin` boolean on `profiles` table (migration 0026). Separate from `is_staff`:
-- **Staff**: demo mode, palette picker, feature testing
-- **Admin**: system tools (rail network seeding, data management)
+Three role flags on `profiles` table, each independent:
+- **Staff** (`is_staff`): demo mode, palette picker, feature testing
+- **Admin** (`is_admin`): workspace-level administration (managing users, workspace settings)
+- **Super User** (`is_super_user`, migration 0029): developer/system tools (rail network seeding, rail route relations, data management)
 
-`requireUserContext()` returns `isAdmin` alongside `isStaff`. Admin pages redirect non-admins. Admin server actions reject non-admins.
+`requireUserContext()` returns `isStaff`, `isAdmin`, `isSuperUser`. Super user pages (`/settings/rail-network`, `/settings/rail-routes`) redirect non-super-users. Server actions reject non-super-users.
 
 ## JourneyMap (MapLibre)
 

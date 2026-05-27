@@ -104,9 +104,13 @@ export default async function SettingsPage({
         <div className="j-card p-5">
           <h2 className="h3 mb-2">Account</h2>
           <p className="small">{ctx.email}</p>
-          {ctx.isAdmin ? (
+          {ctx.isSuperUser ? (
             <p className="mt-1 text-xs text-terra">
-              Admin account
+              Super user · developer tools available
+            </p>
+          ) : ctx.isAdmin ? (
+            <p className="mt-1 text-xs text-terra">
+              Workspace admin
             </p>
           ) : ctx.isStaff ? (
             <p className="mt-1 text-xs text-terra">
@@ -204,15 +208,20 @@ export default async function SettingsPage({
         </section>
       ) : null}
 
-      {ctx.isAdmin ? (
+      {ctx.isSuperUser ? (
         <section className="j-card p-5">
-          <h2 className="h3">Admin tools</h2>
+          <h2 className="h3">Developer tools</h2>
           <p className="small mt-1 mb-3">
-            System-level tools. Only visible to admins.
+            System-level data management. Only visible to super users.
           </p>
-          <a href="/settings/rail-network" className="btn btn-ghost">
-            Rail network seed
-          </a>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="/settings/rail-routes" className="btn btn-ghost">
+              Rail route relations
+            </a>
+            <a href="/settings/rail-network" className="btn btn-ghost">
+              Rail network edges
+            </a>
+          </div>
         </section>
       ) : null}
 

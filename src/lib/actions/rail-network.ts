@@ -19,7 +19,7 @@ export async function seedRailEdges(
   edges: Edge[],
 ): Promise<{ inserted: number }> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   if (edges.length === 0) return { inserted: 0 };
 
   const supabase = await createClient();
@@ -44,7 +44,7 @@ export async function seedRouteSegments(
   segments: RouteSegment[],
 ): Promise<{ inserted: number }> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   if (segments.length === 0) return { inserted: 0 };
 
   const supabase = await createClient();
@@ -67,7 +67,7 @@ export async function getRouteSegmentStats(): Promise<{ count: number } | null> 
 
 export async function clearRouteSegments(): Promise<void> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   const supabase = await createClient();
   await supabase.from("rail_named_route_segments").delete().gte("id", "00000000-0000-0000-0000-000000000000");
 }
@@ -112,7 +112,7 @@ export async function getRailNetworkStats(): Promise<{
  */
 export async function clearRailNetwork(): Promise<void> {
   const ctx = await requireUserContext();
-  if (!ctx.isAdmin) throw new Error("Admin only");
+  if (!ctx.isSuperUser) throw new Error("Super user only");
   const supabase = await createClient();
   // Delete all rows — Supabase JS doesn't have TRUNCATE, but
   // a broad delete with a tautological filter does the job.
