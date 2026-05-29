@@ -87,3 +87,47 @@ export type ExpenseType =
   | "hotel"
   | "food"
   | "other";
+
+// ============================================================================
+// Tell Khonsera capture substrate (migration 0027)
+// ============================================================================
+
+// Lifecycle of a raw natural-language capture before it becomes records.
+export type CapturedInputStatus =
+  | "pending_review"
+  | "confirmed"
+  | "corrected"
+  | "rejected"
+  | "expired";
+
+// How certain we are about a fact — drives whether the engine confirms it.
+export type FactConfidence = "high" | "medium" | "low";
+
+// How a fact entered the system.
+export type FactSource =
+  | "manual"
+  | "captured"
+  | "parsed_email"
+  | "calendar"
+  | "partner_api"
+  | "inferred"
+  | "system";
+
+// Per-fact raw->done lifecycle. Distinct from a stop's `commitment` column
+// (solver hardness: preferred/required).
+export type FactCommitmentState =
+  | "raw"
+  | "sorted"
+  | "planned"
+  | "booked"
+  | "live"
+  | "done"
+  | "cancelled";
+
+// Lifecycle of a held wish without a date anchor.
+export type IntentStatus =
+  | "open"
+  | "in_progress"
+  | "fulfilled"
+  | "abandoned"
+  | "snoozed";

@@ -25,6 +25,18 @@ After making changes to any itinerary page, the Gmail import pipeline, or the sh
 - Supabase project: `attbfwemjoslugvtfbrt` (EU West 1)
 - Vercel project: `prj_Dwmmyzk75AT0sJDchcJ52rU9ZTLz`, team `team_zK6YQHcoKN5rkpkCfohV4nXg`
 
+### Tell Khonsera capture substrate (migrations 0027/0028)
+Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.
+- Facts (`stops`/`transitions`/`travel_bookings`) carry `confidence`, `source`,
+  `commitment_state` (raw→done lifecycle — NOT the same as `stops.commitment`, which is
+  solver hardness). Defaults preserve all existing behaviour.
+- New tables: `captured_inputs` (raw text + parser draft), `standing_facts`, `intents`.
+- Fact-type schema registry in code at `src/lib/dictionary/` (slots, tiers, resolvers) —
+  the single source of truth the future parser + gap engine read. Add a fact-type =
+  a module under `fact-types/` registered in `registry.ts`.
+- 0028 enabled RLS on four previously-exposed tables (gmail_scanned_emails + 3 rail tables).
+- The parser, gap engine, and capture UI are NOT built yet — only the substrate they sit on.
+
 ## Design Principles
 
 ### One Toolkit, Two Views

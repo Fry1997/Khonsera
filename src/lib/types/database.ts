@@ -19,6 +19,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      _debug_routes_api: {
+        Row: {
+          body: Json | null
+          created_at: string
+          field_mask: string | null
+          id: number
+          message: string | null
+          status: string | null
+        }
+        Insert: {
+          body?: Json | null
+          created_at?: string
+          field_mask?: string | null
+          id?: number
+          message?: string | null
+          status?: string | null
+        }
+        Update: {
+          body?: Json | null
+          created_at?: string
+          field_mask?: string | null
+          id?: number
+          message?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           action: string
@@ -80,14 +107,14 @@ export type Database = {
           estimated_price: number | null
           id: string
           idempotency_key: string | null
+          itinerary_id: string | null
           outbound_summary: string | null
           partner_deep_link: string | null
           provider: string | null
           return_summary: string | null
           status: Database["public"]["Enums"]["booking_intent_status"]
-          travel_option_id: string | null
+          stop_id: string
           updated_at: string
-          visit_plan_id: string
           workspace_id: string
         }
         Insert: {
@@ -96,14 +123,14 @@ export type Database = {
           estimated_price?: number | null
           id?: string
           idempotency_key?: string | null
+          itinerary_id?: string | null
           outbound_summary?: string | null
           partner_deep_link?: string | null
           provider?: string | null
           return_summary?: string | null
           status?: Database["public"]["Enums"]["booking_intent_status"]
-          travel_option_id?: string | null
+          stop_id: string
           updated_at?: string
-          visit_plan_id: string
           workspace_id: string
         }
         Update: {
@@ -112,29 +139,29 @@ export type Database = {
           estimated_price?: number | null
           id?: string
           idempotency_key?: string | null
+          itinerary_id?: string | null
           outbound_summary?: string | null
           partner_deep_link?: string | null
           provider?: string | null
           return_summary?: string | null
           status?: Database["public"]["Enums"]["booking_intent_status"]
-          travel_option_id?: string | null
+          stop_id?: string
           updated_at?: string
-          visit_plan_id?: string
           workspace_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "booking_intents_travel_option_id_fkey"
-            columns: ["travel_option_id"]
+            foreignKeyName: "booking_intents_itinerary_id_fkey"
+            columns: ["itinerary_id"]
             isOneToOne: false
-            referencedRelation: "travel_options"
+            referencedRelation: "itineraries"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "booking_intents_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
+            foreignKeyName: "booking_intents_stop_id_fkey"
+            columns: ["stop_id"]
             isOneToOne: false
-            referencedRelation: "visit_plans"
+            referencedRelation: "stops"
             referencedColumns: ["id"]
           },
           {
@@ -212,10 +239,12 @@ export type Database = {
           external_event_id: string | null
           id: string
           idempotency_key: string | null
+          itinerary_id: string
           provider: Database["public"]["Enums"]["calendar_provider"]
           start_time: string | null
+          stop_id: string | null
+          transition_id: string | null
           updated_at: string
-          visit_plan_id: string
           workspace_id: string
         }
         Insert: {
@@ -226,10 +255,12 @@ export type Database = {
           external_event_id?: string | null
           id?: string
           idempotency_key?: string | null
+          itinerary_id: string
           provider: Database["public"]["Enums"]["calendar_provider"]
           start_time?: string | null
+          stop_id?: string | null
+          transition_id?: string | null
           updated_at?: string
-          visit_plan_id: string
           workspace_id: string
         }
         Update: {
@@ -240,10 +271,12 @@ export type Database = {
           external_event_id?: string | null
           id?: string
           idempotency_key?: string | null
+          itinerary_id?: string
           provider?: Database["public"]["Enums"]["calendar_provider"]
           start_time?: string | null
+          stop_id?: string | null
+          transition_id?: string | null
           updated_at?: string
-          visit_plan_id?: string
           workspace_id?: string
         }
         Relationships: [
@@ -255,14 +288,107 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "calendar_event_links_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
+            foreignKeyName: "calendar_event_links_itinerary_id_fkey"
+            columns: ["itinerary_id"]
             isOneToOne: false
-            referencedRelation: "visit_plans"
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_links_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_links_transition_id_fkey"
+            columns: ["transition_id"]
+            isOneToOne: false
+            referencedRelation: "transitions"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "calendar_event_links_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      captured_inputs: {
+        Row: {
+          created_at: string
+          created_booking_ids: string[]
+          created_itinerary_id: string | null
+          created_stop_ids: string[]
+          created_transition_ids: string[]
+          expires_at: string | null
+          id: string
+          input_source: string
+          original_text: string
+          parsed_payload: Json
+          parser_version: string
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["captured_input_status"]
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_booking_ids?: string[]
+          created_itinerary_id?: string | null
+          created_stop_ids?: string[]
+          created_transition_ids?: string[]
+          expires_at?: string | null
+          id?: string
+          input_source?: string
+          original_text: string
+          parsed_payload?: Json
+          parser_version: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["captured_input_status"]
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_booking_ids?: string[]
+          created_itinerary_id?: string | null
+          created_stop_ids?: string[]
+          created_transition_ids?: string[]
+          expires_at?: string | null
+          id?: string
+          input_source?: string
+          original_text?: string
+          parsed_payload?: Json
+          parser_version?: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["captured_input_status"]
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "captured_inputs_created_itinerary_id_fkey"
+            columns: ["created_itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "captured_inputs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "captured_inputs_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -330,6 +456,7 @@ export type Database = {
           address: string | null
           created_at: string
           customer_id: string
+          default_visit_minutes: number | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -338,6 +465,7 @@ export type Database = {
           parking_notes: string | null
           postcode: string | null
           updated_at: string
+          visit_kind: string | null
           workspace_id: string
         }
         Insert: {
@@ -345,6 +473,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           customer_id: string
+          default_visit_minutes?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -353,6 +482,7 @@ export type Database = {
           parking_notes?: string | null
           postcode?: string | null
           updated_at?: string
+          visit_kind?: string | null
           workspace_id: string
         }
         Update: {
@@ -360,6 +490,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           customer_id?: string
+          default_visit_minutes?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -368,6 +499,7 @@ export type Database = {
           parking_notes?: string | null
           postcode?: string | null
           updated_at?: string
+          visit_kind?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -428,13 +560,14 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          itinerary_id: string | null
           notes: string | null
           receipt_file_path: string | null
           reimbursement_status: Database["public"]["Enums"]["reimbursement_status"]
+          stop_id: string | null
           type: Database["public"]["Enums"]["expense_type"]
           updated_at: string
           user_id: string
-          visit_plan_id: string | null
           workspace_id: string
         }
         Insert: {
@@ -442,13 +575,14 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          itinerary_id?: string | null
           notes?: string | null
           receipt_file_path?: string | null
           reimbursement_status?: Database["public"]["Enums"]["reimbursement_status"]
+          stop_id?: string | null
           type: Database["public"]["Enums"]["expense_type"]
           updated_at?: string
           user_id: string
-          visit_plan_id?: string | null
           workspace_id: string
         }
         Update: {
@@ -456,28 +590,36 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          itinerary_id?: string | null
           notes?: string | null
           receipt_file_path?: string | null
           reimbursement_status?: Database["public"]["Enums"]["reimbursement_status"]
+          stop_id?: string | null
           type?: Database["public"]["Enums"]["expense_type"]
           updated_at?: string
           user_id?: string
-          visit_plan_id?: string | null
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expense_records_itinerary_id_fkey"
+            columns: ["itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_records_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expense_records_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expense_records_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
-            isOneToOne: false
-            referencedRelation: "visit_plans"
             referencedColumns: ["id"]
           },
           {
@@ -488,6 +630,311 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gmail_connections: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          last_scan_at: string | null
+          provider_account_email: string | null
+          refresh_token: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_scan_at?: string | null
+          provider_account_email?: string | null
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_scan_at?: string | null
+          provider_account_email?: string | null
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_connections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_imported_messages: {
+        Row: {
+          booking_type: string
+          gmail_message_id: string
+          id: string
+          imported_at: string
+          travel_booking_id: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          booking_type: string
+          gmail_message_id: string
+          id?: string
+          imported_at?: string
+          travel_booking_id?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          booking_type?: string
+          gmail_message_id?: string
+          id?: string
+          imported_at?: string
+          travel_booking_id?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_imported_messages_travel_booking_id_fkey"
+            columns: ["travel_booking_id"]
+            isOneToOne: false
+            referencedRelation: "travel_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_imported_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_imported_messages_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_scanned_emails: {
+        Row: {
+          gmail_message_id: string
+          id: string
+          imported: boolean
+          parse_failed: boolean
+          parsed_data: Json | null
+          parsed_type: string | null
+          scanned_at: string
+          sender: string | null
+          subject: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          gmail_message_id: string
+          id?: string
+          imported?: boolean
+          parse_failed?: boolean
+          parsed_data?: Json | null
+          parsed_type?: string | null
+          scanned_at?: string
+          sender?: string | null
+          subject?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          gmail_message_id?: string
+          id?: string
+          imported?: boolean
+          parse_failed?: boolean
+          parsed_data?: Json | null
+          parsed_type?: string | null
+          scanned_at?: string
+          sender?: string | null
+          subject?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_scanned_emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_scanned_emails_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intents: {
+        Row: {
+          captured_input_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          label: string
+          last_surfaced_at: string | null
+          status: Database["public"]["Enums"]["intent_status"]
+          surface_after: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          captured_input_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          label: string
+          last_surfaced_at?: string | null
+          status?: Database["public"]["Enums"]["intent_status"]
+          surface_after?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          captured_input_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          label?: string
+          last_surfaced_at?: string | null
+          status?: Database["public"]["Enums"]["intent_status"]
+          surface_after?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intents_captured_input_id_fkey"
+            columns: ["captured_input_id"]
+            isOneToOne: false
+            referencedRelation: "captured_inputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      itineraries: {
+        Row: {
+          created_at: string
+          date_end: string
+          date_start: string
+          id: string
+          luggage_for_trip: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["itinerary_status"]
+          title: string | null
+          trip_purpose: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_end: string
+          date_start: string
+          id?: string
+          luggage_for_trip?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["itinerary_status"]
+          title?: string | null
+          trip_purpose?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          date_end?: string
+          date_start?: string
+          id?: string
+          luggage_for_trip?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["itinerary_status"]
+          title?: string | null
+          trip_purpose?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itineraries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itineraries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      itinerary_status_edges: {
+        Row: {
+          from_status: Database["public"]["Enums"]["itinerary_status"]
+          to_status: Database["public"]["Enums"]["itinerary_status"]
+        }
+        Insert: {
+          from_status: Database["public"]["Enums"]["itinerary_status"]
+          to_status: Database["public"]["Enums"]["itinerary_status"]
+        }
+        Update: {
+          from_status?: Database["public"]["Enums"]["itinerary_status"]
+          to_status?: Database["public"]["Enums"]["itinerary_status"]
+        }
+        Relationships: []
       }
       jobs: {
         Row: {
@@ -551,60 +998,6 @@ export type Database = {
           },
         ]
       }
-      journey_leg_alternatives: {
-        Row: {
-          cost_estimate: number | null
-          created_at: string
-          duration_minutes: number | null
-          id: string
-          instructions: string | null
-          journey_leg_id: string
-          leg_type: Database["public"]["Enums"]["leg_type"]
-          selected: boolean
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          cost_estimate?: number | null
-          created_at?: string
-          duration_minutes?: number | null
-          id?: string
-          instructions?: string | null
-          journey_leg_id: string
-          leg_type: Database["public"]["Enums"]["leg_type"]
-          selected?: boolean
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          cost_estimate?: number | null
-          created_at?: string
-          duration_minutes?: number | null
-          id?: string
-          instructions?: string | null
-          journey_leg_id?: string
-          leg_type?: Database["public"]["Enums"]["leg_type"]
-          selected?: boolean
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "journey_leg_alternatives_journey_leg_id_fkey"
-            columns: ["journey_leg_id"]
-            isOneToOne: false
-            referencedRelation: "journey_legs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "journey_leg_alternatives_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       journey_legs: {
         Row: {
           booking_required: boolean
@@ -622,7 +1015,8 @@ export type Database = {
           service_number: string | null
           start_location_name: string | null
           start_time: string | null
-          travel_option_id: string
+          transition_id: string | null
+          travel_option_id: string | null
           updated_at: string
           workspace_id: string
         }
@@ -642,7 +1036,8 @@ export type Database = {
           service_number?: string | null
           start_location_name?: string | null
           start_time?: string | null
-          travel_option_id: string
+          transition_id?: string | null
+          travel_option_id?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -662,11 +1057,19 @@ export type Database = {
           service_number?: string | null
           start_location_name?: string | null
           start_time?: string | null
-          travel_option_id?: string
+          transition_id?: string | null
+          travel_option_id?: string | null
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "journey_legs_transition_id_fkey"
+            columns: ["transition_id"]
+            isOneToOne: false
+            referencedRelation: "transitions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "journey_legs_travel_option_id_fkey"
             columns: ["travel_option_id"]
@@ -687,11 +1090,13 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          external_url: string | null
           id: string
           latitude: number | null
           longitude: number | null
           name: string
           notes: string | null
+          phone: string | null
           postcode: string | null
           type: Database["public"]["Enums"]["location_type"]
           updated_at: string
@@ -701,11 +1106,13 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          external_url?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           name: string
           notes?: string | null
+          phone?: string | null
           postcode?: string | null
           type?: Database["public"]["Enums"]["location_type"]
           updated_at?: string
@@ -715,11 +1122,13 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          external_url?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           name?: string
           notes?: string | null
+          phone?: string | null
           postcode?: string | null
           type?: Database["public"]["Enums"]["location_type"]
           updated_at?: string
@@ -843,42 +1252,42 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          itinerary_id: string
           payload: Json | null
           status: Database["public"]["Enums"]["notification_status"]
           trigger_time: string
           type: Database["public"]["Enums"]["notification_type"]
           updated_at: string
-          visit_plan_id: string
           workspace_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          itinerary_id: string
           payload?: Json | null
           status?: Database["public"]["Enums"]["notification_status"]
           trigger_time: string
           type: Database["public"]["Enums"]["notification_type"]
           updated_at?: string
-          visit_plan_id: string
           workspace_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          itinerary_id?: string
           payload?: Json | null
           status?: Database["public"]["Enums"]["notification_status"]
           trigger_time?: string
           type?: Database["public"]["Enums"]["notification_type"]
           updated_at?: string
-          visit_plan_id?: string
           workspace_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "notification_rules_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
+            foreignKeyName: "notification_rules_itinerary_id_fkey"
+            columns: ["itinerary_id"]
             isOneToOne: false
-            referencedRelation: "visit_plans"
+            referencedRelation: "itineraries"
             referencedColumns: ["id"]
           },
           {
@@ -896,13 +1305,12 @@ export type Database = {
           generated_at: string
           id: string
           idempotency_key: string | null
+          itinerary_id: string | null
           requested_end_time: string | null
-          requested_latest_return_time: string | null
           requested_start_time: string | null
           status: Database["public"]["Enums"]["planning_run_status"]
           summary: string | null
           updated_at: string
-          visit_plan_id: string
           workspace_id: string
         }
         Insert: {
@@ -910,13 +1318,12 @@ export type Database = {
           generated_at?: string
           id?: string
           idempotency_key?: string | null
+          itinerary_id?: string | null
           requested_end_time?: string | null
-          requested_latest_return_time?: string | null
           requested_start_time?: string | null
           status?: Database["public"]["Enums"]["planning_run_status"]
           summary?: string | null
           updated_at?: string
-          visit_plan_id: string
           workspace_id: string
         }
         Update: {
@@ -924,21 +1331,20 @@ export type Database = {
           generated_at?: string
           id?: string
           idempotency_key?: string | null
+          itinerary_id?: string | null
           requested_end_time?: string | null
-          requested_latest_return_time?: string | null
           requested_start_time?: string | null
           status?: Database["public"]["Enums"]["planning_run_status"]
           summary?: string | null
           updated_at?: string
-          visit_plan_id?: string
           workspace_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "planning_runs_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
+            foreignKeyName: "planning_runs_itinerary_id_fkey"
+            columns: ["itinerary_id"]
             isOneToOne: false
-            referencedRelation: "visit_plans"
+            referencedRelation: "itineraries"
             referencedColumns: ["id"]
           },
           {
@@ -958,7 +1364,9 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_admin: boolean
           is_staff: boolean
+          is_super_user: boolean
           updated_at: string
         }
         Insert: {
@@ -968,7 +1376,9 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_admin?: boolean
           is_staff?: boolean
+          is_super_user?: boolean
           updated_at?: string
         }
         Update: {
@@ -978,7 +1388,9 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_admin?: boolean
           is_staff?: boolean
+          is_super_user?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -991,72 +1403,814 @@ export type Database = {
           },
         ]
       }
-      saved_trip_edges: {
+      rail_named_route_segments: {
         Row: {
-          from_status: Database["public"]["Enums"]["saved_trip_status"]
-          to_status: Database["public"]["Enums"]["saved_trip_status"]
+          created_at: string | null
+          encoded_polyline: string
+          from_station_code: string | null
+          from_station_name: string
+          id: string
+          operator: string | null
+          osm_relation_id: number
+          point_count: number | null
+          route_name: string | null
+          to_station_code: string | null
+          to_station_name: string
         }
         Insert: {
-          from_status: Database["public"]["Enums"]["saved_trip_status"]
-          to_status: Database["public"]["Enums"]["saved_trip_status"]
+          created_at?: string | null
+          encoded_polyline: string
+          from_station_code?: string | null
+          from_station_name: string
+          id?: string
+          operator?: string | null
+          osm_relation_id: number
+          point_count?: number | null
+          route_name?: string | null
+          to_station_code?: string | null
+          to_station_name: string
         }
         Update: {
-          from_status?: Database["public"]["Enums"]["saved_trip_status"]
-          to_status?: Database["public"]["Enums"]["saved_trip_status"]
+          created_at?: string | null
+          encoded_polyline?: string
+          from_station_code?: string | null
+          from_station_name?: string
+          id?: string
+          operator?: string | null
+          osm_relation_id?: number
+          point_count?: number | null
+          route_name?: string | null
+          to_station_code?: string | null
+          to_station_name?: string
         }
         Relationships: []
       }
-      saved_trips: {
+      rail_network_edges: {
         Row: {
-          completed_at: string | null
+          from_lat: number
+          from_lng: number
+          id: number
+          to_lat: number
+          to_lng: number
+        }
+        Insert: {
+          from_lat: number
+          from_lng: number
+          id?: number
+          to_lat: number
+          to_lng: number
+        }
+        Update: {
+          from_lat?: number
+          from_lng?: number
+          id?: number
+          to_lat?: number
+          to_lng?: number
+        }
+        Relationships: []
+      }
+      rail_route_cache: {
+        Row: {
+          encoded_polyline: string
+          fetched_at: string
+          from_station_code: string
+          point_count: number
+          to_station_code: string
+        }
+        Insert: {
+          encoded_polyline: string
+          fetched_at?: string
+          from_station_code: string
+          point_count?: number
+          to_station_code: string
+        }
+        Update: {
+          encoded_polyline?: string
+          fetched_at?: string
+          from_station_code?: string
+          point_count?: number
+          to_station_code?: string
+        }
+        Relationships: []
+      }
+      route_preview_cache: {
+        Row: {
+          computed_at: string
+          distance_miles: number | null
+          duration_minutes: number | null
+          from_stop_id: string
+          mode: string
+          to_stop_id: string
+        }
+        Insert: {
+          computed_at?: string
+          distance_miles?: number | null
+          duration_minutes?: number | null
+          from_stop_id: string
+          mode: string
+          to_stop_id: string
+        }
+        Update: {
+          computed_at?: string
+          distance_miles?: number | null
+          duration_minutes?: number | null
+          from_stop_id?: string
+          mode?: string
+          to_stop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_preview_cache_from_stop_id_fkey"
+            columns: ["from_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_preview_cache_to_stop_id_fkey"
+            columns: ["to_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      standing_facts: {
+        Row: {
+          active: boolean
           created_at: string
+          details: Json
+          fact_kind: string
           id: string
-          selected_travel_option_id: string | null
-          status: Database["public"]["Enums"]["saved_trip_status"]
-          travel_day_started_at: string | null
+          label: string
           updated_at: string
-          visit_plan_id: string
+          user_id: string
+          valid_from: string | null
+          valid_to: string | null
           workspace_id: string
         }
         Insert: {
-          completed_at?: string | null
+          active?: boolean
           created_at?: string
+          details?: Json
+          fact_kind: string
           id?: string
-          selected_travel_option_id?: string | null
-          status?: Database["public"]["Enums"]["saved_trip_status"]
-          travel_day_started_at?: string | null
+          label: string
           updated_at?: string
-          visit_plan_id: string
+          user_id: string
+          valid_from?: string | null
+          valid_to?: string | null
           workspace_id: string
         }
         Update: {
-          completed_at?: string | null
+          active?: boolean
           created_at?: string
+          details?: Json
+          fact_kind?: string
           id?: string
-          selected_travel_option_id?: string | null
-          status?: Database["public"]["Enums"]["saved_trip_status"]
-          travel_day_started_at?: string | null
+          label?: string
           updated_at?: string
-          visit_plan_id?: string
+          user_id?: string
+          valid_from?: string | null
+          valid_to?: string | null
           workspace_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "saved_trips_selected_travel_option_id_fkey"
-            columns: ["selected_travel_option_id"]
+            foreignKeyName: "standing_facts_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "travel_options"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "saved_trips_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
-            isOneToOne: true
-            referencedRelation: "visit_plans"
+            foreignKeyName: "standing_facts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stopovers: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          customer_site_id: string | null
+          duration_minutes: number
+          from_stop_id: string
+          id: string
+          itinerary_id: string
+          location_id: string | null
+          metadata: Json
+          title: string | null
+          to_stop_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          customer_site_id?: string | null
+          duration_minutes?: number
+          from_stop_id: string
+          id?: string
+          itinerary_id: string
+          location_id?: string | null
+          metadata?: Json
+          title?: string | null
+          to_stop_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          customer_site_id?: string | null
+          duration_minutes?: number
+          from_stop_id?: string
+          id?: string
+          itinerary_id?: string
+          location_id?: string | null
+          metadata?: Json
+          title?: string | null
+          to_stop_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stopovers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "saved_trips_workspace_id_fkey"
+            foreignKeyName: "stopovers_customer_site_id_fkey"
+            columns: ["customer_site_id"]
+            isOneToOne: false
+            referencedRelation: "customer_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stopovers_from_stop_id_fkey"
+            columns: ["from_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stopovers_itinerary_id_fkey"
+            columns: ["itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stopovers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stopovers_to_stop_id_fkey"
+            columns: ["to_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stopovers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stops: {
+        Row: {
+          arrival_buffer_minutes: number | null
+          captured_input_id: string | null
+          commitment: string
+          commitment_state: Database["public"]["Enums"]["fact_commitment_state"]
+          confidence: Database["public"]["Enums"]["fact_confidence"]
+          contact_id: string | null
+          created_at: string
+          customer_id: string | null
+          customer_site_id: string | null
+          duration_minutes: number | null
+          end_time: string | null
+          external_reference: string | null
+          external_url: string | null
+          id: string
+          is_time_fixed: boolean
+          itinerary_id: string
+          location_id: string | null
+          max_duration_minutes: number | null
+          metadata: Json | null
+          min_duration_minutes: number | null
+          notes: string | null
+          purpose: string | null
+          receipt_file_path: string | null
+          sequence: number
+          source: Database["public"]["Enums"]["fact_source"]
+          start_time: string | null
+          title: string | null
+          transport_hub_id: string | null
+          type: Database["public"]["Enums"]["stop_type"]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          arrival_buffer_minutes?: number | null
+          captured_input_id?: string | null
+          commitment?: string
+          commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
+          confidence?: Database["public"]["Enums"]["fact_confidence"]
+          contact_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_site_id?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          external_reference?: string | null
+          external_url?: string | null
+          id?: string
+          is_time_fixed?: boolean
+          itinerary_id: string
+          location_id?: string | null
+          max_duration_minutes?: number | null
+          metadata?: Json | null
+          min_duration_minutes?: number | null
+          notes?: string | null
+          purpose?: string | null
+          receipt_file_path?: string | null
+          sequence: number
+          source?: Database["public"]["Enums"]["fact_source"]
+          start_time?: string | null
+          title?: string | null
+          transport_hub_id?: string | null
+          type: Database["public"]["Enums"]["stop_type"]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          arrival_buffer_minutes?: number | null
+          captured_input_id?: string | null
+          commitment?: string
+          commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
+          confidence?: Database["public"]["Enums"]["fact_confidence"]
+          contact_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_site_id?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          external_reference?: string | null
+          external_url?: string | null
+          id?: string
+          is_time_fixed?: boolean
+          itinerary_id?: string
+          location_id?: string | null
+          max_duration_minutes?: number | null
+          metadata?: Json | null
+          min_duration_minutes?: number | null
+          notes?: string | null
+          purpose?: string | null
+          receipt_file_path?: string | null
+          sequence?: number
+          source?: Database["public"]["Enums"]["fact_source"]
+          start_time?: string | null
+          title?: string | null
+          transport_hub_id?: string | null
+          type?: Database["public"]["Enums"]["stop_type"]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stops_captured_input_id_fkey"
+            columns: ["captured_input_id"]
+            isOneToOne: false
+            referencedRelation: "captured_inputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_customer_site_id_fkey"
+            columns: ["customer_site_id"]
+            isOneToOne: false
+            referencedRelation: "customer_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_itinerary_id_fkey"
+            columns: ["itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_transport_hub_id_fkey"
+            columns: ["transport_hub_id"]
+            isOneToOne: false
+            referencedRelation: "transport_hubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transitions: {
+        Row: {
+          captured_input_id: string | null
+          commitment_state: Database["public"]["Enums"]["fact_commitment_state"]
+          computed_duration_minutes: number | null
+          confidence: Database["public"]["Enums"]["fact_confidence"]
+          created_at: string
+          distance_miles: number | null
+          end_time: string | null
+          from_stop_id: string
+          id: string
+          is_locked: boolean
+          itinerary_id: string
+          mode: Database["public"]["Enums"]["transition_mode"]
+          notes: string | null
+          override_locked: boolean
+          overview_polyline: string | null
+          source: Database["public"]["Enums"]["fact_source"]
+          start_time: string | null
+          to_stop_id: string
+          updated_at: string
+          user_mode_override:
+            | Database["public"]["Enums"]["transition_mode"]
+            | null
+          workspace_id: string
+        }
+        Insert: {
+          captured_input_id?: string | null
+          commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
+          computed_duration_minutes?: number | null
+          confidence?: Database["public"]["Enums"]["fact_confidence"]
+          created_at?: string
+          distance_miles?: number | null
+          end_time?: string | null
+          from_stop_id: string
+          id?: string
+          is_locked?: boolean
+          itinerary_id: string
+          mode: Database["public"]["Enums"]["transition_mode"]
+          notes?: string | null
+          override_locked?: boolean
+          overview_polyline?: string | null
+          source?: Database["public"]["Enums"]["fact_source"]
+          start_time?: string | null
+          to_stop_id: string
+          updated_at?: string
+          user_mode_override?:
+            | Database["public"]["Enums"]["transition_mode"]
+            | null
+          workspace_id: string
+        }
+        Update: {
+          captured_input_id?: string | null
+          commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
+          computed_duration_minutes?: number | null
+          confidence?: Database["public"]["Enums"]["fact_confidence"]
+          created_at?: string
+          distance_miles?: number | null
+          end_time?: string | null
+          from_stop_id?: string
+          id?: string
+          is_locked?: boolean
+          itinerary_id?: string
+          mode?: Database["public"]["Enums"]["transition_mode"]
+          notes?: string | null
+          override_locked?: boolean
+          overview_polyline?: string | null
+          source?: Database["public"]["Enums"]["fact_source"]
+          start_time?: string | null
+          to_stop_id?: string
+          updated_at?: string
+          user_mode_override?:
+            | Database["public"]["Enums"]["transition_mode"]
+            | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transitions_captured_input_id_fkey"
+            columns: ["captured_input_id"]
+            isOneToOne: false
+            referencedRelation: "captured_inputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transitions_from_stop_id_fkey"
+            columns: ["from_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transitions_itinerary_id_fkey"
+            columns: ["itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transitions_to_stop_id_fkey"
+            columns: ["to_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transitions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_hubs: {
+        Row: {
+          city: string | null
+          code: string
+          country: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["transport_hub_kind"]
+          latitude: number
+          longitude: number
+          name: string
+          subdivision: string | null
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          code: string
+          country: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["transport_hub_kind"]
+          latitude: number
+          longitude: number
+          name: string
+          subdivision?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          code?: string
+          country?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["transport_hub_kind"]
+          latitude?: number
+          longitude?: number
+          name?: string
+          subdivision?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      travel_booking_segment_stops: {
+        Row: {
+          actual_arrival_at: string | null
+          actual_departure_at: string | null
+          created_at: string
+          hub_id: string | null
+          hub_name_snapshot: string
+          id: string
+          notes: string | null
+          platform: string | null
+          scheduled_arrival_at: string | null
+          scheduled_departure_at: string | null
+          segment_id: string
+          sequence: number
+          source: string
+          source_ref: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          actual_arrival_at?: string | null
+          actual_departure_at?: string | null
+          created_at?: string
+          hub_id?: string | null
+          hub_name_snapshot: string
+          id?: string
+          notes?: string | null
+          platform?: string | null
+          scheduled_arrival_at?: string | null
+          scheduled_departure_at?: string | null
+          segment_id: string
+          sequence: number
+          source?: string
+          source_ref?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          actual_arrival_at?: string | null
+          actual_departure_at?: string | null
+          created_at?: string
+          hub_id?: string | null
+          hub_name_snapshot?: string
+          id?: string
+          notes?: string | null
+          platform?: string | null
+          scheduled_arrival_at?: string | null
+          scheduled_departure_at?: string | null
+          segment_id?: string
+          sequence?: number
+          source?: string
+          source_ref?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_booking_segment_stops_hub_id_fkey"
+            columns: ["hub_id"]
+            isOneToOne: false
+            referencedRelation: "transport_hubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_booking_segment_stops_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "travel_booking_segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_booking_segment_stops_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travel_booking_segments: {
+        Row: {
+          actual_arrival_at: string | null
+          actual_departure_at: string | null
+          arrival_at: string
+          barcode_data: string | null
+          barcode_ref: string | null
+          calling_points: Json | null
+          coach: string | null
+          created_at: string
+          departure_at: string
+          from_hub_id: string | null
+          from_location_name: string
+          from_station_code: string | null
+          id: string
+          notes: string | null
+          operator: string | null
+          platform_arr: string | null
+          platform_dep: string | null
+          route_restriction: string | null
+          seat: string | null
+          sequence: number
+          service_uid: string | null
+          source: string
+          source_ref: string | null
+          ticket_type: string | null
+          to_hub_id: string | null
+          to_location_name: string
+          to_station_code: string | null
+          train_number: string | null
+          travel_booking_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          actual_arrival_at?: string | null
+          actual_departure_at?: string | null
+          arrival_at: string
+          barcode_data?: string | null
+          barcode_ref?: string | null
+          calling_points?: Json | null
+          coach?: string | null
+          created_at?: string
+          departure_at: string
+          from_hub_id?: string | null
+          from_location_name: string
+          from_station_code?: string | null
+          id?: string
+          notes?: string | null
+          operator?: string | null
+          platform_arr?: string | null
+          platform_dep?: string | null
+          route_restriction?: string | null
+          seat?: string | null
+          sequence: number
+          service_uid?: string | null
+          source?: string
+          source_ref?: string | null
+          ticket_type?: string | null
+          to_hub_id?: string | null
+          to_location_name: string
+          to_station_code?: string | null
+          train_number?: string | null
+          travel_booking_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          actual_arrival_at?: string | null
+          actual_departure_at?: string | null
+          arrival_at?: string
+          barcode_data?: string | null
+          barcode_ref?: string | null
+          calling_points?: Json | null
+          coach?: string | null
+          created_at?: string
+          departure_at?: string
+          from_hub_id?: string | null
+          from_location_name?: string
+          from_station_code?: string | null
+          id?: string
+          notes?: string | null
+          operator?: string | null
+          platform_arr?: string | null
+          platform_dep?: string | null
+          route_restriction?: string | null
+          seat?: string | null
+          sequence?: number
+          service_uid?: string | null
+          source?: string
+          source_ref?: string | null
+          ticket_type?: string | null
+          to_hub_id?: string | null
+          to_location_name?: string
+          to_station_code?: string | null
+          train_number?: string | null
+          travel_booking_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_booking_segments_from_hub_id_fkey"
+            columns: ["from_hub_id"]
+            isOneToOne: false
+            referencedRelation: "transport_hubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_booking_segments_to_hub_id_fkey"
+            columns: ["to_hub_id"]
+            isOneToOne: false
+            referencedRelation: "transport_hubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_booking_segments_travel_booking_id_fkey"
+            columns: ["travel_booking_id"]
+            isOneToOne: false
+            referencedRelation: "travel_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_booking_segments_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1067,55 +2221,106 @@ export type Database = {
       travel_bookings: {
         Row: {
           actual_price: number | null
+          arrival_at: string | null
+          arrival_location_id: string | null
           booked_at: string | null
           booking_intent_id: string
           booking_reference: string | null
+          captured_input_id: string | null
+          commitment_state: Database["public"]["Enums"]["fact_commitment_state"]
+          confidence: Database["public"]["Enums"]["fact_confidence"]
           created_at: string
           currency: string
+          departure_at: string | null
+          departure_location_id: string | null
           id: string
           idempotency_key: string | null
           provider: string | null
           receipt_file_path: string | null
+          seat_reservation: string | null
+          source: Database["public"]["Enums"]["fact_source"]
+          station_buffer_minutes: number
           ticket_status: Database["public"]["Enums"]["ticket_status"]
           updated_at: string
           workspace_id: string
         }
         Insert: {
           actual_price?: number | null
+          arrival_at?: string | null
+          arrival_location_id?: string | null
           booked_at?: string | null
           booking_intent_id: string
           booking_reference?: string | null
+          captured_input_id?: string | null
+          commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
+          confidence?: Database["public"]["Enums"]["fact_confidence"]
           created_at?: string
           currency?: string
+          departure_at?: string | null
+          departure_location_id?: string | null
           id?: string
           idempotency_key?: string | null
           provider?: string | null
           receipt_file_path?: string | null
+          seat_reservation?: string | null
+          source?: Database["public"]["Enums"]["fact_source"]
+          station_buffer_minutes?: number
           ticket_status?: Database["public"]["Enums"]["ticket_status"]
           updated_at?: string
           workspace_id: string
         }
         Update: {
           actual_price?: number | null
+          arrival_at?: string | null
+          arrival_location_id?: string | null
           booked_at?: string | null
           booking_intent_id?: string
           booking_reference?: string | null
+          captured_input_id?: string | null
+          commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
+          confidence?: Database["public"]["Enums"]["fact_confidence"]
           created_at?: string
           currency?: string
+          departure_at?: string | null
+          departure_location_id?: string | null
           id?: string
           idempotency_key?: string | null
           provider?: string | null
           receipt_file_path?: string | null
+          seat_reservation?: string | null
+          source?: Database["public"]["Enums"]["fact_source"]
+          station_buffer_minutes?: number
           ticket_status?: Database["public"]["Enums"]["ticket_status"]
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "travel_bookings_arrival_location_id_fkey"
+            columns: ["arrival_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "travel_bookings_booking_intent_id_fkey"
             columns: ["booking_intent_id"]
             isOneToOne: false
             referencedRelation: "booking_intents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_bookings_captured_input_id_fkey"
+            columns: ["captured_input_id"]
+            isOneToOne: false
+            referencedRelation: "captured_inputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_bookings_departure_location_id_fkey"
+            columns: ["departure_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
@@ -1142,6 +2347,7 @@ export type Database = {
           meeting_end_at: string | null
           meeting_start_at: string | null
           mode: Database["public"]["Enums"]["travel_option_mode"]
+          overview_polyline: string | null
           planning_run_id: string
           recommendation_summary: string | null
           risk_summary: string | null
@@ -1165,6 +2371,7 @@ export type Database = {
           meeting_end_at?: string | null
           meeting_start_at?: string | null
           mode: Database["public"]["Enums"]["travel_option_mode"]
+          overview_polyline?: string | null
           planning_run_id: string
           recommendation_summary?: string | null
           risk_summary?: string | null
@@ -1188,6 +2395,7 @@ export type Database = {
           meeting_end_at?: string | null
           meeting_start_at?: string | null
           mode?: Database["public"]["Enums"]["travel_option_mode"]
+          overview_polyline?: string | null
           planning_run_id?: string
           recommendation_summary?: string | null
           risk_summary?: string | null
@@ -1219,42 +2427,63 @@ export type Database = {
           created_at: string
           default_arrival_buffer_minutes: number
           default_drive_origin_location_id: string | null
+          default_flight_origin_transport_hub_id: string | null
+          default_office_location_id: string | null
           default_rail_origin_location_id: string | null
+          default_rail_origin_transport_hub_id: string | null
           default_return_buffer_minutes: number
           default_return_location_id: string | null
           id: string
+          luggage_default: string
+          max_taxi_fare_pence: number
           mileage_rate: number
+          minimum_buffer_minutes: number
           preferred_mode: Database["public"]["Enums"]["travel_mode_preference"]
           updated_at: string
           user_id: string
+          walking_threshold_minutes: number
           workspace_id: string
         }
         Insert: {
           created_at?: string
           default_arrival_buffer_minutes?: number
           default_drive_origin_location_id?: string | null
+          default_flight_origin_transport_hub_id?: string | null
+          default_office_location_id?: string | null
           default_rail_origin_location_id?: string | null
+          default_rail_origin_transport_hub_id?: string | null
           default_return_buffer_minutes?: number
           default_return_location_id?: string | null
           id?: string
+          luggage_default?: string
+          max_taxi_fare_pence?: number
           mileage_rate?: number
+          minimum_buffer_minutes?: number
           preferred_mode?: Database["public"]["Enums"]["travel_mode_preference"]
           updated_at?: string
           user_id: string
+          walking_threshold_minutes?: number
           workspace_id: string
         }
         Update: {
           created_at?: string
           default_arrival_buffer_minutes?: number
           default_drive_origin_location_id?: string | null
+          default_flight_origin_transport_hub_id?: string | null
+          default_office_location_id?: string | null
           default_rail_origin_location_id?: string | null
+          default_rail_origin_transport_hub_id?: string | null
           default_return_buffer_minutes?: number
           default_return_location_id?: string | null
           id?: string
+          luggage_default?: string
+          max_taxi_fare_pence?: number
           mileage_rate?: number
+          minimum_buffer_minutes?: number
           preferred_mode?: Database["public"]["Enums"]["travel_mode_preference"]
           updated_at?: string
           user_id?: string
+          walking_threshold_minutes?: number
           workspace_id?: string
         }
         Relationships: [
@@ -1266,10 +2495,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "travel_profiles_default_flight_origin_transport_hub_id_fkey"
+            columns: ["default_flight_origin_transport_hub_id"]
+            isOneToOne: false
+            referencedRelation: "transport_hubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_profiles_default_office_location_id_fkey"
+            columns: ["default_office_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "travel_profiles_default_rail_origin_location_id_fkey"
             columns: ["default_rail_origin_location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_profiles_default_rail_origin_transport_hub_id_fkey"
+            columns: ["default_rail_origin_transport_hub_id"]
+            isOneToOne: false
+            referencedRelation: "transport_hubs"
             referencedColumns: ["id"]
           },
           {
@@ -1294,258 +2544,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      trip_progress: {
-        Row: {
-          created_at: string
-          current_leg_id: string | null
-          id: string
-          last_known_latitude: number | null
-          last_known_longitude: number | null
-          last_updated_at: string | null
-          saved_trip_id: string
-          status: Database["public"]["Enums"]["trip_progress_status"]
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_leg_id?: string | null
-          id?: string
-          last_known_latitude?: number | null
-          last_known_longitude?: number | null
-          last_updated_at?: string | null
-          saved_trip_id: string
-          status?: Database["public"]["Enums"]["trip_progress_status"]
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string
-          current_leg_id?: string | null
-          id?: string
-          last_known_latitude?: number | null
-          last_known_longitude?: number | null
-          last_updated_at?: string | null
-          saved_trip_id?: string
-          status?: Database["public"]["Enums"]["trip_progress_status"]
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "trip_progress_current_leg_id_fkey"
-            columns: ["current_leg_id"]
-            isOneToOne: false
-            referencedRelation: "journey_legs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trip_progress_saved_trip_id_fkey"
-            columns: ["saved_trip_id"]
-            isOneToOne: true
-            referencedRelation: "saved_trips"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trip_progress_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      visit_checklist_items: {
-        Row: {
-          created_at: string
-          due_at: string | null
-          id: string
-          label: string
-          sort_order: number
-          status: Database["public"]["Enums"]["checklist_status"]
-          updated_at: string
-          visit_plan_id: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string
-          due_at?: string | null
-          id?: string
-          label: string
-          sort_order?: number
-          status?: Database["public"]["Enums"]["checklist_status"]
-          updated_at?: string
-          visit_plan_id: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string
-          due_at?: string | null
-          id?: string
-          label?: string
-          sort_order?: number
-          status?: Database["public"]["Enums"]["checklist_status"]
-          updated_at?: string
-          visit_plan_id?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "visit_checklist_items_visit_plan_id_fkey"
-            columns: ["visit_plan_id"]
-            isOneToOne: false
-            referencedRelation: "visit_plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_checklist_items_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      visit_plans: {
-        Row: {
-          arrival_buffer_minutes: number
-          contact_id: string | null
-          created_at: string
-          customer_id: string | null
-          customer_site_id: string | null
-          desired_arrival_time: string | null
-          id: string
-          latest_departure_from_site_time: string | null
-          latest_return_time: string | null
-          meeting_duration_minutes: number | null
-          notes: string | null
-          proposed_end_time: string | null
-          proposed_start_time: string | null
-          return_buffer_minutes: number
-          return_location_id: string | null
-          start_location_id: string | null
-          status: Database["public"]["Enums"]["visit_status"]
-          title: string | null
-          travel_mode_preference: Database["public"]["Enums"]["travel_mode_preference"]
-          updated_at: string
-          user_id: string
-          workspace_id: string
-        }
-        Insert: {
-          arrival_buffer_minutes?: number
-          contact_id?: string | null
-          created_at?: string
-          customer_id?: string | null
-          customer_site_id?: string | null
-          desired_arrival_time?: string | null
-          id?: string
-          latest_departure_from_site_time?: string | null
-          latest_return_time?: string | null
-          meeting_duration_minutes?: number | null
-          notes?: string | null
-          proposed_end_time?: string | null
-          proposed_start_time?: string | null
-          return_buffer_minutes?: number
-          return_location_id?: string | null
-          start_location_id?: string | null
-          status?: Database["public"]["Enums"]["visit_status"]
-          title?: string | null
-          travel_mode_preference?: Database["public"]["Enums"]["travel_mode_preference"]
-          updated_at?: string
-          user_id: string
-          workspace_id: string
-        }
-        Update: {
-          arrival_buffer_minutes?: number
-          contact_id?: string | null
-          created_at?: string
-          customer_id?: string | null
-          customer_site_id?: string | null
-          desired_arrival_time?: string | null
-          id?: string
-          latest_departure_from_site_time?: string | null
-          latest_return_time?: string | null
-          meeting_duration_minutes?: number | null
-          notes?: string | null
-          proposed_end_time?: string | null
-          proposed_start_time?: string | null
-          return_buffer_minutes?: number
-          return_location_id?: string | null
-          start_location_id?: string | null
-          status?: Database["public"]["Enums"]["visit_status"]
-          title?: string | null
-          travel_mode_preference?: Database["public"]["Enums"]["travel_mode_preference"]
-          updated_at?: string
-          user_id?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "visit_plans_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_plans_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_plans_customer_site_id_fkey"
-            columns: ["customer_site_id"]
-            isOneToOne: false
-            referencedRelation: "customer_sites"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_plans_return_location_id_fkey"
-            columns: ["return_location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_plans_start_location_id_fkey"
-            columns: ["start_location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_plans_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visit_plans_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      visit_status_edges: {
-        Row: {
-          from_status: Database["public"]["Enums"]["visit_status"]
-          to_status: Database["public"]["Enums"]["visit_status"]
-        }
-        Insert: {
-          from_status: Database["public"]["Enums"]["visit_status"]
-          to_status: Database["public"]["Enums"]["visit_status"]
-        }
-        Update: {
-          from_status?: Database["public"]["Enums"]["visit_status"]
-          to_status?: Database["public"]["Enums"]["visit_status"]
-        }
-        Relationships: []
       }
       workspace_settings: {
         Row: {
@@ -1622,70 +2620,205 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_workspace_member: { Args: { ws: string }; Returns: boolean }
-      saved_trip_transition: {
+      bump_stop_sequences: {
         Args: {
-          p_actor_id: string
-          p_metadata?: Json
-          p_to_status: Database["public"]["Enums"]["saved_trip_status"]
-          p_trip_id: string
+          p_from_sequence: number
+          p_itinerary_id: string
+          p_workspace_id: string
+        }
+        Returns: undefined
+      }
+      bytea_to_text: { Args: { data: string }; Returns: string }
+      customer_sites_within_km: {
+        Args: {
+          excluded_site_ids?: string[]
+          origin_lat: number
+          origin_lng: number
+          radius_km: number
+          ws_id: string
         }
         Returns: {
-          completed_at: string | null
-          created_at: string
+          address: string
+          customer_id: string
+          distance_km: number
           id: string
-          selected_travel_option_id: string | null
-          status: Database["public"]["Enums"]["saved_trip_status"]
-          travel_day_started_at: string | null
-          updated_at: string
-          visit_plan_id: string
-          workspace_id: string
-        }
+          latitude: number
+          longitude: number
+          name: string
+        }[]
+      }
+      earth: { Args: never; Returns: number }
+      http: {
+        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
         SetofOptions: {
-          from: "*"
-          to: "saved_trips"
+          from: "http_request"
+          to: "http_response"
           isOneToOne: true
           isSetofReturn: false
         }
       }
-      visit_plan_transition: {
+      http_delete:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_get:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_head: {
+        Args: { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_header: {
+        Args: { field: string; value: string }
+        Returns: Database["public"]["CompositeTypes"]["http_header"]
+        SetofOptions: {
+          from: "*"
+          to: "http_header"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_list_curlopt: {
+        Args: never
+        Returns: {
+          curlopt: string
+          value: string
+        }[]
+      }
+      http_patch: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_post:
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_put: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_reset_curlopt: { Args: never; Returns: boolean }
+      http_set_curlopt: {
+        Args: { curlopt: string; value: string }
+        Returns: boolean
+      }
+      is_workspace_member: { Args: { ws: string }; Returns: boolean }
+      itinerary_transition: {
         Args: {
           p_actor_id: string
+          p_itinerary_id: string
           p_metadata?: Json
-          p_to_status: Database["public"]["Enums"]["visit_status"]
-          p_visit_id: string
+          p_to_status: Database["public"]["Enums"]["itinerary_status"]
         }
         Returns: {
-          arrival_buffer_minutes: number
-          contact_id: string | null
           created_at: string
-          customer_id: string | null
-          customer_site_id: string | null
-          desired_arrival_time: string | null
+          date_end: string
+          date_start: string
           id: string
-          latest_departure_from_site_time: string | null
-          latest_return_time: string | null
-          meeting_duration_minutes: number | null
+          luggage_for_trip: string | null
           notes: string | null
-          proposed_end_time: string | null
-          proposed_start_time: string | null
-          return_buffer_minutes: number
-          return_location_id: string | null
-          start_location_id: string | null
-          status: Database["public"]["Enums"]["visit_status"]
+          status: Database["public"]["Enums"]["itinerary_status"]
           title: string | null
-          travel_mode_preference: Database["public"]["Enums"]["travel_mode_preference"]
+          trip_purpose: string
           updated_at: string
           user_id: string
           workspace_id: string
         }
         SetofOptions: {
           from: "*"
-          to: "visit_plans"
+          to: "itineraries"
           isOneToOne: true
           isSetofReturn: false
         }
       }
+      seed_demo_workspace: { Args: { p_user_id: string }; Returns: string }
+      seed_route_segments: { Args: { payload: Json }; Returns: number }
+      text_to_bytea: { Args: { data: string }; Returns: string }
+      urlencode:
+        | { Args: { data: Json }; Returns: string }
+        | {
+            Args: { string: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { string: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
     }
     Enums: {
       booking_intent_status:
@@ -1701,6 +2834,12 @@ export type Database = {
         | "prep"
         | "buffer"
       calendar_provider: "google" | "microsoft"
+      captured_input_status:
+        | "pending_review"
+        | "confirmed"
+        | "corrected"
+        | "rejected"
+        | "expired"
       checklist_status: "incomplete" | "complete"
       expense_type:
         | "rail_ticket"
@@ -1710,11 +2849,41 @@ export type Database = {
         | "hotel"
         | "food"
         | "other"
+      fact_commitment_state:
+        | "raw"
+        | "sorted"
+        | "planned"
+        | "booked"
+        | "live"
+        | "done"
+        | "cancelled"
+      fact_confidence: "high" | "medium" | "low"
+      fact_source:
+        | "manual"
+        | "captured"
+        | "parsed_email"
+        | "calendar"
+        | "partner_api"
+        | "inferred"
+        | "system"
       feasibility_status:
         | "recommended"
         | "tight"
         | "not_recommended"
         | "not_possible"
+      intent_status:
+        | "open"
+        | "in_progress"
+        | "fulfilled"
+        | "abandoned"
+        | "snoozed"
+      itinerary_status:
+        | "draft"
+        | "planning"
+        | "planned"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       job_status: "pending" | "running" | "completed" | "failed" | "cancelled"
       leg_type:
         | "walk"
@@ -1751,35 +2920,59 @@ export type Database = {
         | "approved"
         | "rejected"
         | "reimbursed"
-      saved_trip_status:
-        | "upcoming"
-        | "ready"
-        | "in_progress"
-        | "completed"
-        | "cancelled"
+      stop_type:
+        | "start"
+        | "end"
+        | "appointment"
+        | "accommodation"
+        | "event"
+        | "meal"
+        | "transport_booked"
+        | "transit_arrival"
+        | "other"
+        | "transit_departure"
+        | "stopover"
+        | "transit_changeover"
       ticket_status: "booked" | "changed" | "cancelled" | "refunded" | "unknown"
-      travel_mode_preference: "rail" | "drive" | "compare" | "mixed"
+      transition_mode:
+        | "walk"
+        | "drive"
+        | "taxi"
+        | "bus"
+        | "tube"
+        | "train"
+        | "flight"
+        | "mixed"
+      transport_hub_kind: "rail_station" | "airport"
+      travel_mode_preference:
+        | "rail"
+        | "drive"
+        | "compare"
+        | "mixed"
+        | "walk"
+        | "taxi"
+        | "no_preference"
       travel_option_mode: "rail" | "drive" | "mixed"
-      trip_progress_status:
-        | "not_started"
-        | "on_track"
-        | "tight"
-        | "delayed"
-        | "missed_connection"
-        | "completed"
-      visit_status:
-        | "draft"
-        | "checking"
-        | "proposed"
-        | "confirmed"
-        | "booked"
-        | "in_progress"
-        | "completed"
-        | "cancelled"
       workspace_type: "personal" | "organisation"
     }
     CompositeTypes: {
-      [_ in never]: never
+      http_header: {
+        field: string | null
+        value: string | null
+      }
+      http_request: {
+        method: unknown
+        uri: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content_type: string | null
+        content: string | null
+      }
+      http_response: {
+        status: number | null
+        content_type: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content: string | null
+      }
     }
   }
 }
@@ -1919,6 +3112,13 @@ export const Constants = {
         "buffer",
       ],
       calendar_provider: ["google", "microsoft"],
+      captured_input_status: [
+        "pending_review",
+        "confirmed",
+        "corrected",
+        "rejected",
+        "expired",
+      ],
       checklist_status: ["incomplete", "complete"],
       expense_type: [
         "rail_ticket",
@@ -1929,11 +3129,45 @@ export const Constants = {
         "food",
         "other",
       ],
+      fact_commitment_state: [
+        "raw",
+        "sorted",
+        "planned",
+        "booked",
+        "live",
+        "done",
+        "cancelled",
+      ],
+      fact_confidence: ["high", "medium", "low"],
+      fact_source: [
+        "manual",
+        "captured",
+        "parsed_email",
+        "calendar",
+        "partner_api",
+        "inferred",
+        "system",
+      ],
       feasibility_status: [
         "recommended",
         "tight",
         "not_recommended",
         "not_possible",
+      ],
+      intent_status: [
+        "open",
+        "in_progress",
+        "fulfilled",
+        "abandoned",
+        "snoozed",
+      ],
+      itinerary_status: [
+        "draft",
+        "planning",
+        "planned",
+        "in_progress",
+        "completed",
+        "cancelled",
       ],
       job_status: ["pending", "running", "completed", "failed", "cancelled"],
       leg_type: [
@@ -1975,34 +3209,42 @@ export const Constants = {
         "rejected",
         "reimbursed",
       ],
-      saved_trip_status: [
-        "upcoming",
-        "ready",
-        "in_progress",
-        "completed",
-        "cancelled",
+      stop_type: [
+        "start",
+        "end",
+        "appointment",
+        "accommodation",
+        "event",
+        "meal",
+        "transport_booked",
+        "transit_arrival",
+        "other",
+        "transit_departure",
+        "stopover",
+        "transit_changeover",
       ],
       ticket_status: ["booked", "changed", "cancelled", "refunded", "unknown"],
-      travel_mode_preference: ["rail", "drive", "compare", "mixed"],
+      transition_mode: [
+        "walk",
+        "drive",
+        "taxi",
+        "bus",
+        "tube",
+        "train",
+        "flight",
+        "mixed",
+      ],
+      transport_hub_kind: ["rail_station", "airport"],
+      travel_mode_preference: [
+        "rail",
+        "drive",
+        "compare",
+        "mixed",
+        "walk",
+        "taxi",
+        "no_preference",
+      ],
       travel_option_mode: ["rail", "drive", "mixed"],
-      trip_progress_status: [
-        "not_started",
-        "on_track",
-        "tight",
-        "delayed",
-        "missed_connection",
-        "completed",
-      ],
-      visit_status: [
-        "draft",
-        "checking",
-        "proposed",
-        "confirmed",
-        "booked",
-        "in_progress",
-        "completed",
-        "cancelled",
-      ],
       workspace_type: ["personal", "organisation"],
     },
   },
