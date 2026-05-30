@@ -5,6 +5,7 @@ import { recogniseMoney } from "./money";
 import { recogniseDurations } from "./duration";
 import { recogniseParty } from "./party";
 import { recognisePeople } from "./people";
+import { recogniseBookingRefs } from "./booking-ref";
 
 export type { PatternMatch } from "./types";
 
@@ -15,6 +16,8 @@ export interface PatternBundle {
   durations: PatternMatch[];
   party: PatternMatch[];
   people: PatternMatch[];
+  bookingRefs: PatternMatch[];
+  routes: PatternMatch[];
   all: PatternMatch[];
 }
 
@@ -35,6 +38,9 @@ export function recognisePatterns(input: string, ref: Date): PatternBundle {
   const durations = safe(() => recogniseDurations(input));
   const party = safe(() => recogniseParty(input));
   const people = safe(() => recognisePeople(input));
+  const refs = safe(() => recogniseBookingRefs(input));
+  const bookingRefs = refs.filter((r) => r.type === "booking_ref");
+  const routes = refs.filter((r) => r.type === "route");
   return {
     dates,
     times,
@@ -42,6 +48,8 @@ export function recognisePatterns(input: string, ref: Date): PatternBundle {
     durations,
     party,
     people,
-    all: [...dates, ...times, ...money, ...durations, ...party, ...people],
+    bookingRefs,
+    routes,
+    all: [...dates, ...times, ...money, ...durations, ...party, ...people, ...bookingRefs, ...routes],
   };
 }

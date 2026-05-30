@@ -10,7 +10,9 @@ export type PatternType =
   | "money"
   | "duration"
   | "party_size"
-  | "person";
+  | "person"
+  | "booking_ref"
+  | "route";
 
 export type Granularity =
   | "exact"

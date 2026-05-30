@@ -175,6 +175,25 @@ describe("Fix 2 — comma over-fragmentation", () => {
   });
 });
 
+// ── Fix 9 — booking refs + IATA routes ─────────────────────────────────────────
+describe("Fix 9 — booking references and IATA routes", () => {
+  it("'Flight BA307 LHR-CDG departs 09:25 14 August' → ref + route hubs", async () => {
+    const p = await run("Flight BA307 LHR-CDG departs 09:25 arrives 11:55 14 August");
+    const flight = byType(p.facts, "flight_journey")[0];
+    expect(flight).toBeDefined();
+    expect(flight.slots.booking_ref?.value).toBe("BA307");
+    expect(hubId(flight, "origin")).toBe("hub-lhr");
+    expect(hubId(flight, "destination")).toBe("hub-cdg");
+  });
+
+  it("'Train ref C4X9P2, Kings Cross to Edinburgh 11:03 Saturday' → ref extracted", async () => {
+    const p = await run("Train ref C4X9P2, Kings Cross to Edinburgh 11:03 Saturday");
+    const train = byType(p.facts, "train_journey")[0];
+    expect(train).toBeDefined();
+    expect(train.slots.booking_ref?.value).toBe("C4X9P2");
+  });
+});
+
 // ── Fix 10 — concept word expansion ────────────────────────────────────────────
 describe("Fix 10 — expanded event vocabulary", () => {
   it("'Board meeting at 9 Thursday' → meeting, no spurious place 'Board'", async () => {

@@ -199,8 +199,34 @@ export async function populateSlots(
   // Special-case accommodation check-in/check-out from a date range.
   const dateRange = dates.find((d) => d.range);
 
+  // Booking reference (stress-test Fix 9) — fills the booking_ref slot when the
+  // fact-type has one. The regex is permissive; the fact-type is the disambiguator.
+  const bookingRef = patterns.bookingRefs.filter((p) => inClause(p, clause))[0];
+
+  // IATA route ("LHR-CDG") → resolve both codes to hubs for origin/destination
+  // when this fact-type has those transit slots (stress-test Fix 9).
+  const route = patterns.routes.filter((p) => inClause(p, clause))[0];
+  let routeOrigin: Slot | null = null;
+  let routeDest: Slot | null = null;
+  if (route && schema.slots.some((s) => s.key === "origin")) {
+    const rv = route.normalised_value as { origin_code: string; destination_code: string };
+    const [o, d] = await Promise.all([resolver.resolveHub(rv.origin_code), resolver.resolveHub(rv.destination_code)]);
+    const mk = (code: string, m: ResolvedHub | null): Slot =>
+      m
+        ? { value: { hub_id: m.id, label: m.name, code: m.code }, source_text: code, source_range: route.source_range, confidence: "high", inferred: false }
+        : { value: code, source_text: code, source_range: route.source_range, confidence: "low", inferred: false };
+    routeOrigin = mk(rv.origin_code, o.match);
+    routeDest = mk(rv.destination_code, d.match);
+  }
+
   for (const def of schema.slots) {
     if (slots[def.key]) continue;
+    if (def.key === "booking_ref" && bookingRef) {
+      slots[def.key] = slotFromPattern(bookingRef);
+      continue;
+    }
+    if (def.key === "origin" && routeOrigin) { slots[def.key] = routeOrigin; continue; }
+    if (def.key === "destination" && routeDest) { slots[def.key] = routeDest; continue; }
     switch (def.dataType) {
       case "date": {
         if (def.key === "check_in_date" && dateRange) {
