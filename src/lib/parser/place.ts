@@ -53,6 +53,9 @@ function roleFromOperator(phrase: string): PlaceRole | null {
 const NON_PLACE_WORDS = new Set([
   "be", "being", "been", "go", "going", "get", "getting", "got", "let",
   "do", "doing", "did", "make", "take", "give", "see", "have", "need",
+  // Modal/auxiliary verbs that only lead a sentence ("Will need to…",
+  // "Should book…") — never a place, even when capitalised at position 0.
+  "will", "would", "shall", "should", "can", "could", "may", "might", "must",
 ]);
 
 // Tokens that terminate a place-name run. "&" is the one punctuation kept inside
@@ -86,6 +89,13 @@ function collectRun(
 ): { text: string; start: number; end: number; lastIdx: number } | null {
   const isTitle = (t: Token | undefined) => !!t && /^[A-Z][a-z]/.test(t.text);
   let j = from;
+  // Skip a leading lowercase article: "at the cheese factory" → the place is
+  // "cheese factory", not a run that dies on "the" (which is itself an operator).
+  // A capitalised "The" (e.g. "The Shard") stays — it's part of the proper name.
+  if (tokens[j] && (tokens[j].lower === "the" || tokens[j].lower === "a" || tokens[j].lower === "an") && !/^[A-Z]/.test(tokens[j].text)) {
+    j++;
+    from = j;
+  }
   const parts: Token[] = [];
   while (j <= to) {
     if (isStop(tokens[j], j, lookup, patterns)) {

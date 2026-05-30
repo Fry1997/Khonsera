@@ -75,6 +75,11 @@ export function segment(
   }
   for (const op of lookup.operators) {
     if (!op.categories.includes("connector")) continue;
+    // A connector that sits INSIDE a recognised date/time span is part of that
+    // pattern ("next" in "next Thursday"), not a clause break — never split there.
+    const opStart = tokens[op.tokenStart].start;
+    const opEnd = tokens[op.tokenEnd].end;
+    if (patterns.all.some((p) => p.source_range.start <= opStart && p.source_range.end >= opEnd)) continue;
     // Concept immediately AFTER the connector, and the nearest one BEFORE it.
     const after = lookup.concepts
       .filter((c) => c.tokenStart > op.tokenEnd)
