@@ -77,8 +77,40 @@ Run `npx vitest run`.
 When you find a parser issue in real use, add it to the corpus first with the expected payload
 (the "correct" behaviour you want), and confirm the test fails. Then implement the fix. The
 corpus is the living record of what the parser does and what we've decided is correct behaviour;
-growing it is the parser's improvement loop. (44 parser tests after the first fix pass — aim to
-grow it steadily.)
+growing it is the parser's improvement loop. (85 parser tests after the second (stress-test) fix
+pass — aim to grow it steadily.)
+
+### Second fix pass — stress-test (10 fixes)
+Driven by a 61-input stress test. Fixtures live in `__tests__/stress.test.ts`.
+- **Negation routing** (`negation.ts`, PRIORITY 1): a sentence-leading negation
+  ("No meeting Monday" / "Cancel ..." / "Actually no") routes to
+  `cancellation_request`/`correction_intent` BEFORE classification — it can never
+  create a positive fact. Mid-sentence retractions ("Lunch Thursday, not Wednesday")
+  are untouched.
+- **Bare-hour disambiguation** (`times.ts` + `slots.ts`): a meridiem-less hour is
+  resolved against the fact-type's `typicalHours` (registry) — "dinner from 7" →
+  19:00, "call at 3" → 15:00; trains/flights keep no inference.
+- **Imperative slot extraction** (`parse.ts extractIntentSlots`): stub intents carry
+  date/time/place/contact/party/price/duration as metadata; the intent STAYS an
+  intent, never a positive fact.
+- **Comma de-fragmentation** (`segment.ts`): a comma splits only when a new concept/
+  imperative/return-leg follows; otherwise the clause continues.
+- **Hotels** (`layer_1` + `duration.ts` + `slots.ts` + `imperatives.ts`): chain names
+  + "staying at" trigger accommodation; "N nights from <date>" derives the stay; "check
+  in/out" no longer mis-routes as a search.
+- **Concept expansion** (`layer_1`): compound concepts first (board meeting, 1-2-1),
+  standup/keynote/Eurostar/drinks, etc.
+- **"and" discipline** (`place.ts` + `segment.ts`): "The Crown and Anchor" keeps its
+  name; "dinner and drinks at X" composes; different anchors split.
+- **Booking refs + IATA routes** (`booking-ref.ts`): BA307 / C4X9P2 → booking_ref;
+  LHR-CDG → origin/destination hubs.
+- **Curated fuzzy** (`fuzzy.ts`): Damerau-L1 on a hot-token list only (days/months/
+  relative/time-of-day/event words), one correction per input, real-word collisions
+  denylisted; place/contact names stay strict.
+- **Recurrence surfacing** (`recurrence.ts`): cadence detected + held on
+  `recurrence_pattern`, never expanded.
+- **Relative anchors** (`relative-anchor.ts`): "an hour before the demo" is held
+  verbatim + flagged low, not fabricated.
 
 ### First-input fix pass (handback §5)
 Four bug classes closed, with regression-guarded fixtures in `corpus.test.ts`:

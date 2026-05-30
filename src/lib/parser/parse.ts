@@ -9,6 +9,7 @@ import { lookup, type LookupResult } from "./lookup";
 import { routeImperative } from "./imperatives";
 import { routeNegation } from "./negation";
 import { detectRecurrence } from "./recurrence";
+import { detectRelativeAnchor } from "./relative-anchor";
 import { segment } from "./segment";
 import { classifyClause } from "./classify";
 import { populateSlots, rollupConfidence, nullResolver, type PlaceResolver } from "./slots";
@@ -269,13 +270,30 @@ export async function parse(
       const modifier = clauseConfidenceModifier(dict, tokens, clause.start, clause.end);
       // Recurrence is detected + surfaced, never expanded (stress-test Fix 8).
       const recurrence = detectRecurrence(clause.text);
+      const warnings: string[] = [];
+
+      // Relative cross-fact anchor (stress-test Fix 3a): rather than fabricate a
+      // confident date/time we can't resolve, hold the phrase verbatim, flag the
+      // affected slot low + ambiguous, and warn. Full resolution is v1.1.
+      const rel = detectRelativeAnchor(clause.text);
+      if (rel) {
+        const key = rel.affects === "time"
+          ? (fill.slots.time ? "time" : "time_or_period")
+          : "date";
+        const slot = fill.slots[key];
+        if (slot) {
+          fill.slots[key] = { ...slot, confidence: "low", ambiguous: true };
+        }
+        warnings.push(`"${rel.phrase}" is relative to another item — I couldn't pin the exact ${rel.affects} yet.`);
+      }
+
       facts.push({
         local_id: `fact_${i + 1}`,
         fact_type: factType,
         slots: fill.slots,
         links: [],
-        warnings: [],
-        confidence: rollupConfidence(fill, modifier),
+        warnings,
+        confidence: rel ? "low" : rollupConfidence(fill, modifier),
         source_range: { start: clause.start, end: clause.end },
         ...(recurrence ? { recurrence_pattern: recurrence } : {}),
       });

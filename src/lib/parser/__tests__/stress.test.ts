@@ -216,6 +216,23 @@ describe("Fix 6 — fuzzy hot-token correction", () => {
   });
 });
 
+// ── Fix 3a — relative anchors: honest verbatim hold, no fabrication ────────────
+describe("Fix 3a — relative anchors flagged not fabricated", () => {
+  it("'Standup an hour before the client demo Monday' → low confidence + warning", async () => {
+    const p = await run("Standup an hour before the client demo Monday");
+    const ev = byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    expect(ev.confidence).toBe("low");
+    expect(ev.warnings.some((w) => /relative/i.test(w))).toBe(true);
+  });
+
+  it("'Dentist the day after my train' → low confidence, date not fabricated confidently", async () => {
+    const p = await run("Dentist the day after my train");
+    expect(p.facts[0].confidence).toBe("low");
+    expect(p.facts[0].warnings.some((w) => /relative/i.test(w))).toBe(true);
+  });
+});
+
 // ── Fix 8 — recurrence surfaced as metadata (never expanded) ───────────────────
 describe("Fix 8 — recurrence pattern surfacing", () => {
   it("'Team standup every Tuesday 9am' → one meeting + recurrence metadata", async () => {
