@@ -15,6 +15,7 @@ const eventPlace = {
 export const scheduledEvent: FactTypeMapping = {
   factType: "scheduled_event",
   shape: "dated_event",
+  typicalHours: [8, 18], // work hours — bare "at 3" → 15:00
   targets: [{ table: "stops", as: "appointment" }],
   slotMeta: {
     place: eventPlace,
@@ -30,6 +31,7 @@ export const scheduledEvent: FactTypeMapping = {
 export const scheduledCall: FactTypeMapping = {
   factType: "scheduled_call",
   shape: "dated_event",
+  typicalHours: [8, 18],
   // A call has no place; it's a time-anchored appointment-type stop.
   targets: [{ table: "stops", as: "appointment", note: "video/phone call — no place" }],
   slotMeta: {
@@ -44,6 +46,7 @@ export const scheduledCall: FactTypeMapping = {
 export const appointment: FactTypeMapping = {
   factType: "appointment",
   shape: "dated_event",
+  typicalHours: [8, 18],
   targets: [{ table: "stops", as: "appointment" }],
   slotMeta: {
     place: eventPlace,
@@ -58,6 +61,7 @@ export const appointment: FactTypeMapping = {
 export const businessEvent: FactTypeMapping = {
   factType: "business_event",
   shape: "dated_event",
+  typicalHours: [9, 17],
   targets: [{ table: "stops", as: "event" }],
   slotMeta: {
     place: eventPlace,
@@ -71,6 +75,9 @@ export const businessEvent: FactTypeMapping = {
 export const mealPlan: FactTypeMapping = {
   factType: "meal_plan",
   shape: "dated_event",
+  // Default lean towards evening dining; the resolver narrows per meal word
+  // (breakfast/lunch/dinner/drinks) from the clause text (stress-test Fix 7).
+  typicalHours: [12, 22],
   targets: [{ table: "stops", as: "meal" }],
   slotMeta: {
     place: { dataType: "place", resolvesTo: "locations", placePref: "event" },

@@ -57,6 +57,17 @@ function slotFromPattern(p: PatternMatch, inferred = false): Slot {
   };
 }
 
+// Per-meal typical hours for bare-hour disambiguation (stress-test Fix 7). The
+// meal_plan schema covers breakfast/lunch/dinner/drinks — narrow by the word.
+function mealTypicalHours(text: string): [number, number] | null {
+  const t = text.toLowerCase();
+  if (/\bbreakfast|brekkie|morning meal\b/.test(t)) return [6, 10];
+  if (/\blunch|lunchtime\b/.test(t)) return [12, 14];
+  if (/\bdinner|supper|evening meal\b/.test(t)) return [18, 22];
+  if (/\bdrinks\b/.test(t)) return [17, 23];
+  return null;
+}
+
 function roleForKey(key: string): PlaceRole | null {
   if (key === "origin" || key === "pickup_place") return "origin";
   if (key === "destination" || key === "dropoff_place") return "destination";
@@ -108,6 +119,27 @@ export async function populateSlots(
   let dateIdx = 0;
   const usedPlaces = new Set<PlaceCandidate>();
 
+  // Bare-hour meridiem disambiguation by event type (stress-test Fix 7). A time
+  // flagged ambiguousMeridiem ("at 3", "from 7") is resolved against the fact's
+  // typical-hours window; meal_plan narrows further by the meal word present.
+  const typicalHours = mealTypicalHours(clause.text) ?? schema.typicalHours ?? null;
+  const resolveBareHour = (p: PatternMatch): PatternMatch => {
+    const meta = p.meta as { ambiguousMeridiem?: boolean; bareHour?: number } | undefined;
+    if (!meta?.ambiguousMeridiem || typeof meta.bareHour !== "number") return p;
+    if (!typicalHours) return p; // trains/flights: no inference, stays flagged (medium)
+    const [lo, hi] = typicalHours;
+    const h12 = meta.bareHour % 12; // 12 → 0
+    const am = h12;
+    const pm = h12 + 12;
+    const within = (h: number) => h >= lo && h <= hi;
+    let chosen: number;
+    if (within(pm) && !within(am)) chosen = pm;
+    else if (within(am) && !within(pm)) chosen = am;
+    else chosen = within(pm) ? pm : am; // both/neither → prefer the window's side
+    const mm = String(p.normalised_value).split(":")[1] ?? "00";
+    return { ...p, normalised_value: `${String(chosen).padStart(2, "0")}:${mm}`, confidence: "medium" };
+  };
+
   // Route times to a slot by an adjacent direction word: "arriving at 09:30" →
   // arrival_time, "leaving/departing at 09:00" → departure_time (handback §2.3).
   // Direction-less times fill the remaining time slots in schema order.
@@ -120,7 +152,8 @@ export async function populateSlots(
   };
   const timeBySlot: Record<string, PatternMatch> = {};
   const leftoverTimes: PatternMatch[] = [];
-  for (const t of times) {
+  for (const raw of times) {
+    const t = resolveBareHour(raw);
     const dir = directionFor(t);
     if (dir && !timeBySlot[dir]) timeBySlot[dir] = t;
     else leftoverTimes.push(t);

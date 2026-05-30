@@ -82,10 +82,13 @@ describe("parser corpus — single-fact", () => {
     expect(String(p.facts[0].slots.label.value)).toBe("pack the charger");
   });
 
-  it("find me a hotel near the venue → search_request stub, no facts invented", async () => {
+  it("find me a hotel near the venue → search_request stub (held as an intent, never a positive fact)", async () => {
     const p = await run("Find me a hotel near the venue");
     expect(p.intent_type).toBe("search_request");
-    expect(p.facts).toHaveLength(0);
+    // Fix 5: a stub intent is held as an `intent` fact carrying any extracted
+    // slots — it must NEVER become a positive (hotel/meeting/etc.) fact.
+    expect(p.facts.every((f) => f.fact_type === "intent")).toBe(true);
+    expect(p.facts.some((f) => f.fact_type === "accommodation_booking")).toBe(false);
   });
 });
 

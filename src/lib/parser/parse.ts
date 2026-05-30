@@ -4,12 +4,14 @@
 
 import { getDictionary, type Dictionary } from "@/lib/dictionary/dictionary";
 import { tokenise, type Token } from "./tokenise";
-import { recognisePatterns } from "./recognisers";
-import { lookup } from "./lookup";
+import { recognisePatterns, type PatternBundle } from "./recognisers";
+import { lookup, type LookupResult } from "./lookup";
 import { routeImperative } from "./imperatives";
+import { routeNegation } from "./negation";
 import { segment } from "./segment";
 import { classifyClause } from "./classify";
 import { populateSlots, rollupConfidence, nullResolver, type PlaceResolver } from "./slots";
+import { findPlaces } from "./place";
 import { linkFacts } from "./link";
 import { validateFacts } from "./validate";
 import {
@@ -60,6 +62,58 @@ function verbatimNote(input: string): ParsedFact {
   };
 }
 
+// Extracts the metadata slots (date/time/place/person/party/money/duration) from a
+// content region for an INTENT (not a positive fact) — stress-test Fix 5. The
+// intent stays an intent; these slots ride along as payload metadata so a future
+// handler has the details. Place candidates are resolved best-effort (event-style:
+// saved location else verbatim label).
+async function extractIntentSlots(
+  input: string,
+  region: { start: number; end: number },
+  tokens: Token[],
+  matches: LookupResult,
+  patterns: PatternBundle,
+  resolver: PlaceResolver,
+): Promise<Record<string, Slot>> {
+  const inRegion = (s: number, e: number) => s >= region.start && s < region.end;
+  const slots: Record<string, Slot> = {};
+  const fromPattern = (key: string, p: { normalised_value: unknown; source_text: string; source_range: { start: number; end: number }; confidence: Confidence }) => {
+    if (slots[key]) return;
+    slots[key] = { value: p.normalised_value, source_text: p.source_text, source_range: p.source_range, confidence: p.confidence, inferred: false };
+  };
+
+  const date = patterns.dates.find((p) => inRegion(p.source_range.start, p.source_range.end));
+  if (date) fromPattern("date", date);
+  const time = patterns.times.find((p) => inRegion(p.source_range.start, p.source_range.end));
+  if (time) fromPattern("time", time);
+  const person = patterns.people.find((p) => inRegion(p.source_range.start, p.source_range.end));
+  if (person) fromPattern("contact", person);
+  const party = patterns.party.find((p) => inRegion(p.source_range.start, p.source_range.end));
+  if (party) fromPattern("party_size", party);
+  const money = patterns.money.find((p) => inRegion(p.source_range.start, p.source_range.end));
+  if (money) fromPattern("price", money);
+  const duration = patterns.durations.find((p) => inRegion(p.source_range.start, p.source_range.end));
+  if (duration) fromPattern("duration", duration);
+
+  // A single place candidate, resolved event-style (saved location else label).
+  const tokenStart = tokens.findIndex((t) => t.start >= region.start);
+  let tokenEnd = -1;
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (tokens[i].end <= region.end) { tokenEnd = i; break; }
+  }
+  if (tokenStart !== -1 && tokenEnd >= tokenStart) {
+    const cands = findPlaces({ tokenStart, tokenEnd }, tokens, matches, patterns);
+    const cand = cands.find((c) => c.viaOperator) ?? cands[0];
+    if (cand) {
+      const loc = await resolver.resolveLocation(cand.text);
+      slots.place = loc
+        ? { value: { location_id: loc.id, label: loc.name }, source_text: cand.text, source_range: { start: cand.start, end: cand.end }, confidence: "high", inferred: false }
+        : { value: cand.text, source_text: cand.text, source_range: { start: cand.start, end: cand.end }, confidence: "medium", inferred: false };
+    }
+  }
+  return slots;
+}
+
 function clauseConfidenceModifier(
   dict: Dictionary,
   tokens: Token[],
@@ -104,6 +158,39 @@ export async function parse(
   const patterns = recognisePatterns(input, ref);
   const matches = lookup(tokens, dict);
 
+  // Stage 4a — negation / correction routing (PRIORITY 1, stress-test Fix 1).
+  // A sentence-leading negation must NEVER create a positive fact. Runs before
+  // imperative routing + classification so "No meeting Monday" can't become a
+  // meeting. Mid-sentence retractions are untouched (they flow to the fact engine).
+  const neg = routeNegation(input);
+  if (neg) {
+    const intentType = neg.kind === "correction" ? "correction_intent" : "cancellation_request";
+    const region = { start: 0, end: input.length };
+    const slots = await extractIntentSlots(input, region, tokens, matches, patterns, resolver);
+    slots.label = {
+      value: neg.text,
+      source_text: neg.text,
+      source_range: { start: 0, end: input.length },
+      confidence: "high",
+      inferred: false,
+    };
+    return {
+      ...base,
+      intent_type: intentType,
+      facts: [
+        {
+          local_id: "fact_1",
+          fact_type: "intent",
+          slots,
+          links: [],
+          warnings: [],
+          confidence: "medium",
+          source_range: { start: 0, end: input.length },
+        },
+      ],
+    };
+  }
+
   // Stage 4 — imperative routing.
   const routing = routeImperative(input, tokens, matches);
   if (routing.intent_type === "create_intent") {
@@ -138,47 +225,34 @@ export async function parse(
     };
   }
   if (routing.intent_type && STUB_INTENTS.has(routing.intent_type)) {
-    // communication_request ("email Jane the tickets") is a stub Khonsera can't
-    // action yet, but we still recognise WHO it's about and hold the verbatim
-    // text as an intent so nothing is lost (handback §2.4/§5.5).
-    if (routing.intent_type === "communication_request") {
-      const label = input.trim();
-      const person = patterns.people[0];
-      const slots: Record<string, Slot> = {
-        label: {
-          value: label,
-          source_text: label,
+    // Stub intents (book/find/cancel/email/...) — Khonsera can't action these yet,
+    // but we extract the content slots so a future handler has the details, and
+    // hold the verbatim text. The intent STAYS an intent — never a positive fact
+    // (stress-test Fix 5). The content region is everything after the trigger.
+    const region = { start: routing.consumedEnd, end: input.length };
+    const slots = await extractIntentSlots(input, region, tokens, matches, patterns, resolver);
+    slots.label = {
+      value: input.trim(),
+      source_text: input.trim(),
+      source_range: { start: 0, end: input.length },
+      confidence: "high",
+      inferred: false,
+    };
+    return {
+      ...base,
+      intent_type: routing.intent_type,
+      facts: [
+        {
+          local_id: "fact_1",
+          fact_type: "intent",
+          slots,
+          links: [],
+          warnings: [],
+          confidence: "medium",
           source_range: { start: 0, end: input.length },
-          confidence: "high",
-          inferred: false,
         },
-      };
-      if (person) {
-        slots.person = {
-          value: person.normalised_value,
-          source_text: person.source_text,
-          source_range: person.source_range,
-          confidence: person.confidence,
-          inferred: false,
-        };
-      }
-      return {
-        ...base,
-        intent_type: routing.intent_type,
-        facts: [
-          {
-            local_id: "fact_1",
-            fact_type: "intent",
-            slots,
-            links: [],
-            warnings: [],
-            confidence: "medium",
-            source_range: { start: 0, end: input.length },
-          },
-        ],
-      };
-    }
-    return { ...base, intent_type: routing.intent_type };
+      ],
+    };
   }
 
   // Stages 5–7 — segment, classify, fill.

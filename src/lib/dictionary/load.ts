@@ -128,6 +128,7 @@ function buildSchemas(layer1: Layer1Entry[]): {
         slots: buildSlots(mapping, essential, optional),
         verbatimHold: mapping.verbatimHold,
         validations: mapping.validations,
+        typicalHours: mapping.typicalHours,
       };
       schemas.set(entry.fact_type, schema);
     } else {

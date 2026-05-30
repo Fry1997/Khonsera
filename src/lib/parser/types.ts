@@ -49,6 +49,9 @@ export interface ParsedFact {
   warnings: string[];
   confidence: Confidence;
   source_range: SourceRange; // the clause span that produced this fact
+  // Recurrence is deferred (no series expansion); when a cadence is detected we
+  // hold it verbatim here + surface it in the UI (stress-test Fix 8).
+  recurrence_pattern?: string;
 }
 
 export interface UnmatchedSpan {

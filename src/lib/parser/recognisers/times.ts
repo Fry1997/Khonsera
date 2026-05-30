@@ -28,15 +28,22 @@ export function recogniseTimes(input: string, ref: Date): PatternMatch[] {
   // 1. Clock / natural times via chrono — only when the hour is certain.
   for (const r of chrono.parse(input, ref, { forwardDate: true })) {
     if (!r.start.isCertain("hour")) continue;
+    // A bare hour with no am/pm ("at 3", "from 7") is meridiem-ambiguous. We keep
+    // chrono's literal value but flag it so slot-fill can disambiguate by event
+    // type (stress-test Fix 7), e.g. dinner "from 7" → 19:00, call "at 3" → 15:00.
+    const meridiemKnown = r.start.isCertain("meridiem");
+    const hour = r.start.get("hour");
+    const ambiguousMeridiem = !meridiemKnown && typeof hour === "number" && hour >= 1 && hour <= 12;
     out.push({
       type: "time",
       source_text: r.text,
       source_range: { start: r.index, end: r.index + r.text.length },
       normalised_value: hhmm(r.start.date()),
-      confidence: "high",
+      confidence: ambiguousMeridiem ? "medium" : "high",
       fuzzy: false,
       range: false,
       granularity: "minute",
+      meta: ambiguousMeridiem ? { ambiguousMeridiem: true, bareHour: hour } : undefined,
     });
   }
 

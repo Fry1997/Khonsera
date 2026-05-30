@@ -105,6 +105,10 @@ export interface FactTypeMapping {
   verbatimHold?: boolean;
   // Human-readable validation rules the gap engine / UI enforce.
   validations?: string[];
+  // [startHour, endHour] (24h) — the event's typical hours. Used to disambiguate a
+  // bare meridiem-less hour ("dinner from 7" → 19:00) (stress-test Fix 7). Absent →
+  // no inference (e.g. trains/flights), the bare hour stays flagged.
+  typicalHours?: [number, number];
 }
 
 // A fully-resolved slot: YAML name + essential/optional → tier, merged with the
@@ -132,6 +136,7 @@ export interface FactTypeSchema {
   slots: SlotDef[];
   verbatimHold?: boolean;
   validations?: string[];
+  typicalHours?: [number, number];
 }
 
 // The mapping registry (DB metadata, no concept words / slot lists of its own).
