@@ -1,0 +1,200 @@
+# Khonsera Semantic Dictionary
+# Layer 3: Operator words
+# Scope: light grammar for travel and personal logistics only.
+#
+# ENGINEERING NOTE — MULTI-CATEGORY OPERATORS:
+# Several operator words legitimately appear in multiple categories because
+# they are genuinely ambiguous in English. The engine must disambiguate from
+# CONTEXT, not from the dictionary alone. The dictionary's job is to flag
+# every possible interpretation; the engine picks one based on what follows.
+#
+#   by      → positioner | narrower | method_marker
+#             "by 8pm" (positioner/deadline) | "by the station" (narrower)
+#             | "by train" (method)
+#   via     → method_marker | journey_breaker
+#             "via Birmingham" (could be either — engine decides if Birmingham
+#             is the route or a stop based on whether other stops are present)
+#   in      → narrower | method_marker
+#             "in Soho" (narrower) | "in a taxi" (method)
+#   after   → positioner | time_proximity
+#             "after the meeting" (positioner) | "10 mins after the train"
+#             (time_proximity with duration prefix)
+#   before  → positioner | time_proximity (same pattern as 'after')
+#   with    → connector | (other senses to be deferred)
+#
+# Disambiguation heuristic: examine the token immediately following the
+# operator. Place name → narrower. Time/duration → positioner or time_proximity.
+# Mode noun (train/car/taxi/etc.) → method_marker. Event reference → positioner.
+# When ambiguous, prefer the interpretation that produces a more complete fact.
+
+operator_words:
+  - category: connector
+    triggers:
+      - and
+      - then
+      - also
+      - plus
+      - followed by
+      - next
+      - after that
+      - afterwards
+      - later
+      - later on
+      - as well as
+      - with
+    rule: separates events in sequence OR composes activities at one anchor depending on surrounding facts
+
+  - category: positioner
+    triggers:
+      - before
+      - after
+      - prior to
+      - following
+      - starting
+      - ending
+      - from
+      - to
+      - until
+      - till
+      - by
+      - between
+      - during
+    rule: creates a relative time, date, or sequence relationship against a reference event
+
+  - category: narrower
+    triggers:
+      - in
+      - at
+      - near
+      - nearby
+      - around
+      - by
+      - within
+      - inside
+      - outside
+      - close to
+      - next to
+      - opposite
+      - near to
+    rule: scopes or constrains a place reference
+
+  - category: method_marker
+    triggers:
+      - by
+      - via
+      - on
+      - in
+    rule: when followed by a transport mode, marks method of travel; when followed by a time, may mark a deadline or target arrival constraint
+    examples:
+      - by train
+      - by car
+      - via Birmingham
+      - on the train
+      - in a taxi
+      - by 8pm
+
+  - category: journey_breaker
+    triggers:
+      - stopping at
+      - stop at
+      - stop in
+      - via
+      - calling at
+      - visiting
+      - with a stop at
+      - through
+      - changing at
+      - change at
+      - connecting at
+      - connect at
+    rule: creates an intermediate stop, interchange, visit, or waypoint inside a journey
+
+  - category: time_proximity
+    triggers:
+      - within
+      - before
+      - after
+      - minutes before
+      - mins before
+      - minutes after
+      - mins after
+      - hours before
+      - hours after
+      - an hour before
+      - an hour after
+      - half an hour before
+      - half an hour after
+      - quarter of an hour before
+      - quarter of an hour after
+    patterns:
+      - "within {duration} of {event}"
+      - "{duration} before {event}"
+      - "{duration} after {event}"
+      - "{number} minutes before {event}"
+      - "{number} minutes after {event}"
+      - "{number} hours before {event}"
+      - "{number} hours after {event}"
+    rule: creates a relative time offset from a referenced fact
+
+  - category: negation
+    triggers:
+      - not
+      - no
+      - without
+      - except
+      - apart from
+      - excluding
+      - exclude
+      - but not
+      - other than
+    rule: marks the following content as excluded or absent
+
+  - category: confidence_modifier
+    triggers:
+      low_confidence:
+        - maybe
+        - possibly
+        - might
+        - could be
+        - not sure
+      medium_confidence:
+        - probably
+        - likely
+        - around
+        - roughly
+        - approximately
+        - approx
+        - about
+        - ish
+      high_confidence:
+        - definitely
+        - certainly
+        - confirmed
+        - fixed
+        - booked
+    rule: marks the parent fact's confidence level as low, medium, or high
+
+  - category: quantifier
+    triggers:
+      indefinite_creation:
+        - a
+        - an
+        - one
+        - another
+      definite_reference:
+        - the
+        - that
+        - this
+        - my
+      small_number:
+        - two
+        - three
+        - four
+        - five
+        - six
+      vague_quantity:
+        - several
+        - a few
+        - a couple
+        - some
+    rule: marks whether the phrase likely creates a new fact, refers to an existing fact, or describes quantity

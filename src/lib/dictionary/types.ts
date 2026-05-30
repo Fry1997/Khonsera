@@ -1,13 +1,17 @@
 // Fact-type schema model for the Tell Khonsera dictionary.
 //
-// A schema is the formal definition of what slots a fact-type carries, which are
-// essential and which optional, and how each should be elicited or inferred. One
-// source of truth shared by (a) the parser's confidence ratings, (b) the gap
-// engine's missing-slot detection, (c) the confirm/correct draft cards, and (d)
-// downstream validation.
+// Two halves that the loader merges into one runtime schema:
+//   1. YAML Layer 1 (data/layer_1_concept_words.yaml) — the parse-time source of
+//      truth: concept-word triggers + essential/optional slot names per fact-type.
+//   2. The TypeScript mapping registry (this folder) — the DB-materialisation
+//      metadata the YAML lacks: which tables a fact-type lands in, each slot's
+//      value type, resolver target, place-resolution preference, tier override,
+//      inference sources. Keyed by the YAML fact_type name.
 //
-// This is reference data: it changes with releases, not at runtime, so it lives in
-// version control as code rather than a database table. It is pure — no I/O.
+// All of this is static reference data: it ships with the app, loads into memory
+// once, and is pure (no I/O at use time). Shared by the parser's slot-fill +
+// confidence, the (future) gap engine's missing-slot detection, the confirm/correct
+// draft cards, and materialisation.
 
 // Slot tiers, ranked. The gap engine surfaces missing slots worst-tier-first.
 //   essential_to_work — without it the fact can't be planned (origin, destination, date)
@@ -45,35 +49,35 @@ export type SlotResolverTarget =
   | "customer_sites"
   | "contacts";
 
-export interface SlotDef {
-  // Stable key, snake_case.
-  key: string;
-  // Human label for draft cards.
-  label: string;
-  dataType: SlotDataType;
-  tier: SlotTier;
-  // For place/hub/person slots: what it resolves against.
+// Slot-aware place resolution preference (brief §10).
+//   transit — resolve against transport_hubs (a station/airport)
+//   event   — keep as a plain place label unless an explicit station is named
+//   none    — not a place slot
+export type PlaceResolutionPref = "transit" | "event" | "none";
+
+// Per-slot materialisation metadata supplied by the registry (the YAML carries
+// only the slot name + essential/optional split). All fields optional — sensible
+// defaults are derived when absent.
+export interface SlotMeta {
+  // Tier override; default derived from the YAML essential/optional split.
+  tier?: SlotTier;
+  dataType?: SlotDataType;
   resolvesTo?: SlotResolverTarget;
+  placePref?: PlaceResolutionPref;
   // Slots whose values can pre-fill this one (drops its effective tier).
-  // Dotted refs are conventions read by the gap engine, e.g.
-  // "previous_leg.destination", "travel_profile.default_rail_origin".
+  // Dotted refs read by the gap engine, e.g. "previous_leg.destination".
   autoInferFrom?: string[];
-  // Sources that can derive the value when other slots are present, e.g. a
-  // rail timetable API deriving arrival_time from origin+destination+departure.
+  // Sources that can derive the value when sibling slots are present.
   derivableFrom?: string[];
-  // What the concierge asks when this slot is empty (voice-guardrail safe).
   elicitationPrompt?: string;
-  // Free-text note on where the value lands in the real DB representation.
-  // (Mapping is many-to-one — see FactTypeSchema.targets — so this is a hint,
-  // not a single column binding.)
   dbMapping?: string;
 }
 
 // The §4 shape classification, decided from the presence/absence of anchors.
 export type FactShape = "dated_event" | "undated_task" | "intent" | "note";
 
-// Where a fact-type lands in the existing schema. A train journey is several
-// rows across several tables, so this is a list, not one binding.
+// Where a fact-type lands in the existing schema. A train journey is several rows
+// across several tables, so this is a list, not one binding.
 export interface FactTarget {
   table:
     | "stops"
@@ -83,30 +87,55 @@ export interface FactTarget {
     | "standing_facts"
     | "intents"
     | "captured_inputs";
-  // For stops: the `type` enum value this maps to; for transitions: the `mode`.
+  // For stops: the `type` enum value; for transitions: the `mode`.
   as?: string;
   note?: string;
 }
 
-export interface FactTypeSchema {
-  // Stable name, snake_case (e.g. "train_journey").
+// The registry entry for one fact-type — materialisation metadata only.
+// Keyed by the YAML fact_type name (train_journey, scheduled_event, ...).
+export interface FactTypeMapping {
   factType: string;
   shape: FactShape;
-  // Dictionary Layer-1 concept words that instantiate this fact-type.
-  conceptWords: string[];
-  // The real representation this maps to in the existing schema.
   targets: FactTarget[];
-  slots: SlotDef[];
-  // Human-readable validation rules the gap engine / UI enforce.
-  validations?: string[];
+  // Per-slot metadata, keyed by slot name (matching the YAML slot names).
+  slotMeta?: Record<string, SlotMeta>;
   // True for the verbatim-hold shapes (note/task/intent): keep the user's exact
   // words, never interpret the unknown subject noun (§4 tiered-honesty rule).
   verbatimHold?: boolean;
+  // Human-readable validation rules the gap engine / UI enforce.
+  validations?: string[];
 }
 
+// A fully-resolved slot: YAML name + essential/optional → tier, merged with the
+// registry's SlotMeta.
+export interface SlotDef {
+  key: string;
+  label: string;
+  dataType: SlotDataType;
+  tier: SlotTier;
+  resolvesTo?: SlotResolverTarget;
+  placePref?: PlaceResolutionPref;
+  autoInferFrom?: string[];
+  derivableFrom?: string[];
+  elicitationPrompt?: string;
+  dbMapping?: string;
+}
+
+// The merged runtime schema the parser consumes: YAML concept words + slots fused
+// with the registry mapping. Built once by the dictionary loader.
+export interface FactTypeSchema {
+  factType: string;
+  shape: FactShape;
+  conceptWords: string[];
+  targets: FactTarget[];
+  slots: SlotDef[];
+  verbatimHold?: boolean;
+  validations?: string[];
+}
+
+// The mapping registry (DB metadata, no concept words / slot lists of its own).
 export interface FactTypeRegistry {
-  getSchema(factType: string): FactTypeSchema | undefined;
-  listSchemas(): FactTypeSchema[];
-  // All concept words → fact-type, for the dictionary's Layer-1 lookup.
-  conceptWordIndex(): Map<string, string>;
+  getMapping(factType: string): FactTypeMapping | undefined;
+  listMappings(): FactTypeMapping[];
 }

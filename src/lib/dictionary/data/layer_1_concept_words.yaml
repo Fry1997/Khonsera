@@ -1,0 +1,90 @@
+# Khonsera Semantic Dictionary
+# Layer 1: Concept words
+# Scope: travel and personal logistics only.
+# Layer 2 gazetteer is intentionally excluded from this bundle.
+
+concept_words:
+  - triggers: [train, rail, railway, train journey, rail journey, by train, on the train]
+    fact_type: train_journey
+    essential_slots: [origin, destination, date, departure_time]
+    optional_slots: [arrival_time, booking_ref, ticket, operator, service, platform, coach, seat, class, price, railcard, disruption_status]
+
+  - triggers: [flight, plane, fly, flying, air travel, by plane, on the plane]
+    fact_type: flight_journey
+    essential_slots: [origin, destination, date, departure_time]
+    optional_slots: [arrival_time, booking_ref, ticket, airline, flight_number, terminal, gate, seat, class, baggage, passport_requirement, price]
+
+  - triggers: [hotel, accommodation, stay, overnight stay, room]
+    fact_type: accommodation_booking
+    essential_slots: [place, check_in_date, check_out_date]
+    optional_slots: [hotel_name, address, check_in_time, check_out_time, booking_ref, room_type, guests, breakfast_included, parking, price]
+
+  - triggers: [dinner, evening meal, supper]
+    fact_type: meal_plan
+    essential_slots: [date, time_or_period, place]
+    optional_slots: [restaurant_name, area, party_size, cuisine, booking_ref, dietary_requirements, price, notes]
+
+  - triggers: [lunch, lunchtime meal]
+    fact_type: meal_plan
+    essential_slots: [date, time_or_period, place]
+    optional_slots: [restaurant_name, area, party_size, cuisine, booking_ref, dietary_requirements, price, notes]
+
+  - triggers: [breakfast, morning meal, brekkie]
+    fact_type: meal_plan
+    essential_slots: [date, time_or_period, place]
+    optional_slots: [restaurant_name, hotel_name, area, party_size, cuisine, booking_ref, dietary_requirements, price, notes]
+
+  - triggers: [meeting, meet, catch-up, catch up]
+    fact_type: scheduled_event
+    essential_slots: [date, time]
+    optional_slots: [place, attendees, organisation, contact, agenda, duration, video_link, phone_number, notes]
+
+  - triggers: [demo, demonstration, product demo, sales demo, customer demo]
+    fact_type: scheduled_event
+    essential_slots: [date, time]
+    optional_slots: [place, attendees, organisation, contact, agenda, duration, equipment_needed, video_link, phone_number, notes]
+
+  - triggers: [call, phone call, video call, zoom, teams call, google meet, meet call]
+    fact_type: scheduled_call
+    essential_slots: [date, time]
+    optional_slots: [attendees, organisation, contact, duration, phone_number, video_link, platform, agenda, notes]
+
+  - triggers: [taxi, cab, private hire, minicab, uber]
+    fact_type: taxi_journey
+    essential_slots: [pickup_place, dropoff_place, date, pickup_time]
+    optional_slots: [provider, booking_ref, vehicle_type, passengers, luggage, price, notes]
+
+  - triggers: [walk, walking, on foot]
+    fact_type: walking_leg
+    essential_slots: [origin, destination]
+    optional_slots: [date, start_time, arrival_time, duration, distance, accessibility_needs, notes]
+
+  - triggers: [drive, driving, car, by car]
+    fact_type: driving_leg
+    essential_slots: [origin, destination, date]
+    optional_slots: [departure_time, arrival_time, parking_place, parking_booking_ref, vehicle, passengers, route_preference, tolls, fuel_cost, notes]
+
+  - triggers: [ferry, boat, ferry crossing, crossing]
+    fact_type: ferry_journey
+    essential_slots: [origin, destination, date, departure_time]
+    optional_slots: [arrival_time, operator, booking_ref, ticket, vehicle, passengers, cabin, seat, price, notes]
+
+  - triggers: [bus, local bus, by bus, on the bus]
+    fact_type: bus_journey
+    essential_slots: [origin, destination, date]
+    optional_slots: [departure_time, arrival_time, operator, service_number, stop_name, ticket, price, notes]
+
+  - triggers: [coach, national express, megabus, by coach]
+    fact_type: coach_journey
+    essential_slots: [origin, destination, date, departure_time]
+    optional_slots: [arrival_time, operator, service_number, booking_ref, ticket, seat, luggage, price, notes]
+
+  - triggers: [conference, expo, exhibition, trade show]
+    fact_type: business_event
+    essential_slots: [date, place]
+    optional_slots: [event_name, venue_name, start_time, end_time, attendees, organisation, stand_number, ticket, booking_ref, agenda, notes]
+
+  - triggers: [appointment, booking, reservation]
+    fact_type: appointment
+    essential_slots: [date, time]
+    optional_slots: [place, organisation, contact, attendees, duration, booking_ref, service_type, notes]

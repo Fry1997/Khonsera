@@ -1,0 +1,129 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parsed_payload shape > matches the snapshot for the canonical multi-fact input 1`] = `
+{
+  "ambiguities": [],
+  "facts": [
+    {
+      "confidence": "medium",
+      "fact_type": "scheduled_event",
+      "links": [
+        {
+          "kind": "same_day",
+          "target": "fact_2",
+        },
+      ],
+      "local_id": "fact_1",
+      "slots": {
+        "date": {
+          "confidence": "high",
+          "fuzzy": false,
+          "granularity": "day",
+          "inferred": false,
+          "range": false,
+          "source_range": {
+            "end": 22,
+            "start": 11,
+          },
+          "source_text": "Wed 11 June",
+          "value": "2026-06-11",
+        },
+        "place": {
+          "confidence": "medium",
+          "inferred": false,
+          "source_range": {
+            "end": 5,
+            "start": 0,
+          },
+          "source_text": "Derby",
+          "value": "Derby",
+        },
+      },
+      "source_range": {
+        "end": 22,
+        "start": 0,
+      },
+      "warnings": [],
+    },
+    {
+      "confidence": "medium",
+      "fact_type": "train_journey",
+      "links": [
+        {
+          "kind": "destination_of",
+          "target": "fact_1",
+        },
+      ],
+      "local_id": "fact_2",
+      "slots": {
+        "date": {
+          "confidence": "medium",
+          "fuzzy": false,
+          "granularity": "day",
+          "inferred": true,
+          "range": false,
+          "source_range": {
+            "end": 22,
+            "start": 11,
+          },
+          "source_text": "Wed 11 June",
+          "value": "2026-06-11",
+        },
+        "destination": {
+          "confidence": "medium",
+          "inferred": true,
+          "source_range": {
+            "end": 5,
+            "start": 0,
+          },
+          "source_text": "Derby",
+          "value": {
+            "code": "DER",
+            "hub_id": "hub-der",
+            "label": "Derby",
+          },
+        },
+        "origin": {
+          "confidence": "high",
+          "inferred": false,
+          "source_range": {
+            "end": 49,
+            "start": 35,
+          },
+          "source_text": "Wellingborough",
+          "value": {
+            "code": "WLE",
+            "hub_id": "hub-wle",
+            "label": "Wellingborough",
+          },
+        },
+      },
+      "source_range": {
+        "end": 49,
+        "start": 24,
+      },
+      "warnings": [],
+    },
+  ],
+  "input_level_warnings": [],
+  "intent_type": null,
+  "original_text": "Derby demo Wed 11 June, train from Wellingborough",
+  "parser_version": "dictionary-v1.0.0",
+  "unmatched_text": [
+    {
+      "source_range": {
+        "end": 5,
+        "start": 0,
+      },
+      "text": "Derby",
+    },
+    {
+      "source_range": {
+        "end": 49,
+        "start": 35,
+      },
+      "text": "Wellingborough",
+    },
+  ],
+}
+`;

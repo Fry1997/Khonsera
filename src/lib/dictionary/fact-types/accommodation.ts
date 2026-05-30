@@ -1,69 +1,28 @@
-import type { FactTypeSchema } from "../types";
+import type { FactTypeMapping } from "../types";
 
-// Accommodation is a CONSTRAINT, not a fixed journey point (check-in-from /
-// check-out-by). It lands as an accommodation stop plus an optional booking; the
-// user places hotel-visit stops on the timeline as needed.
-export const accommodation: FactTypeSchema = {
-  factType: "accommodation",
+// Accommodation is a CONSTRAINT (check-in-from / check-out-by), not a fixed
+// journey point. It lands as an accommodation stop spanning the stay, plus an
+// optional booking. Concept words + slots come from the YAML.
+export const accommodationBooking: FactTypeMapping = {
+  factType: "accommodation_booking",
   shape: "dated_event",
-  conceptWords: ["hotel", "stay", "airbnb", "premier inn", "travelodge", "b&b"],
   targets: [
-    { table: "stops", as: "accommodation", note: "check-in-from / check-out-by constraint" },
+    { table: "stops", as: "accommodation", note: "stay span = check-in..check-out" },
     { table: "travel_bookings", note: "optional: provider, ref, price" },
   ],
-  slots: [
-    {
-      key: "place",
-      label: "Hotel",
-      dataType: "place",
-      tier: "essential_to_work",
-      resolvesTo: "locations",
-      elicitationPrompt: "Where are you staying?",
-      dbMapping: "stops.location_id",
-    },
-    {
-      key: "check_in_from",
-      label: "Check-in from",
-      dataType: "datetime",
-      tier: "essential_to_work",
-      elicitationPrompt: "Which night does it start?",
-      dbMapping: "stops.start_time",
-    },
-    {
-      key: "check_out_by",
-      label: "Check-out by",
-      dataType: "datetime",
-      tier: "essential_to_work",
-      dbMapping: "stops.end_time",
-    },
-    {
-      key: "booking_reference",
-      label: "Booking ref",
-      dataType: "text",
-      tier: "essential_to_use",
-      dbMapping: "travel_bookings.booking_reference",
-    },
-    {
-      key: "provider",
-      label: "Provider",
-      dataType: "text",
-      tier: "nice_to_have",
-      dbMapping: "travel_bookings.provider",
-    },
-    {
-      key: "room",
-      label: "Room",
-      dataType: "text",
-      tier: "nice_to_have",
-      dbMapping: "stops.notes",
-    },
-    {
-      key: "price",
-      label: "Price",
-      dataType: "money",
-      tier: "nice_to_have",
-      dbMapping: "travel_bookings.actual_price / currency",
-    },
-  ],
-  validations: ["check_in_from must be before check_out_by"],
+  slotMeta: {
+    place: { dataType: "place", resolvesTo: "locations", placePref: "event", dbMapping: "stops.location_id" },
+    check_in_date: { dataType: "date", dbMapping: "date portion of stops.start_time" },
+    check_out_date: { dataType: "date", dbMapping: "date portion of stops.end_time" },
+    check_in_time: { dataType: "time" },
+    check_out_time: { dataType: "time" },
+    hotel_name: { dataType: "text" },
+    booking_ref: { tier: "essential_to_use", dataType: "text", dbMapping: "travel_bookings.booking_reference" },
+    guests: { dataType: "party_size" },
+    price: { dataType: "money", dbMapping: "travel_bookings.actual_price" },
+    room_type: { dataType: "text", dbMapping: "stops.notes" },
+  },
+  validations: ["check_in_date must be on or before check_out_date"],
 };
+
+export const accommodationMappings: FactTypeMapping[] = [accommodationBooking];

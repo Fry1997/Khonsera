@@ -35,7 +35,22 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
   the single source of truth the future parser + gap engine read. Add a fact-type =
   a module under `fact-types/` registered in `registry.ts`.
 - 0028 enabled RLS on four previously-exposed tables (gmail_scanned_emails + 3 rail tables).
-- The parser, gap engine, and capture UI are NOT built yet — only the substrate they sit on.
+
+### Tell Khonsera parser engine (deterministic, no AI) — see `docs/tell-khonsera-parser.md`
+- Dictionary in `src/lib/dictionary/`: bundled YAML (`data/layer_1/3/4`) fused by
+  `load.ts` with the TS mapping registry; `getDictionary()` is the cached singleton.
+  Layer 2 gazetteer = the existing `transport_hubs` table (no YAML). Layer 5 = code.
+- 10-stage pipeline in `src/lib/parser/` (tokenise → recognisers → lookup →
+  imperatives → segment → classify → slots → link → validate → parse). `parse()` is
+  pure given a `Dictionary` + injected `PlaceResolver`; multi-fact output.
+- Actions in `src/lib/actions/tell-khonsera.ts`: `previewCapture` (stateless,
+  read-only — NEVER writes captured_inputs), the captured_inputs lifecycle, and
+  `confirmCapture` → materialise via `createItineraryFromBrief` + provenance stamp.
+- HARD RULE (brief §16): unbooked travel → a `transition` (planned), NOT a
+  `travel_booking`. `materialise.factIsBooked` gates this. Don't pollute the booking layer.
+- chrono-node does dates/times; `recognisers/dates.ts` supplements bare ordinals
+  ("the 22nd") which this chrono version doesn't resolve.
+- The capture UI screen + gap engine are NOT built yet — this is the engine they feed.
 
 ## Design Principles
 
