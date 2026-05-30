@@ -18,12 +18,15 @@ import {
   pruneCorrections,
   slotEntityStatus,
   buildOverlaySegments,
+  factAnchor,
   type Corrections,
   type EntitySpan,
 } from "./draft-model";
 import { FactCard } from "./fact-card";
 import type { PickerData } from "./slot-editor";
 import { stubIntentCopy } from "./intent-copy";
+import { activeTokenAt, replaceRange } from "./use-active-token";
+import { SuggestPopover, type SuggestControls } from "./suggest-popover";
 
 const CHIPS: { label: string; seed: string }[] = [
   { label: "I’m going somewhere", seed: "Train to " },
@@ -52,6 +55,9 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
   const [rebuiltNotice, setRebuiltNotice] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [hoverRange, setHoverRange] = useState<{ start: number; end: number } | null>(null);
+  const [caret, setCaret] = useState<number | null>(null);
+  const [suggestOff, setSuggestOff] = useState(false);
+  const suggestControls = useRef<SuggestControls | null>(null);
   const [pending, startTransition] = useTransition();
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -179,6 +185,39 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     return spans;
   }, [payload, corrections, dismissed, slotSchemas]);
 
+  // A workspace-document proximity anchor: the first bound entity with coords
+  // anywhere in the draft, so suggestions rank near the user's other stops.
+  const globalAnchor = useMemo<{ lat: number; lng: number } | null>(() => {
+    for (const fact of payload?.facts ?? []) {
+      const a = factAnchor(fact);
+      if (a) return a;
+    }
+    return null;
+  }, [payload]);
+
+  // The entity fragment under the caret (drives the live suggestion popover).
+  const activeToken = useMemo(
+    () => (suggestOff || caret == null ? null : activeTokenAt(text, caret)),
+    [text, caret, suggestOff],
+  );
+
+  // Pick a suggestion: rewrite the typed fragment to the canonical name; the
+  // next debounced parse binds it to a gold entity. Caret lands after the name.
+  const pickSuggestion = (token: ReturnType<typeof activeTokenAt>, name: string) => {
+    if (!token) return;
+    const { text: next, caret: nextCaret } = replaceRange(text, token.range, name);
+    setText(next);
+    setSuggestOff(true); // collapse until the next keystroke
+    requestAnimationFrame(() => {
+      const el = taRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(nextCaret, nextCaret);
+      }
+      setCaret(nextCaret);
+    });
+  };
+
   // The read-back line: entity spans as inline gold/grey badges, with the
   // hovered slot's span underlined. Painted from the live payload (no overlay
   // alignment maths — robust, and the visible record of what was understood).
@@ -235,9 +274,35 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         autoFocus
         onChange={(e) => {
           setText(e.target.value);
+          setCaret(e.target.selectionStart);
+          setSuggestOff(false); // a fresh keystroke re-opens suggestions
           autoGrow();
         }}
+        onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
+        onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
+        onBlur={() => setSuggestOff(true)}
+        onKeyDown={(e) => {
+          const c = suggestControls.current;
+          if (!activeToken || !c) {
+            if (e.key === "Escape") setSuggestOff(true);
+            return;
+          }
+          if (e.key === "ArrowDown") { e.preventDefault(); c.down(); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); c.up(); }
+          else if (e.key === "Enter") { if (c.pick()) e.preventDefault(); }
+          else if (e.key === "Escape") { e.preventDefault(); setSuggestOff(true); }
+        }}
       />
+
+      {activeToken ? (
+        <SuggestPopover
+          token={activeToken}
+          anchor={globalAnchor}
+          controlRef={suggestControls}
+          onPick={(name) => pickSuggestion(activeToken, name)}
+          onDismiss={() => setSuggestOff(true)}
+        />
+      ) : null}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {CHIPS.map((c) => (
