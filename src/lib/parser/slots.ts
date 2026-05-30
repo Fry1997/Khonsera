@@ -199,6 +199,20 @@ export async function populateSlots(
   // Special-case accommodation check-in/check-out from a date range.
   const dateRange = dates.find((d) => d.range);
 
+  // "N nights from <date>" / "N nights starting <date>" → a derived stay window
+  // (stress-test Fix 4): check_in = the single date, check_out = +N days.
+  const nightsMatch = durations.find(
+    (d) => d.normalised_value && typeof d.normalised_value === "object" && "nights" in (d.normalised_value as object),
+  );
+  const nights = nightsMatch ? (nightsMatch.normalised_value as { nights: number | null }).nights : null;
+  const singleDate = !dateRange ? dates.find((d) => typeof d.normalised_value === "string") : undefined;
+  const addDays = (iso: string, n: number): string => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return iso;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + n, 12);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
   // Booking reference (stress-test Fix 9) — fills the booking_ref slot when the
   // fact-type has one. The regex is permissive; the fact-type is the disambiguator.
   const bookingRef = patterns.bookingRefs.filter((p) => inClause(p, clause))[0];
@@ -237,6 +251,15 @@ export async function populateSlots(
         if (def.key === "check_out_date" && dateRange) {
           const v = dateRange.normalised_value as { end: string };
           slots[def.key] = { ...slotFromPattern(dateRange), value: v.end };
+          break;
+        }
+        // N-nights-from-a-single-date → derive both ends of the stay.
+        if (def.key === "check_in_date" && singleDate && nights) {
+          slots[def.key] = slotFromPattern(singleDate);
+          break;
+        }
+        if (def.key === "check_out_date" && singleDate && nights && typeof singleDate.normalised_value === "string") {
+          slots[def.key] = { ...slotFromPattern(nightsMatch!), value: addDays(singleDate.normalised_value, nights), inferred: true };
           break;
         }
         if (dateIdx < dates.length) slots[def.key] = slotFromPattern(dates[dateIdx++]);

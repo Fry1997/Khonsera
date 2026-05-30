@@ -37,7 +37,8 @@ const RULES: Rule[] = [
     build: (m) => ({ normalised_value: (wordToNumber(m[1]) ?? 0) * 1440, confidence: /a couple|a few/.test(m[1]) ? "low" : "high", fuzzy: /a couple|a few/.test(m[1]), range: false, granularity: "day" }),
   },
   {
-    re: new RegExp(`\\bfor\\s+${NUM}\\s*nights?\\b`, "i"),
+    // "for 3 nights", "3 nights from ...", "5 nights starting ...", "2 nights".
+    re: new RegExp(`\\b(?:for\\s+)?${NUM}\\s*nights?\\b`, "i"),
     build: (m) => ({ normalised_value: { nights: wordToNumber(m[1]) ?? null }, confidence: "high", fuzzy: false, range: true, granularity: "day" }),
   },
   {

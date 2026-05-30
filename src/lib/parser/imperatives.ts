@@ -32,6 +32,15 @@ export function routeImperative(
   const endsWithQ = input.trim().endsWith("?");
   const sigCount = tokens.filter((t) => t.kind !== "punct").length;
 
+  // "Check in/out ..." is accommodation language, not a search imperative
+  // (stress-test Fix 4) — let it fall through to the fact engine.
+  if (match.phrase === "check") {
+    const next = tokens[match.tokenEnd + 1]?.lower;
+    if (next === "in" || next === "out" || next === "into") {
+      return { intent_type: null, consumedEnd: 0 };
+    }
+  }
+
   if (entry.questionShaped) {
     // Only an information_request if the input is actually question-shaped.
     if (!endsWithQ && sigCount > 8) return { intent_type: null, consumedEnd: 0 };

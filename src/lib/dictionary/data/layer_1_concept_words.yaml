@@ -14,7 +14,10 @@ concept_words:
     essential_slots: [origin, destination, date, departure_time]
     optional_slots: [arrival_time, booking_ref, ticket, airline, flight_number, terminal, gate, seat, class, baggage, passport_requirement, price]
 
-  - triggers: [hotel, accommodation, stay, overnight stay, room]
+  - triggers: [hotel, accommodation, stay, overnight stay, room, staying at, staying in, lodging at, overnight at,
+      premier inn, travelodge, holiday inn, holiday inn express, hilton, hilton garden inn, doubletree, hampton by hilton,
+      marriott, courtyard by marriott, novotel, mercure, ibis, ibis styles, voco, jurys inn, radisson, radisson blu,
+      crowne plaza, park plaza, hyatt, indigo]
     fact_type: accommodation_booking
     essential_slots: [place, check_in_date, check_out_date]
     optional_slots: [hotel_name, address, check_in_time, check_out_time, booking_ref, room_type, guests, breakfast_included, parking, price]

@@ -175,6 +175,36 @@ describe("Fix 2 — comma over-fragmentation", () => {
   });
 });
 
+// ── Fix 4 — hotel classification ───────────────────────────────────────────────
+describe("Fix 4 — hotel chains, operators, nights, check-in", () => {
+  it("'Marriott Edinburgh 3 nights from the 10th July' → hotel with derived date range", async () => {
+    const p = await run("Marriott Edinburgh 3 nights from the 10th July");
+    const hotel = byType(p.facts, "accommodation_booking")[0];
+    expect(hotel).toBeDefined();
+    expect(hotel.slots.check_in_date?.value).toBe("2026-07-10");
+    expect(hotel.slots.check_out_date?.value).toBe("2026-07-13");
+  });
+
+  it("'Staying at the Hilton Glasgow from Monday to Friday next week' → hotel w/ check in/out", async () => {
+    const p = await run("Staying at the Hilton Glasgow from Monday to Friday next week");
+    const hotel = byType(p.facts, "accommodation_booking")[0];
+    expect(hotel).toBeDefined();
+    expect(hotel.slots.check_in_date).toBeDefined();
+    expect(hotel.slots.check_out_date).toBeDefined();
+  });
+
+  it("'Booked Travelodge Leeds city centre 2 nights, 22-24 June' → hotel, not a to-sort", async () => {
+    const p = await run("Booked Travelodge Leeds city centre 2 nights, 22-24 June");
+    expect(byType(p.facts, "accommodation_booking").length).toBe(1);
+  });
+
+  it("'Check in Novotel York Thursday 3pm, check out Saturday 11am' → hotel, NOT a find-intent", async () => {
+    const p = await run("Check in Novotel York Thursday 3pm, check out Saturday 11am");
+    expect(p.intent_type).not.toBe("search_request");
+    expect(byType(p.facts, "accommodation_booking").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 // ── Fix 9 — booking refs + IATA routes ─────────────────────────────────────────
 describe("Fix 9 — booking references and IATA routes", () => {
   it("'Flight BA307 LHR-CDG departs 09:25 14 August' → ref + route hubs", async () => {
