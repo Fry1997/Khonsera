@@ -75,8 +75,25 @@ export function segment(
   }
   for (const op of lookup.operators) {
     if (!op.categories.includes("connector")) continue;
-    const conceptFollows = lookup.concepts.some((c) => c.tokenStart > op.tokenEnd);
-    if (conceptFollows) boundaryAfter.add(op.tokenEnd);
+    // Concept immediately AFTER the connector, and the nearest one BEFORE it.
+    const after = lookup.concepts
+      .filter((c) => c.tokenStart > op.tokenEnd)
+      .sort((a, b) => a.tokenStart - b.tokenStart)[0];
+    if (!after) continue;
+    const before = lookup.concepts
+      .filter((c) => c.tokenEnd < op.tokenStart)
+      .sort((a, b) => b.tokenEnd - a.tokenEnd)[0];
+    // Same fact-type on both sides of "and" composes at one anchor ("dinner and
+    // drinks at the George") — DON'T split. But only when the LEFT concept hasn't
+    // already formed its own complete fact: if a place/date anchor sits between
+    // the left concept and the connector, these are two separate facts
+    // ("dinner at the George Tuesday and drinks at the Crown") (stress-test Fix 3).
+    if (before && before.factType === after.factType) {
+      const anchorBetween =
+        spanHas(patterns.all.map((p) => p.source_range), tokens[before.tokenEnd].end, tokens[op.tokenStart].start);
+      if (!anchorBetween) continue; // compose
+    }
+    boundaryAfter.add(op.tokenEnd);
   }
 
   // Build raw token-index ranges between boundaries.

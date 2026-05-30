@@ -84,15 +84,28 @@ function collectRun(
   lookup: LookupResult,
   patterns: PatternBundle,
 ): { text: string; start: number; end: number; lastIdx: number } | null {
+  const isTitle = (t: Token | undefined) => !!t && /^[A-Z][a-z]/.test(t.text);
   let j = from;
   const parts: Token[] = [];
-  while (j <= to && !isStop(tokens[j], j, lookup, patterns)) {
+  while (j <= to) {
+    if (isStop(tokens[j], j, lookup, patterns)) {
+      // "and"/"&" between two Title-Case proper-noun fragments is INTERNAL to the
+      // place name ("The Crown and Anchor"), not a separator (stress-test Fix 3).
+      const tok = tokens[j];
+      const isAnd = tok.lower === "and" || tok.text === "&";
+      if (isAnd && parts.length > 0 && isTitle(parts[parts.length - 1]) && isTitle(tokens[j + 1])) {
+        parts.push(tok);
+        j++;
+        continue;
+      }
+      break;
+    }
     // A bare number mid-run ends the place ("the Crown 7" → "the Crown"); but a
     // run may START with a number for number-prefixed venues ("57 Steps").
     if (tokens[j].kind === "number" && parts.length > 0) break;
     parts.push(tokens[j]);
     j++;
-    if (parts.length >= 4) break; // a place name is short
+    if (parts.length >= 5) break; // a place name is short (allow "The Crown and Anchor")
   }
   if (parts.length === 0) return null;
   return {

@@ -274,6 +274,27 @@ describe("Fix 4 — hotel chains, operators, nights, check-in", () => {
   });
 });
 
+// ── Fix 3 — "and" inside place names / activity composition ────────────────────
+describe("Fix 3 — and-splitting discipline", () => {
+  it("'Dinner at The Crown and Anchor Friday 7:30pm' → place keeps 'and Anchor'", async () => {
+    const p = await run("Dinner at The Crown and Anchor Friday 7:30pm");
+    const meal = byType(p.facts, "meal_plan")[0];
+    expect(meal).toBeDefined();
+    expect(placeText(meal).toLowerCase()).toContain("crown and anchor");
+  });
+
+  it("'Dinner and drinks at the George Tuesday from 7' → ONE composed fact", async () => {
+    const p = await run("Dinner and drinks at the George Tuesday from 7");
+    expect(byType(p.facts, "meal_plan").length).toBe(1);
+    expect(placeText(byType(p.facts, "meal_plan")[0]).toLowerCase()).toContain("george");
+  });
+
+  it("'Dinner at the George Tuesday and drinks at the Crown Wednesday' → TWO facts", async () => {
+    const p = await run("Dinner at the George Tuesday and drinks at the Crown Wednesday");
+    expect(byType(p.facts, "meal_plan").length).toBe(2);
+  });
+});
+
 // ── Fix 9 — booking refs + IATA routes ─────────────────────────────────────────
 describe("Fix 9 — booking references and IATA routes", () => {
   it("'Flight BA307 LHR-CDG departs 09:25 14 August' → ref + route hubs", async () => {
