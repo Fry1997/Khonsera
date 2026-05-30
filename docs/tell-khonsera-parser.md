@@ -111,6 +111,14 @@ Driven by a 61-input stress test. Fixtures live in `__tests__/stress.test.ts`.
   `recurrence_pattern`, never expanded.
 - **Relative anchors** (`relative-anchor.ts`): "an hour before the demo" is held
   verbatim + flagged low, not fabricated.
+- **Per-clause imperatives / reminders**: imperative routing runs per CLAUSE after
+  segmentation (not just at whole-input start), so a reminder mixed in with other
+  facts — "Premier Inn ... . Remember to pack toothbrush." — becomes its own intent
+  card instead of being dropped. A reminder captured alongside dated facts inherits a
+  `surface_after` = the day before the earliest fact date (unless it states its own).
+  create_intent reminders extract date/time only (no spurious place/person from the
+  reminder text). The segmenter keeps an imperative-leading fragment from being merged
+  away.
 
 ### First-input fix pass (handback §5)
 Four bug classes closed, with regression-guarded fixtures in `corpus.test.ts`:

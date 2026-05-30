@@ -2,7 +2,7 @@
 // persistence (brief §0c, §13). Pure given a Dictionary + PlaceResolver.
 // Bounded ambition + stage isolation keep it from ever crashing the caller.
 
-import { getDictionary, type Dictionary } from "@/lib/dictionary/dictionary";
+import { getDictionary, type Dictionary, type ImperativeIntent } from "@/lib/dictionary/dictionary";
 import { tokenise, type Token } from "./tokenise";
 import { recognisePatterns, type PatternBundle } from "./recognisers";
 import { lookup, type LookupResult } from "./lookup";
@@ -31,19 +31,6 @@ export interface ParseOptions {
   resolver?: PlaceResolver;
   dictionary?: Dictionary;
 }
-
-// Stub intents (everything bar create_intent) are recorded but produce no facts
-// in v1 — the UI shows an honest "I saw this but can't act yet" (brief §7).
-const STUB_INTENTS = new Set([
-  "search_request",
-  "booking_request",
-  "cancellation_request",
-  "modification_request",
-  "information_request",
-  "comparison_request",
-  "itinerary_request",
-  "communication_request",
-]);
 
 function verbatimNote(input: string): ParsedFact {
   const slot: Slot = {
@@ -76,6 +63,10 @@ async function extractIntentSlots(
   matches: LookupResult,
   patterns: PatternBundle,
   resolver: PlaceResolver,
+  // create_intent reminders ("remember to pack toothbrush") keep the whole content
+  // as their label, so a place/person/party drawn from those same words would be
+  // spurious — limit them to date/time only.
+  opts: { datesOnly?: boolean } = {},
 ): Promise<Record<string, Slot>> {
   const inRegion = (s: number, e: number) => s >= region.start && s < region.end;
   const slots: Record<string, Slot> = {};
@@ -88,6 +79,7 @@ async function extractIntentSlots(
   if (date) fromPattern("date", date);
   const time = patterns.times.find((p) => inRegion(p.source_range.start, p.source_range.end));
   if (time) fromPattern("time", time);
+  if (opts.datesOnly) return slots;
   const person = patterns.people.find((p) => inRegion(p.source_range.start, p.source_range.end));
   if (person) fromPattern("contact", person);
   const party = patterns.party.find((p) => inRegion(p.source_range.start, p.source_range.end));
@@ -114,6 +106,69 @@ async function extractIntentSlots(
     }
   }
   return slots;
+}
+
+// Builds an `intent` fact for a clause/region that an imperative routed to. Used
+// both at whole-input level and per-clause ("... . Remember to ...") so a reminder
+// mixed in with other facts becomes its own card, never silently dropped.
+async function buildIntentFact(
+  localId: string,
+  intentType: ImperativeIntent,
+  input: string,
+  region: { start: number; end: number },
+  consumedEnd: number,
+  tokens: Token[],
+  matches: LookupResult,
+  patterns: PatternBundle,
+  resolver: PlaceResolver,
+): Promise<ParsedFact> {
+  const fullText = input.slice(region.start, region.end).trim();
+  if (intentType === "create_intent") {
+    const rest = input
+      .slice(consumedEnd, region.end)
+      .trim()
+      .replace(/^(me\s+|us\s+)?(to\s+|that\s+)/i, "")
+      .trim();
+    const label = rest.length > 0 ? rest : fullText;
+    // create_intent still benefits from any date/time it states ("remind me Friday"),
+    // but NOT a place/person drawn from the reminder text itself.
+    const slots = await extractIntentSlots(input, { start: consumedEnd, end: region.end }, tokens, matches, patterns, resolver, { datesOnly: true });
+    slots.label = {
+      value: label,
+      source_text: label,
+      source_range: { start: region.end - label.length, end: region.end },
+      confidence: "high",
+      inferred: false,
+    };
+    return {
+      local_id: localId,
+      fact_type: "intent",
+      slots,
+      links: [],
+      warnings: [],
+      confidence: "medium",
+      source_range: { start: region.start, end: region.end },
+    };
+  }
+  // Stub intents (book/find/cancel/email/...) — carry the content slots; the intent
+  // STAYS an intent, never a positive fact (stress-test Fix 5).
+  const slots = await extractIntentSlots(input, { start: consumedEnd, end: region.end }, tokens, matches, patterns, resolver);
+  slots.label = {
+    value: fullText,
+    source_text: fullText,
+    source_range: { start: region.start, end: region.end },
+    confidence: "high",
+    inferred: false,
+  };
+  return {
+    local_id: localId,
+    fact_type: "intent",
+    slots,
+    links: [],
+    warnings: [],
+    confidence: "medium",
+    source_range: { start: region.start, end: region.end },
+  };
 }
 
 function clauseConfidenceModifier(
@@ -193,75 +248,40 @@ export async function parse(
     };
   }
 
-  // Stage 4 — imperative routing.
-  const routing = routeImperative(input, tokens, matches);
-  if (routing.intent_type === "create_intent") {
-    const rest = input
-      .slice(routing.consumedEnd)
-      .trim()
-      .replace(/^(me\s+|us\s+)?(to\s+|that\s+)/i, "")
-      .trim();
-    const label = rest.length > 0 ? rest : input.trim();
-    return {
-      ...base,
-      intent_type: "create_intent",
-      facts: [
-        {
-          local_id: "fact_1",
-          fact_type: "intent",
-          slots: {
-            label: {
-              value: label,
-              source_text: label,
-              source_range: { start: input.length - label.length, end: input.length },
-              confidence: "high",
-              inferred: false,
-            },
-          },
-          links: [],
-          warnings: [],
-          confidence: "medium",
-          source_range: { start: 0, end: input.length },
-        },
-      ],
-    };
-  }
-  if (routing.intent_type && STUB_INTENTS.has(routing.intent_type)) {
-    // Stub intents (book/find/cancel/email/...) — Khonsera can't action these yet,
-    // but we extract the content slots so a future handler has the details, and
-    // hold the verbatim text. The intent STAYS an intent — never a positive fact
-    // (stress-test Fix 5). The content region is everything after the trigger.
-    const region = { start: routing.consumedEnd, end: input.length };
-    const slots = await extractIntentSlots(input, region, tokens, matches, patterns, resolver);
-    slots.label = {
-      value: input.trim(),
-      source_text: input.trim(),
-      source_range: { start: 0, end: input.length },
-      confidence: "high",
-      inferred: false,
-    };
-    return {
-      ...base,
-      intent_type: routing.intent_type,
-      facts: [
-        {
-          local_id: "fact_1",
-          fact_type: "intent",
-          slots,
-          links: [],
-          warnings: [],
-          confidence: "medium",
-          source_range: { start: 0, end: input.length },
-        },
-      ],
-    };
-  }
-
-  // Stages 5–7 — segment, classify, fill.
+  // Stages 5–7 — segment, then classify/fill each clause. Imperatives are now
+  // detected PER CLAUSE (not just at whole-input start) so a reminder mixed in with
+  // other facts — "Premier Inn ... . Remember to pack toothbrush." — becomes its own
+  // intent card instead of being silently dropped.
   const clauses = segment(input, tokens, matches, patterns);
   const facts: ParsedFact[] = [];
+  // The payload's top-level intent_type reflects the first imperative seen (kept
+  // for the UI's stub-intent copy + back-compat when the input is one imperative).
+  let topIntent: ImperativeIntent | null = null;
   for (let i = 0; i < clauses.length; i++) {
     const clause = clauses[i];
+
+    // Per-clause imperative? → an intent fact for this clause, not a positive fact.
+    const clauseRouting = routeImperative(input, tokens, matches, {
+      tokenStart: clause.tokenStart,
+      tokenEnd: clause.tokenEnd,
+    });
+    if (clauseRouting.intent_type) {
+      if (!topIntent) topIntent = clauseRouting.intent_type;
+      const fact = await buildIntentFact(
+        `fact_${i + 1}`,
+        clauseRouting.intent_type,
+        input,
+        { start: clause.start, end: clause.end },
+        clauseRouting.consumedEnd,
+        tokens,
+        matches,
+        patterns,
+        resolver,
+      );
+      facts.push(fact);
+      continue;
+    }
+
     try {
       const factType = classifyClause(clause, tokens, matches, patterns);
       const schema = dict.schemas.get(factType);
@@ -319,6 +339,31 @@ export async function parse(
     }
   }
 
+  // A reminder captured alongside dated facts should resurface in time: set its
+  // surface_after to the day before the earliest dated fact, unless it already
+  // states its own date ("remind me Friday"). Undated reminders stay undated.
+  const earliestDate = facts
+    .flatMap((f) => Object.values(f.slots))
+    .map((s) => (typeof s.value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.value) ? s.value : null))
+    .filter((v): v is string => v !== null)
+    .sort()[0];
+  if (earliestDate) {
+    for (const f of facts) {
+      if (f.fact_type !== "intent" || f.slots.surface_after || f.slots.date) continue;
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(earliestDate);
+      if (!m) continue;
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - 1, 12);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      f.slots.surface_after = {
+        value: iso,
+        source_text: "",
+        source_range: { start: f.source_range.start, end: f.source_range.start },
+        confidence: "low",
+        inferred: true,
+      };
+    }
+  }
+
   // Stages 8–9 — link + validate.
   const linked = await linkFacts(facts, resolver);
   const validated = validateFacts(linked.facts);
@@ -339,6 +384,7 @@ export async function parse(
 
   return {
     ...base,
+    intent_type: topIntent,
     facts: validated.facts,
     input_level_warnings: validated.inputWarnings,
     ambiguities,

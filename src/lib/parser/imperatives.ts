@@ -17,20 +17,30 @@ export function routeImperative(
   input: string,
   tokens: Token[],
   lookup: LookupResult,
+  // Optional clause window [tokenStart, tokenEnd] so the same routing logic can be
+  // applied per-clause ("... . Remember to ...") not just at whole-input start.
+  window?: { tokenStart: number; tokenEnd: number },
 ): ImperativeRouting {
-  const firstSig = tokens.findIndex((t) => t.kind !== "punct");
+  const lo = window?.tokenStart ?? 0;
+  const hi = window?.tokenEnd ?? tokens.length - 1;
+  let firstSig = -1;
+  for (let i = lo; i <= hi; i++) {
+    if (tokens[i].kind !== "punct") { firstSig = i; break; }
+  }
   if (firstSig === -1) return { intent_type: null, consumedEnd: 0 };
 
   // Imperative triggers anchored at the first significant token; prefer longest.
   const atStart = lookup.imperatives
-    .filter((m) => m.tokenStart === firstSig)
+    .filter((m) => m.tokenStart === firstSig && m.tokenEnd <= hi)
     .sort((a, b) => b.tokenEnd - a.tokenEnd);
   if (atStart.length === 0) return { intent_type: null, consumedEnd: 0 };
 
   const match = atStart[0];
   const entry = match.entry;
-  const endsWithQ = input.trim().endsWith("?");
-  const sigCount = tokens.filter((t) => t.kind !== "punct").length;
+  const clauseText = input.slice(tokens[lo].start, tokens[hi].end);
+  const endsWithQ = clauseText.trim().endsWith("?");
+  let sigCount = 0;
+  for (let i = lo; i <= hi; i++) if (tokens[i].kind !== "punct") sigCount++;
 
   // "Check in/out ..." is accommodation language, not a search imperative
   // (stress-test Fix 4) — let it fall through to the fact engine.

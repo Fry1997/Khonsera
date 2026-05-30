@@ -119,7 +119,9 @@ export function segment(
     })
     .filter((x): x is Raw => x !== null);
 
-  // Merge fragments with neither a concept nor any anchor into the previous clause.
+  // Merge fragments with neither a concept nor any anchor into the previous clause
+  // — UNLESS the fragment opens with an imperative trigger ("Remember to ...",
+  // "Book ..."), which is its own (reminder/intent) fact and must survive.
   const merged: Raw[] = [];
   for (const seg of trimmed) {
     const start = tokens[seg.from].start;
@@ -130,7 +132,8 @@ export function segment(
       start,
       end,
     );
-    if (!hasConcept && !hasAnchor && merged.length > 0) {
+    const startsImperative = lookup.imperatives.some((m) => m.tokenStart === seg.from);
+    if (!hasConcept && !hasAnchor && !startsImperative && merged.length > 0) {
       merged[merged.length - 1].to = seg.to; // absorb the fragment
     } else {
       merged.push({ ...seg });

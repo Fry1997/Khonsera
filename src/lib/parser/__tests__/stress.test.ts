@@ -108,6 +108,39 @@ describe("Fix 5 — imperatives extract content slots", () => {
   });
 });
 
+// ── Per-clause reminders: an imperative AFTER another fact still becomes a card ──
+describe("Per-clause reminders (mixed with other facts)", () => {
+  it("hotel + 'Remember to pack toothbrush' → two facts (hotel AND a reminder)", async () => {
+    const p = await run("Premier inn Bristol in 14:00 on Tuesday, out 11:00 on Thursday. Remember to pack toothbrush.");
+    expect(byType(p.facts, "accommodation_booking").length).toBe(1);
+    const reminders = byType(p.facts, "intent");
+    expect(reminders.length).toBe(1);
+    expect(String(reminders[0].slots.label.value).toLowerCase()).toContain("toothbrush");
+    // The reminder didn't borrow a spurious place from its own words.
+    expect(reminders[0].slots.place).toBeUndefined();
+  });
+
+  it("meeting + 'Remember to bring the laptop' → meeting AND reminder", async () => {
+    const p = await run("Meeting Tuesday 2pm. Remember to bring the laptop.");
+    expect(byType(p.facts, "scheduled_event").length).toBe(1);
+    expect(byType(p.facts, "intent").length).toBe(1);
+  });
+
+  it("a reminder captured with dated facts surfaces before the earliest date", async () => {
+    const p = await run("Meeting Tuesday 2pm. Remember to bring the laptop.");
+    const reminder = byType(p.facts, "intent")[0];
+    // earliest fact date is Tue 2 June 2026 → surface_after = the day before.
+    expect(reminder.slots.surface_after?.value).toBe("2026-06-01");
+  });
+
+  it("a standalone reminder is unchanged (single intent, no surface_after)", async () => {
+    const p = await run("Remember to pack toothbrush");
+    expect(p.facts.length).toBe(1);
+    expect(p.facts[0].fact_type).toBe("intent");
+    expect(p.facts[0].slots.surface_after).toBeUndefined();
+  });
+});
+
 // ── Fix 7 — Bare-hour disambiguation by event type ─────────────────────────────
 describe("Fix 7 — bare-hour times resolve by event type", () => {
   it("'client call at 3 Tuesday' → 15:00", async () => {
