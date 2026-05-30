@@ -8,6 +8,7 @@ import { recognisePatterns, type PatternBundle } from "./recognisers";
 import { lookup, type LookupResult } from "./lookup";
 import { routeImperative } from "./imperatives";
 import { routeNegation } from "./negation";
+import { detectRecurrence } from "./recurrence";
 import { segment } from "./segment";
 import { classifyClause } from "./classify";
 import { populateSlots, rollupConfidence, nullResolver, type PlaceResolver } from "./slots";
@@ -266,6 +267,8 @@ export async function parse(
       if (!schema) continue;
       const fill = await populateSlots(clause, schema, tokens, matches, patterns, resolver);
       const modifier = clauseConfidenceModifier(dict, tokens, clause.start, clause.end);
+      // Recurrence is detected + surfaced, never expanded (stress-test Fix 8).
+      const recurrence = detectRecurrence(clause.text);
       facts.push({
         local_id: `fact_${i + 1}`,
         fact_type: factType,
@@ -274,6 +277,7 @@ export async function parse(
         warnings: [],
         confidence: rollupConfidence(fill, modifier),
         source_range: { start: clause.start, end: clause.end },
+        ...(recurrence ? { recurrence_pattern: recurrence } : {}),
       });
     } catch {
       // Stage isolation: a clause that fails to classify is still held verbatim.

@@ -120,6 +120,15 @@ export function FactCard({
             );
           })}
 
+          {fact.recurrence_pattern ? (
+            <div style={{ marginTop: 4 }}>
+              <span className="uc" style={{ color: "var(--gold-2)" }}>recurring: {fact.recurrence_pattern}</span>
+              <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 2 }}>
+                I&rsquo;ve captured the next one. Full recurrence support is coming.
+              </div>
+            </div>
+          ) : null}
+
           {fact.warnings.length > 0 ? (
             <div style={{ marginTop: 4 }}>
               {fact.warnings.map((w, i) => (

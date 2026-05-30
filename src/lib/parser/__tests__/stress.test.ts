@@ -175,6 +175,34 @@ describe("Fix 2 — comma over-fragmentation", () => {
   });
 });
 
+// ── Fix 8 — recurrence surfaced as metadata (never expanded) ───────────────────
+describe("Fix 8 — recurrence pattern surfacing", () => {
+  it("'Team standup every Tuesday 9am' → one meeting + recurrence metadata", async () => {
+    const p = await run("Team standup every Tuesday 9am");
+    expect(p.facts.length).toBe(1);
+    expect(p.facts[0].recurrence_pattern?.toLowerCase()).toContain("every tuesday");
+  });
+
+  it("'Gym Mon/Wed/Fri 7am' → single fact with slash-day recurrence", async () => {
+    const p = await run("Gym Mon/Wed/Fri 7am");
+    expect(p.facts.length).toBe(1);
+    expect(p.facts[0].recurrence_pattern).toMatch(/mon/i);
+  });
+
+  it("'Weekly 1-2-1 with Sophie every Thursday at 11' → meeting + recurrence + contact", async () => {
+    const p = await run("Weekly 1-2-1 with Sophie every Thursday at 11");
+    const ev = byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    expect(ev.recurrence_pattern).toBeTruthy();
+    expect(personText(p.facts).toLowerCase()).toContain("sophie");
+  });
+
+  it("a non-recurring fact has no recurrence_pattern", async () => {
+    const p = await run("Meeting with Sarah at 2pm Thursday");
+    expect(p.facts[0].recurrence_pattern).toBeUndefined();
+  });
+});
+
 // ── Fix 4 — hotel classification ───────────────────────────────────────────────
 describe("Fix 4 — hotel chains, operators, nights, check-in", () => {
   it("'Marriott Edinburgh 3 nights from the 10th July' → hotel with derived date range", async () => {
