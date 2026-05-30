@@ -119,3 +119,7 @@ As soon as the engine can parse anything, throw real travel-shaped sentences at 
 - "Find me a hotel near the venue"  (← imperative; search request)
 
 The dictionary improves through this testing, not through clever rules. Diff the failures, identify the gaps, add carefully curated entries.
+
+## If you regenerate the dictionary
+
+Pattern scalars containing braces (e.g. `{duration}` in Layer 3) must be quoted in source YAML, or the YAML is invalid. The current import quotes them defensively at load time, but new generations should fix this at source so the import-time workaround isn't relied on.

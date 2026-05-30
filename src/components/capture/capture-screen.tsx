@@ -144,7 +144,10 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     if (!draft) return;
     setFeedback(null);
     startTransition(async () => {
-      const res = await confirmCapture({ captured_input_id: capturedId, payload: draft });
+      const res = await confirmCapture({
+        captured_input_id: capturedId,
+        payload: draft as unknown as { original_text: string; facts: unknown[] },
+      });
       if (!res.ok) {
         setFeedback(feedbackFromError(res.error).message);
         return;
