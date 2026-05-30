@@ -7,6 +7,9 @@ import {
   formatSlotValue,
   includedFacts,
   pruneCorrections,
+  slotEntityStatus,
+  factAnchor,
+  sortCandidatesByProximity,
   type Corrections,
 } from "../draft-model";
 import type { ParsedFact, ParsedPayload, Slot } from "@/lib/parser/types";
@@ -94,5 +97,62 @@ describe("correction model", () => {
     const p = payload([original]);
     applyCorrections(p, { fact_1: { place: slot("Crown") } }, new Set());
     expect(formatSlotValue(p.facts[0].slots.place)).toBe("George");
+  });
+});
+
+describe("slotEntityStatus", () => {
+  it("returns null for non-entity slots", () => {
+    expect(slotEntityStatus(slot("2026-06-10"), "date")).toBeNull();
+    expect(slotEntityStatus(slot("hello"), "text")).toBeNull();
+  });
+  it("is bound when the value carries a resolved id", () => {
+    expect(slotEntityStatus(slot({ hub_id: "h1", label: "Derby" }), "hub")).toBe("bound");
+    expect(slotEntityStatus(slot({ location_id: "l1", label: "Office" }), "place")).toBe("bound");
+    expect(slotEntityStatus(slot({ contact_id: "c1", label: "Sam" }), "person")).toBe("bound");
+  });
+  it("is ambiguous when flagged", () => {
+    expect(slotEntityStatus(slot("Liverpool", { ambiguous: true }), "hub")).toBe("ambiguous");
+  });
+  it("is unknown for a verbatim entity label", () => {
+    expect(slotEntityStatus(slot("Nando's"), "place")).toBe("unknown");
+  });
+  it("is null when the slot is absent", () => {
+    expect(slotEntityStatus(undefined, "hub")).toBeNull();
+  });
+});
+
+describe("factAnchor", () => {
+  it("finds the first slot value carrying coordinates", () => {
+    const f = fact("fact_1", "scheduled_event", {
+      date: slot("2026-06-10"),
+      place: slot({ location_id: "l1", label: "Office", latitude: 52.9, longitude: -1.47 }),
+    });
+    expect(factAnchor(f)).toEqual({ lat: 52.9, lng: -1.47 });
+  });
+  it("returns null when no slot has coordinates", () => {
+    expect(factAnchor(fact("fact_1", "note", { label: slot("hi") }))).toBeNull();
+  });
+});
+
+describe("sortCandidatesByProximity", () => {
+  const near = { lat: 53.4084, lng: -2.9916 }; // Liverpool
+  it("preserves order without an anchor and maps shape", () => {
+    const out = sortCandidatesByProximity(
+      [{ id: "a", name: "Liverpool Lime Street", code: "LIV" }],
+      null,
+    );
+    expect(out[0]).toMatchObject({ id: "a", name: "Liverpool Lime Street", code: "LIV" });
+    expect(out[0].distanceLabel).toBeUndefined();
+  });
+  it("sorts nearest-first and labels distance when anchored", () => {
+    const out = sortCandidatesByProximity(
+      [
+        { id: "man", name: "Manchester Piccadilly", latitude: 53.4775, longitude: -2.2309 },
+        { id: "liv", name: "Liverpool Lime Street", latitude: 53.4075, longitude: -2.9778 },
+      ],
+      near,
+    );
+    expect(out[0].id).toBe("liv");
+    expect(out[0].distanceLabel).toMatch(/mi|here/);
   });
 });

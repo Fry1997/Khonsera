@@ -3,8 +3,30 @@
 import { useState } from "react";
 import type { SlotDef } from "@/lib/dictionary/types";
 import type { ParsedFact, Slot } from "@/lib/parser/types";
-import { factTypeLabel, formatSlotValue, slotLabel } from "./draft-model";
+import {
+  factTypeLabel,
+  formatSlotValue,
+  slotLabel,
+  slotEntityStatus,
+  factAnchor,
+  sortCandidatesByProximity,
+  type RankedCandidate,
+} from "./draft-model";
+import { EntityBadge, CandidateDropdown } from "./entity-badge";
 import { SlotEditor, type PickerData } from "./slot-editor";
+
+// Build the bound Slot for a candidate the user picked from the chooser. Picks
+// are user-authoritative: high confidence, not inferred. Station candidates
+// carry coords so downstream proximity stays accurate.
+function slotFromCandidate(c: RankedCandidate, prev: Slot | undefined): Slot {
+  return {
+    value: { hub_id: c.id, label: c.name, code: c.code ?? null, latitude: c.latitude ?? null, longitude: c.longitude ?? null },
+    source_text: prev?.source_text ?? c.name,
+    source_range: prev?.source_range ?? { start: 0, end: 0 },
+    confidence: "high",
+    inferred: false,
+  };
+}
 
 const LINK_WORDS: Record<string, string> = {
   destination_of: "destination of",
@@ -34,6 +56,8 @@ export function FactCard({
   onHoverRange: (range: { start: number; end: number } | null) => void;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState<string | null>(null);
+  const anchor = factAnchor(fact);
 
   // For verbatim shapes, show only the label + any captured anchor slots.
   const visibleDefs = defs.filter((d) => {
@@ -74,11 +98,25 @@ export function FactCard({
           {visibleDefs.map((def) => {
             const slot = fact.slots[def.key];
             const isEditing = editing === def.key;
+            const entityStatus = slotEntityStatus(slot, def.dataType);
+            const isChoosing = choosing === def.key;
             return (
               <div key={def.key}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                   <span className="uc" style={{ minWidth: 96 }}>{slotLabel(def.key)}</span>
-                  {isEditing ? null : (
+                  {isEditing ? null : entityStatus ? (
+                    <EntityBadge
+                      label={formatSlotValue(slot!)}
+                      status={entityStatus}
+                      hint={entityStatus === "ambiguous" ? "which one?" : entityStatus === "unknown" ? "tap to set" : null}
+                      onMouseEnter={() => onHoverRange(slot!.source_range)}
+                      onMouseLeave={() => onHoverRange(null)}
+                      onClick={() => {
+                        if (entityStatus === "ambiguous") setChoosing(isChoosing ? null : def.key);
+                        else setEditing(def.key);
+                      }}
+                    />
+                  ) : (
                     <button
                       type="button"
                       onClick={() => setEditing(def.key)}
@@ -103,6 +141,17 @@ export function FactCard({
                     </button>
                   )}
                 </div>
+                {isChoosing && entityStatus === "ambiguous" && slot ? (
+                  <CandidateDropdown
+                    candidates={sortCandidatesByProximity(slot.candidates ?? [], anchor)}
+                    rawText={slot.source_text}
+                    onPick={(c) => {
+                      onCommitSlot(def.key, slotFromCandidate(c, slot));
+                      setChoosing(null);
+                    }}
+                    onKeepAsTyped={() => setChoosing(null)}
+                  />
+                ) : null}
                 {isEditing ? (
                   <SlotEditor
                     factType={fact.fact_type}
@@ -139,9 +188,13 @@ export function FactCard({
 
           {fact.links.length > 0 ? (
             <div style={{ marginTop: 2, fontSize: 12.5, color: "var(--ink-dim)" }}>
-              {fact.links.map((l, i) => (
-                <span key={i}>→ {LINK_WORDS[l.kind] ?? l.kind}: {labelForLocalId(l.target)}</span>
-              ))}
+              {fact.links.map((l, i) =>
+                l.kind === "event_day" && l.day_index ? (
+                  <span key={i}>→ Day {l.day_index} of {labelForLocalId(l.target)}</span>
+                ) : (
+                  <span key={i}>→ {LINK_WORDS[l.kind] ?? l.kind}: {labelForLocalId(l.target)}</span>
+                ),
+              )}
             </div>
           ) : null}
         </div>

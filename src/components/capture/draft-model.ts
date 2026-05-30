@@ -3,6 +3,83 @@
 // separate so the load-bearing logic is unit-testable without a DOM harness.
 
 import type { ParsedFact, ParsedPayload, Slot } from "@/lib/parser/types";
+import { haversineMeters, formatMiles } from "@/lib/geo";
+
+// Slot dataTypes that name a real-world entity we can bind, badge, and resolve.
+const ENTITY_DATA_TYPES = new Set(["hub", "place", "person"]);
+
+export type EntityStatus = "bound" | "ambiguous" | "unknown";
+
+// Returns the entity-binding status of a slot, or null when the slot is not an
+// entity slot (dates, times, numbers, free text). Drives badge colour:
+//   bound     → value is an object carrying a resolved id (gold)
+//   ambiguous → resolution found multiple candidates (grey, opens a chooser)
+//   unknown   → a verbatim label with no match yet (grey, opens the editor)
+export function slotEntityStatus(slot: Slot | undefined, dataType: string | undefined): EntityStatus | null {
+  if (!dataType || !ENTITY_DATA_TYPES.has(dataType)) return null;
+  if (!slot) return null;
+  const v = slot.value;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if (o.hub_id || o.location_id || o.customer_site_id || o.contact_id) return "bound";
+  }
+  if (slot.ambiguous) return "ambiguous";
+  return "unknown";
+}
+
+// A {lat,lng} anchor drawn from the first slot value in the fact that carries
+// coordinates — used to rank ambiguous candidates / proximity suggestions.
+export function factAnchor(fact: ParsedFact): { lat: number; lng: number } | null {
+  for (const slot of Object.values(fact.slots)) {
+    const v = slot.value;
+    if (v && typeof v === "object") {
+      const o = v as { latitude?: unknown; longitude?: unknown };
+      if (typeof o.latitude === "number" && typeof o.longitude === "number") {
+        return { lat: o.latitude, lng: o.longitude };
+      }
+    }
+  }
+  return null;
+}
+
+// A candidate place/hub, optionally carrying coords + a derived distance label.
+export interface RankedCandidate {
+  id: string;
+  name: string;
+  code?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  distanceLabel?: string;
+}
+
+// Sort candidates nearest-first to an anchor (when both have coords), attaching
+// a human miles label. Without an anchor, order is preserved. Pure + tested.
+export function sortCandidatesByProximity(
+  candidates: readonly unknown[],
+  anchor: { lat: number; lng: number } | null,
+): RankedCandidate[] {
+  const rows = candidates.map((c) => {
+    const o = (c ?? {}) as Record<string, unknown>;
+    return {
+      id: String(o.id ?? ""),
+      name: String(o.name ?? o.label ?? ""),
+      code: (o.code as string | null | undefined) ?? null,
+      latitude: typeof o.latitude === "number" ? o.latitude : null,
+      longitude: typeof o.longitude === "number" ? o.longitude : null,
+    };
+  });
+  if (!anchor) return rows;
+  return rows
+    .map((r, i) => {
+      const d =
+        r.latitude != null && r.longitude != null
+          ? haversineMeters(anchor.lat, anchor.lng, r.latitude, r.longitude)
+          : Number.POSITIVE_INFINITY;
+      return { r, d, i };
+    })
+    .sort((a, b) => a.d - b.d || a.i - b.i)
+    .map((x) => (Number.isFinite(x.d) ? { ...x.r, distanceLabel: formatMiles(x.d) } : x.r));
+}
 
 // localId → slotKey → corrected Slot (user-authoritative; inferred:false, high).
 export type Corrections = Record<string, Record<string, Slot>>;
