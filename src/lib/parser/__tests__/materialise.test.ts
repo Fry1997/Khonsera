@@ -49,4 +49,21 @@ describe("materialisation — transition vs travel_booking (§16)", () => {
     const plan = factsToBrief(await run("Hotel in Derby Thursday and Friday"));
     expect(plan.brief.accommodation_bookings.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("a bound contact on an event flows to the anchor's contact_id", async () => {
+    const payload = await run("Meeting with Sarah at 2pm Thursday");
+    // Simulate the user binding the person slot to a real contact (as the
+    // capture screen's PersonEditor does via corrections).
+    const event = payload.facts.find((f) => f.fact_type === "scheduled_event")!;
+    event.slots.contact = {
+      value: { contact_id: "contact-123", label: "Sarah" },
+      source_text: "Sarah",
+      source_range: { start: 0, end: 5 },
+      confidence: "high",
+      inferred: false,
+    };
+    const plan = factsToBrief(payload);
+    const anchor = plan.brief.anchors.find((a) => a.kind === "appointment")!;
+    expect(anchor.contact_id).toBe("contact-123");
+  });
 });

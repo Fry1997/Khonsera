@@ -64,10 +64,10 @@ through onto resolved slot values by the parser (`ResolvedHub`/`ResolvedLocation
 The parser's `link.ts` adds an `event_day` link: a dated fact within a multi-day `business_event`'s
 `{start,end}` span links to it with a 1-based `day_index`, rendered as "Day N of <event>".
 
-## Known gap
-`materialise.ts` does not yet persist a bound person's `contact_id` to `stops.contact_id` on
-confirm. The contact is created and bound in the capture UI, but the link isn't written through —
-the next step when people are wired into the timeline.
+## Person → stop wiring
+A bound person persists on confirm: `materialise.ts` reads the event fact's `contact` slot
+`contact_id` onto the anchor (`BriefDraft.anchors[].contact_id`), `createItineraryFromBrief`'s
+`anchorInputSchema` accepts it, and the event/meal/call stop row writes `stops.contact_id`.
 
 ## Tests (pure, no DOM)
 `draft-model.test.ts` (slotEntityStatus, factAnchor, sortCandidatesByProximity, buildOverlaySegments),

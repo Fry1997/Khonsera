@@ -89,9 +89,9 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
 - The inline-badge surface is the **annotated read-back line** beneath the textarea (mirror div
   painted from slot `source_range`s), NOT a transparent-textarea overlay — chosen for robustness
   (no pixel-alignment maths to verify without a browser).
-- KNOWN GAP: `materialise.ts` does NOT yet persist a bound person's `contact_id` to
-  `stops.contact_id` on confirm — the contact is created/bound in the UI but the link isn't
-  written through. Next step when wiring people into the timeline.
+- A bound person flows through on confirm: `materialise.ts` carries the `contact` slot's
+  `contact_id` onto the event anchor → `anchorInputSchema.contact_id` → `stops.contact_id`
+  (event/meal/call anchors only).
 
 ## Design Principles
 

@@ -30,6 +30,7 @@ export interface BriefDraft {
     time: string | null;
     location_id?: string | null;
     customer_site_id?: string | null;
+    contact_id?: string | null;
     label?: string | null;
     check_out_date?: string | null;
     check_out_time?: string | null;
@@ -114,6 +115,10 @@ function locationId(slot: Slot | undefined): string | null {
   const v = slot?.value as { location_id?: string } | undefined;
   return v?.location_id ?? null;
 }
+function contactId(slot: Slot | undefined): string | null {
+  const v = slot?.value as { contact_id?: string } | undefined;
+  return v?.contact_id ?? null;
+}
 function placeLabel(slot: Slot | undefined): string | null {
   if (!slot) return null;
   const v = slot.value;
@@ -174,6 +179,7 @@ export function factsToBrief(payload: ParsedPayload): MaterialisationPlan {
         timing_mode: time ? "arrive_by" : "around_then",
         time,
         location_id: locationId(fact.slots.place),
+        contact_id: contactId(fact.slots.contact),
         label: placeLabel(fact.slots.place),
       });
       continue;
