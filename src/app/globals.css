@@ -1522,6 +1522,69 @@
     color: var(--ink-faint);
   }
 
+  /* ── Capture in-text overlay ──────────────────────────────────────────
+     A mirror div sits behind a transparent-text textarea and paints the
+     recognised spans, tinted by type, exactly under the typed glyphs. Both
+     share the same box metrics (.field) so the text aligns. */
+  .capture-input-wrap {
+    position: relative;
+  }
+  .capture-mirror {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    padding: 14px 16px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: var(--card);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .capture-textarea.field {
+    position: relative;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--ink);
+    -webkit-text-fill-color: transparent;
+  }
+  .capture-textarea.field::placeholder {
+    -webkit-text-fill-color: var(--ink-faint);
+    color: var(--ink-faint);
+  }
+  /* Span tints — gentle backgrounds so typed text stays legible. */
+  .capture-mirror .mk {
+    border-radius: 5px;
+    padding: 1px 2px;
+    margin: 0 -2px;
+  }
+  .mk-bound {
+    background: var(--gold-tint);
+    color: var(--gold-2);
+  }
+  .mk-ambiguous,
+  .mk-unknown {
+    background: color-mix(in srgb, var(--rule-2) 26%, transparent);
+    color: var(--ink-dim);
+  }
+  .mk-temporal {
+    background: var(--sage-soft);
+    color: var(--ink);
+  }
+  .mk-amount {
+    background: var(--gold-100);
+    color: var(--gold-800);
+  }
+  .mk-hover {
+    box-shadow: inset 0 -2px 0 var(--gold);
+  }
+
   /* Eyebrow — a tighter uppercase mono, used for screen sub-titles. */
   .eyebrow {
     font-family: var(--mono);

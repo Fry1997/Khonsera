@@ -16,6 +16,58 @@ import {
 } from "./draft-model";
 import { EntityBadge, CandidateDropdown } from "./entity-badge";
 import { SlotEditor, type PickerData } from "./slot-editor";
+import { StopIcon, TransportIcon } from "@/components/icons";
+
+type IconCmp = (p: { size?: number }) => React.ReactElement;
+
+// The icon that heads a fact block — by fact type.
+function headerIcon(factType: string): IconCmp {
+  if (factType in TransportIcon) {
+    const mode = factType.replace(/_journey|_leg/, "") as keyof typeof TransportIcon;
+    if (TransportIcon[mode]) return TransportIcon[mode];
+  }
+  const map: Record<string, IconCmp> = {
+    train_journey: TransportIcon.train,
+    flight_journey: TransportIcon.flight,
+    bus_journey: TransportIcon.bus,
+    coach_journey: TransportIcon.bus,
+    ferry_journey: TransportIcon.bus,
+    taxi_journey: TransportIcon.taxi,
+    walking_leg: TransportIcon.walk,
+    driving_leg: TransportIcon.drive,
+    scheduled_event: StopIcon.appointment,
+    appointment: StopIcon.appointment,
+    scheduled_call: StopIcon.appointment,
+    business_event: StopIcon.event,
+    meal_plan: StopIcon.meal,
+    accommodation_booking: StopIcon.stay,
+    note: StopIcon.note,
+    task: StopIcon.note,
+    intent: StopIcon.note,
+  };
+  return map[factType] ?? StopIcon.note;
+}
+
+// The icon for a slot row — by slot key first (origin/destination/changeover),
+// then by data type.
+function slotIcon(key: string, dataType: string | undefined): IconCmp {
+  if (/origin|depart|from/.test(key)) return StopIcon.station;
+  if (/destination|arriv|to\b/.test(key)) return StopIcon.pin;
+  if (/changeover|change|via/.test(key)) return TransportIcon.mixed;
+  if (/check_in|check_out/.test(key)) return StopIcon.stay;
+  switch (dataType) {
+    case "person": return StopIcon.person;
+    case "hub": return StopIcon.station;
+    case "place": return StopIcon.pin;
+    case "date": return StopIcon.calendar;
+    case "time": return StopIcon.wait;
+    case "money": return StopIcon.money;
+    case "duration": return StopIcon.wait;
+    default:
+      if (/_time$/.test(key)) return StopIcon.wait;
+      return StopIcon.note;
+  }
+}
 
 // Build the bound Slot for a candidate the user picked from the chooser. Picks
 // are user-authoritative: high confidence, not inferred. Station candidates
@@ -71,28 +123,28 @@ export function FactCard({
     return d.tier === "essential_to_work"; // surface missing essentials as "not set"
   });
 
-  const confidencePill =
-    fact.confidence === "low" ? "pill-amber" : fact.confidence === "high" ? "pill-sage" : "";
+  const HeadIcon = headerIcon(fact.fact_type);
 
   return (
     <div
       className="card"
       style={{
         padding: "14px 16px",
-        opacity: dismissed ? 0.5 : 1,
+        opacity: dismissed ? 0.45 : 1,
         borderColor: dismissed ? "var(--rule)" : undefined,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 15, color: "var(--ink)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span style={{ color: "var(--gold-2)", display: "flex" }}><HeadIcon size={18} /></span>
+          <span style={{ fontFamily: "var(--display)", fontWeight: 500, fontSize: 15.5, color: "var(--ink)" }}>
             {factTypeLabel(fact.fact_type)}
           </span>
-          <span className={`pill ${confidencePill}`}>{fact.confidence}</span>
         </div>
         <button
           type="button"
           className="btn btn-ghost btn-sm"
+          style={{ color: "var(--ink-faint)" }}
           onClick={onToggleDismiss}
         >
           {dismissed ? "Include" : "Don’t include"}
@@ -100,17 +152,33 @@ export function FactCard({
       </div>
 
       {!dismissed ? (
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 9 }}>
           {visibleDefs.map((def) => {
             const slot = fact.slots[def.key];
             const isEditing = editing === def.key;
             const entityStatus = slotEntityStatus(slot, def.dataType);
             const isChoosing = choosing === def.key;
+            const RowIcon = slotIcon(def.key, def.dataType);
             return (
-              <div key={def.key}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                  <span className="uc" style={{ minWidth: 96 }}>{slotLabel(def.key)}</span>
-                  {isEditing ? null : entityStatus ? (
+              <div key={def.key} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <span style={{ color: "var(--ink-faint)", display: "flex", flex: "0 0 auto", marginTop: 2 }}>
+                  <RowIcon size={16} />
+                </span>
+                <span className="uc" style={{ flex: "0 0 auto", minWidth: 72, marginTop: 3 }}>{slotLabel(def.key)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {isEditing ? (
+                    <SlotEditor
+                      factType={fact.fact_type}
+                      def={def}
+                      current={slot}
+                      pickerData={pickerData}
+                      onCommit={(s) => {
+                        onCommitSlot(def.key, s);
+                        setEditing(null);
+                      }}
+                      onCancel={() => setEditing(null)}
+                    />
+                  ) : entityStatus ? (
                     <EntityBadge
                       label={formatSlotValue(slot!)}
                       status={entityStatus}
@@ -136,48 +204,35 @@ export function FactCard({
                         cursor: "pointer",
                         color: slot ? "var(--ink)" : "var(--ink-faint)",
                         fontFamily: "var(--sans)",
-                        fontSize: 14,
+                        fontSize: 14.5,
                       }}
                     >
                       {slot ? formatSlotValue(slot) : "not set"}
                       {slot?.inferred ? <span style={{ color: "var(--ink-faint)" }}> (inferred)</span> : null}
                       {slot && slot.confidence === "low" ? (
-                        <span style={{ color: "var(--amber)" }}> ? tap to confirm</span>
+                        <span style={{ color: "var(--amber)" }}> · tap to confirm</span>
                       ) : null}
                     </button>
                   )}
+                  {isChoosing && entityStatus === "ambiguous" && slot ? (
+                    <CandidateDropdown
+                      candidates={sortCandidatesByProximity(slot.candidates ?? [], anchor)}
+                      rawText={slot.source_text}
+                      onPick={(c) => {
+                        onCommitSlot(def.key, slotFromCandidate(c, slot));
+                        setChoosing(null);
+                      }}
+                      onKeepAsTyped={() => setChoosing(null)}
+                    />
+                  ) : null}
+                  {!isEditing && def.dataType === "hub" && anchor && entityStatus !== "bound" && entityStatus !== "ambiguous" ? (
+                    <NearestStation
+                      anchor={anchor}
+                      kind={fact.fact_type === "flight_journey" ? "airport" : "rail_station"}
+                      onPick={(c) => onCommitSlot(def.key, slotFromCandidate(c, slot))}
+                    />
+                  ) : null}
                 </div>
-                {isChoosing && entityStatus === "ambiguous" && slot ? (
-                  <CandidateDropdown
-                    candidates={sortCandidatesByProximity(slot.candidates ?? [], anchor)}
-                    rawText={slot.source_text}
-                    onPick={(c) => {
-                      onCommitSlot(def.key, slotFromCandidate(c, slot));
-                      setChoosing(null);
-                    }}
-                    onKeepAsTyped={() => setChoosing(null)}
-                  />
-                ) : null}
-                {!isEditing && def.dataType === "hub" && anchor && entityStatus !== "bound" && entityStatus !== "ambiguous" ? (
-                  <NearestStation
-                    anchor={anchor}
-                    kind={fact.fact_type === "flight_journey" ? "airport" : "rail_station"}
-                    onPick={(c) => onCommitSlot(def.key, slotFromCandidate(c, slot))}
-                  />
-                ) : null}
-                {isEditing ? (
-                  <SlotEditor
-                    factType={fact.fact_type}
-                    def={def}
-                    current={slot}
-                    pickerData={pickerData}
-                    onCommit={(s) => {
-                      onCommitSlot(def.key, s);
-                      setEditing(null);
-                    }}
-                    onCancel={() => setEditing(null)}
-                  />
-                ) : null}
               </div>
             );
           })}

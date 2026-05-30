@@ -16,13 +16,13 @@ import {
   factTypeLabel,
   includedFacts,
   pruneCorrections,
-  slotEntityStatus,
-  buildOverlaySegments,
+  slotHighlightTint,
   factAnchor,
   type Corrections,
-  type EntitySpan,
+  type OverlaySpan,
 } from "./draft-model";
 import { FactCard } from "./fact-card";
+import { HighlightMirror } from "./highlight-overlay";
 import type { PickerData } from "./slot-editor";
 import { stubIntentCopy } from "./intent-copy";
 import { activeTokenAt, replaceRange } from "./use-active-token";
@@ -167,19 +167,20 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     });
   };
 
-  // Entity spans for the annotated read-back mirror: every place/person/station
-  // slot across all (corrected) facts, with its bound/ambiguous/unknown status.
-  const entitySpans = useMemo<EntitySpan[]>(() => {
+  // Overlay spans for the in-text light-up: every recognised slot across all
+  // (corrected) facts — entities tinted by binding status, dates/times as
+  // "temporal", amounts as "amount".
+  const overlaySpans = useMemo<OverlaySpan[]>(() => {
     if (!payload) return [];
-    const spans: EntitySpan[] = [];
+    const spans: OverlaySpan[] = [];
     for (const fact of payload.facts) {
       if (dismissed.has(fact.local_id)) continue;
       const defs = slotSchemas[fact.fact_type] ?? [];
       const slots = corrections[fact.local_id] ? { ...fact.slots, ...corrections[fact.local_id] } : fact.slots;
       for (const def of defs) {
         const slot = slots[def.key];
-        const status = slotEntityStatus(slot, def.dataType);
-        if (status && slot) spans.push({ start: slot.source_range.start, end: slot.source_range.end, status });
+        const tint = slotHighlightTint(slot, def.dataType);
+        if (tint && slot) spans.push({ start: slot.source_range.start, end: slot.source_range.end, tint });
       }
     }
     return spans;
@@ -218,39 +219,6 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     });
   };
 
-  // The read-back line: entity spans as inline gold/grey badges, with the
-  // hovered slot's span underlined. Painted from the live payload (no overlay
-  // alignment maths — robust, and the visible record of what was understood).
-  const renderedText = () => {
-    const segments = buildOverlaySegments(text, entitySpans);
-    let offset = 0;
-    return segments.map((seg, i) => {
-      const segStart = offset;
-      offset += seg.text.length;
-      const hovered = hoverRange && hoverRange.start <= segStart && hoverRange.end >= offset;
-      if (seg.kind === "entity") {
-        const bound = seg.status === "bound";
-        return (
-          <span
-            key={i}
-            style={{
-              borderBottom: `2px solid ${bound ? "var(--gold)" : "var(--rule-2)"}`,
-              color: bound ? "var(--gold-2)" : "var(--ink-dim)",
-              fontWeight: 500,
-              background: hovered ? "var(--gold-soft)" : undefined,
-            }}
-          >
-            {seg.text}
-          </span>
-        );
-      }
-      return (
-        <span key={i} style={{ background: hovered ? "var(--gold-soft)" : undefined }}>
-          {seg.text}
-        </span>
-      );
-    });
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -265,34 +233,42 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         What’s on your mind?
       </h1>
 
-      <textarea
-        ref={taRef}
-        className="field"
-        style={{ minHeight: 72, resize: "none", lineHeight: 1.5 }}
-        placeholder="e.g. Demo at ACME Wed 11 June, train from Wellingborough"
-        value={text}
-        autoFocus
-        onChange={(e) => {
-          setText(e.target.value);
-          setCaret(e.target.selectionStart);
-          setSuggestOff(false); // a fresh keystroke re-opens suggestions
-          autoGrow();
-        }}
-        onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
-        onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
-        onBlur={() => setSuggestOff(true)}
-        onKeyDown={(e) => {
-          const c = suggestControls.current;
-          if (!activeToken || !c) {
-            if (e.key === "Escape") setSuggestOff(true);
-            return;
-          }
-          if (e.key === "ArrowDown") { e.preventDefault(); c.down(); }
-          else if (e.key === "ArrowUp") { e.preventDefault(); c.up(); }
-          else if (e.key === "Enter") { if (c.pick()) e.preventDefault(); }
-          else if (e.key === "Escape") { e.preventDefault(); setSuggestOff(true); }
-        }}
-      />
+      {/* In-text light-up: a painted mirror behind a transparent-text textarea. */}
+      <div className="capture-input-wrap">
+        <HighlightMirror text={text} spans={overlaySpans} hoverRange={hoverRange} />
+        <textarea
+          ref={taRef}
+          className="field capture-textarea"
+          style={{ minHeight: 72, resize: "none", lineHeight: 1.5 }}
+          placeholder="e.g. Demo at ACME Wed 11 June, train from Wellingborough"
+          value={text}
+          autoFocus
+          onChange={(e) => {
+            setText(e.target.value);
+            setCaret(e.target.selectionStart);
+            setSuggestOff(false); // a fresh keystroke re-opens suggestions
+            autoGrow();
+          }}
+          onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
+          onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
+          onBlur={() => setSuggestOff(true)}
+          onScroll={(e) => {
+            const m = (e.target as HTMLTextAreaElement).previousElementSibling as HTMLElement | null;
+            if (m) m.scrollTop = (e.target as HTMLTextAreaElement).scrollTop;
+          }}
+          onKeyDown={(e) => {
+            const c = suggestControls.current;
+            if (!activeToken || !c) {
+              if (e.key === "Escape") setSuggestOff(true);
+              return;
+            }
+            if (e.key === "ArrowDown") { e.preventDefault(); c.down(); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); c.up(); }
+            else if (e.key === "Enter") { if (c.pick()) e.preventDefault(); }
+            else if (e.key === "Escape") { e.preventDefault(); setSuggestOff(true); }
+          }}
+        />
+      </div>
 
       {activeToken ? (
         <SuggestPopover
@@ -321,10 +297,12 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         ))}
       </div>
 
-      {/* Original text with source-range highlight on slot hover */}
-      {text.trim().length > 0 ? (
-        <p className="serif-i" style={{ color: "var(--ink-dim)", fontSize: 14, margin: 0 }}>{renderedText()}</p>
-      ) : null}
+      {/* Sigil affordances — what Khonsera recognises as you type. */}
+      <div style={{ display: "flex", gap: 16, fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-faint)" }}>
+        <span><span style={{ color: "var(--gold-2)" }}>@</span> places</span>
+        <span><span style={{ color: "var(--gold-2)" }}>#</span> trips</span>
+        <span><span style={{ color: "var(--gold-2)" }}>+</span> people</span>
+      </div>
 
       {rebuiltNotice ? (
         <p style={{ fontSize: 12.5, color: "var(--ink-dim)" }}>The draft was rebuilt from your edits.</p>
@@ -333,6 +311,10 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
       {/* Draft area */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {loading && !payload ? <p style={{ color: "var(--ink-faint)" }}>Reading…</p> : null}
+
+        {!stub && included.length > 0 ? (
+          <span className="eyebrow" style={{ color: "var(--ink-faint)" }}>Here&rsquo;s what I understood</span>
+        ) : null}
 
         {parseError ? (
           <div className="card" style={{ padding: 16 }}>

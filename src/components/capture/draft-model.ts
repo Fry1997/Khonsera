@@ -42,23 +42,26 @@ export function factAnchor(fact: ParsedFact): { lat: number; lng: number } | nul
   return null;
 }
 
-// A typed entity span within the input text, used to paint the annotated
-// read-back mirror (the live inline-badge surface beneath the textarea).
-export interface EntitySpan {
+// How a recognised span lights up in the in-text overlay. Entity statuses
+// (bound/ambiguous/unknown) plus the non-entity tints (dates/times, amounts).
+export type HighlightTint = EntityStatus | "temporal" | "amount";
+
+// A recognised span within the input text, used to paint the in-text overlay.
+export interface OverlaySpan {
   start: number;
   end: number;
-  status: EntityStatus;
+  tint: HighlightTint;
 }
 
 export type OverlaySegment =
   | { kind: "text"; text: string }
-  | { kind: "entity"; text: string; status: EntityStatus };
+  | { kind: "mark"; text: string; tint: HighlightTint };
 
-// Split `text` into ordered plain/entity segments from a set of entity spans.
-// Spans are sorted by start; overlapping or out-of-bounds spans are dropped so
-// the segments always tile the text exactly once (offset-based — safe for
-// duplicate substrings). Pure + tested.
-export function buildOverlaySegments(text: string, spans: readonly EntitySpan[]): OverlaySegment[] {
+// Split `text` into ordered plain/marked segments from a set of spans. Spans are
+// sorted by start; overlapping or out-of-bounds spans are dropped so the segments
+// always tile the text exactly once (offset-based — safe for duplicate
+// substrings). Pure + tested.
+export function buildOverlaySegments(text: string, spans: readonly OverlaySpan[]): OverlaySegment[] {
   const valid = spans
     .filter((s) => s.start >= 0 && s.end <= text.length && s.start < s.end)
     .slice()
@@ -69,11 +72,23 @@ export function buildOverlaySegments(text: string, spans: readonly EntitySpan[])
   for (const span of valid) {
     if (span.start < cursor) continue; // overlaps an earlier span — skip
     if (span.start > cursor) segments.push({ kind: "text", text: text.slice(cursor, span.start) });
-    segments.push({ kind: "entity", text: text.slice(span.start, span.end), status: span.status });
+    segments.push({ kind: "mark", text: text.slice(span.start, span.end), tint: span.tint });
     cursor = span.end;
   }
   if (cursor < text.length) segments.push({ kind: "text", text: text.slice(cursor) });
   return segments;
+}
+
+// The overlay tint for a slot, or null if the slot shouldn't be highlighted.
+// Entity slots carry their binding status; date/time → temporal; money/number/
+// duration → amount.
+export function slotHighlightTint(slot: Slot | undefined, dataType: string | undefined): HighlightTint | null {
+  const entity = slotEntityStatus(slot, dataType);
+  if (entity) return entity;
+  if (!slot || !dataType) return null;
+  if (dataType === "date" || dataType === "time") return "temporal";
+  if (dataType === "money" || dataType === "number" || dataType === "duration" || dataType === "party_size") return "amount";
+  return null;
 }
 
 // A candidate place/hub, optionally carrying coords + a derived distance label.
