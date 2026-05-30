@@ -125,6 +125,24 @@ imperatives:
       - will I
       - will we
 
+  - intent: communication_request
+    category: communicating_and_forwarding
+    engine_note: |
+      Communication-action verbs at the START of input, typically followed by a
+      person reference and a content phrase ("email Jane the tickets"). Routes to
+      the request engine and is held as an intent — Khonsera doesn't send things
+      itself yet. Mid-sentence "text" (the noun) must not trigger this; only a
+      sentence-initial trigger routes.
+    imperatives:
+      - email
+      - send
+      - text
+      - message
+      - forward
+      - notify
+      - write to
+      - let know
+
   - intent: comparison_request
     category: comparing_options
     imperatives:

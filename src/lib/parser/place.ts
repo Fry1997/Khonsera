@@ -30,6 +30,15 @@ const WEEKDAYS = new Set([
   "mon", "tue", "tues", "wed", "thu", "thur", "thurs", "fri", "sat", "sun",
   "today", "tomorrow", "yesterday", "tonight", "weekend",
 ]);
+// Time-direction + connector words that must CLOSE a place-name run (handback
+// §2.3). "Wellingborough arriving" → place candidate is "Wellingborough"; the
+// time-direction word starts the next clause and attaches to the time, not the
+// origin. Bare operators (at/on/by/via) already close runs via lookup.operators.
+const PLACE_BOUNDARY = new Set([
+  "arriving", "arrive", "arrives", "leaving", "leave", "leaves",
+  "departing", "depart", "departs", "returning", "return", "returns",
+  "then", "back", "with",
+]);
 
 function roleFromOperator(phrase: string): PlaceRole | null {
   if (phrase === "from") return "origin";
@@ -39,15 +48,24 @@ function roleFromOperator(phrase: string): PlaceRole | null {
   return null;
 }
 
-// Tokens that terminate a place-name run.
+// Sentence-initial common words that are capitalised only by position, never
+// places (handback §2.2: "Be in Liverpool" must not yield place="Be").
+const NON_PLACE_WORDS = new Set([
+  "be", "being", "been", "go", "going", "get", "getting", "got", "let",
+  "do", "doing", "did", "make", "take", "give", "see", "have", "need",
+]);
+
+// Tokens that terminate a place-name run. "&" is the one punctuation kept inside
+// a run so venue names like "Frankie & Benny's" survive (handback §5.1/§5.2).
 function isStop(
   tok: Token,
   idx: number,
   lookup: LookupResult,
   patterns: PatternBundle,
 ): boolean {
-  if (tok.kind === "punct") return true;
+  if (tok.kind === "punct") return tok.text !== "&";
   if (MONTHS.has(tok.lower) || WEEKDAYS.has(tok.lower)) return true;
+  if (PLACE_BOUNDARY.has(tok.lower)) return true;
   if (lookup.concepts.some((c) => c.tokenStart === idx)) return true;
   if (lookup.operators.some((o) => o.tokenStart === idx)) return true;
   if (patterns.all.some((p) => p.source_range.start <= tok.start && p.source_range.end > tok.start)) return true;
@@ -94,6 +112,12 @@ export function findPlaces(
     if (!role) continue;
     const run = collectRun(tokens, op.tokenEnd + 1, tokenEnd, lookup, patterns);
     if (!run) continue;
+    // A person introduced by from/to/for ("from Ricky", "to Jane") is NOT a place
+    // — let the person recogniser own it, don't mint a bogus origin/destination.
+    const isPerson = patterns.people.some(
+      (p) => p.source_range.start <= run.start && p.source_range.end >= run.end,
+    );
+    if (isPerson) continue;
     for (let k = op.tokenEnd + 1; k <= run.lastIdx; k++) claimed.add(k);
     const tail = tokens[run.lastIdx + 1]?.lower;
     const explicitStation = /station|airport|terminal/i.test(run.text) || tail === "station" || tail === "airport";
@@ -107,6 +131,8 @@ export function findPlaces(
     if (t.kind !== "word") continue;
     if (!/^[A-Z]/.test(t.text)) continue;
     if (MONTHS.has(t.lower) || WEEKDAYS.has(t.lower)) continue;
+    if (NON_PLACE_WORDS.has(t.lower)) continue;
+    if (PLACE_BOUNDARY.has(t.lower)) continue;
     if (lookup.concepts.some((c) => c.tokenStart === i)) continue;
     if (lookup.operators.some((o) => o.tokenStart === i)) continue;
     if (lookup.imperatives.some((m) => m.tokenStart === i)) continue;

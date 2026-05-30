@@ -106,8 +106,26 @@ export async function populateSlots(
   const places = findPlaces(clause, tokens, lookup, patterns);
 
   let dateIdx = 0;
-  let timeIdx = 0;
   const usedPlaces = new Set<PlaceCandidate>();
+
+  // Route times to a slot by an adjacent direction word: "arriving at 09:30" →
+  // arrival_time, "leaving/departing at 09:00" → departure_time (handback §2.3).
+  // Direction-less times fill the remaining time slots in schema order.
+  const timeSlotKeys = schema.slots.filter((s) => s.dataType === "time").map((s) => s.key);
+  const directionFor = (t: PatternMatch): "arrival_time" | "departure_time" | null => {
+    const before = clause.text.slice(0, Math.max(0, t.source_range.start - clause.start)).toLowerCase();
+    if (timeSlotKeys.includes("arrival_time") && /\barriv\w*\s*(?:at\s*)?$/.test(before)) return "arrival_time";
+    if (timeSlotKeys.includes("departure_time") && /\b(?:leav\w*|depart\w*)\s*(?:at\s*)?$/.test(before)) return "departure_time";
+    return null;
+  };
+  const timeBySlot: Record<string, PatternMatch> = {};
+  const leftoverTimes: PatternMatch[] = [];
+  for (const t of times) {
+    const dir = directionFor(t);
+    if (dir && !timeBySlot[dir]) timeBySlot[dir] = t;
+    else leftoverTimes.push(t);
+  }
+  let timeIdx = 0;
 
   const pickPlace = (role: PlaceRole): PlaceCandidate | null => {
     let cand = places.find((p) => p.role === role && !usedPlaces.has(p));
@@ -165,7 +183,8 @@ export async function populateSlots(
         break;
       }
       case "time":
-        if (timeIdx < times.length) slots[def.key] = slotFromPattern(times[timeIdx++]);
+        if (timeBySlot[def.key]) slots[def.key] = slotFromPattern(timeBySlot[def.key]);
+        else if (timeIdx < leftoverTimes.length) slots[def.key] = slotFromPattern(leftoverTimes[timeIdx++]);
         break;
       case "money":
         if (money[0]) slots[def.key] = slotFromPattern(money[0]);
@@ -195,13 +214,35 @@ export async function populateSlots(
   return { slots, essentialFilled, essentialTotal: essential.length };
 }
 
-// Fact confidence rollup: a confidence_modifier in the clause overrides; otherwise
-// full essential coverage → high, partial → medium.
+// Fact confidence rollup (handback §3). Confidence is fact-completeness-and-
+// correctness, NOT fact-classification: the pill must honestly reflect the
+// worst-confident slot or any empty essential slot. A confidence_modifier
+// ("definitely"/"maybe") still overrides — the user spoke to their own certainty.
+//
+// Otherwise the fact confidence is the MINIMUM of:
+//   - every filled slot's confidence (a low/`?` slot caps the fact at low), and
+//   - a penalty for missing essential slots (any missing → at most medium).
+const RANK: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
+const BY_RANK: Confidence[] = ["low", "medium", "high"];
+
 export function rollupConfidence(
   fill: SlotFillResult,
   modifier: Confidence | null,
 ): Confidence {
   if (modifier) return modifier;
-  if (fill.essentialTotal === 0) return "medium";
-  return fill.essentialFilled === fill.essentialTotal ? "high" : "medium";
+
+  let worst: Confidence = "high";
+  for (const slot of Object.values(fill.slots)) {
+    if (slot.inferred) continue; // inferred slots carry their own (already-capped) confidence but shouldn't drag a fact below its stated parts
+    if (RANK[slot.confidence] < RANK[worst]) worst = slot.confidence;
+  }
+
+  // Any missing essential slot caps the fact at medium (can't be high).
+  const essentialGap = fill.essentialTotal > 0 && fill.essentialFilled < fill.essentialTotal;
+  if (essentialGap && RANK[worst] > RANK.medium) worst = "medium";
+
+  // No essential slots defined + nothing low → a plain medium (unchanged behaviour).
+  if (fill.essentialTotal === 0 && worst === "high") return "medium";
+
+  return BY_RANK[RANK[worst]];
 }

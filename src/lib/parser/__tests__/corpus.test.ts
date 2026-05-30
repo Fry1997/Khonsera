@@ -13,6 +13,8 @@ const HUBS: Record<string, ResolvedHub> = {
   wellingborough: { id: "hub-wle", name: "Wellingborough", code: "WLE" },
   heathrow: { id: "hub-lhr", name: "London Heathrow", code: "LHR" },
   edinburgh: { id: "hub-edi", name: "Edinburgh", code: "EDI" },
+  liverpool: { id: "hub-liv", name: "Liverpool Lime Street", code: "LIV" },
+  "liverpool lime street": { id: "hub-liv", name: "Liverpool Lime Street", code: "LIV" },
 };
 const resolver: PlaceResolver = {
   async resolveHub(name) {
@@ -150,6 +152,128 @@ describe("parser corpus — place resolution discipline", () => {
   it("'train to Derby' resolves Derby to a hub", async () => {
     const p = await run("Train to Derby tomorrow");
     expect(hubId(byType(p.facts, "train_journey")[0], "destination")).toBe("hub-der");
+  });
+});
+
+// Helper: did any fact capture this person name in a person/contact slot?
+function personValues(facts: ParsedFact[]): string[] {
+  const out: string[] = [];
+  for (const f of facts) {
+    for (const key of ["person", "contact", "attendees"]) {
+      const v = f.slots[key]?.value;
+      if (typeof v === "string") out.push(v);
+      else if (v && typeof v === "object" && "label" in v) out.push(String((v as { label: unknown }).label));
+    }
+  }
+  return out;
+}
+const hasPerson = (facts: ParsedFact[], name: string) =>
+  personValues(facts).some((v) => v.toLowerCase().includes(name.toLowerCase()));
+
+// First-input test findings (handback §5). Each fixture locks in a fix.
+describe("parser corpus — first-input fixes (handback §5)", () => {
+  // §5.1 — person extraction adjacent to an event verb; venue held verbatim.
+  it("Meeting John Brooks at Frankie & Benny's tomorrow → meeting w/ contact, venue not a person", async () => {
+    const p = await run("Meeting John Brooks at Frankie & Benny's tomorrow");
+    const event = byType(p.facts, "scheduled_event")[0];
+    expect(event).toBeDefined();
+    expect(hasPerson(p.facts, "John Brooks")).toBe(true);
+    // The venue must NOT have been swallowed into the place as "Be"/empty, and
+    // John Brooks must not be the place.
+    const place = event.slots.place?.value;
+    const placeStr = typeof place === "string" ? place : place && typeof place === "object" && "label" in place ? String((place as { label: unknown }).label) : "";
+    expect(placeStr.toLowerCase()).not.toContain("john");
+  });
+
+  // §5.2 — operator-cued person ("with John"); multi-token venue survives "&".
+  it("Meeting at Franky & Bennies with John tomorrow evening → contact John, low conf from period", async () => {
+    const p = await run("Meeting at Franky & Bennies with John tomorrow evening");
+    const event = byType(p.facts, "scheduled_event")[0];
+    expect(event).toBeDefined();
+    expect(hasPerson(p.facts, "John")).toBe(true);
+    // "evening" is a soft period → low-confidence time, so the fact can't be high.
+    expect(event.confidence).not.toBe("high");
+  });
+
+  // §5.3 — be-somewhere with a deadline; "Be" must never be the place.
+  it("Be in Liverpool by 10am on Wednesday → place is Liverpool, never 'Be'", async () => {
+    const p = await run("Be in Liverpool by 10am on Wednesday");
+    expect(p.facts.length).toBeGreaterThanOrEqual(1);
+    const f = p.facts[0];
+    const place = f.slots.place?.value;
+    const placeStr = typeof place === "string" ? place : place && typeof place === "object" && "label" in place ? String((place as { label: unknown }).label) : "";
+    expect(placeStr.toLowerCase()).toContain("liverpool");
+    // The word "Be" appears nowhere as a slot value.
+    for (const slot of Object.values(f.slots)) {
+      const v = typeof slot.value === "string" ? slot.value : "";
+      expect(v.toLowerCase()).not.toBe("be");
+    }
+  });
+
+  // §5.4 — clean meeting (currently passing; must stay passing).
+  it("Sales demo Bristol next Friday at 13:30 → meeting, time 13:30, place Bristol", async () => {
+    const p = await run("Sales demo Bristol next Friday at 13:30");
+    const event = byType(p.facts, "scheduled_event")[0];
+    expect(event).toBeDefined();
+    expect(event.slots.time?.value).toBe("13:30");
+    const place = event.slots.place?.value;
+    const placeStr = typeof place === "string" ? place : "";
+    expect(placeStr.toLowerCase()).toContain("bristol");
+  });
+
+  // §5.5 — communication imperative routed to a stub, recipient recognised.
+  it("Email Jane tickets for Wednesday's train → communication_request, Jane recognised, NOT a train", async () => {
+    const p = await run("Email Jane tickets for Wednesday's train");
+    expect(p.intent_type).toBe("communication_request");
+    expect(byType(p.facts, "train_journey").length).toBe(0);
+    expect(hasPerson(p.facts, "Jane")).toBe(true);
+  });
+
+  // §5.6 — call with contact; subordinate clause not split into a second fact.
+  it("Call Dave on Thursday morning to arrange sales demo → one call, contact Dave", async () => {
+    const p = await run("Call Dave on Thursday morning to arrange sales demo");
+    const calls = byType(p.facts, "scheduled_call");
+    expect(calls.length).toBe(1);
+    expect(hasPerson(p.facts, "Dave")).toBe(true);
+    // "morning" is a soft period → call can't be high confidence.
+    expect(calls[0].confidence).not.toBe("high");
+  });
+
+  // §5.7 — dated loose-thought retains the person (Form A).
+  it("Collect tickets from Ricky on Tuesday → note/task w/ date + Ricky as person", async () => {
+    const p = await run("Collect tickets from Ricky on Tuesday");
+    expect(p.facts.length).toBeGreaterThanOrEqual(1);
+    const joined = p.facts.map((f) => String(f.slots.label?.value ?? "")).join(" ").toLowerCase();
+    expect(joined).toContain("ricky");
+    expect(hasPerson(p.facts, "Ricky")).toBe(true);
+  });
+
+  // §5.8 — operator-confused origin: "Wellingborough arriving" → origin Wellingborough.
+  it("Train ... from Wellingborough arriving at 09:30 → origin WLE clean, arrival 09:30", async () => {
+    const p = await run("Train to Liverpool next Tuesday from Wellingborough arriving at 09:30");
+    const train = byType(p.facts, "train_journey")[0];
+    expect(train).toBeDefined();
+    expect(hubId(train, "origin")).toBe("hub-wle");
+    expect(train.slots.arrival_time?.value).toBe("09:30");
+    expect(train.slots.departure_time).toBeUndefined();
+  });
+
+  it("Train ... from Wellingborough leaving at 09:00 → origin WLE clean, departure 09:00", async () => {
+    const p = await run("Train to Liverpool next Tuesday from Wellingborough leaving at 09:00");
+    const train = byType(p.facts, "train_journey")[0];
+    expect(train).toBeDefined();
+    expect(hubId(train, "origin")).toBe("hub-wle");
+    expect(train.slots.departure_time?.value).toBe("09:00");
+  });
+
+  // §5.9 — gold-standard regression guard: clean multi-word station.
+  it("Train to Liverpool Lime Street next Tuesday from Wellingborough at 09:00 → both hubs clean", async () => {
+    const p = await run("Train to Liverpool Lime Street next Tuesday from Wellingborough at 09:00");
+    const train = byType(p.facts, "train_journey")[0];
+    expect(train).toBeDefined();
+    expect(hubId(train, "origin")).toBe("hub-wle");
+    expect(hubId(train, "destination")).toBe("hub-liv");
+    expect(train.slots.departure_time?.value).toBe("09:00");
   });
 });
 

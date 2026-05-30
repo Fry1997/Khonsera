@@ -77,6 +77,7 @@ export const mealPlan: FactTypeMapping = {
     date: { dataType: "date" },
     time_or_period: { dataType: "time", dbMapping: "time portion of stops.start_time" },
     party_size: { dataType: "party_size" },
+    contact: { dataType: "person", resolvesTo: "contacts", dbMapping: "stops.contact_id" },
     booking_ref: { dataType: "text", dbMapping: "stops.external_reference" },
   },
 };

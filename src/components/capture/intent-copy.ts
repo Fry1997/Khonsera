@@ -32,6 +32,10 @@ export const STUB_INTENT_COPY: Record<string, { title: string; body: string }> =
     title: "I understood you're asking a question",
     body: "I can't answer that one yet, but I've kept it for when I can.",
   },
+  communication_request: {
+    title: "I understood you want me to send something",
+    body: "I haven't built the send handler yet, but I've kept this as an intent.",
+  },
 };
 
 export function stubIntentCopy(intent: ImperativeIntent) {

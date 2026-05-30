@@ -77,7 +77,31 @@ Run `npx vitest run`.
 When you find a parser issue in real use, add it to the corpus first with the expected payload
 (the "correct" behaviour you want), and confirm the test fails. Then implement the fix. The
 corpus is the living record of what the parser does and what we've decided is correct behaviour;
-growing it is the parser's improvement loop. (49 parser tests at v1 — aim to grow it steadily.)
+growing it is the parser's improvement loop. (44 parser tests after the first fix pass — aim to
+grow it steadily.)
+
+### First-input fix pass (handback §5)
+Four bug classes closed, with regression-guarded fixtures in `corpus.test.ts`:
+- **Person extraction** (`recognisers/people.ts`): names introduced by an event verb
+  (`Meeting John Brooks`, `Call Dave`, `Email Jane`) or by `with`/`from`/`to`/`for` now land in
+  the fact's `contact`/`person` slot. The introducer is matched case-insensitively then the name
+  is read as 1-2 Title-Case words (so a sentence-initial verb works); `from`/`to`/`for` is gated
+  by a curated first-name lexicon so transport origins ("from Wellingborough") are never mistaken
+  for people. `&` is excluded from introducers so "Frankie & Benny's" keeps its venue.
+- **Place back-substitution** (`place.ts`): no place-of-last-resort. Sentence-initial common
+  verbs ("Be", "Go", "Get") are never place candidates, so "Be in Liverpool" yields place=Liverpool,
+  not "Be".
+- **Greedy operator-place coupling** (`place.ts` `PLACE_BOUNDARY` + `slots.ts` time-direction):
+  `arriving`/`leaving`/`departing`/`with` close a place run, so "Wellingborough arriving" → origin
+  "Wellingborough"; the direction word routes its time to arrival_time vs departure_time. `&` is the
+  one punctuation kept inside a place run.
+- **Communication imperatives** (`layer_4_imperatives.yaml`): `email`/`send`/`text`/`message`/…
+  route to a `communication_request` stub that still recognises the recipient and holds the verbatim
+  text as an intent.
+- **Confidence calibration** (`slots.ts` `rollupConfidence`): fact confidence is now the MIN of all
+  filled (non-inferred) slot confidences, capped at medium when an essential slot is missing. A
+  day-period time ("morning"/"evening") is low-confidence (the user didn't give a clock time), so a
+  fact resting on one can't read as high. No more confidently-wrong pills.
 
 ## Known v1 gaps (held back honestly)
 Lowercase bare city names aren't detected as event places; cross-zone/overnight

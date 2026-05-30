@@ -29,7 +29,8 @@ export type ImperativeIntent =
   | "modification_request"
   | "information_request"
   | "comparison_request"
-  | "itinerary_request";
+  | "itinerary_request"
+  | "communication_request";
 
 export type ConfidenceLevel = "low" | "medium" | "high";
 

@@ -38,6 +38,7 @@ const STUB_INTENTS = new Set([
   "information_request",
   "comparison_request",
   "itinerary_request",
+  "communication_request",
 ]);
 
 function verbatimNote(input: string): ParsedFact {
@@ -137,6 +138,46 @@ export async function parse(
     };
   }
   if (routing.intent_type && STUB_INTENTS.has(routing.intent_type)) {
+    // communication_request ("email Jane the tickets") is a stub Khonsera can't
+    // action yet, but we still recognise WHO it's about and hold the verbatim
+    // text as an intent so nothing is lost (handback §2.4/§5.5).
+    if (routing.intent_type === "communication_request") {
+      const label = input.trim();
+      const person = patterns.people[0];
+      const slots: Record<string, Slot> = {
+        label: {
+          value: label,
+          source_text: label,
+          source_range: { start: 0, end: input.length },
+          confidence: "high",
+          inferred: false,
+        },
+      };
+      if (person) {
+        slots.person = {
+          value: person.normalised_value,
+          source_text: person.source_text,
+          source_range: person.source_range,
+          confidence: person.confidence,
+          inferred: false,
+        };
+      }
+      return {
+        ...base,
+        intent_type: routing.intent_type,
+        facts: [
+          {
+            local_id: "fact_1",
+            fact_type: "intent",
+            slots,
+            links: [],
+            warnings: [],
+            confidence: "medium",
+            source_range: { start: 0, end: input.length },
+          },
+        ],
+      };
+    }
     return { ...base, intent_type: routing.intent_type };
   }
 

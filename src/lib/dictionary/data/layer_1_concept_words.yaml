@@ -22,17 +22,17 @@ concept_words:
   - triggers: [dinner, evening meal, supper]
     fact_type: meal_plan
     essential_slots: [date, time_or_period, place]
-    optional_slots: [restaurant_name, area, party_size, cuisine, booking_ref, dietary_requirements, price, notes]
+    optional_slots: [restaurant_name, area, party_size, contact, cuisine, booking_ref, dietary_requirements, price, notes]
 
   - triggers: [lunch, lunchtime meal]
     fact_type: meal_plan
     essential_slots: [date, time_or_period, place]
-    optional_slots: [restaurant_name, area, party_size, cuisine, booking_ref, dietary_requirements, price, notes]
+    optional_slots: [restaurant_name, area, party_size, contact, cuisine, booking_ref, dietary_requirements, price, notes]
 
   - triggers: [breakfast, morning meal, brekkie]
     fact_type: meal_plan
     essential_slots: [date, time_or_period, place]
-    optional_slots: [restaurant_name, hotel_name, area, party_size, cuisine, booking_ref, dietary_requirements, price, notes]
+    optional_slots: [restaurant_name, hotel_name, area, party_size, contact, cuisine, booking_ref, dietary_requirements, price, notes]
 
   - triggers: [meeting, meet, catch-up, catch up]
     fact_type: scheduled_event

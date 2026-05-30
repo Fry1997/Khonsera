@@ -62,7 +62,10 @@ export function recogniseTimes(input: string, ref: Date): PatternMatch[] {
         source_text: input.slice(start, end),
         source_range: { start, end },
         normalised_value: DAY_PERIODS[phrase],
-        confidence: "medium",
+        // Low, not medium: the user said "morning"/"evening", not a clock time.
+        // The range is a soft hint; the fact must not read as a confident time
+        // (handback §4 — calibration). Tap-to-set-exact happens in the UI.
+        confidence: "low",
         fuzzy: true,
         range: true,
         granularity: "period",

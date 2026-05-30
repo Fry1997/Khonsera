@@ -32,6 +32,7 @@ export const task: FactTypeMapping = {
   targets: [{ table: "intents", note: "undated task; no resurfacing clock by default" }],
   slotMeta: {
     label: { tier: "nice_to_have", dataType: "text", dbMapping: "intents.label (verbatim)" },
+    person: { tier: "nice_to_have", dataType: "person", resolvesTo: "contacts" },
   },
 };
 
