@@ -69,6 +69,30 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
   never overlaps the desktop sidebar — fixed positioning made "Add it →" unreachable.
 - `[Add it →]` is always reachable (fixed action bar); adds all non-dismissed facts.
 
+### Tell Khonsera smart capture (badges + autosuggest + proximity) — see `docs/tell-khonsera-capture.md`
+- Entity slots (place/person/station) render as **badges**: gold when bound to a real entity
+  (value object carries `hub_id`/`location_id`/`customer_site_id`/`contact_id`), grey when
+  `ambiguous` (opens a proximity-ranked candidate chooser) or `unknown` verbatim.
+- **No persisted bindings store.** Badges + the read-back mirror paint purely from the live
+  `ParsedPayload`. Picking an autosuggest item **rewrites the typed fragment to the canonical
+  name** so the next parse binds it deterministically. Card edits use the existing `corrections`.
+- **Live mid-sentence autosuggest** (`use-active-token.ts` + `suggest-popover.tsx`): the active
+  token's role is inferred from the preceding operator (`from`/`to`→station, `at`/`in`/`near`→place,
+  `meet`/`with`/`see`→person; airport when the clause mentions flying), mirroring `place.ts`
+  `roleFromOperator`. Debounced 250ms, proximity-seeded from bound coords in the draft.
+- **Proximity** (`src/lib/geo.ts`: `haversineMeters`/`formatMiles`/`rankByProximity`):
+  `searchTransportHubs` + new `searchPlaces` take an optional `near` anchor → `distance_m` + miles.
+  Empty-query + `near` does a bbox "nearest station" lookup. Coords live on
+  `transport_hubs`/`locations`/`customer_sites` AND on resolved slot values (parser carries them).
+- **Inline contact create** (`createContactQuick`): migration 0029 made `contacts.customer_id`
+  nullable; `relation`→`role`, `company`→`notes` (no dedicated column yet).
+- The inline-badge surface is the **annotated read-back line** beneath the textarea (mirror div
+  painted from slot `source_range`s), NOT a transparent-textarea overlay — chosen for robustness
+  (no pixel-alignment maths to verify without a browser).
+- KNOWN GAP: `materialise.ts` does NOT yet persist a bound person's `contact_id` to
+  `stops.contact_id` on confirm — the contact is created/bound in the UI but the link isn't
+  written through. Next step when wiring people into the timeline.
+
 ## Design Principles
 
 ### One Toolkit, Two Views

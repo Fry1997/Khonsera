@@ -42,7 +42,10 @@ Ten staged, separately-tested modules (`parse.ts` orchestrates):
    slots → `transport_hubs`; event slots stay plain labels unless an explicit
    station is named. Unresolved values are held verbatim at low confidence.
 8. `link` — `destination_of` (infers a leg's destination + date from a linked
-   event), `return_of` ("back same evening"), `same_day`.
+   event), `return_of` ("back same evening"), `same_day`, and `event_day`
+   (a dated fact falling within a multi-day `business_event`'s `{start,end}` date
+   range links to it with a 1-based `day_index` → "Day 2 of BeerX"). Resolved
+   hub/location slot values also now carry `latitude`/`longitude` (for proximity).
 9. `validate` — per/cross-fact warnings (never blocks).
 10. preview — returns `ParsedPayload`; **never persists** (brief §0c).
 
