@@ -33,6 +33,9 @@ export function segment(
   patterns: PatternBundle,
 ): Clause[] {
   const boundaryAfter = new Set<number>();
+  // Token indices of sentence terminators — a connector must not reach across
+  // one of these to bind to a concept in the next sentence.
+  const terminators: number[] = [];
 
   // Next significant (non-punct) token index after position i.
   const nextSig = (i: number): number => {
@@ -54,6 +57,7 @@ export function segment(
     // Hard boundaries: sentence terminators always split.
     if (/[;.!?\n]/.test(t.text)) {
       boundaryAfter.add(i);
+      terminators.push(i);
       continue;
     }
     // Comma (stress-test Fix 2): a SOFT boundary. Split only when the text to the
@@ -82,7 +86,12 @@ export function segment(
     if (patterns.all.some((p) => p.source_range.start <= opStart && p.source_range.end >= opEnd)) continue;
     // Concept immediately AFTER the connector, and the nearest one BEFORE it.
     const after = lookup.concepts
-      .filter((c) => c.tokenStart > op.tokenEnd)
+      .filter(
+        (c) =>
+          c.tokenStart > op.tokenEnd &&
+          // …and in the SAME sentence — no terminator between the connector and it.
+          !terminators.some((ti) => ti > op.tokenEnd && ti < c.tokenStart),
+      )
       .sort((a, b) => a.tokenStart - b.tokenStart)[0];
     if (!after) continue;
     const before = lookup.concepts

@@ -27,6 +27,17 @@ describe("place extraction — lowercase venues after an article", () => {
   });
 });
 
+describe("segmentation — a connector doesn't bind across a sentence terminator", () => {
+  it("keeps 'next wednesday and thursday' as the hotel's check-in/out range", async () => {
+    const p = await run("Staying at the premier inn Albert docks next wednesday and thursday. Need to book breakfast");
+    const stay = p.facts.find((f) => f.fact_type === "accommodation_booking");
+    expect(stay?.slots.check_in_date?.value).toBe("2026-06-03");
+    expect(stay?.slots.check_out_date?.value).toBe("2026-06-04");
+    // No orphan 'thursday' note split off by the 'and' reaching to 'breakfast'.
+    expect(p.facts.some((f) => f.fact_type === "note" && f.slots.label?.value === "thursday")).toBe(false);
+  });
+});
+
 describe("segmentation — a connector inside a date span doesn't split", () => {
   it("keeps 'next Thursday meeting Chris ...' as one dated meeting", async () => {
     const p = await run("next Thursday meeting Chris at the cheese factory");
