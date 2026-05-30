@@ -9,7 +9,7 @@ import {
   type PlacePickerLocation,
   type PlaceSelection,
 } from "@/components/place-picker";
-import { searchContacts, type ContactHit } from "@/lib/actions/contact-search";
+import { searchContacts, createContactQuick, type ContactHit } from "@/lib/actions/contact-search";
 import type { SlotDef } from "@/lib/dictionary/types";
 import type { Slot } from "@/lib/parser/types";
 
@@ -139,6 +139,7 @@ function PersonEditor({
     typeof current?.value === "string" ? current.value : "",
   );
   const [hits, setHits] = useState<ContactHit[]>([]);
+  const [creating, setCreating] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -148,6 +149,16 @@ function PersonEditor({
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
+
+  if (creating) {
+    return (
+      <NewContactForm
+        initialName={query.trim()}
+        onCancel={() => setCreating(false)}
+        onCreated={(hit) => onCommit(commitSlot({ contact_id: hit.id, label: hit.name }, hit.name, current))}
+      />
+    );
+  }
 
   return (
     <div className="capture-editor" ref={ref}>
@@ -176,6 +187,15 @@ function PersonEditor({
             {h.role ? <span className="hub-picker-meta">{h.role}</span> : null}
           </button>
         ))}
+        <button
+          type="button"
+          role="option"
+          className="hub-picker-item"
+          onClick={() => setCreating(true)}
+        >
+          <span className="hub-picker-name">+ New contact{query.trim() ? ` “${query.trim()}”` : ""}</span>
+          <span className="hub-picker-meta">add to your people</span>
+        </button>
         {query.trim() ? (
           <button
             type="button"
@@ -187,6 +207,55 @@ function PersonEditor({
             <span className="hub-picker-meta">as written</span>
           </button>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+// Compact inline contact create: name, relation, company. A personal contact
+// (no customer) — see migration 0029 + createContactQuick.
+function NewContactForm({
+  initialName,
+  onCreated,
+  onCancel,
+}: {
+  initialName: string;
+  onCreated: (hit: ContactHit) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [relation, setRelation] = useState("");
+  const [company, setCompany] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    if (!name.trim()) return onCancel();
+    setSaving(true);
+    setError(null);
+    const res = await createContactQuick({
+      name: name.trim(),
+      relation: relation.trim() || undefined,
+      company: company.trim() || undefined,
+    });
+    setSaving(false);
+    if (res.ok) onCreated(res.value);
+    else setError("Could not save — try again.");
+  };
+
+  return (
+    <div className="capture-editor" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <input className="field" value={name} autoFocus placeholder="Name" onChange={(e) => setName(e.target.value)} />
+      <input className="field" value={relation} placeholder="Relation (e.g. customer, colleague)" onChange={(e) => setRelation(e.target.value)} />
+      <input className="field" value={company} placeholder="Company (optional)" onChange={(e) => setCompany(e.target.value)} />
+      {error ? <span style={{ color: "var(--terra)", fontSize: 12.5 }}>{error}</span> : null}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" className="btn btn-gold btn-sm" onClick={save} disabled={saving || !name.trim()}>
+          {saving ? "Saving…" : "Save contact"}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
       </div>
     </div>
   );

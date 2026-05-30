@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
-import { ok, type Result } from "@/lib/errors";
+import { ok, errors, type Result } from "@/lib/errors";
 
 export type ContactHit = {
   id: string;
@@ -50,4 +50,37 @@ export async function searchContacts(
     }
   }
   return ok(hits.slice(0, 8));
+}
+
+const createSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  relation: z.string().trim().max(60).optional(),
+  company: z.string().trim().max(120).optional(),
+});
+
+// Quick inline contact create for the capture screen. A personal contact has no
+// customer (migration 0029 made contacts.customer_id nullable). `relation` maps
+// to contacts.role; `company` is held in notes for now (no dedicated column).
+export async function createContactQuick(
+  input: z.input<typeof createSchema>,
+): Promise<Result<ContactHit>> {
+  const parsed = createSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: errors.validation("Invalid contact.") };
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .insert({
+      workspace_id: ctx.workspaceId,
+      customer_id: null,
+      name: parsed.data.name,
+      role: parsed.data.relation ?? null,
+      notes: parsed.data.company ? `Company: ${parsed.data.company}` : null,
+    })
+    .select("id, name, role")
+    .single();
+
+  if (error || !data) return { ok: false, error: errors.unexpected("Could not save the contact.") };
+  return ok(data as ContactHit);
 }
