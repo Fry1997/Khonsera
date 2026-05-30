@@ -28,7 +28,7 @@ function makeResolver(
       if (!cleaned) return { match: null, candidates: [] };
       const { data } = await supabase
         .from("transport_hubs")
-        .select("id, name, code")
+        .select("id, name, code, latitude, longitude")
         .or(`code.eq.${cleaned.toUpperCase()},name.ilike.${cleaned}%`)
         .limit(6);
       const rows = (data ?? []) as ResolvedHub[];
@@ -45,7 +45,7 @@ function makeResolver(
       if (!cleaned) return null;
       const { data: loc } = await supabase
         .from("locations")
-        .select("id, name")
+        .select("id, name, latitude, longitude")
         .eq("workspace_id", workspaceId)
         .ilike("name", cleaned)
         .limit(1)
@@ -53,7 +53,7 @@ function makeResolver(
       if (loc) return loc;
       const { data: site } = await supabase
         .from("customer_sites")
-        .select("id, name")
+        .select("id, name, latitude, longitude")
         .eq("workspace_id", workspaceId)
         .ilike("name", cleaned)
         .limit(1)

@@ -95,6 +95,8 @@ exports[`parsed_payload shape > matches the snapshot for the canonical multi-fac
             "code": "WLE",
             "hub_id": "hub-wle",
             "label": "Wellingborough",
+            "latitude": null,
+            "longitude": null,
           },
         },
       },

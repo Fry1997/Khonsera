@@ -34,11 +34,15 @@ export type LinkKind =
   | "return_of"
   | "same_day"
   | "at_same_place"
-  | "contains";
+  | "contains"
+  | "event_day";
 
 export interface FactLink {
   target: string; // a local_id
   kind: LinkKind;
+  // For event_day: which day of the multi-day event this fact falls on (1-based,
+  // so the event's start date is Day 1).
+  day_index?: number;
 }
 
 export interface ParsedFact {

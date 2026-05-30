@@ -121,5 +121,38 @@ export async function linkFacts(
     }
   }
 
+  // 4. event_day — a dated fact that falls within a multi-day business_event's
+  // span links to it with a 1-based day index ("Day 2 of BeerX").
+  for (const event of out) {
+    if (event.fact_type !== "business_event") continue;
+    const span = dateRangeOf(event.slots.date);
+    if (!span) continue;
+    for (const f of out) {
+      if (f.local_id === event.local_id) continue;
+      const d = dateOf(f);
+      if (!d || d < span.start || d > span.end) continue;
+      if (f.links.some((l) => l.target === event.local_id && l.kind === "event_day")) continue;
+      f.links.push({ target: event.local_id, kind: "event_day", day_index: dayIndex(span.start, d) });
+    }
+  }
+
   return { facts: out, ambiguities };
+}
+
+// A business_event's date slot is a {start,end} range when the event spans days.
+function dateRangeOf(slot: Slot | undefined): { start: string; end: string } | null {
+  const v = slot?.value;
+  if (v && typeof v === "object" && "start" in v && "end" in v) {
+    const o = v as { start: unknown; end: unknown };
+    if (typeof o.start === "string" && typeof o.end === "string" && o.start < o.end) {
+      return { start: o.start, end: o.end };
+    }
+  }
+  return null;
+}
+
+// Whole-day difference + 1 (start date is Day 1). ISO yyyy-mm-dd in, integer out.
+function dayIndex(start: string, day: string): number {
+  const ms = Date.parse(`${day}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
+  return Math.round(ms / 86_400_000) + 1;
 }

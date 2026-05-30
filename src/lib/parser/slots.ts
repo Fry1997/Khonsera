@@ -16,10 +16,14 @@ export interface ResolvedHub {
   id: string;
   name: string;
   code: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 export interface ResolvedLocation {
   id: string;
   name: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // The DB-backed resolution seam (injected so the pipeline stays unit-testable).
@@ -183,7 +187,12 @@ export async function populateSlots(
     };
     if (def.placePref === "transit" || cand.explicitStation) {
       const { match, candidates } = await resolver.resolveHub(cand.text);
-      if (match) return { ...base, value: { hub_id: match.id, label: match.name, code: match.code }, confidence: "high" };
+      if (match)
+        return {
+          ...base,
+          value: { hub_id: match.id, label: match.name, code: match.code, latitude: match.latitude ?? null, longitude: match.longitude ?? null },
+          confidence: "high",
+        };
       if (candidates.length > 1) {
         return { ...base, value: cand.text, confidence: "medium", ambiguous: true, candidates };
       }
@@ -192,7 +201,12 @@ export async function populateSlots(
     }
     // Event place: prefer a saved location; otherwise keep the plain label.
     const loc = await resolver.resolveLocation(cand.text);
-    if (loc) return { ...base, value: { location_id: loc.id, label: loc.name }, confidence: "high" };
+    if (loc)
+      return {
+        ...base,
+        value: { location_id: loc.id, label: loc.name, latitude: loc.latitude ?? null, longitude: loc.longitude ?? null },
+        confidence: "high",
+      };
     return { ...base, value: cand.text, confidence: "medium" };
   };
 
