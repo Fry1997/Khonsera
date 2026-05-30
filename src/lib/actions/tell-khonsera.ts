@@ -236,11 +236,27 @@ export async function confirmCapture(
       const transitionIds = itineraryId
         ? ((await supabase.from("transitions").select("id").eq("itinerary_id", itineraryId)).data ?? []).map((r) => r.id)
         : [];
+
+      // Finalise the payload: if the draft was ever corrected, keep the original
+      // parse + flag was_corrected so the parser-improvement loop can diff them.
+      const { data: existingRow } = await supabase
+        .from("captured_inputs")
+        .select("status, parsed_payload")
+        .eq("id", capturedId)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+      const wasCorrected = existingRow?.status === "corrected";
+      const prevPayload = (existingRow?.parsed_payload ?? {}) as Record<string, unknown>;
+      const finalPayload = wasCorrected
+        ? { ...prevPayload, confirmed_payload: payload, was_corrected: true }
+        : { confirmed_payload: payload };
+
       await supabase
         .from("captured_inputs")
         .update({
           status: "confirmed",
           reviewed_at: new Date().toISOString(),
+          parsed_payload: finalPayload,
           created_itinerary_id: itineraryId,
           created_stop_ids: stopIds,
           created_transition_ids: transitionIds,

@@ -72,6 +72,13 @@ booking layer stays clean.
 `parsed_payload` snapshot, and the transition-vs-booking materialisation test.
 Run `npx vitest run`.
 
+## Extending the parser
+
+When you find a parser issue in real use, add it to the corpus first with the expected payload
+(the "correct" behaviour you want), and confirm the test fails. Then implement the fix. The
+corpus is the living record of what the parser does and what we've decided is correct behaviour;
+growing it is the parser's improvement loop. (49 parser tests at v1 — aim to grow it steadily.)
+
 ## Known v1 gaps (held back honestly)
 Lowercase bare city names aren't detected as event places; cross-zone/overnight
 nuance, recurring events ("meetings Mon/Tue/Thu"), and full CRM person resolution

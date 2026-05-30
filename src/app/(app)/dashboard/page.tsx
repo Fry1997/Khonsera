@@ -188,8 +188,12 @@ export default async function DashboardPage() {
             <Glyph d="M3 9 a2 2 0 0 1 2-2 h14 a2 2 0 0 1 2 2 v2 a2 2 0 0 0 0 2 v2 a2 2 0 0 1-2 2 H5 a2 2 0 0 1-2-2 v-2 a2 2 0 0 0 0-2 z M9 7 v10" />{" "}
             Bookings
           </Link>
-          <Link href={"/itineraries/new" as Route} className="btn btn-gold">
+          <Link href={"/itineraries/new" as Route} className="btn btn-ghost">
             <Plus /> New trip
+          </Link>
+          <Link href={"/capture" as Route} className="btn btn-gold">
+            <Glyph d="M4 5 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v8 a2 2 0 0 1-2 2 H9 l-5 4 z" />{" "}
+            Tell Khonsera
           </Link>
         </div>
       </header>

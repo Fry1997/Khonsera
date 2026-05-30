@@ -16,6 +16,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Today", icon: "bolt", section: "workspace" },
+  { href: "/capture", label: "Tell Khonsera", icon: "spark", section: "workspace" },
   { href: "/itineraries", label: "Itineraries", icon: "nav", section: "workspace" },
   { href: "/bookings", label: "Bookings", icon: "ticket", section: "workspace" },
   { href: "/flights", label: "Flights", icon: "plane", section: "workspace" },
@@ -163,6 +164,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 
 const Glyphs = {
   bolt: "M13 2 L4 14 h6 l-1 8 9-12 h-6 z",
+  spark: "M4 5 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v8 a2 2 0 0 1-2 2 H9 l-5 4 z",
   nav: "M3 11 L21 3 L13 21 L11 13 L3 11 z",
   ticket:
     "M3 9 a2 2 0 0 1 2-2 h14 a2 2 0 0 1 2 2 v2 a2 2 0 0 0 0 2 v2 a2 2 0 0 1-2 2 H5 a2 2 0 0 1-2-2 v-2 a2 2 0 0 0 0-2 z M9 7 v10",

@@ -1,3 +1,7 @@
+// Fact-type names are sourced from data/layer_1_concept_words.yaml — see
+// docs/tell-khonsera-parser.md. To add a fact-type, start with the YAML, not this
+// registry (this is the DB-mapping layer only). This is why there are 15
+// fact-types here, not the 9 the substrate doc originally mentioned.
 import type { FactTypeRegistry, FactTypeMapping } from "./types";
 import { transportMappings } from "./fact-types/transport";
 import { scheduledMappings } from "./fact-types/scheduled";

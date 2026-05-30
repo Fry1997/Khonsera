@@ -50,7 +50,20 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
   `travel_booking`. `materialise.factIsBooked` gates this. Don't pollute the booking layer.
 - chrono-node does dates/times; `recognisers/dates.ts` supplements bare ordinals
   ("the 22nd") which this chrono version doesn't resolve.
-- The capture UI screen + gap engine are NOT built yet — this is the engine they feed.
+- The gap engine is NOT built yet — that's the next programme stage.
+
+### Tell Khonsera capture UI (`/capture`) — see build programme §3
+- `src/app/(app)/capture/page.tsx` (server: loads picker data + builds serialisable slot
+  schemas from `getDictionary()`) → `src/components/capture/capture-screen.tsx` (client).
+  `/capture/drafts` lists saved `pending_review`/`corrected` drafts to resume (`?draft=<id>`).
+- Live preview calls `previewCapture` on a 300ms debounce — READ-ONLY, never writes
+  captured_inputs. One `FactCard` per fact; tappable slots open `slot-editor.tsx` (reuses
+  transport-hub-picker for transit, place-picker for event places, searchContacts for people).
+  Editing a slot does NOT re-parse; corrections are user-authoritative (high confidence).
+- Pure helpers in `src/components/capture/draft-model.ts` (correction prune/apply, labels,
+  voice-safe formatting) are unit-tested without a DOM harness.
+- Entry points: dashboard primary CTA, sidebar nav, mobile tab, + a link on /itineraries/new.
+- `[Add it →]` is always reachable (fixed action bar); adds all non-dismissed facts.
 
 ## Design Principles
 
