@@ -365,6 +365,7 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
               dismissed={dismissed.has(fact.local_id)}
               pickerData={pickerData}
               labelForLocalId={labelForLocalId}
+              nearbyAnchor={globalAnchor}
               onCommitSlot={(key, slot) => commitSlot(fact.local_id, key, slot)}
               onToggleDismiss={() => toggleDismiss(fact.local_id)}
               onHoverRange={setHoverRange}

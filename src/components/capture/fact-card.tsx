@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { SlotDef } from "@/lib/dictionary/types";
 import type { ParsedFact, Slot } from "@/lib/parser/types";
+import { searchTransportHubs } from "@/lib/actions/travel-profile";
+import { formatMiles } from "@/lib/geo";
 import {
   factTypeLabel,
   formatSlotValue,
@@ -42,6 +44,7 @@ export function FactCard({
   dismissed,
   pickerData,
   labelForLocalId,
+  nearbyAnchor,
   onCommitSlot,
   onToggleDismiss,
   onHoverRange,
@@ -51,13 +54,16 @@ export function FactCard({
   dismissed: boolean;
   pickerData: PickerData;
   labelForLocalId: (id: string) => string;
+  nearbyAnchor?: { lat: number; lng: number } | null;
   onCommitSlot: (slotKey: string, slot: Slot) => void;
   onToggleDismiss: () => void;
   onHoverRange: (range: { start: number; end: number } | null) => void;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [choosing, setChoosing] = useState<string | null>(null);
-  const anchor = factAnchor(fact);
+  // Prefer coords from within the fact; fall back to a nearby stop elsewhere
+  // in the draft so a station with no coords can still find its nearest hub.
+  const anchor = factAnchor(fact) ?? nearbyAnchor ?? null;
 
   // For verbatim shapes, show only the label + any captured anchor slots.
   const visibleDefs = defs.filter((d) => {
@@ -152,6 +158,13 @@ export function FactCard({
                     onKeepAsTyped={() => setChoosing(null)}
                   />
                 ) : null}
+                {!isEditing && def.dataType === "hub" && anchor && entityStatus !== "bound" && entityStatus !== "ambiguous" ? (
+                  <NearestStation
+                    anchor={anchor}
+                    kind={fact.fact_type === "flight_journey" ? "airport" : "rail_station"}
+                    onPick={(c) => onCommitSlot(def.key, slotFromCandidate(c, slot))}
+                  />
+                ) : null}
                 {isEditing ? (
                   <SlotEditor
                     factType={fact.fact_type}
@@ -200,5 +213,54 @@ export function FactCard({
         </div>
       ) : null}
     </div>
+  );
+}
+
+// A one-tap "nearest station" affordance for an unset/unknown hub slot, ranked
+// against a nearby anchor (a hotel/event with coords elsewhere in the draft).
+function NearestStation({
+  anchor,
+  kind,
+  onPick,
+}: {
+  anchor: { lat: number; lng: number };
+  kind: "rail_station" | "airport";
+  onPick: (c: RankedCandidate) => void;
+}) {
+  const [nearest, setNearest] = useState<RankedCandidate | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  const find = async () => {
+    setLoaded(true);
+    const res = await searchTransportHubs({ query: "", kind, near: anchor });
+    if (res.ok && res.value[0]) {
+      const h = res.value[0];
+      setNearest({
+        id: h.id,
+        name: h.name,
+        code: h.code,
+        latitude: h.latitude,
+        longitude: h.longitude,
+        distanceLabel: h.distance_m != null ? formatMiles(h.distance_m) : undefined,
+      });
+    }
+  };
+
+  if (!loaded) {
+    return (
+      <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 6 }} onClick={find}>
+        Find nearest station
+      </button>
+    );
+  }
+  if (!nearest) return <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--ink-faint)" }}>No station found nearby.</div>;
+  return (
+    <button type="button" className="hub-picker-item" style={{ marginTop: 6 }} onClick={() => onPick(nearest)}>
+      <span className="hub-picker-name">
+        Nearest: {nearest.name}
+        {nearest.code ? <span style={{ color: "var(--ink-faint)" }}> · {nearest.code}</span> : null}
+      </span>
+      {nearest.distanceLabel ? <span className="hub-picker-meta">{nearest.distanceLabel}</span> : null}
+    </button>
   );
 }
