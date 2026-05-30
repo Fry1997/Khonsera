@@ -141,6 +141,40 @@ describe("Fix 7 — bare-hour times resolve by event type", () => {
   });
 });
 
+// ── Fix 2 — comma is a soft boundary, not an automatic split ────────────────────
+describe("Fix 2 — comma over-fragmentation", () => {
+  it("'Two Tribes Brewery, 6pm Thursday' → ONE event, place + time together", async () => {
+    const p = await run("Launch event at Two Tribes Brewery, 6pm Thursday");
+    const ev = byType(p.facts, "business_event")[0] ?? byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    expect(placeText(ev).toLowerCase()).toContain("two tribes");
+  });
+
+  it("'Team lunch at the Ivy, Thursday noon' → ONE meal, time not fragmented off", async () => {
+    const p = await run("Team lunch at the Ivy, Thursday noon");
+    expect(byType(p.facts, "meal_plan").length).toBe(1);
+    const meal = byType(p.facts, "meal_plan")[0];
+    expect(meal.slots.date).toBeDefined();
+  });
+
+  it("'Train ref C4X9P2, Kings Cross to Edinburgh 11:03 Saturday' → ONE train", async () => {
+    const p = await run("Train ref C4X9P2, Kings Cross to Edinburgh 11:03 Saturday");
+    expect(byType(p.facts, "train_journey").length).toBe(1);
+  });
+
+  it("still splits when a new concept follows the comma", async () => {
+    const p = await run("Dinner Thursday at Hawksmoor, train back Friday morning");
+    expect(byType(p.facts, "meal_plan").length).toBe(1);
+    expect(byType(p.facts, "train_journey").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("still splits when a soft-verb clause follows the comma", async () => {
+    const p = await run("Meeting in Manchester Tuesday, need to sort train tickets");
+    expect(byType(p.facts, "scheduled_event").length).toBe(1);
+    expect(p.facts.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 // ── Fix 10 — concept word expansion ────────────────────────────────────────────
 describe("Fix 10 — expanded event vocabulary", () => {
   it("'Board meeting at 9 Thursday' → meeting, no spurious place 'Board'", async () => {

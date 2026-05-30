@@ -161,12 +161,13 @@ export async function populateSlots(
   let timeIdx = 0;
 
   const pickPlace = (role: PlaceRole): PlaceCandidate | null => {
-    let cand = places.find((p) => p.role === role && !usedPlaces.has(p));
-    // Only the generic "place" slot may fall back to a bare candidate — origin and
-    // destination must come from their own from/to operator, never each other's.
-    if (!cand && role === "place") {
-      cand = places.find((p) => (p.role === "place") && !usedPlaces.has(p));
-    }
+    // An operator-introduced place ("at the Ivy") is a far stronger signal than a
+    // bare sentence-initial Title-Case run ("Launch event ...") — prefer it for the
+    // generic place slot (stress-test Fix 2/3). origin/destination already come
+    // only from their own from/to operator.
+    let cand =
+      places.find((p) => p.role === role && p.viaOperator && !usedPlaces.has(p)) ??
+      places.find((p) => p.role === role && !usedPlaces.has(p));
     if (cand) usedPlaces.add(cand);
     return cand ?? null;
   };

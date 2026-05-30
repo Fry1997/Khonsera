@@ -67,7 +67,12 @@ function isStop(
   if (MONTHS.has(tok.lower) || WEEKDAYS.has(tok.lower)) return true;
   if (PLACE_BOUNDARY.has(tok.lower)) return true;
   if (lookup.concepts.some((c) => c.tokenStart === idx)) return true;
-  if (lookup.operators.some((o) => o.tokenStart === idx)) return true;
+  // A Title-Case word that's also an operator/quantifier ("Two" in "Two Tribes",
+  // "The" in "The Crown", "Ground" after "From the Ground Up") is part of the
+  // proper-noun name, not a grammatical operator — don't break the run on it
+  // (stress-test Fix 3). Lowercase operators ("to", "at", "and") still break.
+  const titleCase = /^[A-Z][a-z]/.test(tok.text);
+  if (!titleCase && lookup.operators.some((o) => o.tokenStart === idx)) return true;
   if (patterns.all.some((p) => p.source_range.start <= tok.start && p.source_range.end > tok.start)) return true;
   return false;
 }

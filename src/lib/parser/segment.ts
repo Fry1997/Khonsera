@@ -34,9 +34,43 @@ export function segment(
 ): Clause[] {
   const boundaryAfter = new Set<number>();
 
+  // Next significant (non-punct) token index after position i.
+  const nextSig = (i: number): number => {
+    for (let j = i + 1; j < tokens.length; j++) if (tokens[j].kind !== "punct") return j;
+    return -1;
+  };
+  const startsConcept = (idx: number) => lookup.concepts.some((c) => c.tokenStart === idx);
+  const startsImperative = (idx: number) => lookup.imperatives.some((m) => m.tokenStart === idx);
+  // Imperative-ish verbs that signal a new clause even without a dictionary entry
+  // ("..., need to sort tickets"). Kept small + conservative.
+  const SOFT_VERB = /^(need|sort|book|find|remember|remind|check|grab|get|pick|call|email|send|bring|arrange)$/i;
+  // Return-leg markers after a comma open a new (return) clause — the link stage
+  // turns these into the mirrored journey ("..., returning Friday").
+  const RETURN_WORD = /^(returning|return|back|coming|home)$/i;
+
   for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i].kind === "punct" && /[,;.!?\n]/.test(tokens[i].text)) {
+    const t = tokens[i];
+    if (t.kind !== "punct") continue;
+    // Hard boundaries: sentence terminators always split.
+    if (/[;.!?\n]/.test(t.text)) {
       boundaryAfter.add(i);
+      continue;
+    }
+    // Comma (stress-test Fix 2): a SOFT boundary. Split only when the text to the
+    // right opens a new fact — a new concept word, a new imperative/soft-verb, or a
+    // bare capitalised subject that isn't a date/place/person continuation.
+    if (t.text === ",") {
+      const n = nextSig(i);
+      if (n === -1) continue;
+      if (startsConcept(n) || startsImperative(n)) {
+        boundaryAfter.add(i);
+        continue;
+      }
+      if (SOFT_VERB.test(tokens[n].lower) || RETURN_WORD.test(tokens[n].lower)) {
+        boundaryAfter.add(i);
+        continue;
+      }
+      // Otherwise the comma is emphasis/list punctuation INSIDE one fact — keep going.
     }
   }
   for (const op of lookup.operators) {
