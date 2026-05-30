@@ -6,9 +6,8 @@ import type { Route } from "next";
 
 const TABS = [
   { href: "/dashboard" as Route, label: "Plan", icon: "calendar" },
-  { href: "/capture" as Route, label: "Tell", icon: "spark" },
-  { href: "/itineraries" as Route, label: "Journey", icon: "nav" },
   { href: "/bookings" as Route, label: "Bookings", icon: "ticket" },
+  { href: "/itineraries" as Route, label: "Journey", icon: "nav" },
   { href: "/expenses" as Route, label: "Updates", icon: "bell" },
   { href: "/settings" as Route, label: "Profile", icon: "person" },
 ] as const;
@@ -43,7 +42,6 @@ export function MobileTabbar() {
 const GLYPHS = {
   calendar:
     "M4 6 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v14 a2 2 0 0 1-2 2 H6 a2 2 0 0 1-2-2 z M4 10 h16 M8 2 v4 M16 2 v4",
-  spark: "M4 5 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v8 a2 2 0 0 1-2 2 H9 l-5 4 z",
   ticket:
     "M3 9 a2 2 0 0 1 2-2 h14 a2 2 0 0 1 2 2 v2 a2 2 0 0 0 0 2 v2 a2 2 0 0 1-2 2 H5 a2 2 0 0 1-2-2 v-2 a2 2 0 0 0 0-2 z M9 7 v10",
   nav: "M3 11 L21 3 L13 21 L11 13 L3 11 z",

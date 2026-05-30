@@ -62,7 +62,11 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
   Editing a slot does NOT re-parse; corrections are user-authoritative (high confidence).
 - Pure helpers in `src/components/capture/draft-model.ts` (correction prune/apply, labels,
   voice-safe formatting) are unit-tested without a DOM harness.
-- Entry points: dashboard primary CTA, sidebar nav, mobile tab, + a link on /itineraries/new.
+- Tell is NOT a nav destination — it's a "Tell" ACTION reachable from every page
+  (gold button in the desktop sidebar header + the mobile topbar), plus a quiet link on
+  /itineraries/new. The capture page is where that action takes you. The action bar on the
+  capture screen is `position: sticky` (NOT fixed) so it sits above the mobile tabbar and
+  never overlaps the desktop sidebar — fixed positioning made "Add it →" unreachable.
 - `[Add it →]` is always reachable (fixed action bar); adds all non-dismissed facts.
 
 ## Design Principles

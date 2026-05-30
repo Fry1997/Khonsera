@@ -173,7 +173,7 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 96 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span className="eyebrow" style={{ color: "var(--gold-2)" }}>Tell Khonsera</span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={saveLater} disabled={pending || !payload}>
@@ -271,20 +271,21 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         <div className="rounded-md border border-rust-2 bg-rust-2/40 px-3 py-2 text-sm text-rust">{feedback}</div>
       ) : null}
 
-      {/* Persistent action bar — always reachable */}
+      {/* Persistent action bar — always reachable. Sticky (not fixed) so it stays
+          in document flow: it sits above the mobile tabbar and never overlaps the
+          desktop sidebar. */}
       <div
         style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
+          position: "sticky",
           bottom: 0,
           display: "flex",
           gap: 8,
           justifyContent: "flex-end",
-          padding: "12px 20px",
+          paddingTop: 12,
+          paddingBottom: "max(8px, env(safe-area-inset-bottom))",
           background: "var(--paper)",
           borderTop: "1px solid var(--rule)",
-          zIndex: 20,
+          zIndex: 10,
         }}
       >
         <button type="button" className="btn btn-ghost" onClick={saveLater} disabled={pending || !payload}>
