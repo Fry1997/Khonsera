@@ -16,7 +16,10 @@ import {
   factTypeLabel,
   includedFacts,
   pruneCorrections,
+  slotEntityStatus,
+  buildOverlaySegments,
   type Corrections,
+  type EntitySpan,
 } from "./draft-model";
 import { FactCard } from "./fact-card";
 import type { PickerData } from "./slot-editor";
@@ -158,18 +161,56 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     });
   };
 
-  // Highlight the hovered slot's source span in the original text.
+  // Entity spans for the annotated read-back mirror: every place/person/station
+  // slot across all (corrected) facts, with its bound/ambiguous/unknown status.
+  const entitySpans = useMemo<EntitySpan[]>(() => {
+    if (!payload) return [];
+    const spans: EntitySpan[] = [];
+    for (const fact of payload.facts) {
+      if (dismissed.has(fact.local_id)) continue;
+      const defs = slotSchemas[fact.fact_type] ?? [];
+      const slots = corrections[fact.local_id] ? { ...fact.slots, ...corrections[fact.local_id] } : fact.slots;
+      for (const def of defs) {
+        const slot = slots[def.key];
+        const status = slotEntityStatus(slot, def.dataType);
+        if (status && slot) spans.push({ start: slot.source_range.start, end: slot.source_range.end, status });
+      }
+    }
+    return spans;
+  }, [payload, corrections, dismissed, slotSchemas]);
+
+  // The read-back line: entity spans as inline gold/grey badges, with the
+  // hovered slot's span underlined. Painted from the live payload (no overlay
+  // alignment maths — robust, and the visible record of what was understood).
   const renderedText = () => {
-    if (!hoverRange || !text) return text;
-    const { start, end } = hoverRange;
-    if (start >= end || end > text.length) return text;
-    return (
-      <>
-        {text.slice(0, start)}
-        <mark style={{ background: "var(--gold-soft)", color: "var(--ink)" }}>{text.slice(start, end)}</mark>
-        {text.slice(end)}
-      </>
-    );
+    const segments = buildOverlaySegments(text, entitySpans);
+    let offset = 0;
+    return segments.map((seg, i) => {
+      const segStart = offset;
+      offset += seg.text.length;
+      const hovered = hoverRange && hoverRange.start <= segStart && hoverRange.end >= offset;
+      if (seg.kind === "entity") {
+        const bound = seg.status === "bound";
+        return (
+          <span
+            key={i}
+            style={{
+              borderBottom: `2px solid ${bound ? "var(--gold)" : "var(--rule-2)"}`,
+              color: bound ? "var(--gold-2)" : "var(--ink-dim)",
+              fontWeight: 500,
+              background: hovered ? "var(--gold-soft)" : undefined,
+            }}
+          >
+            {seg.text}
+          </span>
+        );
+      }
+      return (
+        <span key={i} style={{ background: hovered ? "var(--gold-soft)" : undefined }}>
+          {seg.text}
+        </span>
+      );
+    });
   };
 
   return (

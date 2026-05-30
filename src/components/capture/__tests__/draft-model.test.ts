@@ -10,7 +10,9 @@ import {
   slotEntityStatus,
   factAnchor,
   sortCandidatesByProximity,
+  buildOverlaySegments,
   type Corrections,
+  type EntitySpan,
 } from "../draft-model";
 import type { ParsedFact, ParsedPayload, Slot } from "@/lib/parser/types";
 
@@ -154,5 +156,44 @@ describe("sortCandidatesByProximity", () => {
     );
     expect(out[0].id).toBe("liv");
     expect(out[0].distanceLabel).toMatch(/mi|here/);
+  });
+});
+
+describe("buildOverlaySegments", () => {
+  const text = "train from Wellingborough to Liverpool";
+  it("tiles text with entity segments in order", () => {
+    const spans: EntitySpan[] = [
+      { start: 11, end: 25, status: "bound" }, // Wellingborough
+      { start: 29, end: 38, status: "ambiguous" }, // Liverpool
+    ];
+    const segs = buildOverlaySegments(text, spans);
+    expect(segs.map((s) => s.text).join("")).toBe(text);
+    expect(segs.filter((s) => s.kind === "entity").map((s) => (s as { text: string }).text)).toEqual([
+      "Wellingborough",
+      "Liverpool",
+    ]);
+  });
+  it("drops overlapping spans (keeps the earlier one)", () => {
+    const spans: EntitySpan[] = [
+      { start: 11, end: 25, status: "bound" },
+      { start: 20, end: 30, status: "unknown" },
+    ];
+    const segs = buildOverlaySegments(text, spans);
+    expect(segs.map((s) => s.text).join("")).toBe(text);
+    expect(segs.filter((s) => s.kind === "entity")).toHaveLength(1);
+  });
+  it("ignores out-of-bounds and empty spans", () => {
+    const segs = buildOverlaySegments("hi", [{ start: 0, end: 9, status: "bound" }]);
+    expect(segs).toEqual([{ kind: "text", text: "hi" }]);
+  });
+  it("handles adjacent spans with no gap", () => {
+    const segs = buildOverlaySegments("ABCD", [
+      { start: 0, end: 2, status: "bound" },
+      { start: 2, end: 4, status: "unknown" },
+    ]);
+    expect(segs).toEqual([
+      { kind: "entity", text: "AB", status: "bound" },
+      { kind: "entity", text: "CD", status: "unknown" },
+    ]);
   });
 });

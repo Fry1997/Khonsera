@@ -42,6 +42,40 @@ export function factAnchor(fact: ParsedFact): { lat: number; lng: number } | nul
   return null;
 }
 
+// A typed entity span within the input text, used to paint the annotated
+// read-back mirror (the live inline-badge surface beneath the textarea).
+export interface EntitySpan {
+  start: number;
+  end: number;
+  status: EntityStatus;
+}
+
+export type OverlaySegment =
+  | { kind: "text"; text: string }
+  | { kind: "entity"; text: string; status: EntityStatus };
+
+// Split `text` into ordered plain/entity segments from a set of entity spans.
+// Spans are sorted by start; overlapping or out-of-bounds spans are dropped so
+// the segments always tile the text exactly once (offset-based — safe for
+// duplicate substrings). Pure + tested.
+export function buildOverlaySegments(text: string, spans: readonly EntitySpan[]): OverlaySegment[] {
+  const valid = spans
+    .filter((s) => s.start >= 0 && s.end <= text.length && s.start < s.end)
+    .slice()
+    .sort((a, b) => a.start - b.start);
+
+  const segments: OverlaySegment[] = [];
+  let cursor = 0;
+  for (const span of valid) {
+    if (span.start < cursor) continue; // overlaps an earlier span — skip
+    if (span.start > cursor) segments.push({ kind: "text", text: text.slice(cursor, span.start) });
+    segments.push({ kind: "entity", text: text.slice(span.start, span.end), status: span.status });
+    cursor = span.end;
+  }
+  if (cursor < text.length) segments.push({ kind: "text", text: text.slice(cursor) });
+  return segments;
+}
+
 // A candidate place/hub, optionally carrying coords + a derived distance label.
 export interface RankedCandidate {
   id: string;
