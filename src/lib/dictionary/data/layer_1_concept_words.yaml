@@ -4,7 +4,7 @@
 # Layer 2 gazetteer is intentionally excluded from this bundle.
 
 concept_words:
-  - triggers: [train, rail, railway, train journey, rail journey, by train, on the train]
+  - triggers: [train, rail, railway, train journey, rail journey, by train, on the train, eurostar]
     fact_type: train_journey
     essential_slots: [origin, destination, date, departure_time]
     optional_slots: [arrival_time, booking_ref, ticket, operator, service, platform, coach, seat, class, price, railcard, disruption_status]
@@ -19,7 +19,7 @@ concept_words:
     essential_slots: [place, check_in_date, check_out_date]
     optional_slots: [hotel_name, address, check_in_time, check_out_time, booking_ref, room_type, guests, breakfast_included, parking, price]
 
-  - triggers: [dinner, evening meal, supper]
+  - triggers: [dinner, evening meal, supper, drinks, after-work drinks]
     fact_type: meal_plan
     essential_slots: [date, time_or_period, place]
     optional_slots: [restaurant_name, area, party_size, contact, cuisine, booking_ref, dietary_requirements, price, notes]
@@ -34,7 +34,14 @@ concept_words:
     essential_slots: [date, time_or_period, place]
     optional_slots: [restaurant_name, hotel_name, area, party_size, contact, cuisine, booking_ref, dietary_requirements, price, notes]
 
-  - triggers: [meeting, meet, catch-up, catch up]
+  # Compound concepts FIRST (longest-match wins in lookup): "board meeting" must
+  # beat "meeting" so "Board" never leaks into the place slot (stress-test Fix 10).
+  - triggers: [board meeting, team meeting, client meeting, sales meeting, all-hands, all hands, town hall, townhall, quarterly review, weekly check-in, weekly checkin, weekly catch-up, one-to-one, one to one, "1-2-1", "1:1"]
+    fact_type: scheduled_event
+    essential_slots: [date, time]
+    optional_slots: [place, attendees, organisation, contact, agenda, duration, video_link, phone_number, notes]
+
+  - triggers: [meeting, meet, catch-up, catch up, standup, stand-up, stand up, sync, huddle, retro, retrospective, pitch, presentation, briefing, kickoff, kick-off, interview, consultation, workshop]
     fact_type: scheduled_event
     essential_slots: [date, time]
     optional_slots: [place, attendees, organisation, contact, agenda, duration, video_link, phone_number, notes]
@@ -79,7 +86,7 @@ concept_words:
     essential_slots: [origin, destination, date, departure_time]
     optional_slots: [arrival_time, operator, service_number, booking_ref, ticket, seat, luggage, price, notes]
 
-  - triggers: [conference, expo, exhibition, trade show]
+  - triggers: [conference, expo, exhibition, trade show, keynote, panel, summit, convention, symposium, forum]
     fact_type: business_event
     essential_slots: [date, place]
     optional_slots: [event_name, venue_name, start_time, end_time, attendees, organisation, stand_number, ticket, booking_ref, agenda, notes]

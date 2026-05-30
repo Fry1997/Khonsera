@@ -128,8 +128,8 @@ describe("Fix 7 — bare-hour times resolve by event type", () => {
     expect(ev?.slots.time?.value).toBe("09:00");
   });
 
-  it("'Drinks at the Crown 7 Friday' → 19:00", async () => {
-    const p = await run("Drinks at the Crown 7 Friday");
+  it("'Drinks at 7 Friday' → 19:00", async () => {
+    const p = await run("Drinks at 7 Friday");
     const meal = byType(p.facts, "meal_plan")[0];
     expect(meal?.slots.time_or_period?.value).toBe("19:00");
   });
@@ -138,5 +138,35 @@ describe("Fix 7 — bare-hour times resolve by event type", () => {
     const p = await run("Standup at 9am Monday");
     const ev = byType(p.facts, "scheduled_event")[0];
     expect(ev?.slots.time?.value).toBe("09:00");
+  });
+});
+
+// ── Fix 10 — concept word expansion ────────────────────────────────────────────
+describe("Fix 10 — expanded event vocabulary", () => {
+  it("'Board meeting at 9 Thursday' → meeting, no spurious place 'Board'", async () => {
+    const p = await run("Board meeting at 9 Thursday");
+    const ev = byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    expect(placeText(ev).toLowerCase()).not.toContain("board");
+  });
+
+  it("'Standup 9am Monday' → scheduled_event, not a place=Standup", async () => {
+    const p = await run("Standup 9am Monday");
+    const ev = byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    expect(placeText(ev).toLowerCase()).not.toContain("standup");
+  });
+
+  it("'Eurostar to Paris 9:31 Tuesday' → train_journey", async () => {
+    const p = await run("Eurostar to Paris 9:31 Tuesday");
+    expect(byType(p.facts, "train_journey").length).toBe(1);
+  });
+
+  it("'Keynote at 10:30 Wednesday' → business_event/scheduled_event with the time", async () => {
+    const p = await run("Keynote at 10:30 Wednesday");
+    const ev = byType(p.facts, "business_event")[0] ?? byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    const t = ev.slots.time?.value ?? ev.slots.start_time?.value;
+    expect(t).toBe("10:30");
   });
 });

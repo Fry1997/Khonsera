@@ -82,6 +82,9 @@ function collectRun(
   let j = from;
   const parts: Token[] = [];
   while (j <= to && !isStop(tokens[j], j, lookup, patterns)) {
+    // A bare number mid-run ends the place ("the Crown 7" → "the Crown"); but a
+    // run may START with a number for number-prefixed venues ("57 Steps").
+    if (tokens[j].kind === "number" && parts.length > 0) break;
     parts.push(tokens[j]);
     j++;
     if (parts.length >= 4) break; // a place name is short
