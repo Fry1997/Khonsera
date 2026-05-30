@@ -27,13 +27,15 @@ import type { PickerData } from "./slot-editor";
 import { stubIntentCopy } from "./intent-copy";
 import { activeTokenAt, replaceRange } from "./use-active-token";
 import { SuggestPopover, type SuggestControls } from "./suggest-popover";
+import { StopIcon } from "@/components/icons";
 
-const CHIPS: { label: string; seed: string }[] = [
-  { label: "I’m going somewhere", seed: "Train to " },
-  { label: "I’ve booked something", seed: "Booked " },
-  { label: "be somewhere", seed: "Meeting " },
-  { label: "something due", seed: "Remember to " },
-  { label: "a loose thought", seed: "" },
+type ChipIcon = (p: { size?: number }) => React.ReactElement;
+const CHIPS: { label: string; seed: string; icon: ChipIcon }[] = [
+  { label: "I’m going somewhere", seed: "Train to ", icon: StopIcon.pin },
+  { label: "I’ve booked something", seed: "Booked ", icon: StopIcon.ticket },
+  { label: "be somewhere", seed: "Meeting ", icon: StopIcon.appointment },
+  { label: "something due", seed: "Remember to ", icon: StopIcon.wait },
+  { label: "a loose thought", seed: "", icon: StopIcon.note },
 ];
 
 export interface CaptureScreenProps {
@@ -224,8 +226,14 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span className="eyebrow" style={{ color: "var(--gold-2)" }}>Tell Khonsera</span>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={saveLater} disabled={pending || !payload}>
-          Save later
+        <button
+          type="button"
+          aria-label="Close"
+          className="btn btn-ghost btn-sm"
+          onClick={() => router.push("/dashboard")}
+          style={{ fontSize: 18, lineHeight: 1, padding: "4px 8px", color: "var(--ink-dim)" }}
+        >
+          ✕
         </button>
       </div>
 
@@ -281,20 +289,24 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
       ) : null}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {CHIPS.map((c) => (
-          <button
-            key={c.label}
-            type="button"
-            className="pill"
-            style={{ cursor: "pointer" }}
-            onClick={() => {
-              setText((t) => (t.trim().length ? t : c.seed));
-              taRef.current?.focus();
-            }}
-          >
-            {c.label}
-          </button>
-        ))}
+        {CHIPS.map((c) => {
+          const ChipGlyph = c.icon;
+          return (
+            <button
+              key={c.label}
+              type="button"
+              className="pill"
+              style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+              onClick={() => {
+                setText((t) => (t.trim().length ? t : c.seed));
+                taRef.current?.focus();
+              }}
+            >
+              <span style={{ color: "var(--gold-2)", display: "flex" }}><ChipGlyph size={13} /></span>
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Sigil affordances — what Khonsera recognises as you type. */}
@@ -369,7 +381,8 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
           bottom: 0,
           display: "flex",
           gap: 8,
-          justifyContent: "flex-end",
+          alignItems: "center",
+          justifyContent: "space-between",
           paddingTop: 12,
           paddingBottom: "max(8px, env(safe-area-inset-bottom))",
           background: "var(--paper)",
@@ -378,10 +391,10 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         }}
       >
         <button type="button" className="btn btn-ghost" onClick={saveLater} disabled={pending || !payload}>
-          Later
+          Save for later
         </button>
-        <button type="button" className="btn btn-gold" onClick={addIt} disabled={pending || !canAdd}>
-          {pending ? "Adding…" : "Add it →"}
+        <button type="button" className="btn btn-ink" onClick={addIt} disabled={pending || !canAdd}>
+          {pending ? "Adding…" : "+  Add it"}
         </button>
       </div>
     </div>
