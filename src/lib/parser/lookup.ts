@@ -9,6 +9,7 @@ import type {
   OperatorCategory,
   ImperativeEntry,
 } from "@/lib/dictionary/dictionary";
+import { fuzzyHotToken } from "./fuzzy";
 
 interface SpanMatch {
   phrase: string;
@@ -62,6 +63,10 @@ export function lookup(tokens: Token[], dict: Dictionary): LookupResult {
     return null;
   };
 
+  // Cap fuzzy corrections at one per input to avoid confidence-cascades where a
+  // typo'd sentence builds a wrong fact (stress-test Fix 6, brief §9).
+  let fuzzyUsed = false;
+
   for (let i = 0; i < tokens.length; i++) {
     if (tokens[i].kind === "punct") continue;
 
@@ -75,6 +80,21 @@ export function lookup(tokens: Token[], dict: Dictionary): LookupResult {
         end: tokens[concept.lastIdx].end,
         factType: dict.conceptIndex.get(concept.phrase)!,
       });
+    } else if (!fuzzyUsed && tokens[i].kind === "word") {
+      // Misspelled single-word event concept ("Trian"→train, "appoinment"→
+      // appointment). Only the curated hot-tokens, only if it maps to a concept.
+      const canon = fuzzyHotToken(tokens[i].lower);
+      if (canon && dict.conceptIndex.has(canon)) {
+        fuzzyUsed = true;
+        concepts.push({
+          phrase: canon,
+          tokenStart: i,
+          tokenEnd: i,
+          start: tokens[i].start,
+          end: tokens[i].end,
+          factType: dict.conceptIndex.get(canon)!,
+        });
+      }
     }
 
     const operator = longest(i, dict.maxOperatorTokens, (p) => dict.operatorIndex.has(p));

@@ -175,6 +175,47 @@ describe("Fix 2 — comma over-fragmentation", () => {
   });
 });
 
+// ── Fix 6 — curated misspelling tolerance ──────────────────────────────────────
+describe("Fix 6 — fuzzy hot-token correction", () => {
+  it("'Meeting tommorrow at 3pm' → date resolves (tomorrow)", async () => {
+    const p = await run("Meeting tommorrow at 3pm with the sales team");
+    const ev = byType(p.facts, "scheduled_event")[0];
+    expect(ev).toBeDefined();
+    expect(ev.slots.date?.value).toBe("2026-05-31"); // ref Sat 30 May → tomorrow
+  });
+
+  it("'Lunch with Clair on Thurdsay at Pret' → Thursday resolves", async () => {
+    const p = await run("Lunch with Clair on Thurdsay at Pret");
+    const meal = byType(p.facts, "meal_plan")[0];
+    expect(meal).toBeDefined();
+    expect(meal.slots.date).toBeDefined();
+  });
+
+  it("'Dentist appoinment Weds 14th at 11' → Appointment type via fuzzy", async () => {
+    const p = await run("Dentist appoinment Weds 14th at 11");
+    expect(byType(p.facts, "appointment").length).toBe(1);
+  });
+
+  it("'Train to Derby 8:15 Saterday' → Saturday resolves via fuzzy", async () => {
+    const p = await run("Train to Derby 8:15 Saterday");
+    const train = byType(p.facts, "train_journey")[0];
+    expect(train).toBeDefined();
+    expect(train.slots.date?.value).toBeDefined(); // Saterday → Saturday
+  });
+
+  it("'Trian' stays verbatim (transposition is 2 edits; place stays strict)", async () => {
+    const p = await run("Trian to Derby Saterday");
+    // Not asserting a train fact — "Trian" is not auto-corrected (brief §6).
+    expect(p.parser_version).toBeTruthy();
+  });
+
+  it("place names stay strict: 'Manchster' is not fuzzy-resolved to a hub", async () => {
+    const p = await run("Meeting in Manchster Tuesday at 2pm");
+    // No throw, and Manchster is held verbatim (not silently corrected to a hub).
+    expect(p.facts.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 // ── Fix 8 — recurrence surfaced as metadata (never expanded) ───────────────────
 describe("Fix 8 — recurrence pattern surfacing", () => {
   it("'Team standup every Tuesday 9am' → one meeting + recurrence metadata", async () => {

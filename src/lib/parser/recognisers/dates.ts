@@ -4,6 +4,16 @@
 
 import * as chrono from "chrono-node";
 import type { PatternMatch } from "./types";
+import { fuzzyHotToken } from "../fuzzy";
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+};
+const MONTH_INDEX: Record<string, number> = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+};
+const RELATIVE_DAYS: Record<string, number> = { today: 0, tomorrow: 1, yesterday: -1, tonight: 0 };
 
 const FUZZY_RE = /\b(early|mid|late|beginning of|end of|next week|this weekend|the week after next|sometime)\b/i;
 
@@ -57,6 +67,60 @@ function ordinalDates(
   return out;
 }
 
+// Next occurrence (forward) of a weekday from ref.
+function nextWeekday(ref: Date, target: number): Date {
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 12);
+  let delta = (target - d.getDay() + 7) % 7;
+  if (delta === 0) delta = 7; // "next Tuesday" when today is Tuesday → following week
+  d.setDate(d.getDate() + delta);
+  return d;
+}
+
+// Fuzzy day/month/relative-date recognition (stress-test Fix 6). Supplements
+// chrono (which is strict) for ONE misspelled hot-token per input. Operates on
+// original offsets so source ranges stay correct. Place/contact names stay strict.
+const WORD_RE = /\b([A-Za-z]{4,})\b/g;
+function fuzzyDates(
+  input: string,
+  ref: Date,
+  taken: Array<{ start: number; end: number }>,
+): PatternMatch[] {
+  let m: RegExpExecArray | null;
+  WORD_RE.lastIndex = 0;
+  while ((m = WORD_RE.exec(input)) !== null) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (taken.some((t) => t.start < end && t.end > start)) continue;
+    const canon = fuzzyHotToken(m[1]);
+    if (!canon) continue;
+    let date: Date | null = null;
+    let gran: PatternMatch["granularity"] = "day";
+    if (canon in WEEKDAY_INDEX) date = nextWeekday(ref, WEEKDAY_INDEX[canon]);
+    else if (canon in RELATIVE_DAYS) {
+      date = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + RELATIVE_DAYS[canon], 12);
+    } else if (canon in MONTH_INDEX) {
+      // A bare misspelled month → first of that month (low confidence, day assumed).
+      let year = ref.getFullYear();
+      if (MONTH_INDEX[canon] < ref.getMonth()) year += 1;
+      date = new Date(year, MONTH_INDEX[canon], 1, 12);
+      gran = "month";
+    }
+    if (!date) continue;
+    return [{
+      type: "date",
+      source_text: m[0],
+      source_range: { start, end },
+      normalised_value: iso(date),
+      confidence: "medium",
+      fuzzy: false,
+      range: false,
+      granularity: gran,
+      meta: { fuzzyCorrectedTo: canon, original: m[0] },
+    }];
+  }
+  return [];
+}
+
 export function recogniseDates(input: string, ref: Date): PatternMatch[] {
   const results = chrono.parse(input, ref, { forwardDate: true });
   const out: PatternMatch[] = [];
@@ -102,5 +166,6 @@ export function recogniseDates(input: string, ref: Date): PatternMatch[] {
       out.map((o) => o.source_range),
     ),
   );
+  out.push(...fuzzyDates(input, ref, out.map((o) => o.source_range)));
   return out;
 }
