@@ -136,6 +136,18 @@ new planning view will call them via `getPlanningViewData`):
 - Migration `0032_appointment_value_objects.sql` (stops.arrive_value/duration_value/
   leave_value jsonb) — committed but NOT yet applied to the remote Supabase project.
 
+### Planning engine — Phase 4 (surface + gap detection; see `docs/planning-engine.md`)
+No migration — all derived from existing state. Pure cores + read actions:
+- `trip-needs.ts` — `deriveTripNeeds` → ordered THIS-TRIP-NEEDS list (set_duration,
+  book_taxi/rail/hotel, email_contact/confirm_booking) with tz-aware `when` labels.
+  Server action `getTripNeeds` (actions/planning.ts) classifies + queries.
+- `summary.ts` — `computeItinerarySummary` → stop_count/distance/duration/cost +
+  per-category breakdown. Server action `getItinerarySummary` also returns
+  `essentialsRemaining` (booking_intents not booked) for the LifecycleBand.
+- `booking-lifecycle.ts` — `lifecycleState` (status enum → Proposed/Booked/…,
+  opened_partner stays Proposed in Stage 0), `uberDeeplink`/`trainlineDeeplink`
+  builders, `essentialsRemaining`.
+
 ## Design Principles
 
 ### One Toolkit, Two Views

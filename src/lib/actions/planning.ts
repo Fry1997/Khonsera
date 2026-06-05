@@ -27,6 +27,17 @@ import {
   type LeaveValue,
   type ResolvedAppointment,
 } from "@/lib/planning/appointment";
+import {
+  deriveTripNeeds,
+  type TripNeed,
+} from "@/lib/planning/trip-needs";
+import {
+  computeItinerarySummary,
+  type ItinerarySummary,
+  type CostCategory,
+  type CostLine,
+} from "@/lib/planning/summary";
+import { essentialsRemaining } from "@/lib/planning/booking-lifecycle";
 import { dbResult, parseInput } from "./_helpers";
 import { resolveItineraryTimes } from "./itineraries";
 import { err, errors, ok, type Result } from "@/lib/errors";
@@ -295,6 +306,189 @@ export async function getRailCandidatesForGap(
     direction: v.direction,
     candidates,
   });
+}
+
+// ── Itinerary summary + essentials (P4.12) ───────────────────────────────────
+
+const EXPENSE_CATEGORY: Record<string, CostCategory> = {
+  rail_ticket: "rail",
+  taxi: "taxi",
+  hotel: "hotel",
+  parking: "parking",
+  food: "food",
+  mileage: "other",
+  other: "other",
+};
+
+export type ItinerarySummaryResult = ItinerarySummary & {
+  essentialsRemaining: number;
+};
+
+// The TripHeader line + DigestPanel aggregate. Reads stops, transitions,
+// expenses (and booking estimates) and folds them via the pure summary core.
+export async function getItinerarySummary(
+  itineraryId: string,
+): Promise<Result<ItinerarySummaryResult>> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: itin } = await supabase
+    .from("itineraries")
+    .select("id")
+    .eq("id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!itin) return err(errors.notFound("itinerary"));
+
+  const [{ count: stopCount }, { data: transitions }, { data: expenses }, { data: intents }] =
+    await Promise.all([
+      supabase
+        .from("stops")
+        .select("id", { count: "exact", head: true })
+        .eq("itinerary_id", itineraryId),
+      supabase
+        .from("transitions")
+        .select("distance_miles, computed_duration_minutes")
+        .eq("itinerary_id", itineraryId),
+      supabase
+        .from("expense_records")
+        .select("amount, expense_type")
+        .eq("itinerary_id", itineraryId),
+      supabase
+        .from("booking_intents")
+        .select("status")
+        .eq("itinerary_id", itineraryId),
+    ]);
+
+  const costs: CostLine[] = (expenses ?? []).map((e) => ({
+    category: EXPENSE_CATEGORY[(e.expense_type as string) ?? "other"] ?? "other",
+    amountPence: Math.round((Number(e.amount) || 0) * 100),
+  }));
+
+  const summary = computeItinerarySummary({
+    stopCount: stopCount ?? 0,
+    transitions: (transitions ?? []).map((t) => ({
+      distanceMiles: (t.distance_miles as number | null) ?? null,
+      durationMinutes: (t.computed_duration_minutes as number | null) ?? null,
+    })),
+    costs,
+  });
+
+  return ok({
+    ...summary,
+    essentialsRemaining: essentialsRemaining(
+      (intents ?? []).map((i) => ({ status: i.status as string })),
+    ),
+  });
+}
+
+// ── This trip needs (P4.11) ──────────────────────────────────────────────────
+
+const TAXI_PROVIDER = /uber|taxi|cab|bolt|lyft/i;
+
+export async function getTripNeeds(
+  itineraryId: string,
+): Promise<Result<TripNeed[]>> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
+
+  const { data: itin } = await supabase
+    .from("itineraries")
+    .select("id, date_start")
+    .eq("id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!itin) return err(errors.notFound("itinerary"));
+
+  const [{ data: stops }, { data: railTransitions }, { data: bookingIntents }, { data: openIntents }] =
+    await Promise.all([
+      supabase
+        .from("stops")
+        .select("id, type, title, duration_value")
+        .eq("itinerary_id", itineraryId),
+      supabase
+        .from("transitions")
+        .select(
+          "id, from_stop_id, mode, to_stop:to_stop_id(title)",
+        )
+        .eq("itinerary_id", itineraryId)
+        .eq("mode", "train"),
+      supabase
+        .from("booking_intents")
+        .select("id, stop_id, status, provider, outbound_summary")
+        .eq("itinerary_id", itineraryId),
+      supabase
+        .from("intents")
+        .select("id, label, status, surface_after")
+        .eq("workspace_id", ctx.workspaceId)
+        .in("status", ["open", "in_progress"]),
+    ]);
+
+  const intents = bookingIntents ?? [];
+  const bookedStopIds = new Set(
+    intents.filter((b) => b.status === "booked").map((b) => b.stop_id as string),
+  );
+
+  const appointments = (stops ?? [])
+    .filter((s) => s.type === "appointment")
+    .map((s) => ({
+      id: s.id as string,
+      title: (s.title as string | null) ?? null,
+      durationKind:
+        ((s.duration_value as { kind?: string } | null)?.kind as string | null) ??
+        null,
+    }));
+
+  const accommodations = (stops ?? [])
+    .filter((s) => s.type === "accommodation")
+    .map((s) => ({
+      id: s.id as string,
+      title: (s.title as string | null) ?? null,
+      booked: bookedStopIds.has(s.id as string),
+    }));
+
+  const railLegs = (railTransitions ?? []).map((t) => {
+    const toTitle = (first(t.to_stop) as { title?: string | null } | null)?.title;
+    return {
+      id: t.from_stop_id as string,
+      label: toTitle ? `rail to ${toTitle}` : "rail leg",
+      booked: bookedStopIds.has(t.from_stop_id as string),
+    };
+  });
+
+  const taxiIntents = intents
+    .filter((b) => TAXI_PROVIDER.test((b.provider as string | null) ?? ""))
+    .map((b) => ({
+      id: b.id as string,
+      status: b.status as string,
+      summary: (b.outbound_summary as string | null) ?? null,
+    }));
+
+  const tripDate = itin.date_start as string;
+  const prerequisiteIntents = (openIntents ?? [])
+    .filter((i) => {
+      const sa = i.surface_after as string | null;
+      return sa == null || new Date(sa) <= new Date(tripDate);
+    })
+    .map((i) => ({
+      id: i.id as string,
+      label: i.label as string,
+      surfaceAfter: (i.surface_after as string | null) ?? null,
+    }));
+
+  return ok(
+    deriveTripNeeds({
+      now: new Date().toISOString(),
+      tripDate,
+      timezone: wsCfg.timezone,
+      appointments,
+      taxiIntents,
+      railLegs,
+      accommodations,
+      prerequisiteIntents,
+    }),
+  );
 }
 
 // Peak if the departure falls in a weekday morning (07:00–09:59) or evening

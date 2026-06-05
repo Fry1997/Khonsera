@@ -1,4 +1,4 @@
-# Planning Engine — Phases 1–3
+# Planning Engine — Phases 1–4
 
 Last updated: 2026-06-05
 
@@ -169,3 +169,43 @@ jsonb columns, and **projects** onto the canonical fields: `start_time` =
 arrive, `end_time` = leave, `duration_minutes` = duration, `is_time_fixed` = true
 only for a precise/by arrival (fuzzy/derived/maximise stays flexible so the solver
 can move it). Then it re-solves itinerary times.
+
+---
+
+## Phase 4 — Surface and gap detection
+
+No migration — all derivation from existing state. Three pure cores + two read
+server actions in `actions/planning.ts`.
+
+### P4.11 — `getTripNeeds` · `planning/trip-needs.ts`
+
+`deriveTripNeeds(input)` (pure) turns classified itinerary state into the ordered
+needs list. Detects: `set_duration` (appointment `duration_value.kind` in
+unset/fuzzy/null), `book_taxi` (taxi booking_intent not `booked`), `book_rail`
+(train transition whose departure stop has no booked intent), `book_hotel`
+(accommodation stop, unbooked), and prerequisite `intents` → `email_contact`
+(email/confirm/call pattern) or `confirm_booking`. Each row gets a deadline
+(lead-days per need type, or the intent's `surface_after`) and a tz-aware `when`
+label ("today" / "tomorrow" / "Tue" / "12 Jun"); rows sort most-urgent first.
+Server action `getTripNeeds` does the queries + classification (taxi = provider
+matches uber/taxi/cab/bolt/lyft; booked = a `booked` booking_intent on the stop).
+
+### P4.12 — `getItinerarySummary` · `planning/summary.ts`
+
+`computeItinerarySummary(input)` (pure) → `{ stopCount, totalDistanceMi,
+totalDurationMin, totalCostPence, costBreakdown }` — the "7 stops · 113 mi ·
+4h 55m · £77" line. Costs are grouped by category (highest first, zero categories
+omitted), money in pence throughout. Server action `getItinerarySummary` reads
+stops/transitions/expenses (expense_type → category) and also returns
+`essentialsRemaining` (booking_intents not `booked`) for the LifecycleBand's
+auto-advance.
+
+### P4.13 — Booking lifecycle (Stage 0) · `planning/booking-lifecycle.ts`
+
+`lifecycleState(status)` maps the `booking_intent_status` enum onto the
+planning-side states (Proposed / Booked / Failed / Cancelled — `opened_partner`
+stays Proposed because Stage 0 can't confirm a partner booking). `uberDeeplink`
+builds the `m.uber.com/ul/?action=setPickup…` universal link (pickup + optional
+dropoff); `trainlineDeeplink` builds the results URL with the pair pre-selected.
+`essentialsRemaining` counts the unbooked intents. The live-day states
+(driver-assigned, en route, arrived) are deliberately out of scope here.
