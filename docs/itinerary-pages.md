@@ -89,11 +89,26 @@ Day summary (travel time, cost)
 
 ## Planning Page
 
-**Route:** `/itineraries/[id]`  
-**File:** `src/app/(app)/itineraries/[id]/itinerary-editor.tsx`  
+**Route:** `/itineraries/[id]`
+**Files:** `page.tsx` (server) → `planning-data.ts` (`getPlanningViewData`) → `planning-view.tsx` (`"use client"`)
 **Purpose:** Refine the schedule with real data, check feasibility, execute the day
 
-### What it is
+> **2026-06-05 — Planning view replaced `itinerary-editor.tsx`.** The page now
+> renders the new planning view driven by the Phase 1–4 planning engine
+> (`docs/planning-engine.md`, Phase 5). `getPlanningViewData` composes an ordered
+> SPINE (stop nodes + the leg between each pair) plus the summary / trip-needs /
+> resolved-appointment / lifecycle contracts; `planning-view.tsx` renders it on
+> the slim time rail with the lifecycle band, strategy chip, equal-weight leg
+> mode pickers, the three-mode appointment card, THIS TRIP NEEDS, and the day
+> digest. The legacy editor + shared `<Timeline>` description below is retained
+> for historical reference and for the brief page (which still uses it).
+>
+> The old editor's booking/import helpers (`add-stop-form.tsx`,
+> `add-transport-booking-form.tsx`, `add-accommodation-booking-form.tsx`,
+> `gmail-import-panel.tsx`) are **preserved** (orphaned) for re-wiring into the
+> new consolidated "+" add sheet — not yet surfaced on the new view.
+
+### What it was (legacy editor — still describes the brief-page Timeline)
 
 A two-column layout:
 - **Left:** the timeline (same shared `<Timeline>` component) with inline editing
@@ -277,8 +292,9 @@ The app never uses emojis anywhere.
 |------|------|------|
 | Brief page | `src/app/(app)/itineraries/new/page.tsx` | Server component, data loading |
 | Brief page | `src/app/(app)/itineraries/new/new-itinerary-form.tsx` | Client form, state, Timeline wiring |
-| Planning page | `src/app/(app)/itineraries/[id]/page.tsx` | Server component, data loading |
-| Planning page | `src/app/(app)/itineraries/[id]/itinerary-editor.tsx` | Client editor, state, Timeline wiring |
+| Planning page | `src/app/(app)/itineraries/[id]/page.tsx` | Server entry: seeds home stop, calls getPlanningViewData |
+| Planning data | `src/app/(app)/itineraries/[id]/planning-data.ts` | `getPlanningViewData` — spine + Phase 1–4 contracts |
+| Planning view | `src/app/(app)/itineraries/[id]/planning-view.tsx` | New client planning screen (replaced itinerary-editor.tsx) |
 | Shared renderer | `src/components/itinerary/timeline.tsx` | The unified Timeline component |
 | Brief builder | `src/components/itinerary/build-brief-timeline.ts` | Brief state → TimelineEntry[] |
 | Planning builder | `src/components/itinerary/build-planning-timeline.ts` | DB data → TimelineEntry[] |

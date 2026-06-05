@@ -2,8 +2,8 @@
  * Core data types for the JourneyMap component.
  *
  * These are the component's own domain types — they're constructed
- * from the DB data in the wiring layer (itinerary-editor), not
- * imported from the DB schema.
+ * from the DB data in the wiring layer (the planning view / data
+ * composer), not imported from the DB schema.
  */
 
 export type LatLng = [number, number]; // [lat, lng] — lat first internally

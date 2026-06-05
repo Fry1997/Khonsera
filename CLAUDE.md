@@ -109,7 +109,7 @@ new planning view will call them via `getPlanningViewData`):
   slot by `start_time`, scoped recompute of the two adjacent transitions. Does NOT
   pre-commit a default mode on the new gaps (mode picker owns that).
 - Migration `0030_itinerary_excluded_modes.sql` adds `itineraries.excluded_modes`
-  — committed but NOT yet applied to the remote Supabase project.
+  — applied to the remote Supabase project (2026-06-05).
 
 ### Planning engine — Phase 2 (strategy + rail booking; see `docs/planning-engine.md`)
 - `strategy.ts` — trip-level rail/drive/mixed via `evaluateStrategies` (built on
@@ -122,7 +122,7 @@ new planning view will call them via `getPlanningViewData`):
 - Pairing (P2.7): `booking_intents.paired_booking_id` + `linkPairedBookings`
   (actions/bookings.ts) cross-link outbound + return.
 - Migration `0031_travel_strategy_and_pairing.sql` (travel_strategy + paired_booking_id)
-  — committed but NOT yet applied to the remote Supabase project.
+  — applied to the remote Supabase project (2026-06-05).
 
 ### Planning engine — Phase 3 (three-variable appointment; see `docs/planning-engine.md`)
 - `appointment.ts` — `resolveAppointment` resolves any two of {arrive, duration,
@@ -134,7 +134,7 @@ new planning view will call them via `getPlanningViewData`):
   start_time/end_time/duration_minutes/is_time_fixed (the solver's fields).
   `stops` had no `timing_mode` to replace — this is purely additive.
 - Migration `0032_appointment_value_objects.sql` (stops.arrive_value/duration_value/
-  leave_value jsonb) — committed but NOT yet applied to the remote Supabase project.
+  leave_value jsonb) — applied to the remote Supabase project (2026-06-05).
 
 ### Planning engine — Phase 4 (surface + gap detection; see `docs/planning-engine.md`)
 No migration — all derived from existing state. Pure cores + read actions:
@@ -147,6 +147,25 @@ No migration — all derived from existing state. Pure cores + read actions:
 - `booking-lifecycle.ts` — `lifecycleState` (status enum → Proposed/Booked/…,
   opened_partner stays Proposed in Stage 0), `uberDeeplink`/`trainlineDeeplink`
   builders, `essentialsRemaining`.
+
+### Planning engine — Phase 5 (UI mount; see `docs/planning-engine.md`)
+The new planning view **replaced `itinerary-editor.tsx`** at `/itineraries/[id]`.
+- `planning-data.ts` (`getPlanningViewData`, server-only) composes real stops +
+  transitions into an ordered, time-formatted SPINE (stop nodes + the legs
+  between them) and folds in the Phase 1–4 contracts (summary, trip-needs,
+  resolved appointment + microcopy, lifecycle). Client renders it dumbly.
+- `planning-view.tsx` (`"use client"`) — LifecycleBand, TripHeader+summary,
+  JourneyMode strategy chip, the spine (gold/diamond/plain/home nodes; flex legs
+  = equal-weight mode picker, locked rail = booked card), ThisTripNeeds, Digest.
+  Interactions dispatch existing/Phase-2–4 actions (`setTransitionMode`/
+  `upsertTransition`, `setTravelStrategy`, `setAppointmentTiming`) + `router.refresh`.
+- PRESERVED (orphaned, to re-wire into the new "+" sheet): `add-stop-form.tsx`,
+  `add-transport-booking-form.tsx`, `add-accommodation-booking-form.tsx`,
+  `gmail-import-panel.tsx`. Don't delete — they hold the booking/Gmail-import UI
+  the new view doesn't surface yet.
+- NOT yet ported from the prototype: split/separated/echo rail layouts, taxi
+  live-day states, disruption banner, the consolidated "+" add sheet, paired
+  rail stepper UI (the engine `getRailCandidatesForGap` exists; the card isn't wired).
 
 ## Design Principles
 
@@ -307,7 +326,9 @@ Currently OSM raster tiles (always available, no API key). Upgrade path: Protoma
 |------|---------|
 | `src/app/(app)/itineraries/new/new-itinerary-form.tsx` | Brief page form (all state + render) |
 | `src/app/(app)/itineraries/new/page.tsx` | Brief page server component (data loading) |
-| `src/app/(app)/itineraries/[id]/itinerary-editor.tsx` | Planning page |
+| `src/app/(app)/itineraries/[id]/page.tsx` | Planning page server entry (seeds home stop, calls getPlanningViewData) |
+| `src/app/(app)/itineraries/[id]/planning-data.ts` | getPlanningViewData — composes stops/transitions + Phase 1–4 contracts into the view model |
+| `src/app/(app)/itineraries/[id]/planning-view.tsx` | PlanningView — the new planning screen (replaced itinerary-editor.tsx) |
 | `src/components/itinerary/transport-booking-card.tsx` | Transport booking card component + types |
 | `src/components/itinerary/accommodation-booking-card.tsx` | Accommodation booking card + types |
 | `src/components/itinerary/transition-row.tsx` | Travel mode picker between stops |

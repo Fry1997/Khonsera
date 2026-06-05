@@ -209,3 +209,37 @@ builds the `m.uber.com/ul/?action=setPickup…` universal link (pickup + optiona
 dropoff); `trainlineDeeplink` builds the results URL with the pair pre-selected.
 `essentialsRemaining` counts the unbooked intents. The live-day states
 (driver-assigned, en route, arrived) are deliberately out of scope here.
+
+---
+
+## Phase 5 — UI mount
+
+The new planning view **replaced `itinerary-editor.tsx`** at `/itineraries/[id]`.
+Migrations 0030–0032 are applied to the remote project.
+
+- `planning-data.ts` — `getPlanningViewData(itineraryId)` (server-only). Reads the
+  real stops + transitions and builds an ordered **spine**: stop-nodes (home /
+  gold appointment / diamond transit / plain) interleaved with the leg between
+  each adjacent pair. A locked rail/flight transition renders as a booked train
+  card; everything else is a flexible leg carrying the equal-weight mode options
+  (durations seeded from `route_preview_cache`). Appointment nodes are resolved
+  through `resolveAppointment` + `appointmentMicrocopy`/`arriveAttribution`. Folds
+  in `getItinerarySummary` (header line + digest + essentialsRemaining) and
+  `getTripNeeds`. All times formatted in the workspace tz server-side.
+- `planning-view.tsx` — `"use client"` renderer. LifecycleBand, TripHeader with
+  tap-to-expand cost breakdown, JourneyMode strategy chip, the spine on the slim
+  time rail, ThisTripNeeds, Day digest. Interactions: leg mode pick →
+  `setTransitionMode`/`upsertTransition`; strategy → `setTravelStrategy`;
+  appointment duration quick-set (1h/2h/3h/Max) → `setAppointmentTiming`; each
+  wrapped in `useTransition` + `router.refresh()`. Type-only import from the
+  server-only data module keeps the client bundle clean.
+
+**Preserved (orphaned) for re-wiring**, not deleted: `add-stop-form.tsx`,
+`add-transport-booking-form.tsx`, `add-accommodation-booking-form.tsx`,
+`gmail-import-panel.tsx` — the booking + Gmail-import UI the new view will surface
+behind the consolidated "+" add sheet.
+
+**Deferred from the prototype** (engine ready, card not yet wired): split/
+separated/echo rail layouts, the paired rail stepper card (uses
+`getRailCandidatesForGap`), taxi live-day lifecycle states, the disruption banner,
+and the "+" add sheet.
