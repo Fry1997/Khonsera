@@ -56,6 +56,7 @@ export default async function CapturePage({
       .select("id, original_text, parsed_payload")
       .eq("id", draftId)
       .eq("workspace_id", ctx.workspaceId)
+      .eq("user_id", ctx.userId)
       .maybeSingle();
     if (data) {
       initialDraft = {
