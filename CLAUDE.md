@@ -111,6 +111,19 @@ new planning view will call them via `getPlanningViewData`):
 - Migration `0030_itinerary_excluded_modes.sql` adds `itineraries.excluded_modes`
   — committed but NOT yet applied to the remote Supabase project.
 
+### Planning engine — Phase 2 (strategy + rail booking; see `docs/planning-engine.md`)
+- `strategy.ts` — trip-level rail/drive/mixed via `evaluateStrategies` (built on
+  `rankDoorToDoor`); top 2 + templated pros. Server action `setTravelStrategy`
+  (actions/planning.ts) persists the choice; full leg rebuild deferred to UI-mount.
+- `rail-candidates.ts` — `deriveOutbound`/`deriveReturn` compute leave-home /
+  on-site / leave-appointment / arrive-home from a timetable candidate + buffers;
+  `pairFare` is the ~20%-off-peak return heuristic (pence). Server action
+  `getRailCandidatesForGap` wires `integrations/rail.ts` (demo data until live).
+- Pairing (P2.7): `booking_intents.paired_booking_id` + `linkPairedBookings`
+  (actions/bookings.ts) cross-link outbound + return.
+- Migration `0031_travel_strategy_and_pairing.sql` (travel_strategy + paired_booking_id)
+  — committed but NOT yet applied to the remote Supabase project.
+
 ## Design Principles
 
 ### One Toolkit, Two Views

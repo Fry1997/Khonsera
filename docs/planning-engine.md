@@ -1,4 +1,4 @@
-# Planning Engine — Phase 1 Foundation
+# Planning Engine — Phases 1 & 2
 
 Last updated: 2026-06-05
 
@@ -79,3 +79,54 @@ Replaces `max(sequence)+1` append with time-ordered insertion.
   deliberately does **not** auto-create the two new adjacent transitions with a
   default mode — the brief is explicit that gaps stay open for the equal-weight
   mode picker rather than pre-committing a mode.
+
+---
+
+## Phase 2 — Strategy and rail booking
+
+Same shape as Phase 1: pure tested cores + thin server actions + one migration.
+Migration `0031_travel_strategy_and_pairing.sql` adds `itineraries.travel_strategy`
+(text, `rail|drive|mixed`, null = undecided) and `booking_intents.paired_booking_id`
+(self-ref, links outbound + return). **Not yet applied to the remote Supabase
+project** — committed only.
+
+### P2.5 — Trip-level travel strategy · `planning/strategy.ts`
+
+The JourneyMode chip's engine. Each strategy is a composed door-to-door journey
+(reusing P1.1), so the trip-level choice ranks on the same speed-first rule.
+
+- `evaluateStrategies(journeys, preference, limit=2)` — ranks via `rankDoorToDoor`,
+  returns the top N as `StrategySummary` (`totalDurationMinutes`, `totalCostEstimate`,
+  `recommended`, templated `pros`). Pros are static phrasing per strategy in v1
+  ("Work on the way" for rail, "Door-to-door" for drive) — the brief is explicit
+  these can be fixed strings.
+- `recommendedStrategy(journeys, preference)` — the single engine pick, used to
+  seed `travel_strategy` when the user hasn't chosen.
+- Server action `setTravelStrategy` (`actions/planning.ts`) persists the choice +
+  re-solves times. The full leg rebuild (collapse rail spine ↔ single drive leg)
+  is deferred to UI-mount — it needs the composed journeys wired through
+  `getPlanningViewData`.
+
+### P2.6 — Rail candidates · `planning/rail-candidates.ts`
+
+Turns a raw timetable candidate into its door-to-door consequences, folding in
+the P1.2 buffers (board ~8 min early, `STATION_DWELL_MINUTES` ~5 each end).
+
+- `deriveOutbound(c, timing)` → adds `leaveHome` (dep − first-mile − board −
+  station entry) and `onSiteStart` (arr + station exit + last-mile + venue margin).
+- `deriveReturn(c, timing)` → adds `leaveAppointmentBy` and `arriveHome`.
+- `pairFare(outbound, return)` — v1 heuristic: an off-peak, same-operator pair is
+  ~20% cheaper than two singles; a peak or split-operator pair is shown honestly
+  as two singles (zero saving). Operator = alpha prefix of the first service
+  number; unknown operators don't disqualify. All amounts in pence.
+- Server action `getRailCandidatesForGap` (`actions/planning.ts`) resolves the two
+  station stops, calls `integrations/rail.ts` (`findRailJourneys` — demo data until
+  a live timetable is wired), computes `peak` in the workspace tz, converts provider
+  pounds → pence, and runs the outbound/return derivation. First-/last-mile minutes
+  come in from the UI's routing previews (default 0).
+
+### P2.7 — Pair booking model · `actions/bookings.ts`
+
+`createBookingIntent` accepts `paired_booking_id`; `linkPairedBookings(outbound, return)`
+cross-links two intents (each points at the other) after verifying both are in the
+workspace. `ON DELETE SET NULL` so dropping one leg doesn't cascade the other.

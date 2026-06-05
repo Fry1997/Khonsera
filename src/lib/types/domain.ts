@@ -62,6 +62,10 @@ export type TransitionMode =
   | "flight"
   | "mixed";
 
+// Trip-level travel strategy (the JourneyMode chip). Stored on
+// itineraries.travel_strategy (migration 0031); null = undecided.
+export type TravelStrategy = "rail" | "drive" | "mixed";
+
 // Planning-engine output verdict (per option / per transition)
 export type FeasibilityStatus =
   | "recommended"

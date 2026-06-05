@@ -109,6 +109,7 @@ export type Database = {
           idempotency_key: string | null
           itinerary_id: string | null
           outbound_summary: string | null
+          paired_booking_id: string | null
           partner_deep_link: string | null
           provider: string | null
           return_summary: string | null
@@ -125,6 +126,7 @@ export type Database = {
           idempotency_key?: string | null
           itinerary_id?: string | null
           outbound_summary?: string | null
+          paired_booking_id?: string | null
           partner_deep_link?: string | null
           provider?: string | null
           return_summary?: string | null
@@ -141,6 +143,7 @@ export type Database = {
           idempotency_key?: string | null
           itinerary_id?: string | null
           outbound_summary?: string | null
+          paired_booking_id?: string | null
           partner_deep_link?: string | null
           provider?: string | null
           return_summary?: string | null
@@ -872,6 +875,7 @@ export type Database = {
           notes: string | null
           status: Database["public"]["Enums"]["itinerary_status"]
           title: string | null
+          travel_strategy: string | null
           trip_purpose: string
           updated_at: string
           user_id: string
@@ -887,6 +891,7 @@ export type Database = {
           notes?: string | null
           status?: Database["public"]["Enums"]["itinerary_status"]
           title?: string | null
+          travel_strategy?: string | null
           trip_purpose?: string
           updated_at?: string
           user_id: string
@@ -902,6 +907,7 @@ export type Database = {
           notes?: string | null
           status?: Database["public"]["Enums"]["itinerary_status"]
           title?: string | null
+          travel_strategy?: string | null
           trip_purpose?: string
           updated_at?: string
           user_id?: string

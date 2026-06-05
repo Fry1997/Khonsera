@@ -34,6 +34,11 @@ export const BOARDING_BUFFER_MINUTES: Record<TransitionMode, number> = {
   mixed: 6,
 };
 
+// Time to walk through the station building itself — entry on the way in,
+// exit on the way out — on top of the boarding margin. Brief P1.2: station
+// entry/exit ~5 min. Used by rail-candidate timing (leave-home / arrive-home).
+export const STATION_DWELL_MINUTES = 5;
+
 // Margin to budget when changing between two scheduled services at one hub.
 // Interchanges are tighter than a cold-start boarding (you're already inside
 // the building) except for flights, where you may re-clear security.

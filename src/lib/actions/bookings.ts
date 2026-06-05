@@ -19,6 +19,9 @@ const createBookingIntentSchema = z.object({
   estimated_price: z.number().nonnegative().nullable().optional(),
   currency: z.enum(["GBP", "EUR", "USD"]).optional(),
   partner_deep_link: z.string().url().nullable().optional(),
+  // Links this intent to its outbound/return counterpart (P2.7). Set via
+  // linkPairedBookings once both legs of a rail pair exist.
+  paired_booking_id: z.string().uuid().nullable().optional(),
   idempotency_key: z.string().uuid(),
 });
 
@@ -88,6 +91,65 @@ export async function createBookingIntent(
     });
   }
   return result;
+}
+
+// Link two booking_intents as an outbound + return PAIR (P2.7). Sets each
+// row's paired_booking_id to the other so stepping/cancelling one knows about
+// its counterpart. Both must belong to the caller's workspace.
+const linkPairedBookingsSchema = z.object({
+  outbound_id: z.string().uuid(),
+  return_id: z.string().uuid(),
+});
+
+export async function linkPairedBookings(
+  input: z.input<typeof linkPairedBookingsSchema>,
+): Promise<Result<{ outbound_id: string; return_id: string }>> {
+  const parsed = parseInput(linkPairedBookingsSchema, input);
+  if (!parsed.ok) return parsed;
+  if (parsed.value.outbound_id === parsed.value.return_id) {
+    return err(errors.validation("Cannot pair a booking with itself"));
+  }
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Verify both intents are in the workspace before cross-linking them.
+  const { data: rows } = await supabase
+    .from("booking_intents")
+    .select("id")
+    .in("id", [parsed.value.outbound_id, parsed.value.return_id])
+    .eq("workspace_id", ctx.workspaceId);
+  if (!rows || rows.length !== 2) return err(errors.notFound("booking_intent"));
+
+  const updates: { id: string; pair: string }[] = [
+    { id: parsed.value.outbound_id, pair: parsed.value.return_id },
+    { id: parsed.value.return_id, pair: parsed.value.outbound_id },
+  ];
+  for (const u of updates) {
+    const { error } = await supabase
+      .from("booking_intents")
+      .update({ paired_booking_id: u.pair })
+      .eq("id", u.id)
+      .eq("workspace_id", ctx.workspaceId);
+    if (error)
+      return dbResult<{ outbound_id: string; return_id: string }>(
+        null,
+        error,
+        "booking_intent",
+      );
+  }
+
+  await recordAudit({
+    entityType: "booking_intent",
+    entityId: parsed.value.outbound_id,
+    action: "link_pair",
+    after: { paired_with: parsed.value.return_id },
+  });
+
+  return ok({
+    outbound_id: parsed.value.outbound_id,
+    return_id: parsed.value.return_id,
+  });
 }
 
 export async function updateBookingIntentStatus(
