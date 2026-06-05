@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { KhonseraBrand } from "./khonsera-brand";
 import { MobileNav } from "./mobile-nav";
 import { DemoModeIndicator } from "./demo-mode-indicator";
@@ -43,6 +44,13 @@ export async function MobileTopbar({
       <KhonseraBrand size="sm" />
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {isStaff ? <DemoModeIndicator /> : null}
+        {/* Tell — an action reachable from every page, not a nav destination. */}
+        <Link href={"/capture" as Route} className="btn btn-gold btn-sm" aria-label="Tell Khonsera">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 5 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v8 a2 2 0 0 1-2 2 H9 l-5 4 z" />
+          </svg>
+          Tell
+        </Link>
         <MobileNav items={NAV} email={email} />
       </div>
     </header>

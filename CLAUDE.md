@@ -25,6 +25,74 @@ After making changes to any itinerary page, the Gmail import pipeline, or the sh
 - Supabase project: `attbfwemjoslugvtfbrt` (EU West 1)
 - Vercel project: `prj_Dwmmyzk75AT0sJDchcJ52rU9ZTLz`, team `team_zK6YQHcoKN5rkpkCfohV4nXg`
 
+### Tell Khonsera capture substrate (migrations 0027/0028)
+Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.
+- Facts (`stops`/`transitions`/`travel_bookings`) carry `confidence`, `source`,
+  `commitment_state` (raw→done lifecycle — NOT the same as `stops.commitment`, which is
+  solver hardness). Defaults preserve all existing behaviour.
+- New tables: `captured_inputs` (raw text + parser draft), `standing_facts`, `intents`.
+- Fact-type schema registry in code at `src/lib/dictionary/` (slots, tiers, resolvers) —
+  the single source of truth the future parser + gap engine read. Add a fact-type =
+  a module under `fact-types/` registered in `registry.ts`.
+- 0028 enabled RLS on four previously-exposed tables (gmail_scanned_emails + 3 rail tables).
+
+### Tell Khonsera parser engine (deterministic, no AI) — see `docs/tell-khonsera-parser.md`
+- Dictionary in `src/lib/dictionary/`: bundled YAML (`data/layer_1/3/4`) fused by
+  `load.ts` with the TS mapping registry; `getDictionary()` is the cached singleton.
+  Layer 2 gazetteer = the existing `transport_hubs` table (no YAML). Layer 5 = code.
+- 10-stage pipeline in `src/lib/parser/` (tokenise → recognisers → lookup →
+  imperatives → segment → classify → slots → link → validate → parse). `parse()` is
+  pure given a `Dictionary` + injected `PlaceResolver`; multi-fact output.
+- Actions in `src/lib/actions/tell-khonsera.ts`: `previewCapture` (stateless,
+  read-only — NEVER writes captured_inputs), the captured_inputs lifecycle, and
+  `confirmCapture` → materialise via `createItineraryFromBrief` + provenance stamp.
+- HARD RULE (brief §16): unbooked travel → a `transition` (planned), NOT a
+  `travel_booking`. `materialise.factIsBooked` gates this. Don't pollute the booking layer.
+- chrono-node does dates/times; `recognisers/dates.ts` supplements bare ordinals
+  ("the 22nd") which this chrono version doesn't resolve.
+- The gap engine is NOT built yet — that's the next programme stage.
+
+### Tell Khonsera capture UI (`/capture`) — see build programme §3
+- `src/app/(app)/capture/page.tsx` (server: loads picker data + builds serialisable slot
+  schemas from `getDictionary()`) → `src/components/capture/capture-screen.tsx` (client).
+  `/capture/drafts` lists saved `pending_review`/`corrected` drafts to resume (`?draft=<id>`).
+- Live preview calls `previewCapture` on a 300ms debounce — READ-ONLY, never writes
+  captured_inputs. One `FactCard` per fact; tappable slots open `slot-editor.tsx` (reuses
+  transport-hub-picker for transit, place-picker for event places, searchContacts for people).
+  Editing a slot does NOT re-parse; corrections are user-authoritative (high confidence).
+- Pure helpers in `src/components/capture/draft-model.ts` (correction prune/apply, labels,
+  voice-safe formatting) are unit-tested without a DOM harness.
+- Tell is NOT a nav destination — it's a "Tell" ACTION reachable from every page
+  (gold button in the desktop sidebar header + the mobile topbar), plus a quiet link on
+  /itineraries/new. The capture page is where that action takes you. The action bar on the
+  capture screen is `position: sticky` (NOT fixed) so it sits above the mobile tabbar and
+  never overlaps the desktop sidebar — fixed positioning made "Add it →" unreachable.
+- `[Add it →]` is always reachable (fixed action bar); adds all non-dismissed facts.
+
+### Tell Khonsera smart capture (badges + autosuggest + proximity) — see `docs/tell-khonsera-capture.md`
+- Entity slots (place/person/station) render as **badges**: gold when bound to a real entity
+  (value object carries `hub_id`/`location_id`/`customer_site_id`/`contact_id`), grey when
+  `ambiguous` (opens a proximity-ranked candidate chooser) or `unknown` verbatim.
+- **No persisted bindings store.** Badges + the read-back mirror paint purely from the live
+  `ParsedPayload`. Picking an autosuggest item **rewrites the typed fragment to the canonical
+  name** so the next parse binds it deterministically. Card edits use the existing `corrections`.
+- **Live mid-sentence autosuggest** (`use-active-token.ts` + `suggest-popover.tsx`): the active
+  token's role is inferred from the preceding operator (`from`/`to`→station, `at`/`in`/`near`→place,
+  `meet`/`with`/`see`→person; airport when the clause mentions flying), mirroring `place.ts`
+  `roleFromOperator`. Debounced 250ms, proximity-seeded from bound coords in the draft.
+- **Proximity** (`src/lib/geo.ts`: `haversineMeters`/`formatMiles`/`rankByProximity`):
+  `searchTransportHubs` + new `searchPlaces` take an optional `near` anchor → `distance_m` + miles.
+  Empty-query + `near` does a bbox "nearest station" lookup. Coords live on
+  `transport_hubs`/`locations`/`customer_sites` AND on resolved slot values (parser carries them).
+- **Inline contact create** (`createContactQuick`): migration 0029 made `contacts.customer_id`
+  nullable; `relation`→`role`, `company`→`notes` (no dedicated column yet).
+- The inline-badge surface is the **annotated read-back line** beneath the textarea (mirror div
+  painted from slot `source_range`s), NOT a transparent-textarea overlay — chosen for robustness
+  (no pixel-alignment maths to verify without a browser).
+- A bound person flows through on confirm: `materialise.ts` carries the `contact` slot's
+  `contact_id` onto the event anchor → `anchorInputSchema.contact_id` → `stops.contact_id`
+  (event/meal/call anchors only).
+
 ## Design Principles
 
 ### One Toolkit, Two Views

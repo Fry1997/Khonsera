@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
+import { rankByProximity } from "@/lib/geo";
 import type { Result } from "@/lib/errors";
 import type { TravelModePreference } from "@/lib/types/domain";
 
@@ -76,6 +77,10 @@ export type TravelProfile = {
 const searchHubsSchema = z.object({
   query: z.string().trim().max(80),
   kind: z.enum(["rail_station", "airport"]),
+  // Optional anchor: when set, results are sorted by distance from this
+  // point (nearest first) and each carries `distance_m`. Used by the
+  // capture screen to surface the nearest station to the user's other stops.
+  near: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
 
 export type TransportHubHit = {
@@ -85,7 +90,13 @@ export type TransportHubHit = {
   name: string;
   city: string | null;
   country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  // Present only when the search was given a `near` anchor.
+  distance_m?: number;
 };
+
+const HUB_COLS = "id, kind, code, name, city, country, latitude, longitude";
 
 export async function resolveHubByName(
   name: string,
@@ -116,12 +127,29 @@ export async function searchTransportHubs(
   const supabase = await createClient();
 
   const q = parsed.value.query;
-  // Empty query: return a small alphabetical seed so the picker can
-  // show *something* before the user starts typing.
+  const near = parsed.value.near;
+
+  // Empty query: with a `near` anchor, find the nearest hubs (Stage 4 —
+  // "nearest station to your hotel"); otherwise a small alphabetical seed.
   if (q.length === 0) {
+    if (near) {
+      // Bounding box first (~0.7° ≈ 50 miles of latitude) so we sort a small
+      // set in JS rather than the whole 11k+ catalogue.
+      const box = 0.7;
+      const { data } = await supabase
+        .from("transport_hubs")
+        .select(HUB_COLS)
+        .eq("kind", parsed.value.kind)
+        .gte("latitude", near.lat - box)
+        .lte("latitude", near.lat + box)
+        .gte("longitude", near.lng - box)
+        .lte("longitude", near.lng + box)
+        .limit(200);
+      return { ok: true, value: rankByProximity((data ?? []) as TransportHubHit[], near).slice(0, 20) };
+    }
     const { data } = await supabase
       .from("transport_hubs")
-      .select("id, kind, code, name, city, country")
+      .select(HUB_COLS)
       .eq("kind", parsed.value.kind)
       .order("name")
       .limit(20);
@@ -132,7 +160,7 @@ export async function searchTransportHubs(
   // Code matches first — "WLB" resolves a station instantly.
   const { data: codeHits } = await supabase
     .from("transport_hubs")
-    .select("id, kind, code, name, city, country")
+    .select(HUB_COLS)
     .eq("kind", parsed.value.kind)
     .ilike("code", prefix)
     .order("name")
@@ -140,7 +168,7 @@ export async function searchTransportHubs(
   // Prefix match on name — "Wel" finds "Wellingborough" before "Abbey Well".
   const { data: prefixHits } = await supabase
     .from("transport_hubs")
-    .select("id, kind, code, name, city, country")
+    .select(HUB_COLS)
     .eq("kind", parsed.value.kind)
     .ilike("name", prefix)
     .order("name")
@@ -160,7 +188,7 @@ export async function searchTransportHubs(
     const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
     const { data: subHits } = await supabase
       .from("transport_hubs")
-      .select("id, kind, code, name, city, country")
+      .select(HUB_COLS)
       .eq("kind", parsed.value.kind)
       .or(`name.ilike.${like},city.ilike.${like}`)
       .order("name")
@@ -172,7 +200,10 @@ export async function searchTransportHubs(
       }
     }
   }
-  return { ok: true, value: merged.slice(0, 20) };
+  // With a `near` anchor, re-sort the (already-filtered) matches by distance
+  // so e.g. "Liverpool" surfaces the station closest to the user's other stops.
+  const out = near ? rankByProximity(merged, near) : merged;
+  return { ok: true, value: out.slice(0, 20) };
 }
 
 // Lookup a single hub by id — used by the settings page so it can
@@ -185,7 +216,7 @@ export async function getTransportHub(
   const supabase = await createClient();
   const { data } = await supabase
     .from("transport_hubs")
-    .select("id, kind, code, name, city, country")
+    .select(HUB_COLS)
     .eq("id", id)
     .maybeSingle();
   return { ok: true, value: (data as TransportHubHit | null) ?? null };

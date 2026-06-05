@@ -1,0 +1,66 @@
+// Stage 4 — imperative routing. An imperative only routes when its trigger is at
+// the START of the input (brief §7 + Layer-4 engine notes), so "broken greenhouse
+// — sort" does NOT become a booking_request. Question-shape gates
+// information_request; position+object gates itinerary_request (plan/route/map).
+
+import type { Token } from "./tokenise";
+import type { LookupResult } from "./lookup";
+import type { ImperativeIntent } from "@/lib/dictionary/dictionary";
+
+export interface ImperativeRouting {
+  intent_type: ImperativeIntent | null;
+  // char offset just after the consumed trigger (for create_intent label extraction)
+  consumedEnd: number;
+}
+
+export function routeImperative(
+  input: string,
+  tokens: Token[],
+  lookup: LookupResult,
+  // Optional clause window [tokenStart, tokenEnd] so the same routing logic can be
+  // applied per-clause ("... . Remember to ...") not just at whole-input start.
+  window?: { tokenStart: number; tokenEnd: number },
+): ImperativeRouting {
+  const lo = window?.tokenStart ?? 0;
+  const hi = window?.tokenEnd ?? tokens.length - 1;
+  let firstSig = -1;
+  for (let i = lo; i <= hi; i++) {
+    if (tokens[i].kind !== "punct") { firstSig = i; break; }
+  }
+  if (firstSig === -1) return { intent_type: null, consumedEnd: 0 };
+
+  // Imperative triggers anchored at the first significant token; prefer longest.
+  const atStart = lookup.imperatives
+    .filter((m) => m.tokenStart === firstSig && m.tokenEnd <= hi)
+    .sort((a, b) => b.tokenEnd - a.tokenEnd);
+  if (atStart.length === 0) return { intent_type: null, consumedEnd: 0 };
+
+  const match = atStart[0];
+  const entry = match.entry;
+  const clauseText = input.slice(tokens[lo].start, tokens[hi].end);
+  const endsWithQ = clauseText.trim().endsWith("?");
+  let sigCount = 0;
+  for (let i = lo; i <= hi; i++) if (tokens[i].kind !== "punct") sigCount++;
+
+  // "Check in/out ..." is accommodation language, not a search imperative
+  // (stress-test Fix 4) — let it fall through to the fact engine.
+  if (match.phrase === "check") {
+    const next = tokens[match.tokenEnd + 1]?.lower;
+    if (next === "in" || next === "out" || next === "into") {
+      return { intent_type: null, consumedEnd: 0 };
+    }
+  }
+
+  if (entry.questionShaped) {
+    // Only an information_request if the input is actually question-shaped.
+    if (!endsWithQ && sigCount > 8) return { intent_type: null, consumedEnd: 0 };
+  }
+
+  if (entry.positional) {
+    // plan/route/map only when followed by an object phrase (another word token).
+    const next = tokens[match.tokenEnd + 1];
+    if (!next || next.kind === "punct") return { intent_type: null, consumedEnd: 0 };
+  }
+
+  return { intent_type: entry.intent, consumedEnd: match.end };
+}

@@ -128,6 +128,11 @@ export default async function NewItineraryPage() {
           starting, what&rsquo;s already booked, when you need to be back
           &mdash; and we&rsquo;ll work out the rest.
         </p>
+        <p style={{ margin: "10px 0 0" }}>
+          <a href="/capture" style={{ color: "var(--gold-2)", fontSize: 14 }}>
+            Prefer to just tell me in a sentence? &rarr;
+          </a>
+        </p>
       </header>
 
       <NewItineraryBrief

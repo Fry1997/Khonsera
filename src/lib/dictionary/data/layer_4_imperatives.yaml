@@ -1,0 +1,177 @@
+# Khonsera Semantic Dictionary
+# Layer 4: Imperative detection
+# These route the input to the request engine, not the fact engine.
+
+imperatives:
+  - intent: create_intent
+    category: reminding_and_noting
+    imperatives:
+      - remind
+      - remind me
+      - remind us
+      - remember
+      - remember that
+      - don't forget
+      - do not forget
+      - note
+      - note down
+      - make a note
+      - save
+      - log
+      - record
+      - keep track of
+      - add a reminder
+      - set a reminder
+
+  - intent: search_request
+    category: searching
+    imperatives:
+      - find
+      - search
+      - search for
+      - look for
+      - look up
+      - check
+      - check for
+      - see if
+      - see whether
+      - show me
+      - list
+      - get
+      - pull up
+      - bring up
+
+  - intent: booking_request
+    category: booking_and_arranging
+    imperatives:
+      - book
+      - reserve
+      - arrange
+      - organise
+      - organize
+      - sort
+      - sort out
+      - get me
+      - schedule
+      - plan
+      - set up
+      - make a booking
+      - make a reservation
+      - order
+      - buy
+
+  - intent: cancellation_request
+    category: cancelling_and_removing
+    imperatives:
+      - cancel
+      - drop
+      - remove
+      - delete
+      - clear
+      - get rid of
+      - scrap
+      - bin
+      - take out
+      - undo
+
+  - intent: modification_request
+    category: modifying_and_rescheduling
+    imperatives:
+      - move
+      - reschedule
+      - change
+      - shift
+      - update
+      - amend
+      - edit
+      - push back
+      - bring forward
+      - delay
+      - make it
+      - move it to
+      - change it to
+      - switch
+      - swap
+
+  - intent: information_request
+    category: asking_for_information
+    engine_note: |
+      These triggers only fire when the input is question-shaped — typically
+      one of: ends with '?', starts with a question word AND lacks declarative
+      verb structure later, or is a single short question phrase. A declarative
+      sentence containing 'what' or 'when' mid-clause (e.g. "the meeting at
+      what was that place") is NOT an information request and must fall through
+      to the fact engine.
+    imperatives:
+      - what
+      - when
+      - where
+      - who
+      - which
+      - how
+      - why
+      - tell me
+      - explain
+      - can I
+      - can we
+      - could I
+      - could we
+      - should I
+      - should we
+      - do I need
+      - do we need
+      - is there
+      - are there
+      - will I
+      - will we
+
+  - intent: communication_request
+    category: communicating_and_forwarding
+    engine_note: |
+      Communication-action verbs at the START of input, typically followed by a
+      person reference and a content phrase ("email Jane the tickets"). Routes to
+      the request engine and is held as an intent — Khonsera doesn't send things
+      itself yet. Mid-sentence "text" (the noun) must not trigger this; only a
+      sentence-initial trigger routes.
+    imperatives:
+      - email
+      - send
+      - text
+      - message
+      - forward
+      - notify
+      - write to
+      - let know
+
+  - intent: comparison_request
+    category: comparing_options
+    imperatives:
+      - compare
+      - choose
+      - pick
+      - help me choose
+      - work out
+      - calculate
+      - estimate
+      - weigh up
+
+  - intent: itinerary_request
+    category: route_and_itinerary_planning
+    engine_note: |
+      Several triggers here (plan, route, map) can be either imperative verbs
+      ("plan a trip to Derby") or declarative nouns ("the plan is to go to
+      Derby"). The engine should classify as imperative only when these words
+      appear at the START of input AND are followed by an object phrase,
+      not when they appear mid-sentence or after a determiner ("the plan",
+      "a plan").
+    imperatives:
+      - plan
+      - route
+      - map
+      - navigate
+      - get me to
+      - get us to
+      - work out how to get
+      - tell me how to get
+      - build an itinerary
+      - make an itinerary

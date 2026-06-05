@@ -160,6 +160,28 @@ export const StopIcon = {
       <path d="M12 7v5l3 2" />
     </Svg>
   ),
+  person: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+    </Svg>
+  ),
+  calendar: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="4" y="5" width="16" height="16" rx="2" />
+      <path d="M4 9h16M8 3v4M16 3v4" />
+    </Svg>
+  ),
+  money: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M16 7.5A3.5 3.5 0 0 0 9 9.5V17M7 13h6M7 17h9" />
+    </Svg>
+  ),
+  note: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2zM8 9h8M8 13h6" />
+    </Svg>
+  ),
 } satisfies Record<string, (p: IconProps) => React.ReactElement>;
 
 export type StopIconName = keyof typeof StopIcon;

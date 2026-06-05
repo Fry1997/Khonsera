@@ -175,6 +175,8 @@ const anchorInputSchema = z
     location_id: z.string().uuid().nullable().optional(),
     customer_id: z.string().uuid().nullable().optional(),
     customer_site_id: z.string().uuid().nullable().optional(),
+    // A contact attending this anchor (e.g. "meet Derek") → stops.contact_id.
+    contact_id: z.string().uuid().nullable().optional(),
     label: z.string().trim().max(200).nullable().optional(),
 
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -535,6 +537,7 @@ export async function createItineraryFromBrief(
     location_id: string | null;
     customer_id: string | null;
     customer_site_id: string | null;
+    contact_id?: string | null;
     transport_hub_id?: string | null;
     title: string | null;
     start_time: string | null;
@@ -659,6 +662,7 @@ export async function createItineraryFromBrief(
       location_id: r.locationId,
       customer_id: r.customerId,
       customer_site_id: r.customerSiteId,
+      contact_id: a.contact_id ?? null,
       title:
         a.kind === "stay" && a.role === "return_to_room"
           ? `Back at ${r.label ?? "the hotel"}`

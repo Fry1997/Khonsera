@@ -58,6 +58,17 @@ export function AppSidebar({
         </div>
       </div>
 
+      {/* Tell Khonsera — an action, not a nav destination. Reachable from every
+          page; opens the capture screen. */}
+      <Link
+        href={"/capture" as Route}
+        className="btn btn-gold"
+        style={{ margin: "4px 0 12px", justifyContent: "center" }}
+      >
+        <Glyph name="tell" />
+        Tell Khonsera
+      </Link>
+
       <nav className="desk-nav">
         <div className="desk-nav-section">Workspace</div>
         {workspace.map((n) => (
@@ -163,6 +174,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 
 const Glyphs = {
   bolt: "M13 2 L4 14 h6 l-1 8 9-12 h-6 z",
+  tell: "M4 5 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v8 a2 2 0 0 1-2 2 H9 l-5 4 z",
   nav: "M3 11 L21 3 L13 21 L11 13 L3 11 z",
   ticket:
     "M3 9 a2 2 0 0 1 2-2 h14 a2 2 0 0 1 2 2 v2 a2 2 0 0 0 0 2 v2 a2 2 0 0 1-2 2 H5 a2 2 0 0 1-2-2 v-2 a2 2 0 0 0 0-2 z M9 7 v10",
