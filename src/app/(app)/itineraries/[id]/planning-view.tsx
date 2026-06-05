@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { setTravelStrategy, setAppointmentTiming } from "@/lib/actions/planning";
+import { AddSheet, type Pickers } from "./planning-add-sheet";
+import { PairedRailCard } from "./paired-rail-card";
 import type {
   PlanningViewData,
   PlanningSpineNode,
@@ -152,7 +154,7 @@ function LifecycleBand({ current, canOverride }: PlanningViewData["lifecycle"]) 
   );
 }
 
-function TripHeader({ header }: { header: PlanningViewData["header"] }) {
+function TripHeader({ header, onAdd }: { header: PlanningViewData["header"]; onAdd: () => void }) {
   const [exp, setExp] = useState(false);
   return (
     <div>
@@ -161,7 +163,7 @@ function TripHeader({ header }: { header: PlanningViewData["header"] }) {
           <h1 style={{ fontFamily: "var(--display)", fontSize: 30, fontWeight: 500, letterSpacing: "-0.025em", color: "var(--ink)", margin: 0, lineHeight: 1.06 }}>{header.title}</h1>
           {header.subtitle && <div style={{ ...mono, fontSize: 11, color: "var(--ink-dim)", marginTop: 7, letterSpacing: "0.04em" }}>{header.subtitle}</div>}
         </div>
-        <button title="Add" style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: "var(--ink)", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+        <button title="Add to this trip" onClick={onAdd} style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: "var(--ink)", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
           <Plus size={18} color="var(--paper)" />
         </button>
       </div>
@@ -367,8 +369,9 @@ function Digest({ digest }: { digest: PlanningViewData["digest"] }) {
 }
 
 // ── screen ───────────────────────────────────────────────────────────────────
-export function PlanningView({ data }: { data: PlanningViewData }) {
+export function PlanningView({ data, pickers }: { data: PlanningViewData; pickers: Pickers }) {
   const actions = usePlanningActions(data.itinerary.id);
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div style={{ background: "var(--paper)", minHeight: "100%", padding: "6px 20px 40px" }}>
@@ -376,7 +379,7 @@ export function PlanningView({ data }: { data: PlanningViewData }) {
         <a href="/itineraries" style={{ ...mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-dim)", textDecoration: "none" }}>← All trips</a>
 
         <div style={{ marginTop: 14 }}><LifecycleBand {...data.lifecycle} /></div>
-        <div style={{ marginTop: 16 }}><TripHeader header={data.header} /></div>
+        <div style={{ marginTop: 16 }}><TripHeader header={data.header} onAdd={() => setAddOpen(true)} /></div>
 
         {actions.error && (
           <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, background: "var(--rust-2)", color: "var(--rust)", fontFamily: "var(--sans)", fontSize: 12 }}>{actions.error}</div>
@@ -385,6 +388,12 @@ export function PlanningView({ data }: { data: PlanningViewData }) {
         <div style={{ marginTop: 20 }}>
           <JourneyMode strategy={data.itinerary.travelStrategy} actions={actions} />
         </div>
+
+        {data.railPair && (
+          <div style={{ marginTop: 18 }}>
+            <PairedRailCard railPair={data.railPair} timezone={data.timezone} />
+          </div>
+        )}
 
         <div style={{ marginTop: 18 }}>
           {data.spine.map((n: PlanningSpineNode, i) => {
@@ -409,6 +418,16 @@ export function PlanningView({ data }: { data: PlanningViewData }) {
         {data.needs.length > 0 && <div style={{ marginTop: 26 }}><ThisTripNeeds needs={data.needs} /></div>}
         <div style={{ marginTop: 28 }}><Digest digest={data.digest} /></div>
       </div>
+
+      {addOpen && (
+        <AddSheet
+          itineraryId={data.itinerary.id}
+          pickers={pickers}
+          lastStopId={data.lastStopId}
+          lastStopLabel={data.lastStopLabel}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
     </div>
   );
 }

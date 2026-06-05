@@ -159,13 +159,23 @@ The new planning view **replaced `itinerary-editor.tsx`** at `/itineraries/[id]`
   = equal-weight mode picker, locked rail = booked card), ThisTripNeeds, Digest.
   Interactions dispatch existing/Phase-2–4 actions (`setTransitionMode`/
   `upsertTransition`, `setTravelStrategy`, `setAppointmentTiming`) + `router.refresh`.
-- PRESERVED (orphaned, to re-wire into the new "+" sheet): `add-stop-form.tsx`,
-  `add-transport-booking-form.tsx`, `add-accommodation-booking-form.tsx`,
-  `gmail-import-panel.tsx`. Don't delete — they hold the booking/Gmail-import UI
-  the new view doesn't surface yet.
+- `planning-add-sheet.tsx` (`AddSheet`) — the consolidated "+" affordance. The
+  TripHeader "+" opens a modal that re-mounts the preserved forms: `add-stop-form`
+  (→ `createStop`), `add-transport-booking-form`, `add-accommodation-booking-form`,
+  `gmail-import-panel`. Picker data (customers/sites/locations/contacts + gmail
+  status) is loaded in `page.tsx` and passed as `pickers`. Keep these four form
+  files — they ARE the booking/Gmail-import UI, now mounted here.
+- `paired-rail-card.tsx` (`PairedRailCard`) — wires `getRailCandidatesForGap`.
+  `planning-data` derives a `railPair` (outbound/return station pairs around the
+  focal appointment + CRS codes); the card fetches candidates, steps them
+  (chevrons), shows the on-site consequence band + `pairFare`, and a Stage-0
+  `trainlineDeeplink` "Book pair" button. Honest "timetable not connected" state
+  when the rail provider is in `unavailable` mode. `pairFare`/`trainlineDeeplink`/
+  `formatTimeInTz` are pure → imported client-side.
 - NOT yet ported from the prototype: split/separated/echo rail layouts, taxi
-  live-day states, disruption banner, the consolidated "+" add sheet, paired
-  rail stepper UI (the engine `getRailCandidatesForGap` exists; the card isn't wired).
+  live-day lifecycle states, the disruption banner. Stepping the rail card does
+  NOT yet persist the chosen candidate back to transitions (Stage 0 = deeplink +
+  manual mark-booked); committing a stepped pair is the next rail increment.
 
 ## Design Principles
 

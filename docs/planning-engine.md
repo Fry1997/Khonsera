@@ -243,3 +243,23 @@ behind the consolidated "+" add sheet.
 separated/echo rail layouts, the paired rail stepper card (uses
 `getRailCandidatesForGap`), taxi live-day lifecycle states, the disruption banner,
 and the "+" add sheet.
+
+### Phase 5 follow-up — "+" add sheet + paired rail card
+
+- `planning-add-sheet.tsx` (`AddSheet`) — the consolidated "+" affordance. Opens
+  a modal routing to the preserved forms (re-mounted, not rebuilt): add a stop
+  (`createStop`), add a transport booking, add accommodation, import from Gmail.
+  `page.tsx` loads the picker data (customers/sites/locations/contacts + gmail
+  connection) and passes it as `pickers`. Options that need a prerequisite
+  (a stop to attach to, a Gmail connection) are disabled with a reason.
+- `paired-rail-card.tsx` (`PairedRailCard`) — wires `getRailCandidatesForGap`.
+  `getPlanningViewData` derives a `railPair` (the outbound + return station pairs
+  bracketing the focal appointment, with CRS codes and arrive-by/depart-after).
+  The card fetches candidates for each direction, steps through them with
+  chevrons (local state), renders the on-site consequence band, the v1 `pairFare`
+  (imported pure, client-side), and a Stage-0 `trainlineDeeplink` "Book pair on
+  Trainline" button. When the rail provider returns `unavailable` it says so
+  rather than inventing times. Stepping does not yet persist the chosen candidate
+  back to transitions — Stage 0 is deeplink + manual mark-booked; committing a
+  stepped pair (writing the two transitions + linking the booking_intents via
+  `linkPairedBookings`) is the next rail increment.

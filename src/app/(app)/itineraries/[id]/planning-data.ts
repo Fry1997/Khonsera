@@ -70,6 +70,28 @@ export type PlanningLegNode = {
 
 export type PlanningSpineNode = PlanningStopNode | PlanningLegNode;
 
+// One direction of a rail journey the PairedRailCard can fetch candidates for.
+export type RailPairLeg = {
+  fromStopId: string;
+  toStopId: string;
+  fromName: string;
+  toName: string;
+  fromCode: string | null;
+  toCode: string | null;
+  // Outbound: the time you must arrive by (the appointment). Return: the
+  // earliest you can depart (the appointment's finish).
+  arriveBy?: string | null;
+  departAfter?: string | null;
+};
+
+export type RailPair = {
+  outbound: RailPairLeg | null;
+  return: RailPairLeg | null;
+  // yyyy-mm-dd for the Trainline deeplink.
+  outwardDate: string;
+  returnDate: string | null;
+};
+
 export type PlanningViewData = {
   itinerary: {
     id: string;
@@ -99,6 +121,10 @@ export type PlanningViewData = {
   };
   spine: PlanningSpineNode[];
   needs: TripNeed[];
+  railPair: RailPair | null;
+  // Anchor for the "+" add sheet (transport booking / Gmail import attach here).
+  lastStopId: string | null;
+  lastStopLabel: string;
   timezone: string;
 };
 
@@ -146,7 +172,10 @@ type StopRow = {
   leave_value: LeaveValue | null;
   location: { name: string | null } | { name: string | null }[] | null;
   customer_site: { name: string | null } | { name: string | null }[] | null;
-  transport_hub: { name: string | null } | { name: string | null }[] | null;
+  transport_hub:
+    | { name: string | null; code: string | null }
+    | { name: string | null; code: string | null }[]
+    | null;
 };
 
 function one<T>(v: T | T[] | null): T | null {
@@ -208,7 +237,7 @@ export async function getPlanningViewData(
        arrive_value, duration_value, leave_value,
        location:locations(name),
        customer_site:customer_sites(name),
-       transport_hub:transport_hubs(name)`,
+       transport_hub:transport_hubs(name, code)`,
     )
     .eq("itinerary_id", itineraryId)
     .order("sequence");
@@ -333,6 +362,57 @@ export async function getPlanningViewData(
     }
   }
 
+  // ── rail pair (for the PairedRailCard) ──────────────────────────────────
+  // Find the focal appointment; train legs before it are outbound, after it
+  // are return. We surface the first of each so the card can fetch candidates.
+  const focalIdx = (() => {
+    const a = stopRows.findIndex((s) => s.type === "appointment");
+    if (a >= 0) return a;
+    const e = stopRows.findIndex((s) => s.type === "end");
+    return e >= 0 ? e : stopRows.length - 1;
+  })();
+  const focalStop = stopRows[focalIdx];
+
+  const railLeg = (i: number): RailPairLeg => {
+    const from = stopRows[i];
+    const to = stopRows[i + 1];
+    return {
+      fromStopId: from.id,
+      toStopId: to.id,
+      fromName: placeName(from),
+      toName: placeName(to),
+      fromCode: one(from.transport_hub)?.code ?? null,
+      toCode: one(to.transport_hub)?.code ?? null,
+    };
+  };
+
+  let outbound: RailPairLeg | null = null;
+  let ret: RailPairLeg | null = null;
+  for (let i = 0; i < stopRows.length - 1; i++) {
+    const t = transByFrom.get(stopRows[i].id);
+    if (!t || t.mode !== "train" || !t.is_locked) continue;
+    if (!outbound && i + 1 <= focalIdx) {
+      outbound = { ...railLeg(i), arriveBy: focalStop?.start_time ?? null };
+    } else if (!ret && i >= focalIdx) {
+      ret = {
+        ...railLeg(i),
+        departAfter: focalStop?.end_time ?? focalStop?.start_time ?? null,
+      };
+    }
+  }
+
+  const railPair: RailPair | null =
+    outbound || ret
+      ? {
+          outbound,
+          return: ret,
+          outwardDate: (itinerary.date_start as string).slice(0, 10),
+          returnDate: ret ? (itinerary.date_start as string).slice(0, 10) : null,
+        }
+      : null;
+
+  const lastStop = stopRows[stopRows.length - 1];
+
   // ── contracts ───────────────────────────────────────────────────────────
   const summaryRes = await getItinerarySummary(itineraryId);
   const needsRes = await getTripNeeds(itineraryId);
@@ -399,6 +479,9 @@ export async function getPlanningViewData(
     },
     spine,
     needs: needsRes.ok ? needsRes.value : [],
+    railPair,
+    lastStopId: lastStop?.id ?? null,
+    lastStopLabel: lastStop ? placeName(lastStop) || "the last stop" : "the last stop",
     timezone: tz,
   };
 }

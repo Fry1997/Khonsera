@@ -57,5 +57,56 @@ export default async function ItineraryDetailPage({
   const data = await getPlanningViewData(id);
   if (!data) notFound();
 
-  return <PlanningView data={data} />;
+  // Picker data for the "+" add sheet (re-uses the preserved booking/import
+  // forms). Loaded here, dumb-passed to the client view.
+  const [
+    { data: customers },
+    { data: customerSites },
+    { data: locations },
+    { data: contacts },
+    { data: gmailConn },
+  ] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, name")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("name"),
+    supabase
+      .from("customer_sites")
+      .select("id, customer_id, name, address")
+      .eq("workspace_id", ctx.workspaceId),
+    supabase
+      .from("locations")
+      .select("id, name, type, address")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("type")
+      .order("name"),
+    supabase
+      .from("contacts")
+      .select("id, customer_id, name")
+      .eq("workspace_id", ctx.workspaceId),
+    supabase
+      .from("gmail_connections")
+      .select("id")
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("status", "active")
+      .maybeSingle(),
+  ]);
+
+  return (
+    <PlanningView
+      data={data}
+      pickers={{
+        customers: customers ?? [],
+        customerSites: customerSites ?? [],
+        locations: (locations ?? []) as never,
+        contacts: (contacts ?? []).filter(
+          (c): c is { id: string; customer_id: string; name: string } =>
+            c.customer_id != null,
+        ),
+        gmailConnected: !!gmailConn,
+      }}
+    />
+  );
 }
