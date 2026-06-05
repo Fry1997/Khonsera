@@ -20,6 +20,13 @@ import {
   type OutboundCandidate,
   type ReturnCandidate,
 } from "@/lib/planning/rail-candidates";
+import {
+  resolveAppointment,
+  type ArriveValue,
+  type DurationValue,
+  type LeaveValue,
+  type ResolvedAppointment,
+} from "@/lib/planning/appointment";
 import { dbResult, parseInput } from "./_helpers";
 import { resolveItineraryTimes } from "./itineraries";
 import { err, errors, ok, type Result } from "@/lib/errors";
@@ -68,6 +75,114 @@ export async function setTravelStrategy(
     await resolveItineraryTimes(parsed.value.itinerary_id);
   }
   return result;
+}
+
+// ── Appointment timing (three-variable model, P3) ────────────────────────────
+
+const arriveValueSchema = z.object({
+  time: z.string().datetime().nullable(),
+  kind: z.enum(["precise", "fuzzy", "range", "by", "derived", "unset"]),
+});
+const durationValueSchema = z.object({
+  minutes: z.number().int().min(0).max(24 * 60).nullable(),
+  kind: z.enum(["precise", "fuzzy", "maximise", "derived", "unset"]),
+});
+const leaveValueSchema = z.object({
+  time: z.string().datetime().nullable(),
+  kind: z.enum(["precise", "fuzzy", "by", "derived", "unset"]),
+});
+
+const setAppointmentTimingSchema = z.object({
+  stop_id: z.string().uuid(),
+  // Any subset — omitted values keep what's already on the stop, so the UI can
+  // set one field at a time and let the engine derive the rest.
+  arrive: arriveValueSchema.nullable().optional(),
+  duration: durationValueSchema.nullable().optional(),
+  leave: leaveValueSchema.nullable().optional(),
+  // Outer viable bounds for maximise mode, from the rail candidates + home-by.
+  bounds: z
+    .object({
+      earliestArrive: z.string().datetime().nullable().optional(),
+      latestLeave: z.string().datetime().nullable().optional(),
+    })
+    .optional(),
+});
+
+// Set any of arrive/duration/leave on an appointment stop. Merges with the
+// stop's existing value-objects, resolves the triple (deriving the third +
+// attribution source), persists the rich values, and projects them onto the
+// canonical start_time/end_time/duration_minutes/is_time_fixed the time solver
+// reads. Returns the resolved triple so the caller can render microcopy.
+export async function setAppointmentTiming(
+  input: z.input<typeof setAppointmentTimingSchema>,
+): Promise<Result<ResolvedAppointment>> {
+  const parsed = parseInput(setAppointmentTimingSchema, input);
+  if (!parsed.ok) return parsed;
+  const v = parsed.value;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: stop } = await supabase
+    .from("stops")
+    .select("id, itinerary_id, arrive_value, duration_value, leave_value")
+    .eq("id", v.stop_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!stop) return err(errors.notFound("stop"));
+
+  // Merge: a value passed in this call wins; otherwise keep the stored one.
+  const arrive = (v.arrive ??
+    (stop.arrive_value as ArriveValue | null) ??
+    undefined) as ArriveValue | undefined;
+  const duration = (v.duration ??
+    (stop.duration_value as DurationValue | null) ??
+    undefined) as DurationValue | undefined;
+  const leave = (v.leave ??
+    (stop.leave_value as LeaveValue | null) ??
+    undefined) as LeaveValue | undefined;
+
+  const resolved = resolveAppointment({
+    arrive,
+    duration,
+    leave,
+    bounds: v.bounds
+      ? {
+          earliestArrive: v.bounds.earliestArrive ?? null,
+          latestLeave: v.bounds.latestLeave ?? null,
+        }
+      : undefined,
+  });
+
+  // Project to the canonical solver fields. A precise/by arrival is a hard
+  // anchor; fuzzy/derived/maximise stays flexible so the solver can move it.
+  const isFixed =
+    resolved.arrive.time != null &&
+    (resolved.arrive.kind === "precise" || resolved.arrive.kind === "by");
+
+  const { error } = await supabase
+    .from("stops")
+    .update({
+      arrive_value: resolved.arrive,
+      duration_value: resolved.duration,
+      leave_value: resolved.leave,
+      start_time: resolved.arrive.time,
+      end_time: resolved.leave.time,
+      duration_minutes: resolved.duration.minutes,
+      is_time_fixed: isFixed,
+    })
+    .eq("id", v.stop_id)
+    .eq("workspace_id", ctx.workspaceId);
+  if (error) return dbResult<ResolvedAppointment>(null, error, "stop");
+
+  await recordAudit({
+    entityType: "stop",
+    entityId: v.stop_id,
+    action: "set_appointment_timing",
+    after: resolved,
+  });
+  await resolveItineraryTimes(stop.itinerary_id as string);
+  return ok(resolved);
 }
 
 // ── Rail candidates for a gap ────────────────────────────────────────────────

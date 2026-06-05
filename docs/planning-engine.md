@@ -1,4 +1,4 @@
-# Planning Engine — Phases 1 & 2
+# Planning Engine — Phases 1–3
 
 Last updated: 2026-06-05
 
@@ -130,3 +130,42 @@ the P1.2 buffers (board ~8 min early, `STATION_DWELL_MINUTES` ~5 each end).
 `createBookingIntent` accepts `paired_booking_id`; `linkPairedBookings(outbound, return)`
 cross-links two intents (each points at the other) after verifying both are in the
 workspace. `ON DELETE SET NULL` so dropping one leg doesn't cascade the other.
+
+---
+
+## Phase 3 — Three-variable appointment
+
+`stops` never had a `timing_mode` enum (the brief named a model that didn't exist
+here); appointment timing lived in `is_time_fixed`/`start_time`/`end_time`/
+`duration_minutes`. Phase 3 **adds** the richer three-value model as the intent
+layer and projects it down onto those canonical fields, so the existing solver
+and UI keep working unchanged. Migration `0032_appointment_value_objects.sql`
+adds nullable jsonb `arrive_value` / `duration_value` / `leave_value` to `stops`
+— committed, **not yet applied** to the remote project.
+
+### `planning/appointment.ts`
+
+`resolveAppointment(input)` is the pure core. Any two of {arrive, duration, leave}
+determine the third; the *mode emerges* from what's set rather than being picked:
+
+- arrive + duration → **fixed** (leave derived)
+- arrive + leave → **window** (duration derived)
+- `duration.kind === "maximise"` → **maximise** (arrive/leave pulled to the
+  `bounds.earliestArrive` / `bounds.latestLeave` outer train candidates; duration
+  is the consequence)
+- fewer than two set → **partial** (derive nothing)
+- over-constrained (all three) → arrive + duration win, leave recomputed
+
+Each resolved value carries a `source` (`user_set`, `outbound_train`, `home_by`,
+`derived_from_duration`, `derived_from_window`, `maximise`, …) — the attribution
+the UI needs. `appointmentMicrocopy` renders the per-mode voice line ("2h from
+14:00. Leave by 16:00.", "Stay as long as you need — leave by 14:21 to make the
+15:08.") and `arriveAttribution` the "Arriving 09:19 — set by your 07:13 train."
+line. Both are pure (timezone passed in).
+
+Server action `setAppointmentTiming` (`actions/planning.ts`) merges the passed
+value(s) with the stop's stored ones, resolves the triple, persists the three
+jsonb columns, and **projects** onto the canonical fields: `start_time` =
+arrive, `end_time` = leave, `duration_minutes` = duration, `is_time_fixed` = true
+only for a precise/by arrival (fuzzy/derived/maximise stays flexible so the solver
+can move it). Then it re-solves itinerary times.

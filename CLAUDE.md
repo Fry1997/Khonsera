@@ -124,6 +124,18 @@ new planning view will call them via `getPlanningViewData`):
 - Migration `0031_travel_strategy_and_pairing.sql` (travel_strategy + paired_booking_id)
   — committed but NOT yet applied to the remote Supabase project.
 
+### Planning engine — Phase 3 (three-variable appointment; see `docs/planning-engine.md`)
+- `appointment.ts` — `resolveAppointment` resolves any two of {arrive, duration,
+  leave} → the third; mode (fixed/window/maximise/partial) EMERGES from what's set.
+  Each value carries a `source` for attribution. `appointmentMicrocopy` +
+  `arriveAttribution` render the voice lines ("set by your 07:13 train"). Pure, tz in.
+- Server action `setAppointmentTiming` (actions/planning.ts) merges + resolves +
+  persists the three jsonb columns AND projects onto canonical
+  start_time/end_time/duration_minutes/is_time_fixed (the solver's fields).
+  `stops` had no `timing_mode` to replace — this is purely additive.
+- Migration `0032_appointment_value_objects.sql` (stops.arrive_value/duration_value/
+  leave_value jsonb) — committed but NOT yet applied to the remote Supabase project.
+
 ## Design Principles
 
 ### One Toolkit, Two Views

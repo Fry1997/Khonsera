@@ -1702,9 +1702,12 @@ export type Database = {
       stops: {
         Row: {
           arrival_buffer_minutes: number | null
+          arrive_value: Json | null
           captured_input_id: string | null
           commitment: string
           commitment_state: Database["public"]["Enums"]["fact_commitment_state"]
+          duration_value: Json | null
+          leave_value: Json | null
           confidence: Database["public"]["Enums"]["fact_confidence"]
           contact_id: string | null
           created_at: string
@@ -1735,12 +1738,15 @@ export type Database = {
         }
         Insert: {
           arrival_buffer_minutes?: number | null
+          arrive_value?: Json | null
           captured_input_id?: string | null
           commitment?: string
           commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
           confidence?: Database["public"]["Enums"]["fact_confidence"]
           contact_id?: string | null
           created_at?: string
+          duration_value?: Json | null
+          leave_value?: Json | null
           customer_id?: string | null
           customer_site_id?: string | null
           duration_minutes?: number | null
@@ -1768,6 +1774,7 @@ export type Database = {
         }
         Update: {
           arrival_buffer_minutes?: number | null
+          arrive_value?: Json | null
           captured_input_id?: string | null
           commitment?: string
           commitment_state?: Database["public"]["Enums"]["fact_commitment_state"]
@@ -1775,6 +1782,8 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           customer_id?: string | null
+          duration_value?: Json | null
+          leave_value?: Json | null
           customer_site_id?: string | null
           duration_minutes?: number | null
           end_time?: string | null
