@@ -93,6 +93,24 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
   `contact_id` onto the event anchor → `anchorInputSchema.contact_id` → `stops.contact_id`
   (event/meal/call anchors only).
 
+### Planning engine — Phase 1 foundation (see `docs/planning-engine.md`)
+The four load-bearing prerequisites from the planning-view wiring brief, as pure
+unit-tested modules in `src/lib/planning/` (decoupled from the live editor — the
+new planning view will call them via `getPlanningViewData`):
+- `buffers.ts` — mode-specific connection buffers (train ~8, flight ~90, flexible 0),
+  replacing the flat 10-min assumption. `feasibility/check.ts` takes an optional
+  `boardingMode` to derive the slack target; existing callers (no mode) unchanged.
+- `door-to-door.ts` — composes first-mile + main + last-mile into one total and
+  ranks on **speed** (not cost-first like `ranking.ts`), per the brief.
+- `exclusions.ts` — hard-filter pass (journey `excluded_modes`, taxi fare cap,
+  walk threshold) + `readStandingConstraints` (home_by/wake_after). `preferred_mode`
+  is a ranking hint, NOT a filter.
+- `insert.ts` + `createStopAtTime` (actions/stops.ts) — insert-fact-by-time:
+  slot by `start_time`, scoped recompute of the two adjacent transitions. Does NOT
+  pre-commit a default mode on the new gaps (mode picker owns that).
+- Migration `0030_itinerary_excluded_modes.sql` adds `itineraries.excluded_modes`
+  — committed but NOT yet applied to the remote Supabase project.
+
 ## Design Principles
 
 ### One Toolkit, Two Views

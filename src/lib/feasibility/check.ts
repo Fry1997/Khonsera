@@ -15,6 +15,9 @@
 // for converting their native time representations (ISO strings,
 // anchor date+time pairs, etc.) into Date objects before calling.
 
+import type { TransitionMode } from "@/lib/types/domain";
+import { boardingBufferMinutes } from "@/lib/planning/buffers";
+
 export type Feasibility =
   | { state: "ok" }
   | { state: "tight"; slackMinutes: number; message: string }
@@ -25,13 +28,22 @@ export type FeasibilityInput = {
   fromEnd: Date | null;
   toStart: Date | null;
   travelMinutes: number | null;
-  // Below this many minutes of slack we flag 'tight'. Defaults to 10
-  // — matches the editor's previous in-line hard-coded value.
+  // Below this many minutes of slack we flag 'tight'. Explicit value wins.
+  // When omitted, the buffer is mode-derived if `boardingMode` is given
+  // (P1.2 — a flight wants ~90, a train ~8, a drive ~0), otherwise it falls
+  // back to the legacy flat 10 the editor used to hard-code inline.
   bufferMinutes?: number;
+  // The mode of the service being caught at `toStart`. Lets the slack target
+  // scale with what you're connecting into instead of one flat number.
+  boardingMode?: TransitionMode;
 };
 
 export function checkLegFeasibility(input: FeasibilityInput): Feasibility {
-  const buffer = input.bufferMinutes ?? 10;
+  const buffer =
+    input.bufferMinutes ??
+    (input.boardingMode != null
+      ? boardingBufferMinutes(input.boardingMode)
+      : 10);
   if (!input.fromEnd || !input.toStart || input.travelMinutes == null) {
     return { state: "unknown" };
   }

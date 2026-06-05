@@ -87,4 +87,31 @@ describe("checkLegFeasibility", () => {
     });
     expect(ok.state).toBe("ok");
   });
+
+  it("derives the buffer from the mode being caught (P1.2)", () => {
+    // 60 min travel into a 75 min gap → 15 min slack. Catching a train
+    // (boarding buffer ~8) is comfortable; catching a flight (~90) is late.
+    const base = {
+      fromEnd: t("2026-01-01T09:00"),
+      toStart: t("2026-01-01T10:15"),
+      travelMinutes: 60,
+    } as const;
+    expect(checkLegFeasibility({ ...base, boardingMode: "train" }).state).toBe(
+      "ok",
+    );
+    expect(checkLegFeasibility({ ...base, boardingMode: "flight" }).state).toBe(
+      "tight",
+    );
+  });
+
+  it("an explicit bufferMinutes still wins over boardingMode", () => {
+    const res = checkLegFeasibility({
+      fromEnd: t("2026-01-01T09:00"),
+      toStart: t("2026-01-01T10:15"),
+      travelMinutes: 60,
+      boardingMode: "flight",
+      bufferMinutes: 5,
+    });
+    expect(res.state).toBe("ok");
+  });
 });

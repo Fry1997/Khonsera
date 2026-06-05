@@ -866,6 +866,7 @@ export type Database = {
           created_at: string
           date_end: string
           date_start: string
+          excluded_modes: string[]
           id: string
           luggage_for_trip: string | null
           notes: string | null
@@ -880,6 +881,7 @@ export type Database = {
           created_at?: string
           date_end: string
           date_start: string
+          excluded_modes?: string[]
           id?: string
           luggage_for_trip?: string | null
           notes?: string | null
@@ -894,6 +896,7 @@ export type Database = {
           created_at?: string
           date_end?: string
           date_start?: string
+          excluded_modes?: string[]
           id?: string
           luggage_for_trip?: string | null
           notes?: string | null

@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
 import { err, errors, ok, type Result } from "@/lib/errors";
 import { resolveItineraryTimes } from "./itineraries";
+import { planInsertionByTime } from "@/lib/planning/insert";
 import type { StopType } from "@/lib/types/domain";
 
 const stopTypeEnum = z.enum([
@@ -239,6 +240,112 @@ export async function insertStopAt(
     });
     await resolveItineraryTimes(result.value.itinerary_id);
   }
+  return result;
+}
+
+// createStopAtTime — insert-fact-by-time (P1.3). Where `createStop` appends
+// at max(sequence)+1 and `insertStopAt` takes an explicit slot, this places a
+// fact by *when it happens*: it finds the time-ordered position from the
+// stop's start_time, shifts later stops up by one, and scopes the recompute to
+// the two adjacent transitions whose adjacency just changed.
+//
+// The bridging transition between the new stop's two neighbours (e.g. home →
+// appointment) is now spurious — the chain runs through the inserted fact — so
+// we drop it, mirroring insertTransitLeg. We deliberately do NOT auto-create
+// the two new adjacent transitions with a default mode: the brief is explicit
+// that gaps stay open for the equal-weight mode picker rather than
+// pre-committing a mode. The time solver runs after so downstream times move.
+const createStopAtTimeSchema = z.object({
+  itinerary_id: z.string().uuid(),
+  ...baseStopFields,
+  // start_time is what we slot by, so it's required here (unlike the base).
+  start_time: z.string().datetime(),
+});
+
+export async function createStopAtTime(
+  input: z.input<typeof createStopAtTimeSchema>,
+): Promise<Result<Stop>> {
+  const parsed = parseInput(createStopAtTimeSchema, input);
+  if (!parsed.ok) return parsed;
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: itin } = await supabase
+    .from("itineraries")
+    .select("id")
+    .eq("id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!itin) return err(errors.notFound("itinerary"));
+
+  const { data: existing } = await supabase
+    .from("stops")
+    .select("id, sequence, start_time")
+    .eq("itinerary_id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .order("sequence");
+
+  const plan = planInsertionByTime(
+    (existing ?? []).map((s) => ({
+      id: s.id as string,
+      sequence: s.sequence as number,
+      start_time: (s.start_time as string | null) ?? null,
+    })),
+    parsed.value.start_time,
+  );
+
+  // Open the slot: bump every stop at sequence >= target up by one. Highest
+  // first so the writes don't transiently collide on the sequence space.
+  const { data: shiftRows } = await supabase
+    .from("stops")
+    .select("id, sequence")
+    .eq("itinerary_id", parsed.value.itinerary_id)
+    .eq("workspace_id", ctx.workspaceId)
+    .gte("sequence", plan.sequence)
+    .order("sequence", { ascending: false });
+  for (const r of shiftRows ?? []) {
+    await supabase
+      .from("stops")
+      .update({ sequence: (r.sequence as number) + 1 })
+      .eq("id", r.id as string)
+      .eq("workspace_id", ctx.workspaceId);
+  }
+
+  const { itinerary_id, ...fields } = parsed.value;
+  const { data, error } = await supabase
+    .from("stops")
+    .insert({
+      itinerary_id,
+      workspace_id: ctx.workspaceId,
+      sequence: plan.sequence,
+      ...fields,
+    })
+    .select("*")
+    .single();
+  const result = dbResult<Stop>(data, error, "stop");
+  if (!result.ok) return result;
+
+  // Scoped recompute: the direct transition that used to bridge the two
+  // neighbours now skips the inserted fact. Drop it so the editor doesn't draw
+  // a phantom leg through the new stop.
+  if (plan.beforeStopId && plan.afterStopId) {
+    await supabase
+      .from("transitions")
+      .delete()
+      .eq("itinerary_id", itinerary_id)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("from_stop_id", plan.beforeStopId)
+      .eq("to_stop_id", plan.afterStopId);
+  }
+
+  await recordAudit({
+    entityType: "stop",
+    entityId: result.value.id,
+    action: "create",
+    after: result.value,
+  });
+  await resolveItineraryTimes(result.value.itinerary_id);
   return result;
 }
 
