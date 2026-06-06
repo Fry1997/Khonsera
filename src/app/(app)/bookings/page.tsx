@@ -88,7 +88,7 @@ export default async function BookingsPage({
     .from("itineraries")
     .select("id")
     .eq("workspace_id", ctx.workspaceId)
-    .in("status", ["draft", "planning", "planned", "in_progress"])
+    .in("status", ["planning", "planned", "in_progress"])
     .order("date_start", { ascending: false })
     .limit(1)
     .maybeSingle();

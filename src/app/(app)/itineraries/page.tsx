@@ -50,8 +50,10 @@ export default async function ItinerariesPage() {
     .order("date_start", { ascending: true })
     .limit(200);
 
+  // 'draft' = an uncommitted "New itinerary" the user hasn't touched yet —
+  // hidden until their first change promotes it to 'planning'.
   const rows = ((data ?? []) as Row[]).filter(
-    (r) => r.status !== "cancelled",
+    (r) => r.status !== "cancelled" && r.status !== "draft",
   );
 
   // Pull stops counts in one query so cards can show "n stops" without N+1.

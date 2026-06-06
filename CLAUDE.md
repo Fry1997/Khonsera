@@ -257,11 +257,27 @@ The TransportHubPicker debounce is 350ms (not 200ms). The 11k+ hub table with il
 
 > **DORMANT (2026-06-06).** "New itinerary" no longer opens the brief. Every
 > "New itinerary/trip" button is now `<NewItineraryButton>` (a form posting to
-> the `createDraftItinerary` server action), which creates a blank trip dated
-> today and redirects straight to the planning view (`/itineraries/[id]`). The
-> brief page still exists at `/itineraries/new` but nothing links to it — kept
-> for reference / possible reuse, not deleted. Use a server action + redirect
-> (not a side-effecting GET page) so Link prefetch can't spawn phantom trips.
+> the `createDraftItinerary` server action), which creates an UNCOMMITTED trip
+> and redirects straight to the planning view (`/itineraries/[id]`). The brief
+> page still exists at `/itineraries/new` but nothing links to it — kept for
+> reference / possible reuse, not deleted. Use a server action + redirect (not a
+> side-effecting GET page) so Link prefetch can't spawn phantom trips.
+>
+> **Uncommitted-draft model:** `createDraftItinerary` makes the trip `status =
+> 'draft'` dated **tomorrow** (planning is for the future), and first sweeps the
+> user's earlier untouched drafts (abandoned ones cascade away). `'draft'` is
+> hidden from EVERY trip list (itineraries list, dashboard count/lists/calendar,
+> bookings redirect). The trip is promoted to `'planning'` (and appears in lists)
+> on the user's FIRST content change: `resolveItineraryTimes` (called after every
+> stop/transition/appointment/strategy edit) and `updateItinerary` (date/title
+> edit) both flip `draft → planning`. Home-stop seeding in `[id]/page.tsx` is a
+> direct insert (no `resolveItineraryTimes`), so it does NOT promote. Net: "New
+> itinerary → touch nothing → back out" leaves nothing in any list.
+>
+> **Editable dates:** the planning TripHeader date is tappable (`HeaderDates`) →
+> start/end `<input type=date>` → `updateItinerary` (which also promotes the
+> draft). `planning-data` exposes `header.dateLabel` + `header.routeLabel` split
+> so the date can be edited without the route text.
 
 ### Layout (top to bottom)
 1. Base location card (home/office, with address)

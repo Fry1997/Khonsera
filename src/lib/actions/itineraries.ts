@@ -81,23 +81,40 @@ export async function createItinerary(
   return result;
 }
 
-// createDraftItinerary — make a blank trip dated today and drop the user
-// straight into the planning view. This is the "New itinerary" entry point:
-// we skip the brief/"Build my day" form entirely and let the user build the
-// day in planning (the planning page seeds the home stop from their travel
-// profile). Used as a form action so the insert happens on click, not on a
-// prefetch of a side-effecting GET page.
+// createDraftItinerary — make an UNCOMMITTED trip and drop the user straight
+// into the planning view. This is the "New itinerary" entry point: we skip the
+// brief/"Build my day" form and let the user build the day in planning.
+//
+// "Uncommitted" = status 'draft', which is hidden from every trip list. The
+// trip only becomes a real 'planning' trip (and appears in lists) on the user's
+// first content change — editing the date, adding a stop, picking a mode, etc.
+// (see resolveItineraryTimes + updateItinerary). So "New itinerary → back out,
+// touch nothing" leaves nothing behind. Default date is TOMORROW — planning is
+// for the future; today defeats the point.
+//
+// A form action so the insert happens on click, not on a Link prefetch of a
+// side-effecting GET page.
 export async function createDraftItinerary(): Promise<void> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
   const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
 
-  const today = new Intl.DateTimeFormat("en-CA", {
+  // Sweep this user's earlier untouched drafts so they don't accumulate. A
+  // draft that was actually edited has already been promoted to 'planning', so
+  // this only ever removes abandoned ones. Stops/transitions cascade.
+  await supabase
+    .from("itineraries")
+    .delete()
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("user_id", ctx.userId)
+    .eq("status", "draft");
+
+  const tomorrow = new Intl.DateTimeFormat("en-CA", {
     timeZone: wsCfg.timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
   const { data, error } = await supabase
     .from("itineraries")
@@ -105,8 +122,9 @@ export async function createDraftItinerary(): Promise<void> {
       workspace_id: ctx.workspaceId,
       user_id: ctx.userId,
       title: null,
-      date_start: today,
-      date_end: today,
+      status: "draft",
+      date_start: tomorrow,
+      date_end: tomorrow,
     })
     .select("id")
     .single();
@@ -141,9 +159,16 @@ export async function updateItinerary(
     .maybeSingle();
 
   const { id, ...patch } = parsed.value;
+  // Editing the date (or title) of an uncommitted trip commits it: promote the
+  // 'draft' to 'planning' so it appears in the lists. This is the user's "first
+  // change" the planning flow waits for.
+  const promote =
+    (before as { status?: ItineraryStatus } | null)?.status === "draft"
+      ? { status: "planning" as const }
+      : {};
   const { data, error } = await supabase
     .from("itineraries")
-    .update(patch)
+    .update({ ...patch, ...promote })
     .eq("id", id)
     .eq("workspace_id", ctx.workspaceId)
     .select("*")
@@ -1689,6 +1714,16 @@ export async function resolveItineraryTimes(
   if (notifications.length > 0) {
     await supabase.from("notification_rules").insert(notifications);
   }
+
+  // First content change commits an uncommitted trip: a 'draft' (from "New
+  // itinerary") becomes a real 'planning' trip and starts appearing in lists.
+  // No-op for trips that are already planning/planned/etc.
+  await supabase
+    .from("itineraries")
+    .update({ status: "planning" })
+    .eq("id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("status", "draft");
 
   return ok({
     itinerary_id: itineraryId,

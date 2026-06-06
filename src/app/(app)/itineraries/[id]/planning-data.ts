@@ -111,6 +111,8 @@ export type PlanningViewData = {
   header: {
     title: string;
     subtitle: string;
+    dateLabel: string;
+    routeLabel: string | null;
     summaryLine: string;
     costBreakdown: CostLine[];
   };
@@ -481,8 +483,12 @@ export async function getPlanningViewData(
   const lastStop = stopRows[stopRows.length - 1];
 
   // ── contracts ───────────────────────────────────────────────────────────
-  const summaryRes = await getItinerarySummary(itineraryId);
-  const needsRes = await getTripNeeds(itineraryId);
+  // Run the two aggregates in parallel — they're independent and each makes
+  // its own round trips, so serialising them was a needless chunk of the load.
+  const [summaryRes, needsRes] = await Promise.all([
+    getItinerarySummary(itineraryId),
+    getTripNeeds(itineraryId),
+  ]);
   const summary = summaryRes.ok
     ? summaryRes.value
     : {
@@ -505,12 +511,12 @@ export async function getPlanningViewData(
   const focal =
     stopRows.find((s) => s.type === "appointment") ??
     stopRows.find((s) => s.type === "end");
-  const subtitleBits = [
-    fmtDateShort(itinerary.date_start, tz),
+  const dateLabel = fmtDateShort(itinerary.date_start, tz);
+  const routeLabel =
     firstPlace && focal && placeName(firstPlace) && placeName(focal)
       ? `${placeName(firstPlace)} → ${placeName(focal)}`
-      : null,
-  ].filter(Boolean);
+      : null;
+  const subtitleBits = [dateLabel, routeLabel].filter(Boolean);
 
   const statusKey = itinerary.status as string;
   const current = LIFECYCLE_LABEL[statusKey] ?? "Planning";
@@ -534,6 +540,8 @@ export async function getPlanningViewData(
     header: {
       title: (itinerary.title as string | null) ?? "Untitled trip",
       subtitle: subtitleBits.join(" · "),
+      dateLabel,
+      routeLabel,
       summaryLine: summaryBits.join(" · "),
       costBreakdown: summary.costBreakdown,
     },

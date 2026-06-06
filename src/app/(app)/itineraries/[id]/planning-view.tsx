@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { setTravelStrategy, setAppointmentTiming } from "@/lib/actions/planning";
+import { updateItinerary } from "@/lib/actions/itineraries";
 import { AddSheet, type Pickers } from "./planning-add-sheet";
 import { PairedRailCard } from "./paired-rail-card";
 import { TrainTicketCard } from "@/components/train-ticket-card";
@@ -93,6 +94,11 @@ function usePlanningActions(itineraryId: string) {
         }),
       );
     },
+    setDates(start: string, end: string) {
+      run(() =>
+        updateItinerary({ id: itineraryId, date_start: start, date_end: end }),
+      );
+    },
   };
 }
 
@@ -155,14 +161,69 @@ function LifecycleBand({ current, canOverride }: PlanningViewData["lifecycle"]) 
   );
 }
 
-function TripHeader({ header, onAdd }: { header: PlanningViewData["header"]; onAdd: () => void }) {
+// Editable trip dates. The date label reads as plain subtitle text but is
+// tappable; tapping reveals start/end date inputs. Saving (or editing the date
+// of a fresh trip) is the "first change" that commits a draft into the lists.
+function HeaderDates({
+  header,
+  dateStart,
+  dateEnd,
+  onSetDates,
+  pending,
+}: {
+  header: PlanningViewData["header"];
+  dateStart: string;
+  dateEnd: string;
+  onSetDates: (start: string, end: string) => void;
+  pending: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [start, setStart] = useState(dateStart);
+  const [end, setEnd] = useState(dateEnd);
+
+  if (editing) {
+    const inputStyle: CSSProperties = { ...mono, fontSize: 12, padding: "5px 8px", borderRadius: 5, border: "1px solid var(--rule-2)", background: "var(--card)", color: "var(--ink)" };
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 8, flexWrap: "wrap" }}>
+        <input type="date" value={start} style={inputStyle} onChange={(e) => { setStart(e.target.value); if (end < e.target.value) setEnd(e.target.value); }} />
+        <span style={{ color: "var(--ink-faint)" }}>→</span>
+        <input type="date" value={end} min={start} style={inputStyle} onChange={(e) => setEnd(e.target.value)} />
+        <button disabled={pending} onClick={() => { onSetDates(start, end || start); setEditing(false); }} style={{ padding: "5px 12px", borderRadius: 5, border: "none", background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--sans)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>Save</button>
+        <button onClick={() => { setStart(dateStart); setEnd(dateEnd); setEditing(false); }} style={{ padding: "5px 8px", background: "transparent", border: "none", color: "var(--ink-dim)", fontFamily: "var(--sans)", fontSize: 12, cursor: "pointer" }}>Cancel</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...mono, fontSize: 11, color: "var(--ink-dim)", marginTop: 7, letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 6 }}>
+      <button onClick={() => setEditing(true)} title="Change dates" style={{ ...mono, fontSize: 11, letterSpacing: "0.04em", color: "var(--gold-2)", background: "transparent", border: "none", borderBottom: "1px dotted var(--gold)", padding: "0 0 1px", cursor: "pointer" }}>{header.dateLabel}</button>
+      {header.routeLabel && <span>· {header.routeLabel}</span>}
+    </div>
+  );
+}
+
+function TripHeader({
+  header,
+  dateStart,
+  dateEnd,
+  onAdd,
+  onSetDates,
+  pending,
+}: {
+  header: PlanningViewData["header"];
+  dateStart: string;
+  dateEnd: string;
+  onAdd: () => void;
+  onSetDates: (start: string, end: string) => void;
+  pending: boolean;
+}) {
   const [exp, setExp] = useState(false);
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <h1 style={{ fontFamily: "var(--display)", fontSize: 30, fontWeight: 500, letterSpacing: "-0.025em", color: "var(--ink)", margin: 0, lineHeight: 1.06 }}>{header.title}</h1>
-          {header.subtitle && <div style={{ ...mono, fontSize: 11, color: "var(--ink-dim)", marginTop: 7, letterSpacing: "0.04em" }}>{header.subtitle}</div>}
+          <HeaderDates header={header} dateStart={dateStart} dateEnd={dateEnd} onSetDates={onSetDates} pending={pending} />
         </div>
         <button title="Add to this trip" onClick={onAdd} style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: "var(--ink)", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
           <Plus size={18} color="var(--paper)" />
@@ -379,7 +440,16 @@ export function PlanningView({ data, pickers }: { data: PlanningViewData; picker
         <a href="/itineraries" style={{ ...mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-dim)", textDecoration: "none" }}>← All trips</a>
 
         <div style={{ marginTop: 14 }}><LifecycleBand {...data.lifecycle} /></div>
-        <div style={{ marginTop: 16 }}><TripHeader header={data.header} onAdd={() => setAddOpen(true)} /></div>
+        <div style={{ marginTop: 16 }}>
+          <TripHeader
+            header={data.header}
+            dateStart={data.itinerary.dateStart}
+            dateEnd={data.itinerary.dateEnd}
+            onAdd={() => setAddOpen(true)}
+            onSetDates={actions.setDates}
+            pending={actions.pending}
+          />
+        </div>
 
         {actions.error && (
           <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, background: "var(--rust-2)", color: "var(--rust)", fontFamily: "var(--sans)", fontSize: 12 }}>{actions.error}</div>

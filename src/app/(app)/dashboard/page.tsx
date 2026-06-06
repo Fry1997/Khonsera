@@ -64,7 +64,7 @@ export default async function DashboardPage() {
       .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
-      .in("status", ["draft", "planning"]),
+      .eq("status", "planning"),
     supabase
       .from("itineraries")
       .select("id", { count: "exact", head: true })
@@ -80,13 +80,14 @@ export default async function DashboardPage() {
       .select("id, title, status, date_start, date_end")
       .eq("workspace_id", ctx.workspaceId)
       .gte("date_end", today)
-      .in("status", ["draft", "planning", "planned", "in_progress"])
+      .in("status", ["planning", "planned", "in_progress"])
       .order("date_start")
       .limit(6),
     supabase
       .from("itineraries")
       .select("id, title, status, date_start")
       .eq("workspace_id", ctx.workspaceId)
+      .neq("status", "draft")
       .order("created_at", { ascending: false })
       .limit(5),
     supabase

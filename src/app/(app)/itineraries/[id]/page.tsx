@@ -54,18 +54,20 @@ export default async function ItineraryDetailPage({
     }
   }
 
-  const data = await getPlanningViewData(id);
-  if (!data) notFound();
-
-  // Picker data for the "+" add sheet (re-uses the preserved booking/import
-  // forms). Loaded here, dumb-passed to the client view.
+  // Compose the view model and load the "+" add-sheet picker data in parallel —
+  // they're independent, so there's no reason to serialise them on load.
   const [
-    { data: customers },
-    { data: customerSites },
-    { data: locations },
-    { data: contacts },
-    { data: gmailConn },
+    data,
+    [
+      { data: customers },
+      { data: customerSites },
+      { data: locations },
+      { data: contacts },
+      { data: gmailConn },
+    ],
   ] = await Promise.all([
+    getPlanningViewData(id),
+    Promise.all([
     supabase
       .from("customers")
       .select("id, name")
@@ -92,7 +94,10 @@ export default async function ItineraryDetailPage({
       .eq("workspace_id", ctx.workspaceId)
       .eq("status", "active")
       .maybeSingle(),
+    ]),
   ]);
+
+  if (!data) notFound();
 
   return (
     <PlanningView
