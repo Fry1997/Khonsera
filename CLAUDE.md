@@ -255,6 +255,14 @@ The TransportHubPicker debounce is 350ms (not 200ms). The 11k+ hub table with il
 
 ## Brief Page Structure (`/itineraries/new`)
 
+> **DORMANT (2026-06-06).** "New itinerary" no longer opens the brief. Every
+> "New itinerary/trip" button is now `<NewItineraryButton>` (a form posting to
+> the `createDraftItinerary` server action), which creates a blank trip dated
+> today and redirects straight to the planning view (`/itineraries/[id]`). The
+> brief page still exists at `/itineraries/new` but nothing links to it — kept
+> for reference / possible reuse, not deleted. Use a server action + redirect
+> (not a side-effecting GET page) so Link prefetch can't spawn phantom trips.
+
 ### Layout (top to bottom)
 1. Base location card (home/office, with address)
 2. Trip dates (start/end — defaults booking dates)

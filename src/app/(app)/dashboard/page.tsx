@@ -5,6 +5,7 @@ import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
 import { WeekCalendar } from "@/components/week-calendar";
+import { NewItineraryButton } from "@/components/new-itinerary-button";
 import type { ItineraryStatus } from "@/lib/types/domain";
 
 const STATUS_LABEL: Record<ItineraryStatus, string> = {
@@ -188,9 +189,9 @@ export default async function DashboardPage() {
             <Glyph d="M3 9 a2 2 0 0 1 2-2 h14 a2 2 0 0 1 2 2 v2 a2 2 0 0 0 0 2 v2 a2 2 0 0 1-2 2 H5 a2 2 0 0 1-2-2 v-2 a2 2 0 0 0 0-2 z M9 7 v10" />{" "}
             Bookings
           </Link>
-          <Link href={"/itineraries/new" as Route} className="btn btn-gold">
+          <NewItineraryButton className="btn btn-gold">
             <Plus /> New trip
-          </Link>
+          </NewItineraryButton>
         </div>
       </header>
 
@@ -754,12 +755,9 @@ function EmptyHero() {
           Nothing is queued. Start one and Khonsera will build it backwards
           from your appointment — rail vs drive, doors, hotels and all.
         </p>
-        <Link
-          href={"/itineraries/new" as Route}
-          className="btn btn-gold btn-lg"
-        >
+        <NewItineraryButton className="btn btn-gold btn-lg">
           <Plus /> New itinerary
-        </Link>
+        </NewItineraryButton>
       </div>
     </section>
   );

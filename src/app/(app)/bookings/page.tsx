@@ -1,9 +1,9 @@
 import Link from "next/link";
-import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { BookingsFilter } from "./bookings-filter";
+import { NewItineraryButton } from "@/components/new-itinerary-button";
 
 type SegmentRow = {
   id: string;
@@ -144,12 +144,9 @@ export default async function BookingsPage({
               <Plus /> New booking
             </Link>
           ) : (
-            <Link
-              href={"/itineraries/new" as Route}
-              className="btn btn-gold"
-            >
+            <NewItineraryButton className="btn btn-gold">
               <Plus /> Start an itinerary
-            </Link>
+            </NewItineraryButton>
           )}
         </div>
       </header>

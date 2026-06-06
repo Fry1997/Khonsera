@@ -1,9 +1,11 @@
 "use server";
 
 import { z } from "zod";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
+import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { dbResult, parseInput } from "./_helpers";
 import { transitionItinerary } from "@/lib/state/transitions";
 import { solveTimes } from "@/lib/itinerary/solver";
@@ -77,6 +79,49 @@ export async function createItinerary(
     });
   }
   return result;
+}
+
+// createDraftItinerary — make a blank trip dated today and drop the user
+// straight into the planning view. This is the "New itinerary" entry point:
+// we skip the brief/"Build my day" form entirely and let the user build the
+// day in planning (the planning page seeds the home stop from their travel
+// profile). Used as a form action so the insert happens on click, not on a
+// prefetch of a side-effecting GET page.
+export async function createDraftItinerary(): Promise<void> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: wsCfg.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const { data, error } = await supabase
+    .from("itineraries")
+    .insert({
+      workspace_id: ctx.workspaceId,
+      user_id: ctx.userId,
+      title: null,
+      date_start: today,
+      date_end: today,
+    })
+    .select("id")
+    .single();
+
+  // On failure, fall back to the trips list rather than a dead end.
+  if (error || !data) redirect("/itineraries");
+
+  await recordAudit({
+    entityType: "itinerary",
+    entityId: data.id,
+    action: "create",
+    after: { id: data.id },
+  });
+
+  redirect(`/itineraries/${data.id}`);
 }
 
 export async function updateItinerary(

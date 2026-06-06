@@ -1,11 +1,11 @@
 import Link from "next/link";
-import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
 import type { ItineraryStatus } from "@/lib/types/domain";
 import { DeleteItineraryButton } from "@/components/delete-itinerary-button";
+import { NewItineraryButton } from "@/components/new-itinerary-button";
 
 type Row = {
   id: string;
@@ -121,9 +121,9 @@ export default async function ItinerariesPage() {
             between them. Live trips sit on top, then upcoming, then past.
           </p>
         </div>
-        <Link href={"/itineraries/new" as Route} className="btn btn-gold">
+        <NewItineraryButton className="btn btn-gold">
           <Plus /> New itinerary
-        </Link>
+        </NewItineraryButton>
       </header>
 
       {feed.length === 0 ? (
@@ -138,12 +138,9 @@ export default async function ItinerariesPage() {
           >
             No trips yet — the calendar is yours.
           </p>
-          <Link
-            href={"/itineraries/new" as Route}
-            className="btn btn-gold btn-lg"
-          >
+          <NewItineraryButton className="btn btn-gold btn-lg">
             Start your first one
-          </Link>
+          </NewItineraryButton>
         </div>
       ) : (
         <Feed rows={feed} liveIds={new Set(live.map((r) => r.id))}
