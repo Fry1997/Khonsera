@@ -165,6 +165,19 @@ The new planning view **replaced `itinerary-editor.tsx`** at `/itineraries/[id]`
   `gmail-import-panel`. Picker data (customers/sites/locations/contacts + gmail
   status) is loaded in `page.tsx` and passed as `pickers`. Keep these four form
   files — they ARE the booking/Gmail-import UI, now mounted here.
+- Parity restored (don't re-strip): booked train legs render the shared
+  `components/train-ticket-card.tsx` (`TrainTicketCard`) with stations, ticket
+  type, route, operator, price, Aztec barcode (`/api/barcode`) — `planning-data`
+  builds its `TicketSegment` from the departure stop's `metadata`. Cost in the
+  summary sums `expense_records` AND `stops.metadata.price` (Gmail-imported fares
+  live there). Distance falls back to `polylineMiles(overview_polyline)` (decoded
+  via journey-map's `decodePolyline` + `haversineMeters`) since rail legs carry no
+  `distance_miles`. Appointment times fall back to `start_time`/`end_time` +
+  legacy `metadata.timing_mode` ('maximize') when the Phase-3 value-objects are
+  null. Mode pickers are equal-weight inline chips (not collapsed). `getTripNeeds`
+  treats a leg as booked when its departure stop has a `booking_reference`/
+  `barcode_ref` (and dedupes a changeover journey to one need), and an appointment
+  as timed when it has `end_time` or `timing_mode`.
 - `paired-rail-card.tsx` (`PairedRailCard`) — wires `getRailCandidatesForGap`.
   `planning-data` derives a `railPair` (outbound/return station pairs around the
   focal appointment + CRS codes); the card fetches candidates, steps them

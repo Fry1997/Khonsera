@@ -38,6 +38,8 @@ import {
   type CostLine,
 } from "@/lib/planning/summary";
 import { essentialsRemaining } from "@/lib/planning/booking-lifecycle";
+import { decodePolyline } from "@/components/journey-map/utils/decode-polyline";
+import { haversineMeters } from "@/lib/geo";
 import { dbResult, parseInput } from "./_helpers";
 import { resolveItineraryTimes } from "./itineraries";
 import { err, errors, ok, type Result } from "@/lib/errors";
@@ -340,15 +342,15 @@ export async function getItinerarySummary(
     .maybeSingle();
   if (!itin) return err(errors.notFound("itinerary"));
 
-  const [{ count: stopCount }, { data: transitions }, { data: expenses }, { data: intents }] =
+  const [{ data: stops }, { data: transitions }, { data: expenses }, { data: intents }] =
     await Promise.all([
       supabase
         .from("stops")
-        .select("id", { count: "exact", head: true })
+        .select("type, metadata")
         .eq("itinerary_id", itineraryId),
       supabase
         .from("transitions")
-        .select("distance_miles, computed_duration_minutes")
+        .select("distance_miles, computed_duration_minutes, overview_polyline")
         .eq("itinerary_id", itineraryId),
       supabase
         .from("expense_records")
@@ -360,15 +362,34 @@ export async function getItinerarySummary(
         .eq("itinerary_id", itineraryId),
     ]);
 
+  // Costs come from expenses AND from booking prices stamped on stop metadata
+  // (Gmail-imported tickets store fares there, not in expense_records).
   const costs: CostLine[] = (expenses ?? []).map((e) => ({
     category: EXPENSE_CATEGORY[(e.expense_type as string) ?? "other"] ?? "other",
     amountPence: Math.round((Number(e.amount) || 0) * 100),
   }));
+  for (const s of stops ?? []) {
+    const md = (s.metadata as Record<string, unknown> | null) ?? null;
+    const price = md?.price as number | undefined;
+    if (price != null && price > 0) {
+      const isRail =
+        md?.transport_mode === "train" ||
+        (s.type as string).startsWith("transit");
+      costs.push({
+        category: isRail ? "rail" : (s.type === "accommodation" ? "hotel" : "other"),
+        amountPence: Math.round(price * 100),
+      });
+    }
+  }
 
   const summary = computeItinerarySummary({
-    stopCount: stopCount ?? 0,
+    stopCount: stops?.length ?? 0,
     transitions: (transitions ?? []).map((t) => ({
-      distanceMiles: (t.distance_miles as number | null) ?? null,
+      // Distance: prefer the stored figure; fall back to the rail/road polyline
+      // length so booked rail legs (no distance_miles) still count.
+      distanceMiles:
+        (t.distance_miles as number | null) ??
+        polylineMiles(t.overview_polyline as string | null),
       durationMinutes: (t.computed_duration_minutes as number | null) ?? null,
     })),
     costs,
@@ -405,12 +426,12 @@ export async function getTripNeeds(
     await Promise.all([
       supabase
         .from("stops")
-        .select("id, type, title, duration_value")
+        .select("id, type, title, duration_value, end_time, metadata")
         .eq("itinerary_id", itineraryId),
       supabase
         .from("transitions")
         .select(
-          "id, from_stop_id, mode, to_stop:to_stop_id(title)",
+          "id, from_stop_id, mode, is_locked, from_stop:from_stop_id(metadata), to_stop:to_stop_id(title)",
         )
         .eq("itinerary_id", itineraryId)
         .eq("mode", "train"),
@@ -432,13 +453,20 @@ export async function getTripNeeds(
 
   const appointments = (stops ?? [])
     .filter((s) => s.type === "appointment")
-    .map((s) => ({
-      id: s.id as string,
-      title: (s.title as string | null) ?? null,
-      durationKind:
-        ((s.duration_value as { kind?: string } | null)?.kind as string | null) ??
-        null,
-    }));
+    .map((s) => {
+      const md = (s.metadata as Record<string, unknown> | null) ?? null;
+      // The duration is "set" if the value-object says so, OR the solver gave
+      // it an end_time, OR a legacy timing_mode (e.g. maximize) is present.
+      const hasTiming = s.end_time != null || md?.timing_mode != null;
+      return {
+        id: s.id as string,
+        title: (s.title as string | null) ?? null,
+        durationKind:
+          ((s.duration_value as { kind?: string } | null)?.kind as
+            | string
+            | null) ?? (hasTiming ? "precise" : null),
+      };
+    });
 
   const accommodations = (stops ?? [])
     .filter((s) => s.type === "accommodation")
@@ -448,14 +476,35 @@ export async function getTripNeeds(
       booked: bookedStopIds.has(s.id as string),
     }));
 
-  const railLegs = (railTransitions ?? []).map((t) => {
-    const toTitle = (first(t.to_stop) as { title?: string | null } | null)?.title;
-    return {
-      id: t.from_stop_id as string,
-      label: toTitle ? `rail to ${toTitle}` : "rail leg",
-      booked: bookedStopIds.has(t.from_stop_id as string),
-    };
-  });
+  // A rail leg counts as booked when it carries ticket metadata (Gmail-imported
+  // bookings stamp a booking_reference on the departure stop) or has a booked
+  // booking_intent. Dedupe by booking reference so a multi-changeover journey
+  // surfaces one "book rail" need, not one per leg.
+  const seenRailKeys = new Set<string>();
+  const railLegs = (railTransitions ?? [])
+    .map((t) => {
+      const fromMd =
+        ((first(t.from_stop) as { metadata?: Record<string, unknown> } | null)
+          ?.metadata as Record<string, unknown> | null) ?? null;
+      const ref = (fromMd?.booking_reference ?? fromMd?.barcode_ref) as
+        | string
+        | undefined;
+      const ticketed = ref != null;
+      const toTitle = (first(t.to_stop) as { title?: string | null } | null)
+        ?.title;
+      return {
+        id: t.from_stop_id as string,
+        label: toTitle ? `rail to ${toTitle}` : "rail leg",
+        booked: ticketed || bookedStopIds.has(t.from_stop_id as string),
+        dedupeKey: ref ?? (t.from_stop_id as string),
+      };
+    })
+    .filter((leg) => {
+      if (seenRailKeys.has(leg.dedupeKey)) return false;
+      seenRailKeys.add(leg.dedupeKey);
+      return true;
+    })
+    .map(({ id, label, booked }) => ({ id, label, booked }));
 
   const taxiIntents = intents
     .filter((b) => TAXI_PROVIDER.test((b.provider as string | null) ?? ""))
@@ -512,4 +561,18 @@ function isPeakDeparture(d: Date, tz: string): boolean {
 function first<T>(v: T | T[] | null | undefined): T | null {
   if (v == null) return null;
   return (Array.isArray(v) ? v[0] : v) ?? null;
+}
+
+// Geographic length of an encoded polyline, in miles (haversine over its
+// points). Used as the distance fallback for booked rail legs that don't carry
+// a stored distance_miles. Returns null for an empty/missing polyline.
+function polylineMiles(encoded: string | null): number | null {
+  if (!encoded) return null;
+  const pts = decodePolyline(encoded);
+  if (pts.length < 2) return null;
+  let meters = 0;
+  for (let i = 1; i < pts.length; i++) {
+    meters += haversineMeters(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+  }
+  return meters / 1609.344;
 }

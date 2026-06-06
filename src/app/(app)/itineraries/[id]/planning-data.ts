@@ -23,6 +23,7 @@ import {
 import { lifecycleState } from "@/lib/planning/booking-lifecycle";
 import type { TripNeed } from "@/lib/planning/trip-needs";
 import type { CostLine } from "@/lib/planning/summary";
+import type { TicketSegment } from "@/components/train-ticket-card";
 import { formatTimeInTz } from "@/lib/types/time";
 
 export type PlanningStopNode = {
@@ -66,6 +67,7 @@ export type PlanningLegNode = {
   // train-only
   dep?: string | null;
   arr?: string | null;
+  ticket?: TicketSegment | null;
 };
 
 export type PlanningSpineNode = PlanningStopNode | PlanningLegNode;
@@ -170,6 +172,8 @@ type StopRow = {
   arrive_value: ArriveValue | null;
   duration_value: DurationValue | null;
   leave_value: LeaveValue | null;
+  duration_minutes: number | null;
+  metadata: Record<string, unknown> | null;
   location: { name: string | null } | { name: string | null }[] | null;
   customer_site: { name: string | null } | { name: string | null }[] | null;
   transport_hub:
@@ -196,7 +200,12 @@ function placeName(s: StopRow): string {
 function nodeTypeFor(type: string): PlanningStopNode["nodeType"] {
   if (type === "start" || type === "end") return "home";
   if (type === "appointment") return "gold";
-  if (type === "transit_departure" || type === "transit_arrival") return "diamond";
+  if (
+    type === "transit_departure" ||
+    type === "transit_arrival" ||
+    type === "transit_changeover"
+  )
+    return "diamond";
   return "plain";
 }
 
@@ -208,10 +217,48 @@ function stopLabel(type: string): string {
     case "accommodation": return "Stay";
     case "transit_departure": return "Depart";
     case "transit_arrival": return "Arrive";
+    case "transit_changeover": return "Change";
     case "meal": return "Meal";
     case "event": return "Event";
-    default: return type;
+    default: return type.replace(/_/g, " ");
   }
+}
+
+function dayKey(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+// Build the rich ticket segment for a booked train leg from the departure
+// stop's metadata (price, operator, ticket type, route, barcode) + the two
+// stations either side. Mirrors what the old editor surfaced.
+function ticketFor(
+  fromStop: StopRow,
+  toStop: StopRow,
+  tz: string,
+): TicketSegment | null {
+  const md = (fromStop.metadata ?? {}) as Record<string, unknown>;
+  return {
+    from_station: placeName(fromStop) || "—",
+    to_station: placeName(toStop) || "—",
+    from_station_code: one(fromStop.transport_hub)?.code ?? null,
+    to_station_code: one(toStop.transport_hub)?.code ?? null,
+    departure_date: fromStop.start_time ? dayKey(fromStop.start_time, tz) : "",
+    departure_time: fmt(fromStop.start_time, tz) ?? "",
+    arrival_time: fmt(toStop.start_time, tz) ?? "",
+    operator: (md.operator as string) ?? null,
+    route_restriction: (md.route_restriction as string) ?? null,
+    ticket_type: (md.ticket_type as string) ?? null,
+    coach: (md.coach as string) ?? null,
+    seat: (md.seat as string) ?? null,
+    barcode_ref: (md.barcode_ref as string) ?? null,
+    barcode_data: (md.barcode_data as string) ?? null,
+    price: (md.price as number) ?? null,
+  };
 }
 
 export async function getPlanningViewData(
@@ -233,8 +280,8 @@ export async function getPlanningViewData(
   const { data: stops } = await supabase
     .from("stops")
     .select(
-      `id, sequence, type, title, start_time, end_time,
-       arrive_value, duration_value, leave_value,
+      `id, sequence, type, title, start_time, end_time, duration_minutes,
+       arrive_value, duration_value, leave_value, metadata,
        location:locations(name),
        customer_site:customer_sites(name),
        transport_hub:transport_hubs(name, code)`,
@@ -290,10 +337,29 @@ export async function getPlanningViewData(
     };
 
     if (s.type === "appointment") {
+      // Prefer the Phase-3 value-objects; fall back to the solver's canonical
+      // start/end/duration (+ legacy metadata.timing_mode) so existing
+      // appointments still show their times, window and mode.
+      const md = (s.metadata ?? {}) as Record<string, unknown>;
+      const maximize = md.timing_mode === "maximize" || md.timing_mode === "maximise";
+      const arriveInput: ArriveValue | undefined =
+        s.arrive_value ??
+        (s.start_time ? { time: s.start_time, kind: "precise" } : undefined);
+      let durationInput: DurationValue | undefined = s.duration_value ?? undefined;
+      let leaveInput: LeaveValue | undefined = s.leave_value ?? undefined;
+      if (!durationInput && maximize) {
+        durationInput = { minutes: null, kind: "maximise" };
+      }
+      if (!leaveInput && s.end_time) {
+        leaveInput = { time: s.end_time, kind: "precise" };
+      }
+      if (!durationInput && !leaveInput && s.duration_minutes != null) {
+        durationInput = { minutes: s.duration_minutes, kind: "precise" };
+      }
       const resolved = resolveAppointment({
-        arrive: s.arrive_value ?? undefined,
-        duration: s.duration_value ?? undefined,
-        leave: s.leave_value ?? undefined,
+        arrive: arriveInput,
+        duration: durationInput,
+        leave: leaveInput,
       });
       node.appointment = {
         mode: resolved.mode,
@@ -333,6 +399,7 @@ export async function getPlanningViewData(
         options: [],
         dep: fmt(s.start_time, tz),
         arr: fmt(next.start_time, tz),
+        ticket: mode === "train" ? ticketFor(s, next, tz) : null,
       });
     } else {
       const options: PlanningLegMode[] = FLEX_MODES.map((m) => ({

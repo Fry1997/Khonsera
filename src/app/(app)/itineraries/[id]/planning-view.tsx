@@ -23,6 +23,7 @@ import { setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { setTravelStrategy, setAppointmentTiming } from "@/lib/actions/planning";
 import { AddSheet, type Pickers } from "./planning-add-sheet";
 import { PairedRailCard } from "./paired-rail-card";
+import { TrainTicketCard } from "@/components/train-ticket-card";
 import type {
   PlanningViewData,
   PlanningSpineNode,
@@ -216,44 +217,43 @@ function ModeGlyph({ id, size = 17, color }: { id: string; size?: number; color:
   return <Footprints size={size} color={color} />;
 }
 
+// Equal-weight mode picker (brief §5): all modes shown as chips of the same
+// visual weight, the engine's pick marked with a quiet gold dot. No "taxi as
+// default", no collapsing behind a "change" link.
 function LegPicker({ leg, actions }: { leg: PlanningLegNode; actions: Actions }) {
-  const [open, setOpen] = useState(false);
-  const chosen = leg.options.find((o) => o.id === (leg.mode === "walk" ? "walk" : leg.mode)) ?? leg.options[0];
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} style={{ width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "4px 0", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-        <ModeGlyph id={chosen?.id ?? "walk"} size={15} color="var(--ink-dim)" />
-        <span style={{ fontFamily: "var(--serif)", fontSize: 13.5, color: "var(--ink-2)" }}>
-          {chosen?.label ?? "Walk"}{" "}
-          {chosen?.durationMin != null && <span style={{ ...mono, fontSize: 11.5, color: "var(--ink-dim)" }}>{chosen.durationMin}m</span>}
-        </span>
-        <span style={{ marginLeft: "auto", fontFamily: "var(--sans)", fontSize: 11.5, color: "var(--gold-2)" }}>change</span>
-      </button>
-    );
-  }
+  const chosenId = leg.options.find((o) => o.recommended)?.id ?? leg.mode;
   return (
-    <div>
-      <div style={{ fontFamily: "var(--serif)", fontSize: 14.5, color: "var(--ink)", marginBottom: 10 }}>How are you getting there?</div>
-      <div style={{ border: "1px solid var(--rule)", borderRadius: 9, overflow: "hidden", background: "var(--card)" }}>
-        {leg.options.map((m: PlanningLegMode, i) => {
-          const sel = m.id === chosen?.id;
+    <div style={{ paddingTop: 4 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {leg.options.map((m: PlanningLegMode) => {
+          const sel = m.id === chosenId;
           return (
-            <button key={m.id} disabled={actions.pending} onClick={() => { actions.chooseMode(leg, m.id); setOpen(false); }} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: sel ? "var(--gold-soft)" : "transparent", border: "none", borderTop: i ? "1px solid var(--rule)" : "none", cursor: "pointer" }}>
-              <ModeGlyph id={m.id} size={18} color={sel ? "var(--gold-2)" : "var(--ink-dim)"} />
-              <span style={{ fontFamily: "var(--sans)", fontSize: 14, color: "var(--ink)", fontWeight: sel ? 500 : 400, width: 46 }}>{m.label}</span>
-              <span style={{ ...mono, fontSize: 12.5, color: "var(--ink)" }}>{m.durationMin != null ? `${m.durationMin}m` : "—"}</span>
-              {m.recommended && <span title="Recommended" style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "var(--gold)" }} />}
+            <button
+              key={m.id}
+              disabled={actions.pending}
+              onClick={() => actions.chooseMode(leg, m.id)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 11px", borderRadius: 20, border: `1px solid ${sel ? "var(--gold)" : "var(--rule-2)"}`, background: sel ? "var(--gold-soft)" : "var(--card)", cursor: "pointer" }}
+            >
+              <ModeGlyph id={m.id} size={14} color={sel ? "var(--gold-2)" : "var(--ink-dim)"} />
+              <span style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--ink)", fontWeight: sel ? 500 : 400 }}>{m.label}</span>
+              {m.durationMin != null && <span style={{ ...mono, fontSize: 11, color: "var(--ink-dim)" }}>{m.durationMin}m</span>}
+              {m.recommended && <span title="Recommended" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--gold)" }} />}
             </button>
           );
         })}
       </div>
-      <button onClick={() => setOpen(false)} style={{ marginTop: 8, background: "transparent", border: "none", color: "var(--ink-dim)", fontFamily: "var(--sans)", fontSize: 11.5, cursor: "pointer", padding: 0 }}>Close</button>
     </div>
   );
 }
 
 // ── leg: booked train card ───────────────────────────────────────────────────
+// Reuses the shared TrainTicketCard (stations, depart/arrive, ticket type,
+// route, operator, price, Aztec barcode). Falls back to a bare time card only
+// when the leg carries no ticket metadata.
 function TrainLeg({ leg }: { leg: PlanningLegNode }) {
+  if (leg.ticket) {
+    return <TrainTicketCard segment={leg.ticket} compact />;
+  }
   return (
     <div style={{ borderRadius: 10, background: "var(--card)", border: "1px solid var(--rule)", boxShadow: "0 8px 26px -18px rgba(30,24,18,0.4)", padding: "13px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
