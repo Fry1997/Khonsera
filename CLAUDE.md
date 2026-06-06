@@ -148,8 +148,22 @@ No migration — all derived from existing state. Pure cores + read actions:
   opened_partner stays Proposed in Stage 0), `uberDeeplink`/`trainlineDeeplink`
   builders, `essentialsRemaining`.
 
-### Planning engine — Phase 5 (UI mount; see `docs/planning-engine.md`)
-The new planning view **replaced `itinerary-editor.tsx`** at `/itineraries/[id]`.
+### Planning engine — Phase 5 (UI mount) — REVERTED / PARKED (2026-06-06)
+**The new planning view was rolled back.** It replaced the working
+`itinerary-editor.tsx` but didn't reach the functionality the editor had, so
+`/itineraries/[id]` renders the **original `itinerary-editor.tsx`** again (with
+its old `page.tsx` data-loading). The new-view files are **parked, not deleted**
+— kept for a careful second attempt: `planning-data.ts` (`getPlanningViewData`),
+`planning-view.tsx`, `planning-add-sheet.tsx`, `paired-rail-card.tsx`. They are
+NOT routed/imported anywhere (only typechecked). Do NOT wire them back in
+wholesale — the lesson was: refine the new UI to parity BEFORE swapping, never
+replace the editor with a shell.
+- The Phase 1–4 ENGINE work (`src/lib/planning/*`, `actions/planning.ts`) is
+  sound and stays — it's the substrate a future UI plugs into, unrelated to the
+  mount failure.
+- The good flow changes stay: "New itinerary" → straight to planning (no brief),
+  tomorrow default, uncommitted-draft model (see Brief Page Structure note).
+- Notes below describe the parked view's internals (kept for the retry):
 - `planning-data.ts` (`getPlanningViewData`, server-only) composes real stops +
   transitions into an ordered, time-formatted SPINE (stop nodes + the legs
   between them) and folds in the Phase 1–4 contracts (summary, trip-needs,
@@ -381,9 +395,9 @@ Currently OSM raster tiles (always available, no API key). Upgrade path: Protoma
 |------|---------|
 | `src/app/(app)/itineraries/new/new-itinerary-form.tsx` | Brief page form (all state + render) |
 | `src/app/(app)/itineraries/new/page.tsx` | Brief page server component (data loading) |
-| `src/app/(app)/itineraries/[id]/page.tsx` | Planning page server entry (seeds home stop, calls getPlanningViewData) |
-| `src/app/(app)/itineraries/[id]/planning-data.ts` | getPlanningViewData — composes stops/transitions + Phase 1–4 contracts into the view model |
-| `src/app/(app)/itineraries/[id]/planning-view.tsx` | PlanningView — the new planning screen (replaced itinerary-editor.tsx) |
+| `src/app/(app)/itineraries/[id]/page.tsx` | Planning page server entry (loads data, renders ItineraryEditor) |
+| `src/app/(app)/itineraries/[id]/itinerary-editor.tsx` | The LIVE planning screen (restored; the new view was reverted) |
+| `src/app/(app)/itineraries/[id]/planning-{data,view,add-sheet}.ts(x)`, `paired-rail-card.tsx` | PARKED new-view attempt — not routed; kept for a future retry |
 | `src/components/itinerary/transport-booking-card.tsx` | Transport booking card component + types |
 | `src/components/itinerary/accommodation-booking-card.tsx` | Accommodation booking card + types |
 | `src/components/itinerary/transition-row.tsx` | Travel mode picker between stops |
