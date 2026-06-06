@@ -455,9 +455,14 @@ export function PlanningView({ data, pickers }: { data: PlanningViewData; picker
           <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, background: "var(--rust-2)", color: "var(--rust)", fontFamily: "var(--sans)", fontSize: 12 }}>{actions.error}</div>
         )}
 
-        <div style={{ marginTop: 20 }}>
-          <JourneyMode strategy={data.itinerary.travelStrategy} actions={actions} />
-        </div>
+        {/* The trip-level rail-vs-drive chip only makes sense once there's a
+            journey to make — i.e. a destination beyond home. Don't ask "train
+            or car?" before the user has added where they're going. */}
+        {data.spine.some((n) => n.kind === "leg") && (
+          <div style={{ marginTop: 20 }}>
+            <JourneyMode strategy={data.itinerary.travelStrategy} actions={actions} />
+          </div>
+        )}
 
         {data.railPair && (
           <div style={{ marginTop: 18 }}>

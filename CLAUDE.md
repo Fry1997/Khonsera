@@ -270,9 +270,17 @@ The TransportHubPicker debounce is 350ms (not 200ms). The 11k+ hub table with il
 > bookings redirect). The trip is promoted to `'planning'` (and appears in lists)
 > on the user's FIRST content change: `resolveItineraryTimes` (called after every
 > stop/transition/appointment/strategy edit) and `updateItinerary` (date/title
-> edit) both flip `draft → planning`. Home-stop seeding in `[id]/page.tsx` is a
-> direct insert (no `resolveItineraryTimes`), so it does NOT promote. Net: "New
-> itinerary → touch nothing → back out" leaves nothing in any list.
+> edit) both promote `draft → planning`. Status changes MUST go through the
+> `itinerary_transition` RPC (`transitionItinerary`) — a DB trigger
+> (`block_direct_status_update`, 0010) forbids direct status writes — so both
+> sites guard on `status === 'draft'` then call the RPC, never a raw update.
+> Migration `0033` re-added the `draft→planning`/`draft→cancelled` edges that
+> 0013 had deleted (0013 retired draft); without them the RPC rejects the
+> promotion. Home-stop seeding in `[id]/page.tsx` is a direct INSERT (inserts
+> aren't trigger-blocked, no `resolveItineraryTimes`), so it does NOT promote.
+> Net: "New itinerary → touch nothing → back out" leaves nothing in any list.
+> The JourneyMode rail/drive chip is hidden until the spine has a leg — don't
+> ask "train or car?" before a destination exists.
 >
 > **Editable dates:** the planning TripHeader date is tappable (`HeaderDates`) →
 > start/end `<input type=date>` → `updateItinerary` (which also promotes the

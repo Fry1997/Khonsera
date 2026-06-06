@@ -159,16 +159,9 @@ export async function updateItinerary(
     .maybeSingle();
 
   const { id, ...patch } = parsed.value;
-  // Editing the date (or title) of an uncommitted trip commits it: promote the
-  // 'draft' to 'planning' so it appears in the lists. This is the user's "first
-  // change" the planning flow waits for.
-  const promote =
-    (before as { status?: ItineraryStatus } | null)?.status === "draft"
-      ? { status: "planning" as const }
-      : {};
   const { data, error } = await supabase
     .from("itineraries")
-    .update({ ...patch, ...promote })
+    .update(patch)
     .eq("id", id)
     .eq("workspace_id", ctx.workspaceId)
     .select("*")
@@ -183,6 +176,14 @@ export async function updateItinerary(
       before,
       after: result.value,
     });
+    // Editing the date (or title) of an uncommitted trip commits it: promote
+    // 'draft' → 'planning' through the state machine (direct status writes are
+    // blocked by a DB trigger) so it appears in the lists. This is the user's
+    // "first change" the planning flow waits for.
+    if ((before as { status?: ItineraryStatus } | null)?.status === "draft") {
+      await transitionItinerary(result.value.id, "planning");
+      result.value.status = "planning";
+    }
   }
   return result;
 }
@@ -1717,13 +1718,18 @@ export async function resolveItineraryTimes(
 
   // First content change commits an uncommitted trip: a 'draft' (from "New
   // itinerary") becomes a real 'planning' trip and starts appearing in lists.
-  // No-op for trips that are already planning/planned/etc.
-  await supabase
+  // Status changes MUST go through the state machine — a DB trigger blocks
+  // direct status writes — so we route draft→planning through the RPC. No-op
+  // for trips that are already planning/planned/etc.
+  const { data: itinRow } = await supabase
     .from("itineraries")
-    .update({ status: "planning" })
+    .select("status")
     .eq("id", itineraryId)
     .eq("workspace_id", ctx.workspaceId)
-    .eq("status", "draft");
+    .maybeSingle();
+  if (itinRow?.status === "draft") {
+    await transitionItinerary(itineraryId, "planning");
+  }
 
   return ok({
     itinerary_id: itineraryId,

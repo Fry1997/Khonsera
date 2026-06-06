@@ -10,14 +10,11 @@ import { errors, type Result, ok, err } from "@/lib/errors";
 export const ITINERARY_EDGES: Readonly<
   Record<ItineraryStatus, readonly ItineraryStatus[]>
 > = {
-  // 'draft' is retired by migration 0013 — the brief form already does
-  // the work draft represented, so brief submit lands in 'planning'.
-  // The enum value remains on the Postgres type (recreating an enum
-  // just to drop one value isn't worth it) but no edges flow in or
-  // out, making it unreachable via the state machine. The key stays
-  // in this map with an empty array so any legacy row that somehow
-  // still holds 'draft' renders without crashing the reducer.
-  draft: [],
+  // 'draft' = an UNCOMMITTED "New itinerary" (createDraftItinerary). It's
+  // hidden from the trip lists and promoted to 'planning' on the user's first
+  // content change, via the itinerary_transition RPC. Edges mirror the SQL
+  // itinerary_status_edges table (0010): draft → planning | cancelled.
+  draft: ["planning", "cancelled"],
   planning: ["planned", "cancelled"],
   planned: ["planning", "in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
