@@ -34,6 +34,30 @@ Newest at the bottom of each section.
 - **D8 — New first-class tables:** `intentions` (+`intention_anchors` link), `gaps`,
   `resource_states`, `tasks` — per handover §4.4/4.5/4.7/4.9.
 
+## UI / structure
+- **D9 — Contract component library lives in `src/components/concierge/`.** All 13 named placeholder
+  components (ActiveTile, AnchorCard, IntentionCard, GapCard, LegCard, ComparisonMatrix,
+  JourneyListCard, ModeSwitch, ContactChip, TaskRow, ExpenseRow, NudgeCard, ReadinessPrompt) built
+  presentationally against decoupled view-models (`concierge/types.ts`), token-styled with the real
+  class vocabulary (`j-card`, `h1/h2/h3`, `tag-ok/no/tight`, `btn-*`, `rounded-card/field/pill`).
+  No emojis; Khonsera voice in copy. Design restyles by token, screens compose by name.
+- **D10 — `/today` is the first new screen.** A day-of surface composing ActiveTile + AnchorCard from
+  the user's nearest live journey's REAL stops — chosen as the end-to-end proof that the new RLS
+  boundary returns the owner's data correctly in the running app (build + reads verified).
+- **D11 — Existing screens kept running, not yet reshaped.** The legacy dashboard/itineraries/etc.
+  still function under the new RLS (owner-permissive policies). Reshaping each remaining screen onto
+  the contract components (Timeline, Comparison, Contacts, Tasks, Workspace/admin) is the next slice
+  of Step 4 — sequenced per build-order, not done in one sweep, to avoid a half-migrated mess.
+
+## Done this pass vs remaining (against the Kickoff DoD)
+- [x] Triage reviewed (checkpoint) · data model wired (Mode + privacy RLS + Journey/Anchor/Intention/
+      Gap/Leg/ResourceState/Task + types) · `CLAUDE.md`/`DECISIONS.md` established · contract
+      component library in place · one new screen (`/today`) navigable and wired · app builds + runs,
+      181 tests green.
+- [ ] Remaining for the full plateau: reshape the rest of the screen skeleton onto the contract
+      components; persist mode in the app shell + wire `ModeSwitch`; the map is already integrated in
+      the planning page (Step 5 salvage largely pre-satisfied — confirm tokens flow through).
+
 ## Deferred / blocking (needs an explicit nod — NOT done this pass)
 - **B1 — Dropping the legacy CRM tables is the one irreversible step I will not take unsupervised.**
   `customers`, `customer_sites`, `visit_plans`, `visit_checklist_items`, `visit_status_edges`,

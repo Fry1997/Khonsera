@@ -15,7 +15,8 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Today", icon: "bolt", section: "workspace" },
+  { href: "/dashboard", label: "Home", icon: "bolt", section: "workspace" },
+  { href: "/today" as Route, label: "Today", icon: "bolt", section: "workspace" },
   { href: "/itineraries", label: "Itineraries", icon: "nav", section: "workspace" },
   { href: "/bookings", label: "Bookings", icon: "ticket", section: "workspace" },
   { href: "/flights", label: "Flights", icon: "plane", section: "workspace" },
