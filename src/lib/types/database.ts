@@ -2669,6 +2669,197 @@ export type Database = {
           },
         ];
       };
+      visit_checklist_items: {
+        Row: {
+          created_at: string;
+          due_at: string | null;
+          id: string;
+          label: string;
+          sort_order: number;
+          status: Database["public"]["Enums"]["checklist_status"];
+          updated_at: string;
+          visit_plan_id: string;
+          workspace_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          due_at?: string | null;
+          id?: string;
+          label: string;
+          sort_order?: number;
+          status?: Database["public"]["Enums"]["checklist_status"];
+          updated_at?: string;
+          visit_plan_id: string;
+          workspace_id: string;
+        };
+        Update: {
+          created_at?: string;
+          due_at?: string | null;
+          id?: string;
+          label?: string;
+          sort_order?: number;
+          status?: Database["public"]["Enums"]["checklist_status"];
+          updated_at?: string;
+          visit_plan_id?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "visit_checklist_items_visit_plan_id_fkey";
+            columns: ["visit_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "visit_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_checklist_items_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      visit_plans: {
+        Row: {
+          arrival_buffer_minutes: number;
+          contact_id: string | null;
+          created_at: string;
+          customer_id: string | null;
+          customer_site_id: string | null;
+          desired_arrival_time: string | null;
+          id: string;
+          latest_departure_from_site_time: string | null;
+          latest_return_time: string | null;
+          meeting_duration_minutes: number | null;
+          notes: string | null;
+          proposed_end_time: string | null;
+          proposed_start_time: string | null;
+          return_buffer_minutes: number;
+          return_location_id: string | null;
+          start_location_id: string | null;
+          status: Database["public"]["Enums"]["visit_status"];
+          title: string | null;
+          travel_mode_preference: Database["public"]["Enums"]["travel_mode_preference"];
+          updated_at: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        Insert: {
+          arrival_buffer_minutes?: number;
+          contact_id?: string | null;
+          created_at?: string;
+          customer_id?: string | null;
+          customer_site_id?: string | null;
+          desired_arrival_time?: string | null;
+          id?: string;
+          latest_departure_from_site_time?: string | null;
+          latest_return_time?: string | null;
+          meeting_duration_minutes?: number | null;
+          notes?: string | null;
+          proposed_end_time?: string | null;
+          proposed_start_time?: string | null;
+          return_buffer_minutes?: number;
+          return_location_id?: string | null;
+          start_location_id?: string | null;
+          status?: Database["public"]["Enums"]["visit_status"];
+          title?: string | null;
+          travel_mode_preference?: Database["public"]["Enums"]["travel_mode_preference"];
+          updated_at?: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        Update: {
+          arrival_buffer_minutes?: number;
+          contact_id?: string | null;
+          created_at?: string;
+          customer_id?: string | null;
+          customer_site_id?: string | null;
+          desired_arrival_time?: string | null;
+          id?: string;
+          latest_departure_from_site_time?: string | null;
+          latest_return_time?: string | null;
+          meeting_duration_minutes?: number | null;
+          notes?: string | null;
+          proposed_end_time?: string | null;
+          proposed_start_time?: string | null;
+          return_buffer_minutes?: number;
+          return_location_id?: string | null;
+          start_location_id?: string | null;
+          status?: Database["public"]["Enums"]["visit_status"];
+          title?: string | null;
+          travel_mode_preference?: Database["public"]["Enums"]["travel_mode_preference"];
+          updated_at?: string;
+          user_id?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "visit_plans_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_plans_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_plans_customer_site_id_fkey";
+            columns: ["customer_site_id"];
+            isOneToOne: false;
+            referencedRelation: "customer_sites";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_plans_return_location_id_fkey";
+            columns: ["return_location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_plans_start_location_id_fkey";
+            columns: ["start_location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_plans_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "visit_plans_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      visit_status_edges: {
+        Row: {
+          from_status: Database["public"]["Enums"]["visit_status"];
+          to_status: Database["public"]["Enums"]["visit_status"];
+        };
+        Insert: {
+          from_status: Database["public"]["Enums"]["visit_status"];
+          to_status: Database["public"]["Enums"]["visit_status"];
+        };
+        Update: {
+          from_status?: Database["public"]["Enums"]["visit_status"];
+          to_status?: Database["public"]["Enums"]["visit_status"];
+        };
+        Relationships: [];
+      };
       workspace_settings: {
         Row: {
           created_at: string;
@@ -2947,6 +3138,44 @@ export type Database = {
               error: true;
             } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
           };
+      visit_plan_transition: {
+        Args: {
+          p_actor_id: string;
+          p_metadata?: Json;
+          p_to_status: Database["public"]["Enums"]["visit_status"];
+          p_visit_id: string;
+        };
+        Returns: {
+          arrival_buffer_minutes: number;
+          contact_id: string | null;
+          created_at: string;
+          customer_id: string | null;
+          customer_site_id: string | null;
+          desired_arrival_time: string | null;
+          id: string;
+          latest_departure_from_site_time: string | null;
+          latest_return_time: string | null;
+          meeting_duration_minutes: number | null;
+          notes: string | null;
+          proposed_end_time: string | null;
+          proposed_start_time: string | null;
+          return_buffer_minutes: number;
+          return_location_id: string | null;
+          start_location_id: string | null;
+          status: Database["public"]["Enums"]["visit_status"];
+          title: string | null;
+          travel_mode_preference: Database["public"]["Enums"]["travel_mode_preference"];
+          updated_at: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "visit_plans";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       app_mode: "work" | "personal";
@@ -3108,6 +3337,15 @@ export type Database = {
         | "taxi"
         | "no_preference";
       travel_option_mode: "rail" | "drive" | "mixed";
+      visit_status:
+        | "draft"
+        | "checking"
+        | "proposed"
+        | "confirmed"
+        | "booked"
+        | "in_progress"
+        | "completed"
+        | "cancelled";
       workspace_type: "personal" | "organisation";
     };
     CompositeTypes: {
@@ -3428,6 +3666,16 @@ export const Constants = {
         "no_preference",
       ],
       travel_option_mode: ["rail", "drive", "mixed"],
+      visit_status: [
+        "draft",
+        "checking",
+        "proposed",
+        "confirmed",
+        "booked",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
       workspace_type: ["personal", "organisation"],
     },
   },
