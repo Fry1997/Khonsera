@@ -102,9 +102,14 @@ export default async function TodayPage() {
             ))}
           </section>
 
-          <Link href={`/itineraries/${live.id}` as Route} className="btn btn-ghost">
-            Open full journey
-          </Link>
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            <Link href={`/itineraries/${live.id}/timeline` as Route} className="btn btn-gold">
+              Open timeline
+            </Link>
+            <Link href={`/itineraries/${live.id}` as Route} className="btn btn-ghost">
+              Edit journey
+            </Link>
+          </div>
         </>
       ) : (
         <div className="j-card p-6" style={{ textAlign: "center" }}>

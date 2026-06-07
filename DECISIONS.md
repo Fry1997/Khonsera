@@ -76,14 +76,35 @@ Newest at the bottom of each section.
   quick-add via the decoupled `createContactQuick` (now stamps active mode). Read-mostly for now;
   full contact management lands with the People & ledger layer (build-order §8).
 
-## Done this pass vs remaining (against the Kickoff DoD)
-- [x] Triage reviewed (checkpoint) · data model wired (Mode + privacy RLS + Journey/Anchor/Intention/
-      Gap/Leg/ResourceState/Task + types) · `CLAUDE.md`/`DECISIONS.md` established · contract
-      component library in place · one new screen (`/today`) navigable and wired · app builds + runs,
-      181 tests green.
-- [ ] Remaining for the full plateau: reshape the rest of the screen skeleton onto the contract
-      components; persist mode in the app shell + wire `ModeSwitch`; the map is already integrated in
-      the planning page (Step 5 salvage largely pre-satisfied — confirm tokens flow through).
+- **D16 — Timeline composed of contract cards (`/itineraries/[id]/timeline`).** The primary surface
+  (§5) rendered from a real journey: stops→AnchorCard, transitions→LegCard, intentions→IntentionCard,
+  and — the key signal — a missing transition between two anchors renders as a ghosted GapCard
+  ("needs input"), with a "See travel options" link into the decision layer. Reads via the RLS
+  boundary. Linked from `/today`; the legacy editor stays for heavy editing (its full reshape onto
+  these cards is next-programme work, not plateau-blocking).
+- **D17 — Comparison (`/compare`).** ComparisonMatrix showing the two bracketing services
+  (early/on-time vs later/cheaper) with the booking stub. Options are illustrative (§17 permits
+  mocked comparison data until the provider layer is wired); reached from the Timeline's gaps.
+- **D18 — Workspace/admin stub (`/workspace`).** Work-mode only — a visible restatement of the
+  privacy boundary (personal mode shows "never visible to a workspace"). Reads workspace + role +
+  member count; placeholder §15 sections (approvals, allowance/per-diem, policy).
+
+## Plateau reached — Kickoff Definition of Done
+- [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
+      Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
+      page.
+- [x] **Data model wired** (identity + Mode + Journey/Anchor/Intention/Gap/Leg/ResourceState/Task +
+      contacts/tasks/expenses), **privacy boundary enforced in the data layer (RLS)**.
+- [x] **Placeholder UI** via the named contract components (`src/components/concierge/`).
+- [x] **Map integrated** (planning page, MapLibre); `theme` tokens drive styling.
+- [x] `CLAUDE.md` + `theme` established; triage reviewed; legacy schema cleaned (visit CRM kept,
+      dead trip-planning tables dropped). tsc clean, build succeeds, 181 tests green throughout.
+
+## Next programme (beyond the foundation plateau — documented, not plateau-blocking)
+- Reshape the legacy itinerary **editor** onto the contract cards (the Timeline read-view already is).
+- **B1a:** migrate `customers`/`customer_sites` → the new place/contact model (the 40+-file refactor).
+- Build the feature layers in build-order: capture → decision engine → day-of/live → navigation →
+  orchestration → people/messaging → teams machinery.
 
 ## Deferred / blocking
 - **B1 — Legacy trip-planning tables dropped (migration 0031); visit CRM RESTORED (0032).**

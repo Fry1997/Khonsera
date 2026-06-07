@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { href: "/expenses", label: "Expenses", icon: "receipt", section: "workspace" },
   { href: "/contacts" as Route, label: "Contacts", icon: "case", section: "workspace" },
   { href: "/tasks" as Route, label: "Tasks", icon: "case", section: "workspace" },
+  { href: "/workspace" as Route, label: "Workspace", icon: "case", section: "you" },
   { href: "/settings", label: "Settings", icon: "settings", section: "you" },
 ];
 

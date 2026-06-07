@@ -17,6 +17,7 @@ const NAV = [
   { href: "/expenses" as Route, label: "Expenses" },
   { href: "/contacts" as Route, label: "Contacts" },
   { href: "/tasks" as Route, label: "Tasks" },
+  { href: "/workspace" as Route, label: "Workspace" },
   { href: "/settings" as Route, label: "Settings" },
 ] as const;
 
