@@ -24,7 +24,7 @@ export default async function AppLayout({
     >
       {/* Mobile / tablet — top bar + bottom tab bar. */}
       <div className="lg:hidden flex min-h-screen flex-col">
-        <MobileTopbar email={ctx.email} isStaff={ctx.isStaff} />
+        <MobileTopbar email={ctx.email} isStaff={ctx.isStaff} mode={ctx.activeMode} />
         <main
           className="flex-1 paper-tex"
           style={{ padding: "20px 18px 24px" }}
@@ -39,6 +39,7 @@ export default async function AppLayout({
         <AppSidebar
           email={ctx.email}
           workspaceName={workspace?.name ?? "Personal"}
+          mode={ctx.activeMode}
         />
         <div className="desk-main">
           <main className="desk-content">{children}</main>

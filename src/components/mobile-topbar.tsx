@@ -2,10 +2,13 @@ import Link from "next/link";
 import { KhonseraBrand } from "./khonsera-brand";
 import { MobileNav } from "./mobile-nav";
 import { DemoModeIndicator } from "./demo-mode-indicator";
+import { ModeSwitchControl } from "./mode-switch-control";
+import type { AppMode } from "@/lib/mode";
 import type { Route } from "next";
 
 const NAV = [
-  { href: "/dashboard" as Route, label: "Today" },
+  { href: "/dashboard" as Route, label: "Home" },
+  { href: "/today" as Route, label: "Today" },
   { href: "/itineraries" as Route, label: "Itineraries" },
   { href: "/bookings" as Route, label: "Bookings" },
   { href: "/flights" as Route, label: "Flights" },
@@ -21,9 +24,11 @@ const NAV = [
 export async function MobileTopbar({
   email,
   isStaff,
+  mode,
 }: {
   email: string;
   isStaff: boolean;
+  mode: AppMode;
 }) {
   return (
     <header
@@ -43,6 +48,7 @@ export async function MobileTopbar({
     >
       <KhonseraBrand size="sm" />
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <ModeSwitchControl mode={mode} size="sm" />
         {isStaff ? <DemoModeIndicator /> : null}
         {/* Tell — an action reachable from every page, not a nav destination. */}
         <Link href={"/capture" as Route} className="btn btn-gold btn-sm" aria-label="Tell Khonsera">

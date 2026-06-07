@@ -37,6 +37,7 @@ export default async function TodayPage() {
   const { data: live } = await supabase
     .from("itineraries")
     .select("id, title, mode, date_start, date_end")
+    .eq("mode", ctx.activeMode)
     .gte("date_end", today)
     .in("status", ["planned", "in_progress"])
     .order("date_start")

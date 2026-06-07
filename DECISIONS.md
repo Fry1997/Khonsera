@@ -49,6 +49,15 @@ Newest at the bottom of each section.
   the contract components (Timeline, Comparison, Contacts, Tasks, Workspace/admin) is the next slice
   of Step 4 — sequenced per build-order, not done in one sweep, to avoid a half-migrated mess.
 
+- **D12 — Active mode persisted in a cookie (`khonsera_mode`), switched via a server action.**
+  `src/lib/mode.ts` (get/set) + `src/lib/actions/mode.ts` (`switchMode` → revalidate layout);
+  `requireUserContext()` now exposes `activeMode`. `ModeSwitchControl` (client wrapper over the
+  contract `ModeSwitch`) sits in the desktop sidebar + mobile topbar — reachable from every page.
+  Cookie over a profile column = the simplest standard solution that survives refresh; cross-device
+  persistence on the profile is a later enhancement. Mode-scoped reads wired on `/today`,
+  `/itineraries`, and the Home dashboard; new itineraries are stamped with the active mode on create.
+  This is layered ON TOP of the RLS boundary (RLS = security; mode filter = which lens you're in).
+
 ## Done this pass vs remaining (against the Kickoff DoD)
 - [x] Triage reviewed (checkpoint) · data model wired (Mode + privacy RLS + Journey/Anchor/Intention/
       Gap/Leg/ResourceState/Task + types) · `CLAUDE.md`/`DECISIONS.md` established · contract

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMode, type AppMode } from "@/lib/mode";
 
 export const getSessionUser = cache(async () => {
   const supabase = await createClient();
@@ -21,6 +22,7 @@ export type CurrentUserContext = {
   isStaff: boolean;
   isAdmin: boolean;
   workspaceId: string;
+  activeMode: AppMode;
 };
 
 export const requireUserContext = cache(
@@ -47,6 +49,7 @@ export const requireUserContext = cache(
       isStaff: profile.is_staff,
       isAdmin: profile.is_admin,
       workspaceId: profile.default_workspace_id,
+      activeMode: await getActiveMode(),
     };
   },
 );

@@ -59,6 +59,7 @@ export async function createItinerary(
     .insert({
       workspace_id: ctx.workspaceId,
       user_id: ctx.userId,
+      mode: ctx.activeMode,
       title: parsed.value.title ?? null,
       date_start: parsed.value.date_start,
       date_end: parsed.value.date_end,
@@ -479,6 +480,7 @@ export async function createItineraryFromBrief(
     .insert({
       workspace_id: ctx.workspaceId,
       user_id: ctx.userId,
+      mode: ctx.activeMode,
       title: resolvedTitle,
       date_start: dateStart,
       date_end: dateEnd,

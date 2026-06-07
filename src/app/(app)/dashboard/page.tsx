@@ -54,6 +54,7 @@ export default async function DashboardPage() {
       .from("itineraries")
       .select("id, title, status, date_start, date_end, notes")
       .eq("workspace_id", ctx.workspaceId)
+      .eq("mode", ctx.activeMode)
       .in("status", ["planned", "in_progress"])
       .gte("date_end", today)
       .order("date_start")
@@ -63,21 +64,25 @@ export default async function DashboardPage() {
       .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
+      .eq("mode", ctx.activeMode)
       .in("status", ["draft", "planning"]),
     supabase
       .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
+      .eq("mode", ctx.activeMode)
       .eq("status", "planned"),
     supabase
       .from("itineraries")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", ctx.workspaceId)
+      .eq("mode", ctx.activeMode)
       .eq("status", "in_progress"),
     supabase
       .from("itineraries")
       .select("id, title, status, date_start, date_end")
       .eq("workspace_id", ctx.workspaceId)
+      .eq("mode", ctx.activeMode)
       .gte("date_end", today)
       .in("status", ["draft", "planning", "planned", "in_progress"])
       .order("date_start")
@@ -86,6 +91,7 @@ export default async function DashboardPage() {
       .from("itineraries")
       .select("id, title, status, date_start")
       .eq("workspace_id", ctx.workspaceId)
+      .eq("mode", ctx.activeMode)
       .order("created_at", { ascending: false })
       .limit(5),
     supabase

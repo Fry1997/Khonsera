@@ -47,6 +47,7 @@ export default async function ItinerariesPage() {
     .from("itineraries")
     .select("id, title, notes, date_start, date_end, status")
     .eq("workspace_id", ctx.workspaceId)
+    .eq("mode", ctx.activeMode)
     .order("date_start", { ascending: true })
     .limit(200);
 

@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import { signOut } from "@/app/login/actions";
 import { KhonseraBrand } from "./khonsera-brand";
+import { ModeSwitchControl } from "./mode-switch-control";
+import type { AppMode } from "@/lib/mode";
 
 type NavItem = {
   href: Route;
@@ -31,9 +33,11 @@ export const APP_NAV: ReadonlyArray<{ href: Route; label: string }> = NAV;
 export function AppSidebar({
   email,
   workspaceName,
+  mode,
 }: {
   email: string;
   workspaceName?: string;
+  mode: AppMode;
 }) {
   const pathname = usePathname();
   const workspace = NAV.filter((n) => n.section === "workspace");
@@ -56,6 +60,9 @@ export function AppSidebar({
           }}
         >
           Workspace · {workspaceName ?? "Personal"}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <ModeSwitchControl mode={mode} size="md" />
         </div>
       </div>
 
