@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Khonsera — Components</title>
+<link rel="stylesheet" href="assets/khonsera.css">
+</head>
+<body class="paper-tex">
+<div class="x-bar"><div class="x-bar-in">
+  <span class="mono" style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink)">Khonsera · Design Export</span>
+  <nav class="x-nav"><a class="x-nav-a" href="timeline-full-day.html">Timeline · Full day</a><a class="x-nav-a" href="timeline-with-gaps.html">Timeline · Gaps</a><a class="x-nav-a" href="timeline-new-day.html">Timeline · New day</a><a class="x-nav-a" href="today-calm.html">Today · Calm</a><a class="x-nav-a" href="today-imminent.html">Today · Imminent</a><a class="x-nav-a" href="today-live.html">Today · Live</a><a class="x-nav-a" href="today-disruption.html">Today · Disruption</a><a class="x-nav-a" href="tokens.html">Tokens</a><a class="x-nav-a on" href="components.html">Components</a></nav>
+</div></div>
+<main class="x-shell">
+  <p class="x-caption">Reference · contract components</p>
+  
+  <div class="x-screen"><h1 class="h1">Components</h1><p class="body" style="margin-top:10px;max-width:62ch">The named contract components on the two hero screens. These are placeholders — token-styled, structurally correct — for Design to restyle <i>by swapping the look, not the structure</i>. They live in <code>src/components/concierge/</code>.</p><section class="flex flex-col gap-3" style="border-top:1px solid var(--rule);padding-top:24px"><div><span class="eyebrow" style="color:var(--gold-2)">Component</span><h2 class="h2" style="margin-top:4px">ActiveTile</h2></div><div style="max-width:440px"><section class="rounded-card p-5" style="background:var(--card);border:1px solid var(--rule);box-shadow:0 1px 0 var(--rule);padding:20px;border-radius:18px">
+  <header class="mb-3 flex items-center justify-between gap-3">
+    <span class="uc">Right now</span>
+    <span class="pill" style="background:var(--success);color:var(--paper)">On track</span>
+  </header>
+  <h2 class="h2">On the 16:05 to Derby</h2>
+  <p class="small mt-1">Next: <span class="text-ink">Derby Station</span> <span class="mono">&middot; 17:38</span></p>
+  <p class="small mt-0.5">via train — calling at Leicester</p>
+  
+</section></div><p class="small"><b style="color:var(--ink)">Shows</b> — The day-of focus: a status pill, the headline of what's happening now, the next Anchor + time, the next Leg, and (before departure) a leave-by field.</p><p class="small"><b style="color:var(--ink)">States</b> — Urgency drives the pill colour — <b>comfortable</b> (sage, “On track”), <b>urgent</b> (amber, “Leave soon”), <b>breach</b> (rust, “Running late”). Leave-by shows only before you've left.</p></section><section class="flex flex-col gap-3" style="border-top:1px solid var(--rule);padding-top:24px"><div><span class="eyebrow" style="color:var(--gold-2)">Component</span><h2 class="h2" style="margin-top:4px">AnchorCard</h2></div><div style="max-width:440px"><article class="j-card p-4" style="padding:16px">
+  <header class="mb-1 flex items-baseline justify-between gap-3">
+    <span class="uc">Appointment</span>
+    <span class="mono small">09:30</span>
+  </header>
+  <h3 class="h3">Henderson &amp; Cole</h3>
+  <p class="small">Holborn, London WC1</p>
+</article></div><p class="small"><b style="color:var(--ink)">Shows</b> — A fixed point on the day: a type label (Appointment / Reservation / Arrival / Flight / Check-in / Anchor), the time or window, the title, and the place.</p><p class="small"><b style="color:var(--ink)">States</b> — Renders solid (a confirmed point). Type label varies; time may be a single time or a window; place optional. Tappable to open/edit.</p></section><section class="flex flex-col gap-3" style="border-top:1px solid var(--rule);padding-top:24px"><div><span class="eyebrow" style="color:var(--gold-2)">Component</span><h2 class="h2" style="margin-top:4px">IntentionCard</h2></div><div style="max-width:440px"><article class="j-card-soft p-4" style="padding:16px">
+  <header class="mb-1 flex items-baseline justify-between gap-3">
+    <span class="uc">Intention</span>
+    <span class="tag-tight">soft</span>
+  </header>
+  <p class="text-ink">With the Henderson team by 09:30</p>
+  <p class="small mt-0.5">Arrive Holborn by 09:15</p>
+  <p class="small mt-2">Leave by <span class="mono">06:48</span></p>
+  <div class="mt-3 flex gap-2">
+    <button class="btn btn-ghost btn-sm" type="button">Turn off</button>
+    <button class="btn btn-ghost btn-sm" type="button">Make it fixed</button>
+  </div>
+</article></div><p class="small"><b style="color:var(--ink)">Shows</b> — A soft goal: the description, an optional target, the back-calculated leave-by, and controls to toggle it off or promote it to a hard Anchor.</p><p class="small"><b style="color:var(--ink)">States</b> — <b>soft</b> (amber tag) vs <b>promoted</b> (green tag); <b>active</b> vs <b>toggled-off</b> (dimmed). Promote swaps the controls.</p></section><section class="flex flex-col gap-3" style="border-top:1px solid var(--rule);padding-top:24px"><div><span class="eyebrow" style="color:var(--gold-2)">Component</span><h2 class="h2" style="margin-top:4px">GapCard</h2></div><div style="max-width:440px"><div class="flex flex-col gap-1">
+<article class="rounded-card p-4" style="border:1px dashed var(--rule);background:transparent;padding:16px;border-radius:18px">
+  <header class="mb-1 flex items-baseline justify-between gap-3">
+    <span class="uc" style="color:var(--ink-soft)">St Pancras &rarr; Henderson &amp; Cole</span>
+    <span class="tag-tight">needs input</span>
+  </header>
+  <p class="small">How are you getting from St Pancras to Henderson &amp; Cole?</p>
+  <button class="btn btn-gold btn-sm mt-3" type="button">Resolve</button>
+</article>
+
+</div></div><p class="small"><b style="color:var(--ink)">Shows</b> — A computed hole between two Anchors with no resolved connection: the endpoints, a “needs input” tag, the binary-reveal prompt, and a Resolve action into the decision layer.</p><p class="small"><b style="color:var(--ink)">States</b> — Types: transport / accommodation / unplanned-time / care gap. State: open · watching · resolved · dismissed. <i>Note: the endpoint label currently uses --ink-soft (faint) — a placeholder detail for Design.</i></p></section><section class="flex flex-col gap-3" style="border-top:1px solid var(--rule);padding-top:24px"><div><span class="eyebrow" style="color:var(--gold-2)">Component</span><h2 class="h2" style="margin-top:4px">LegCard</h2></div><div style="max-width:440px"><article class="j-card p-4" style="padding:16px">
+  <header class="mb-1 flex items-baseline justify-between gap-3">
+    <span class="uc">Train</span>
+    <span class="tag-ok">booked</span>
+  </header>
+  <p class="text-ink">Derby &rarr; London St Pancras</p>
+  <div class="mt-2 flex flex-wrap items-baseline gap-3">
+    <span class="mono small">07:02 &rarr; 08:34</span>
+    <span class="mono small">£48.50</span>
+  </div>
+  <p class="small mt-2">1h 32m · East Midlands Railway</p>
+</article></div><p class="small"><b style="color:var(--ink)">Shows</b> — A resolved movement: the mode, a booking-status tag, from → to, departure → arrival, cost, and notes.</p><p class="small"><b style="color:var(--ink)">States</b> — Booking status sets the tag — <b>synced/booked</b> (sage), <b>manual</b> (amber), <b>not booked</b> (rust). Cost and notes optional.</p></section><section class="flex flex-col gap-3" style="border-top:1px solid var(--rule);padding-top:24px"><div><span class="eyebrow" style="color:var(--gold-2)">Component</span><h2 class="h2" style="margin-top:4px">ComparisonMatrix</h2></div><div style="max-width:440px"><div style="display:grid;gap:8px"><button class="j-card p-4 text-left" style="border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);padding:16px"><header class="mb-1 flex items-baseline justify-between gap-3"><span class="uc">train</span><span class="tag-ok">11m early</span></header><p class="mono text-ink">08:02 &rarr; 08:49</p><p class="small mt-1">direct · £14.80</p></button><button class="j-card p-4 text-left" style="padding:16px"><header class="mb-1 flex items-baseline justify-between gap-3"><span class="uc">train</span><span class="tag-tight">3m late</span></header><p class="mono text-ink">08:17 &rarr; 09:03</p><p class="small mt-1">1 change · £9.90</p></button><button class="btn btn-gold btn-full">Book this</button><p class="tiny" style="color:var(--ink-soft)">Booking hands off to the provider for now, then absorbs the result.</p></div></div><p class="small"><b style="color:var(--ink)">Shows</b> — The transport decision layer: the two services bracketing the target — one on-time-or-early, one acceptably-late — each with delta-vs-intention, changes and cost, then a Book action.</p><p class="small"><b style="color:var(--ink)">States</b> — One option is selected (gold ring); the user flips between them. “Book” is the one transactional stub (§17). Empty state when there are no sensible options.</p></section></div>
+</main>
+</body>
+</html>
