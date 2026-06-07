@@ -105,7 +105,7 @@ export function ThemePicker() {
                 border: `1px solid ${active ? "var(--gold)" : "var(--rule)"}`,
                 background: active ? "var(--card)" : "var(--card-2)",
                 boxShadow: active
-                  ? "0 1px 0 var(--gold-tint), 0 6px 16px rgba(184, 137, 63, 0.10)"
+                  ? "0 1px 0 var(--gold-tint), 0 6px 16px var(--gold-tint)"
                   : "none",
                 cursor: "pointer",
                 textAlign: "left",

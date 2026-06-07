@@ -99,7 +99,7 @@ export function AppSidebar({
               height: 32,
               borderRadius: 999,
               background: "var(--gold)",
-              color: "#fff",
+              color: "var(--paper)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

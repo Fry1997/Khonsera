@@ -31,6 +31,14 @@ const config: Config = {
         "amber-2": "var(--amber-2)",
         rust: "var(--rust)",
         "rust-2": "var(--rust-2)",
+        slate: "var(--slate)",
+        "slate-2": "var(--slate-2)",
+        // Semantic aliases over the brand ramp (success/warning/danger/info).
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)",
+        disruption: "var(--disruption)",
+        info: "var(--info)",
         // Aliases kept for any code that still references the older
         // shadcn-style names from Phase 0.
         background: "var(--paper)",
@@ -50,10 +58,37 @@ const config: Config = {
         mono: ["var(--mono)"],
         display: ["var(--display)"],
       },
+      // Type scale → var(--fs-*) as NEW utilities (text-h1, text-body, …);
+      // Tailwind's default text-sm/base/lg are untouched.
+      fontSize: {
+        display: "var(--fs-display)",
+        h1: "var(--fs-h1)",
+        h2: "var(--fs-h2)",
+        h3: "var(--fs-h3)",
+        body: "var(--fs-body)",
+        label: "var(--fs-label)",
+        micro: "var(--fs-micro)",
+      },
+      // Brand radii as NEW utility names so Tailwind's default rounded-sm/lg/xl
+      // (used in a few places) keep their original values. sm/DEFAULT/md are
+      // re-pointed to identical-value vars.
       borderRadius: {
-        sm: "3px",
-        DEFAULT: "4px",
-        md: "6px",
+        sm: "var(--radius-xs)", // 3px — matches the prior override
+        DEFAULT: "var(--radius-sm)", // 4px
+        md: "var(--radius-md)", // 6px
+        card: "var(--radius-xl)", // 18px
+        field: "var(--radius-lg)", // 12px
+        pill: "var(--radius-pill)", // 999px
+      },
+      transitionDuration: {
+        fast: "var(--dur-fast)",
+        base: "var(--dur-base)",
+        slow: "var(--dur-slow)",
+      },
+      transitionTimingFunction: {
+        standard: "var(--ease-standard)",
+        entrance: "var(--ease-out)",
+        exit: "var(--ease-in)",
       },
     },
   },

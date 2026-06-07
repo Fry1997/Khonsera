@@ -2,6 +2,21 @@
 
 **Every session must read this before making changes. Update it before ending.**
 
+## Design↔Code Protocol — re-ground every session
+
+Khonsera runs a **Design↔Code Handoff Protocol** (`docs/design-code-handoff-protocol.md`): Claude
+Design and Claude Code share no memory, so two artifacts are the lingua franca, re-grounded at the
+start of every session:
+1. **`docs/design-tokens.md`** — the canonical `theme` (mirror of the CSS custom properties in
+   `src/app/globals.css`, proxied by `tailwind.config.ts`).
+2. **`docs/component-contract.md`** — the §3 component/screen inventory mapped to real files.
+
+**Iron rule:** new code references **token names**, never raw `#hex`/`px`. A new shared value is a
+**token request** — add the `--token` to `globals.css` + `docs/design-tokens.md` (+ Tailwind proxy
+if a utility is wanted), never a one-off hardcode. Tokens never fork. (Legacy inline-px styles are
+migrated to tokens incrementally per-component, not in a big sweep — see the manifest's migration
+status.)
+
 ## Mandatory: Keep docs/ updated
 
 After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.

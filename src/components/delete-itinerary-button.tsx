@@ -85,7 +85,7 @@ export function DeleteItineraryButton({
         className={baseClass}
         title={confirming ? `Click again to delete "${title}"` : `Delete "${title}"`}
         style={{
-          color: confirming ? "#fff" : "var(--rust)",
+          color: confirming ? "var(--paper)" : "var(--rust)",
           background: confirming ? "var(--rust)" : undefined,
           borderColor: confirming ? "var(--rust)" : undefined,
           opacity: pending ? 0.6 : 1,
