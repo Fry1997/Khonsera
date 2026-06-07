@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
+import { isWelcomed } from "@/lib/welcome";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
 import { WeekCalendar } from "@/components/week-calendar";
@@ -28,6 +30,15 @@ const STATUS_PILL: Record<ItineraryStatus, string> = {
 export default async function DashboardPage() {
   const ctx = await requireUserContext();
   const supabase = await createClient();
+
+  // First-run gate (§3): a brand-new user with no journeys meets Khonsera first.
+  if (!(await isWelcomed())) {
+    const { count: anyJourneys } = await supabase
+      .from("itineraries")
+      .select("id", { count: "exact", head: true });
+    if (!anyJourneys) redirect("/welcome" as Route);
+  }
+
   const wsCfg = await getWorkspaceConfig(ctx.workspaceId);
 
   const today = new Date().toISOString().slice(0, 10);
