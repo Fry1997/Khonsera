@@ -76,10 +76,17 @@ Newest at the bottom of each section.
       components; persist mode in the app shell + wire `ModeSwitch`; the map is already integrated in
       the planning page (Step 5 salvage largely pre-satisfied — confirm tokens flow through).
 
-## Deferred / blocking (needs an explicit nod — NOT done this pass)
-- **B1 — Dropping the legacy CRM tables is the one irreversible step I will not take unsupervised.**
-  `customers`, `customer_sites`, `visit_plans`, `visit_checklist_items`, `visit_status_edges`,
-  `saved_trips`, `saved_trip_edges`, `travel_options`, `journey_legs`, `journey_leg_alternatives`,
-  `planning_runs`, `trip_progress` and their routes/components are STRIP candidates (see triage),
-  but they may hold real data. The code routes are removed (reversible via git); the **tables are
-  left intact** until you confirm. No data lost.
+## Deferred / blocking
+- **B1 — RESOLVED (partial), authorised "pre-alpha, no CRM data needed".** Migration 0031 dropped the
+  9 genuinely-decoupled legacy tables (zero code references): the visit CRM
+  (`visit_plans`/`visit_checklist_items`/`visit_status_edges`), the unused `saved_trips`/
+  `saved_trip_edges`, and dead planning-engine tables (`travel_options`/`planning_runs`/
+  `trip_progress`/`journey_leg_alternatives` + the orphaned `journey_legs.travel_option_id` column).
+  Applied to the live project; types regenerated; tsc/build/181 tests green.
+- **B1a — `customers` / `customer_sites` deliberately KEPT (contradicts the "just CRM" framing).**
+  These are NOT a disposable CRM page — they're load-bearing plumbing woven through capture, the
+  place-picker, the parser (`materialise`), `anchor-card`, `stops`, `transitions` (40+ files). A
+  blind `DROP` would shatter the build and the working capture/planning engines. They migrate to the
+  new place/contact model as part of the deliberate screen/model reshape (place model → locations +
+  contacts), keeping the build green throughout — not a reckless drop. `journey_legs` likewise kept
+  (active resolved-leg persistence on the planning page).

@@ -1179,7 +1179,6 @@ export type Database = {
           start_location_name: string | null;
           start_time: string | null;
           transition_id: string | null;
-          travel_option_id: string | null;
           updated_at: string;
           workspace_id: string;
         };
@@ -1200,7 +1199,6 @@ export type Database = {
           start_location_name?: string | null;
           start_time?: string | null;
           transition_id?: string | null;
-          travel_option_id?: string | null;
           updated_at?: string;
           workspace_id: string;
         };
@@ -1221,7 +1219,6 @@ export type Database = {
           start_location_name?: string | null;
           start_time?: string | null;
           transition_id?: string | null;
-          travel_option_id?: string | null;
           updated_at?: string;
           workspace_id?: string;
         };
@@ -1231,13 +1228,6 @@ export type Database = {
             columns: ["transition_id"];
             isOneToOne: false;
             referencedRelation: "transitions";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "journey_legs_travel_option_id_fkey";
-            columns: ["travel_option_id"];
-            isOneToOne: false;
-            referencedRelation: "travel_options";
             referencedColumns: ["id"];
           },
           {
@@ -1455,63 +1445,6 @@ export type Database = {
           },
           {
             foreignKeyName: "notification_rules_workspace_id_fkey";
-            columns: ["workspace_id"];
-            isOneToOne: false;
-            referencedRelation: "workspaces";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      planning_runs: {
-        Row: {
-          created_at: string;
-          generated_at: string;
-          id: string;
-          idempotency_key: string | null;
-          itinerary_id: string | null;
-          requested_end_time: string | null;
-          requested_start_time: string | null;
-          status: Database["public"]["Enums"]["planning_run_status"];
-          summary: string | null;
-          updated_at: string;
-          workspace_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          generated_at?: string;
-          id?: string;
-          idempotency_key?: string | null;
-          itinerary_id?: string | null;
-          requested_end_time?: string | null;
-          requested_start_time?: string | null;
-          status?: Database["public"]["Enums"]["planning_run_status"];
-          summary?: string | null;
-          updated_at?: string;
-          workspace_id: string;
-        };
-        Update: {
-          created_at?: string;
-          generated_at?: string;
-          id?: string;
-          idempotency_key?: string | null;
-          itinerary_id?: string | null;
-          requested_end_time?: string | null;
-          requested_start_time?: string | null;
-          status?: Database["public"]["Enums"]["planning_run_status"];
-          summary?: string | null;
-          updated_at?: string;
-          workspace_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "planning_runs_itinerary_id_fkey";
-            columns: ["itinerary_id"];
-            isOneToOne: false;
-            referencedRelation: "itineraries";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "planning_runs_workspace_id_fkey";
             columns: ["workspace_id"];
             isOneToOne: false;
             referencedRelation: "workspaces";
@@ -2606,96 +2539,6 @@ export type Database = {
           },
           {
             foreignKeyName: "travel_bookings_workspace_id_fkey";
-            columns: ["workspace_id"];
-            isOneToOne: false;
-            referencedRelation: "workspaces";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      travel_options: {
-        Row: {
-          arrive_return_location_at: string | null;
-          arrive_site_at: string | null;
-          buffer_minutes: number | null;
-          confidence_score: number | null;
-          created_at: string;
-          currency: string;
-          feasibility_status: Database["public"]["Enums"]["feasibility_status"];
-          id: string;
-          leave_origin_at: string | null;
-          leave_site_at: string | null;
-          meeting_end_at: string | null;
-          meeting_start_at: string | null;
-          mode: Database["public"]["Enums"]["travel_option_mode"];
-          overview_polyline: string | null;
-          planning_run_id: string;
-          recommendation_summary: string | null;
-          risk_summary: string | null;
-          total_cost_estimate: number | null;
-          total_duration_minutes: number | null;
-          travel_time_minutes: number | null;
-          updated_at: string;
-          workspace_id: string;
-        };
-        Insert: {
-          arrive_return_location_at?: string | null;
-          arrive_site_at?: string | null;
-          buffer_minutes?: number | null;
-          confidence_score?: number | null;
-          created_at?: string;
-          currency?: string;
-          feasibility_status: Database["public"]["Enums"]["feasibility_status"];
-          id?: string;
-          leave_origin_at?: string | null;
-          leave_site_at?: string | null;
-          meeting_end_at?: string | null;
-          meeting_start_at?: string | null;
-          mode: Database["public"]["Enums"]["travel_option_mode"];
-          overview_polyline?: string | null;
-          planning_run_id: string;
-          recommendation_summary?: string | null;
-          risk_summary?: string | null;
-          total_cost_estimate?: number | null;
-          total_duration_minutes?: number | null;
-          travel_time_minutes?: number | null;
-          updated_at?: string;
-          workspace_id: string;
-        };
-        Update: {
-          arrive_return_location_at?: string | null;
-          arrive_site_at?: string | null;
-          buffer_minutes?: number | null;
-          confidence_score?: number | null;
-          created_at?: string;
-          currency?: string;
-          feasibility_status?: Database["public"]["Enums"]["feasibility_status"];
-          id?: string;
-          leave_origin_at?: string | null;
-          leave_site_at?: string | null;
-          meeting_end_at?: string | null;
-          meeting_start_at?: string | null;
-          mode?: Database["public"]["Enums"]["travel_option_mode"];
-          overview_polyline?: string | null;
-          planning_run_id?: string;
-          recommendation_summary?: string | null;
-          risk_summary?: string | null;
-          total_cost_estimate?: number | null;
-          total_duration_minutes?: number | null;
-          travel_time_minutes?: number | null;
-          updated_at?: string;
-          workspace_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "travel_options_planning_run_id_fkey";
-            columns: ["planning_run_id"];
-            isOneToOne: false;
-            referencedRelation: "planning_runs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "travel_options_workspace_id_fkey";
             columns: ["workspace_id"];
             isOneToOne: false;
             referencedRelation: "workspaces";
