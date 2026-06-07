@@ -67,6 +67,15 @@ Newest at the bottom of each section.
   mode-scoping of dashboard/itineraries is deferred to the screen-reshape slice (tracked here so it
   isn't lost), to avoid documenting surfaces that are about to be reshaped onto contract components.
 
+- **D14 — First-run `/welcome` (handover §3, the spec's highest priority).** Chromeless, outside the
+  `(app)` shell so the first minute is just Khonsera: warm self-intro + the honest fork (something
+  coming up / find me later) + the "booked?" sub-step routing to inbox-connect / Tell / field entry.
+  Cookie flag (`khonsera_welcomed`) + `chooseAndContinue` action; the home gates a zero-journey,
+  not-yet-welcomed user into it. Voiced as Khonsera, no emojis, mode-aware.
+- **D15 — `/contacts` (handover §4.8).** ContactChip grid over the mode-scoped contacts table + a
+  quick-add via the decoupled `createContactQuick` (now stamps active mode). Read-mostly for now;
+  full contact management lands with the People & ledger layer (build-order §8).
+
 ## Done this pass vs remaining (against the Kickoff DoD)
 - [x] Triage reviewed (checkpoint) · data model wired (Mode + privacy RLS + Journey/Anchor/Intention/
       Gap/Leg/ResourceState/Task + types) · `CLAUDE.md`/`DECISIONS.md` established · contract

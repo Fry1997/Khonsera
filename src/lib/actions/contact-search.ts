@@ -74,6 +74,7 @@ export async function createContactQuick(
     .insert({
       workspace_id: ctx.workspaceId,
       customer_id: null,
+      mode: ctx.activeMode,
       name: parsed.data.name,
       role: parsed.data.relation ?? null,
       notes: parsed.data.company ? `Company: ${parsed.data.company}` : null,
