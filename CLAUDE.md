@@ -17,6 +17,50 @@ if a utility is wanted), never a one-off hardcode. Tokens never fork. (Legacy in
 migrated to tokens incrementally per-component, not in a big sweep — see the manifest's migration
 status.)
 
+## Foundation Rebuild — Standing Orders & Build Spine (current programme)
+
+The product is being taken to a clean, navigable foundation per three handover docs (Technical
+Handover v2, Code Kickoff Brief, Standing Orders). Posture and decisions live in `DECISIONS.md`;
+the triage in `docs/foundation-rebuild-triage.md`. Honour these every turn:
+
+- **Decide and proceed.** Make conventional implementation calls and keep building; log assumptions
+  in `DECISIONS.md`, don't interrogate. Pause only for: the triage checkpoint, a genuine spec
+  contradiction, or a data-loss/irreversible action.
+- **Tokens only, never raw values** (the iron rule above). The `theme` is the single source of truth.
+- **Brand voice:** the concierge is **"Khonsera"** — never a human name. All assistant copy is
+  voiced as Khonsera. **No emojis, ever.**
+- **Identity is the spine:** every record is scoped to a **user + Mode (work|personal)** (+ workspace
+  where applicable). **Personal-mode data is NEVER visible to any workspace/manager/admin** — a
+  correctness/security boundary enforced in the data layer via RLS (`can_access_itinerary`, migration
+  0030), not just app code. Getting it wrong is a data breach.
+- **Never lose the user's work** — persistence survives refresh/navigation.
+- **Booking is the one stub** (handover §17): build the decision/comparison layer fully behind a
+  clean provider interface; fake the transaction.
+
+**Locked stack:** Next.js App Router + React + TypeScript (mobile-first, PWA-capable) · Supabase
+(Postgres + Auth + RLS) · token-driven styling (CSS vars proxied by Tailwind) · MapLibre + Protomaps
+(keep) · Valhalla (routing) + OpenTripPlanner (transit) + TfL (London) when nav is reached.
+
+**Core data model (migration 0010 + 0030):** `Journey`=itineraries · `Anchor`=stops · `Leg`=transitions
+· `Intention` · `Gap` · `ResourceState` · `Task` · identity = profiles/workspaces/memberships +
+`app_mode`. Roles map legacy owner/admin/member/viewer → company_admin/team_manager/traveller.
+
+**Contract component names** (placeholders now, Design restyles later — don't rename): `ActiveTile`,
+`AnchorCard`, `IntentionCard`, `GapCard`, `LegCard`, `ComparisonMatrix`, `JourneyListCard`,
+`ModeSwitch`, `ContactChip`, `TaskRow`, `ExpenseRow`, `NudgeCard`, `ReadinessPrompt`. They live in
+`src/components/concierge/`.
+
+**Build-order spine (handover §18) — build by dependency, not release phase:**
+1. Foundation: identity + Mode + privacy boundary + persistence.
+2. Core surface + model: timeline; Journey/Anchor/Intention/Gap/Leg/ResourceState.
+3. Capture: manual entry + email sync (extend the Trainline parser).
+4. Decision layer: comparison engine; flights-as-anchors; readiness back-calc.
+5. Day-of: active tile + next-leg peek + overview; live status (TfL first).
+6. Navigation: Valhalla walking → London transit (TfL) → national (OTP/GTFS).
+7. Orchestration: contingency; unplanned-time radius.
+8. People & ledger: contacts; messaging/notifications; tasks; expenses.
+9. Teams machinery: workspace admin, approvals, allowance/per-diem, reimbursement.
+
 ## Mandatory: Keep docs/ updated
 
 After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.
