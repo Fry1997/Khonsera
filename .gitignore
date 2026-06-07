@@ -14,3 +14,6 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 supabase/.branches
 supabase/.temp
+
+# Design export zip is a derived artifact (source lives in design-export/)
+design-export.zip
