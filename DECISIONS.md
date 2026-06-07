@@ -58,6 +58,15 @@ Newest at the bottom of each section.
   `/itineraries`, and the Home dashboard; new itineraries are stamped with the active mode on create.
   This is layered ON TOP of the RLS boundary (RLS = security; mode filter = which lens you're in).
 
+- **D13 — Tasks built end-to-end as the exemplar for a new entity.** `/tasks` (mode-scoped read) +
+  `src/lib/actions/tasks.ts` (create/toggle/delete) + `TasksScreen` composing the `TaskRow` contract
+  component. Chosen to prove the full new-table stack works: `tasks` table → RLS insert/update
+  policies → mode scoping → contract component in a real CRUD loop. `/tasks` added to sidebar +
+  mobile nav.
+- **Note:** `docs/itinerary-pages.md` refresh for the new `/today` + `/tasks` screens and the
+  mode-scoping of dashboard/itineraries is deferred to the screen-reshape slice (tracked here so it
+  isn't lost), to avoid documenting surfaces that are about to be reshaped onto contract components.
+
 ## Done this pass vs remaining (against the Kickoff DoD)
 - [x] Triage reviewed (checkpoint) · data model wired (Mode + privacy RLS + Journey/Anchor/Intention/
       Gap/Leg/ResourceState/Task + types) · `CLAUDE.md`/`DECISIONS.md` established · contract
