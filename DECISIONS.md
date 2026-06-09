@@ -90,7 +90,24 @@ Newest at the bottom of each section.
   member count; placeholder §15 sections (approvals, allowance/per-diem, policy).
 
 ## Process / operating model
-- **D21 — Relay operating model adopted; Round 1 Track B shipped.** Connor's middle layer formalised
+- **D22 — Round 2 (Design→Code) started; stale-clone recovered; one hard blocker (screenshots).**
+  Design's `for-code.zip` (Khonsera_8) arrived: screen designs for Planner/Today/Nav + the additive
+  `khonsera-edition-ii-screens.css` (styles the 13 components by `.cc-*` + `data-*`) + redlines +
+  token-class map + mark assets.
+  - **Recovery:** the container was reclaimed and the local checkout came back a **stale re-clone at
+    the D19 commit** — `khonsera-edition-ii.css` "missing", old nav back, engine gone. Origin had
+    everything (`608563c`). Reset hard to origin; **no work lost.** (Lesson: always `git fetch` +
+    compare before trusting local state after a container restart.)
+  - **Installed (on the correct base):** `src/app/khonsera-edition-ii-screens.css` imported after the
+    brand layer; `public/brand/mk-{ink,brass}.png`. globals.css untouched. Build green, 197 tests.
+    Inert until the components emit `.cc-*` (the rebuild is next).
+  - **BLOCKER — `live-screenshots.zip` can't be produced here.** This environment has **no browser**
+    (no Playwright/Puppeteer/Chromium; PDF rendering also unavailable). That zip is the round's
+    deliverable, so it needs a decision: (a) a human runs the app and captures, (b) I produce static
+    **HTML renders** of the implemented screens as the proof instead, or (c) try installing a headless
+    browser if the network policy allows. Flagged to Connor.
+
+## Process / operating model (Round 1) Connor's middle layer formalised
   the Code↔Design relay: I own the repo, Design owns the look, Connor relays packs; I **start the
   chain** and **alternate** with Design (`docs/process/code-standing-brief.md` + the two P1 screen
   specs in `docs/process/screen-specs/`). Round 1 = (Track B) ship `for-design.zip` so Design isn't
