@@ -23,5 +23,5 @@ export async function setNewPassword(formData: FormData) {
   if (error) {
     redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
   }
-  redirect("/dashboard");
+  redirect("/today");
 }

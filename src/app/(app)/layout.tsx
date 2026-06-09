@@ -31,7 +31,7 @@ export default async function AppLayout({
         >
           {children}
         </main>
-        <MobileTabbar />
+        <MobileTabbar mode={ctx.activeMode} />
       </div>
 
       {/* Desktop — sidebar shell. */}

@@ -12,26 +12,29 @@ type NavItem = {
   href: Route;
   label: string;
   icon: keyof typeof Glyphs;
-  section: "workspace" | "you";
+  section: "primary" | "you";
   count?: number;
 };
 
-const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Home", icon: "bolt", section: "workspace" },
-  { href: "/today" as Route, label: "Today", icon: "bolt", section: "workspace" },
-  { href: "/itineraries", label: "Itineraries", icon: "nav", section: "workspace" },
-  { href: "/bookings", label: "Bookings", icon: "ticket", section: "workspace" },
-  { href: "/flights", label: "Flights", icon: "plane", section: "workspace" },
-  { href: "/customers", label: "Customers", icon: "case", section: "workspace" },
-  { href: "/locations", label: "Locations", icon: "pin", section: "workspace" },
-  { href: "/expenses", label: "Expenses", icon: "receipt", section: "workspace" },
-  { href: "/contacts" as Route, label: "Contacts", icon: "case", section: "workspace" },
-  { href: "/tasks" as Route, label: "Tasks", icon: "case", section: "workspace" },
-  { href: "/workspace" as Route, label: "Workspace", icon: "case", section: "you" },
-  { href: "/settings", label: "Settings", icon: "settings", section: "you" },
-];
-
-export const APP_NAV: ReadonlyArray<{ href: Route; label: string }> = NAV;
+// Desktop mirror of the primary nav (standing brief, Track A): Today · Plan ·
+// Tasks · People — mode-aware (Work → Clients). Secondary items live under "You".
+// Legacy routes (dashboard/bookings/flights/locations) still exist (parity-before-
+// strip) but are no longer surfaced in nav.
+function navFor(mode: AppMode): NavItem[] {
+  return [
+    { href: "/today" as Route, label: "Today", icon: "bolt", section: "primary" },
+    { href: "/itineraries" as Route, label: "Plan", icon: "nav", section: "primary" },
+    { href: "/tasks" as Route, label: "Tasks", icon: "case", section: "primary" },
+    mode === "work"
+      ? { href: "/customers" as Route, label: "Clients", icon: "case", section: "primary" }
+      : { href: "/contacts" as Route, label: "People", icon: "case", section: "primary" },
+    { href: "/expenses" as Route, label: "Expenses", icon: "receipt", section: "you" },
+    ...(mode === "work"
+      ? [{ href: "/workspace" as Route, label: "Workspace", icon: "case", section: "you" } as NavItem]
+      : []),
+    { href: "/settings" as Route, label: "Settings", icon: "settings", section: "you" },
+  ];
+}
 
 export function AppSidebar({
   email,
@@ -43,8 +46,9 @@ export function AppSidebar({
   mode: AppMode;
 }) {
   const pathname = usePathname();
-  const workspace = NAV.filter((n) => n.section === "workspace");
-  const you = NAV.filter((n) => n.section === "you");
+  const items = navFor(mode);
+  const primary = items.filter((n) => n.section === "primary");
+  const you = items.filter((n) => n.section === "you");
 
   const initial = email[0]?.toUpperCase() ?? "•";
 
@@ -81,8 +85,7 @@ export function AppSidebar({
       </Link>
 
       <nav className="desk-nav">
-        <div className="desk-nav-section">Workspace</div>
-        {workspace.map((n) => (
+        {primary.map((n) => (
           <NavLink key={n.href} item={n} pathname={pathname} />
         ))}
 

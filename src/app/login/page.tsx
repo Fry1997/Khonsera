@@ -60,7 +60,7 @@ export default async function LoginPage({
         </div>
 
         <form action={login} className="card" style={{ padding: 20 }}>
-          <input type="hidden" name="next" value={sp.next ?? "/dashboard"} />
+          <input type="hidden" name="next" value={sp.next ?? "/today"} />
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <label
               style={{ display: "flex", flexDirection: "column", gap: 6 }}

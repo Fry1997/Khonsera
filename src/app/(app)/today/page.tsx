@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
+import { isWelcomed } from "@/lib/welcome";
 import { ActiveTile, AnchorCard } from "@/components/concierge";
 import type { AnchorVM, AnchorType } from "@/components/concierge";
 
@@ -31,6 +33,16 @@ type StopRow = {
 export default async function TodayPage() {
   const ctx = await requireUserContext();
   const supabase = await createClient();
+
+  // First-run gate (§3): a brand-new user with no journeys meets Khonsera first.
+  // Lives here because Today is the post-auth landing.
+  if (!(await isWelcomed())) {
+    const { count } = await supabase
+      .from("itineraries")
+      .select("id", { count: "exact", head: true });
+    if (!count) redirect("/welcome" as Route);
+  }
+
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
 

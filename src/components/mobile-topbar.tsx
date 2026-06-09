@@ -6,17 +6,15 @@ import { ModeSwitchControl } from "./mode-switch-control";
 import type { AppMode } from "@/lib/mode";
 import type { Route } from "next";
 
+// The "more" menu behind the topbar — the 4 primary items live in the bottom
+// tab bar; this carries the secondary destinations. (Legacy routes still exist
+// per parity-before-strip but are no longer surfaced.)
 const NAV = [
-  { href: "/dashboard" as Route, label: "Home" },
   { href: "/today" as Route, label: "Today" },
-  { href: "/itineraries" as Route, label: "Itineraries" },
-  { href: "/bookings" as Route, label: "Bookings" },
-  { href: "/flights" as Route, label: "Flights" },
-  { href: "/customers" as Route, label: "Customers" },
-  { href: "/locations" as Route, label: "Locations" },
-  { href: "/expenses" as Route, label: "Expenses" },
-  { href: "/contacts" as Route, label: "Contacts" },
+  { href: "/itineraries" as Route, label: "Plan" },
   { href: "/tasks" as Route, label: "Tasks" },
+  { href: "/contacts" as Route, label: "People" },
+  { href: "/expenses" as Route, label: "Expenses" },
   { href: "/workspace" as Route, label: "Workspace" },
   { href: "/settings" as Route, label: "Settings" },
 ] as const;
