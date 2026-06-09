@@ -1,6 +1,6 @@
 import { requireUserContext } from "@/lib/auth";
 import { AppSidebar } from "@/components/app-sidebar";
-import { MobileTopbar } from "@/components/mobile-topbar";
+import { MobileAppbar } from "@/components/shell/mobile-appbar";
 import { MobileTabbar } from "@/components/mobile-tabbar";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +17,16 @@ export default async function AppLayout({
     .eq("id", ctx.workspaceId)
     .maybeSingle();
 
+  const nameSource = ctx.fullName ?? ctx.email.split("@")[0];
+  const firstName = nameSource.split(" ")[0] || "there";
+  const initials =
+    nameSource
+      .split(/\s+/)
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || ctx.email[0]!.toUpperCase();
+
   return (
     <div
       className="khonsera-app"
@@ -24,7 +34,13 @@ export default async function AppLayout({
     >
       {/* Mobile / tablet — sticky top bar + FIXED bottom tab bar. */}
       <div className="lg:hidden">
-        <MobileTopbar email={ctx.email} isStaff={ctx.isStaff} mode={ctx.activeMode} />
+        <MobileAppbar
+          email={ctx.email}
+          firstName={firstName}
+          initials={initials}
+          isStaff={ctx.isStaff}
+          mode={ctx.activeMode}
+        />
         <main
           className="paper-tex"
           style={{ padding: "16px 16px 96px", minHeight: "100vh" }}
