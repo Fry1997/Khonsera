@@ -1,0 +1,166 @@
+{
+  "journey": {
+    "id": "jny_derby_london",
+    "title": "Derby \u2192 London \u2014 Henderson review",
+    "mode": "work",
+    "date": "2026-06-18"
+  },
+  "anchors": [
+    {
+      "id": "a_home",
+      "type": "custom",
+      "title": "Home",
+      "place": "Allestree, Derby",
+      "vars": {
+        "leaveBy": {
+          "value": "06:48",
+          "state": "derived"
+        }
+      }
+    },
+    {
+      "id": "a_appt",
+      "type": "appointment",
+      "title": "Henderson & Cole",
+      "place": "Holborn, London WC1",
+      "vars": {
+        "arriveBy": {
+          "value": "09:30",
+          "state": "precise"
+        },
+        "duration": {
+          "value": "3h",
+          "state": "approximate"
+        },
+        "leaveBy": {
+          "value": "12:45",
+          "state": "derived"
+        }
+      }
+    },
+    {
+      "id": "a_lunch",
+      "type": "reservation",
+      "title": "Lunch \u2014 The Delaunay",
+      "place": "Aldwych, London WC2",
+      "vars": {
+        "arriveBy": {
+          "value": "13:00",
+          "state": "precise"
+        },
+        "duration": {
+          "value": "as long as possible",
+          "state": "maximise",
+          "boundedBy": "16:05 train home"
+        }
+      }
+    },
+    {
+      "id": "a_home_end",
+      "type": "custom",
+      "title": "Home",
+      "place": "Allestree, Derby",
+      "vars": {
+        "arriveBy": {
+          "value": "by 19:00",
+          "state": "by-a-time"
+        }
+      }
+    }
+  ],
+  "legs": [
+    {
+      "id": "l1",
+      "fromAnchor": "a_home",
+      "toAnchor": "a_appt",
+      "pattern": "Hub-to-hub",
+      "doorToDoorMinutes": 162,
+      "state": "chosen",
+      "subLegs": [
+        {
+          "mode": "drive",
+          "from": "Home",
+          "to": "Derby Station",
+          "minutes": 18,
+          "note": "park at station"
+        },
+        {
+          "mode": "train",
+          "from": "Derby",
+          "to": "London St Pancras",
+          "depart": "07:02",
+          "arrive": "08:34",
+          "operator": "EMR",
+          "cost": 4850,
+          "currency": "GBP",
+          "booked": true
+        },
+        {
+          "mode": "walk",
+          "from": "St Pancras",
+          "to": "Holborn",
+          "minutes": 16
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "fromAnchor": "a_appt",
+      "toAnchor": "a_lunch",
+      "pattern": "Direct",
+      "doorToDoorMinutes": 15,
+      "state": "proposed",
+      "subLegs": [
+        {
+          "mode": "walk",
+          "from": "Holborn",
+          "to": "Aldwych",
+          "minutes": 15
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "fromAnchor": "a_lunch",
+      "toAnchor": "a_home_end",
+      "pattern": "Hub-to-hub",
+      "doorToDoorMinutes": 171,
+      "state": "at-risk",
+      "risk": "return train fixes the leave-by at 16:05",
+      "subLegs": [
+        {
+          "mode": "walk",
+          "minutes": 10
+        },
+        {
+          "mode": "train",
+          "from": "London St Pancras",
+          "to": "Derby",
+          "depart": "16:05",
+          "arrive": "17:38",
+          "operator": "EMR",
+          "cost": 4850,
+          "currency": "GBP",
+          "booked": true
+        },
+        {
+          "mode": "drive",
+          "from": "Derby Station",
+          "to": "Home",
+          "minutes": 18
+        }
+      ]
+    }
+  ],
+  "gaps": [],
+  "intentions": [
+    {
+      "id": "i1",
+      "description": "With the Henderson team by 09:30",
+      "target": "arrive Holborn 09:15",
+      "leaveBy": "06:48",
+      "flexibility": "soft",
+      "state": "active"
+    }
+  ]
+}

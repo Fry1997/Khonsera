@@ -1,0 +1,19 @@
+{
+  "state": "in-transit",
+  "activeTile": {
+    "urgency": "comfortable",
+    "headline": "On the 07:02 to St Pancras",
+    "pattern": "Hub-to-hub",
+    "subLeg": "calling at Leicester \u00b7 arrive 08:34",
+    "nextAnchor": {
+      "title": "Henderson & Cole",
+      "time": "09:30"
+    }
+  },
+  "supporting": [
+    {
+      "component": "NudgeCard",
+      "message": "From St Pancras: Piccadilly line to Holborn, 16 min. Platform on arrival."
+    }
+  ]
+}

@@ -17,3 +17,8 @@ supabase/.temp
 
 # Design export zip is a derived artifact (source lives in design-export/)
 design-export.zip
+
+# Round packs are derived artifacts (source dirs are committed)
+for-design.zip
+for-code.zip
+live-screenshots.zip

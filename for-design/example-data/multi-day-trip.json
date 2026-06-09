@@ -1,0 +1,104 @@
+{
+  "journey": {
+    "id": "jny_lisbon",
+    "title": "Lisbon \u2014 3 days",
+    "mode": "personal",
+    "dateStart": "2026-07-10",
+    "dateEnd": "2026-07-12"
+  },
+  "anchors": [
+    {
+      "id": "m_home",
+      "type": "custom",
+      "title": "Home",
+      "place": "Allestree, Derby",
+      "vars": {
+        "leaveBy": {
+          "value": "05:30",
+          "state": "derived"
+        }
+      }
+    },
+    {
+      "id": "m_flight",
+      "type": "flight",
+      "title": "EZY2173 \u2192 Lisbon",
+      "place": "East Midlands Airport",
+      "vars": {
+        "arriveBy": {
+          "value": "08:40",
+          "state": "precise"
+        },
+        "duration": {
+          "value": "2h 55m",
+          "state": "precise"
+        }
+      },
+      "arrivalDestination": {
+        "airport": "Lisbon LIS",
+        "localArrive": "11:35"
+      }
+    },
+    {
+      "id": "m_day3_flight",
+      "type": "flight",
+      "title": "EZY2174 \u2192 East Midlands",
+      "place": "Lisbon LIS",
+      "vars": {
+        "arriveBy": {
+          "value": "19:05",
+          "state": "precise"
+        }
+      }
+    }
+  ],
+  "legs": [
+    {
+      "id": "ml1",
+      "fromAnchor": "m_home",
+      "toAnchor": "m_flight",
+      "pattern": "Drop-and-go",
+      "doorToDoorMinutes": 75,
+      "state": "proposed",
+      "subLegs": [
+        {
+          "mode": "drive",
+          "from": "Home",
+          "to": "EMA",
+          "minutes": 40
+        },
+        {
+          "mode": "walk",
+          "note": "terminal + bag drop",
+          "minutes": 35
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "mg1",
+      "type": "accommodation_gap",
+      "fromAnchor": "m_flight",
+      "toAnchor": "m_day3_flight",
+      "prompt": "Three nights in Lisbon \u2014 no lodging yet.",
+      "state": "open"
+    }
+  ],
+  "proposals": [
+    {
+      "id": "p_hotel",
+      "kind": "accommodation",
+      "provisional": true,
+      "reason": "multi-day trip implies lodging",
+      "label": "Hotel in Lisbon \u00b7 10\u201312 Jul (2 nights)"
+    },
+    {
+      "id": "p_luggage",
+      "kind": "luggage",
+      "provisional": true,
+      "reason": "overnight trip implies a checked bag",
+      "label": "Add hold luggage to EZY2173?"
+    }
+  ]
+}
