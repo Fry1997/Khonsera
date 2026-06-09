@@ -89,6 +89,30 @@ Newest at the bottom of each section.
   privacy boundary (personal mode shows "never visible to a workspace"). Reads workspace + role +
   member count; placeholder §15 sections (approvals, allowance/per-diem, policy).
 
+## Design adoption
+- **D19 — Edition II restyle adopted into the app (full, per your call).** The Design→Code handback
+  (a drop-in restyle of the two hero screens) is now in the canonical theme + components, in three
+  green phases:
+  1. **Theme core** — `globals.css` dusk tokens re-tuned (gold #a97f33/#8a6418, ink #221b12, card
+     #f6efdc, status sage/amber/rust/terra), new `--label`/`--rail`/`--gold-deep`, `--disruption`→terra,
+     crisp near-square radii (xs2…xl6), house motion curve `--ease` + calmer 220/280/420ms, type scale
+     re-set sans-led. Fonts: **Satoshi-led `--sans`** (Inter→fallback), serif accent **Cormorant→Spectral**
+     (layout.tsx next/font). `docs/design-tokens.md` mirrored.
+  2. **Component layer** — appended Edition II `@layer components` (cascade-wins): card/button radii→tokens,
+     status tags→dot+text, `.pill-status`/`.pill-ok|soon|late`, `.active-tile`, `.gap-card` (+faint-label
+     fix), `.leg-card` de-box, IntentionCard rule, `.is-selected`, `.k-timeline` rail.
+  3. **Hooks promoted to real classes** — ActiveTile/GapCard/LegCard/ComparisonMatrix/Timeline updated to
+     use the real classes instead of the export pack's inline-style hooks, exactly as the handback's
+     "requests for Code" asked.
+  - **This supersedes D4** (Inter/Cormorant) — Design's brand-book authority wins per the protocol.
+  - **Sanitised a data-corruption in the handback CSS** (`--rule-2: #cbb componente / membership`) →
+    clean intended `--rule #ddcca4` / `--rule-2 #ccb676`. Did not propagate the garbage.
+  - **Doc/CSS mismatch resolved CSS-first:** the handback prose said radii 14/20 but its shipped tokens
+    were 2–6px; followed the CSS (what renders).
+  - **Two things flagged for a browser pass (can't pixel-verify headless):** the `.k-timeline` rail-node
+    offsets are best-effort; and sahara/midnight keep their old colours (they inherit the new scales) —
+    a full palette reconciliation is a later pass.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
