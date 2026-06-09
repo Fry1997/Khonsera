@@ -10,22 +10,28 @@ Nothing references raw values. Both Code and Design speak **token names**, never
 If Design needs a value with no token, that's a **token request** → Code adds it to `globals.css`
 **and this file** → both re-ground. Tokens never fork.
 
-## Fonts (code is canonical)
+## Fonts — Edition II (sans-led)
 | Token | Family | Role |
 |-------|--------|------|
 | `--font-display` / `--display` | Satoshi (Fontshare) | Headlines, wordmark |
-| `--font-ui` / `--sans` | Inter (next/font) | Body + UI |
-| `--font-editorial` / `--serif` | Cormorant Garamond (next/font) | Decorative serif italic |
+| `--font-ui` / `--sans` | **Satoshi** (Inter = fallback) | UI + body — one sans across the app |
+| `--font-editorial` / `--serif` | **Spectral** (next/font) | Rare editorial serif italic accent |
 | `--font-technical` / `--mono` | JetBrains Mono (next/font) | Codes, times, eyebrows |
 
-> Note: the protocol doc's "Playfair Display / Lora" is **superseded** — the code's fonts above are
-> canonical (Connor's call). Design references the tokens, not the family names.
+> **Edition II (Design handback):** the stack is now **sans-led** — Satoshi carries UI + body;
+> Inter is retired to a graceful fallback; the serif accent moved **Cormorant → Spectral** (rare use
+> only). Supersedes the earlier code-canonical D4 (Inter/Cormorant) per Design's brand-book authority.
 
 ## Colour — brand (per palette: dusk default, sahara, midnight)
 `--paper --paper-2 --sand --sand-2 --card --card-2` (grounds) · `--ink --ink-2 --ink-dim --ink-faint`
 (text) · `--rule --rule-2` (dividers) · gold ramp `--gold-100 --gold-200 --gold(400) --gold-2(600)
---gold-800 --gold-soft --gold-tint` · rare salts `--terra(-2/-deep) --plum --plum-soft` · cool foil
-`--slate --slate-2 --slate-soft`. Each palette redefines these; reference the name, never the hex.
+--gold-800 --gold-deep --gold-soft --gold-tint` · rare salts `--terra(-2/-deep) --plum --plum-soft` ·
+cool foil `--slate --slate-2 --slate-soft`. Each palette redefines these; reference the name, never the hex.
+
+> **Edition II additions/changes (dusk):** new `--label` (legible eyebrow/uc/mono micro-text, replaces
+> faint `--ink-soft`/`--ink-faint` for labels) · new `--rail` (timeline rail, aliases `--rule-2`) · new
+> `--gold-deep`. Gold ramp re-tuned (`--gold` #a97f33 / `--gold-2` #8a6418). The dusk **colours** were
+> restyled; sahara/midnight keep their colours but inherit the new scales below. `--disruption` now → `--terra`.
 
 ## Colour — semantic (aliases over the brand ramp; follow the active palette)
 | Token | Maps to | Use |
@@ -42,31 +48,32 @@ If Design needs a value with no token, that's a **token request** → Code adds 
 ## Type scale (size / line-height / letter-spacing / weight)
 | Step | Size | LH | LS | Weight | Class |
 |------|------|----|----|--------|-------|
-| display | `--fs-display` 56 | `--lh-display` 1.02 | `--ls-display` -0.035em | `--fw-medium` | `.h0` |
-| h1 | `--fs-h1` 40 | `--lh-h1` 1.05 | `--ls-h1` -0.03em | medium | `.h1` |
-| h2 | `--fs-h2` 28 | `--lh-h2` 1.1 | `--ls-h2` -0.025em | medium | `.h2` |
-| h3 | `--fs-h3` 15 | (inherit) | `--ls-h3` -0.005em | `--fw-semibold` | `.h3` |
-| body | `--fs-body` 14 | `--lh-body` 1.5 | — | regular | `.body` |
-| label | `--fs-label` 12 | `--lh-label` 1.45 | — | — | `.small` |
+| display | `--fs-display` 52 | `--lh-display` 1.0 | `--ls-display` -0.035em | `--fw-medium` | `.h0` |
+| h1 | `--fs-h1` 34 | `--lh-h1` 1.06 | `--ls-h1` -0.03em | medium | `.h1` |
+| h2 | `--fs-h2` 27 | `--lh-h2` 1.1 | `--ls-h2` -0.022em | medium | `.h2` |
+| h3 | `--fs-h3` 17 | `--lh-h3` 1.28 | `--ls-h3` -0.012em | `--fw-semibold` | `.h3` |
+| body | `--fs-body` 15 | `--lh-body` 1.55 | — | regular | `.body` |
+| label | `--fs-label` 12.5 | `--lh-label` 1.45 | — | — | `.small` |
 | micro | `--fs-micro` 10.5 | — | — | — | `.tiny` / `.uc` / `.eyebrow` |
 
-Weights: `--fw-regular` 400 · `--fw-medium` 500 · `--fw-semibold` 600. Tracking: `--ls-uc` 0.12em ·
-`--ls-eyebrow` 0.22em. Tailwind: `text-display/h1/h2/h3/body/label/micro`.
+Weights: `--fw-regular` 400 · `--fw-medium` 500 · `--fw-semibold` 600. Tracking: `--ls-uc` 0.14em ·
+`--ls-eyebrow` 0.22em. Tailwind: `text-display/h1/h2/h3/body/label/micro`. (Edition II: sizes
+re-set sans-led — smaller headlines, larger h3/body.)
 
 ## Spacing scale (4px base)
 `--space-0` 0 · `--space-0-5` 2 · `--space-1` 4 · `--space-1-5` 6 · `--space-2` 8 · `--space-2-5` 10
 · `--space-3` 12 · `--space-4` 16 · `--space-4-5` 18 · `--space-5` 20 · `--space-6` 24 · `--space-8`
 32 · `--space-12` 48. (Tailwind's numeric `gap-2`/`p-3`… already resolve to these px values.)
 
-## Radius scale
-`--radius-xs` 3 · `--radius-sm` 4 · `--radius-md` 6 · `--radius-lg` 12 · `--radius-xl` 18 ·
-`--radius-pill` 999. Tailwind: `rounded-sm/DEFAULT/md` (3/4/6) + `rounded-card` (18) `rounded-field`
-(12) `rounded-pill`. Cards use `--radius-xl`, inputs `--radius-lg`, pills `--radius-pill`.
+## Radius scale — Edition II (crisp, near-square)
+`--radius-xs` 2 · `--radius-sm` 3 · `--radius-md` 4 · `--radius-lg` 5 · `--radius-xl` 6 ·
+`--radius-pill` 999. Tailwind: `rounded-sm/DEFAULT/md` + `rounded-card` (xl/6) `rounded-field`
+(md/4) `rounded-pill`. (Edition II calmed every corner toward print stock — was 3/4/6/12/18.)
 
-## Motion
-Durations `--dur-fast` 80ms · `--dur-base` 120ms · `--dur-slow` 150ms. Easings `--ease-standard`
-`cubic-bezier(.2,0,0,1)` · `--ease-out` (entrance) · `--ease-in` (exit). Calm by default. Tailwind:
-`duration-fast/base/slow`, `ease-standard/entrance/exit`.
+## Motion — Edition II (curated curve)
+New `--ease` `cubic-bezier(.22,1,.36,1)` is the house curve. Durations re-tuned calmer:
+`--dur-fast` 220ms · `--dur-base` 280ms · `--dur-slow` 420ms (were 80/120/150). Legacy easings
+`--ease-standard` / `--ease-out` / `--ease-in` retained. Tailwind: `duration-fast/base/slow`.
 
 ## Brand utility classes (reusable, in `globals.css`)
 Buttons `.btn .btn-gold .btn-ink .btn-ghost .btn-primary .btn-terra .btn-destructive` · cards

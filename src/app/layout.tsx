@@ -1,21 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Spectral } from "next/font/google";
 import "./globals.css";
 
-// Canonical Khonsera type stack, per the Visual Identity brand book
-// (Edition I · MMXXVI):
+// Canonical Khonsera type stack — Edition II (sans-led, per the brand book):
 //
-//   • Satoshi         — display + wordmark + headlines. Loaded from
+//   • Satoshi         — wordmark + headlines + UI + body. Loaded from
 //                       Fontshare via a <link>; not on Google Fonts.
-//   • Inter           — body, UI, captions, standfirst
 //   • JetBrains Mono  — codes, times, eyebrows
-//   • Cormorant Garamond — editorial serif italic (decorative use only)
+//   • Spectral        — rare editorial serif italic accent (Cormorant retired)
+//   • Inter           — retained only as a graceful --font-sans fallback
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-const serif = Cormorant_Garamond({
+const serif = Spectral({
   subsets: ["latin"],
   style: ["italic", "normal"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],
   variable: "--font-serif",
 });
 

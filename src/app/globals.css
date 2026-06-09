@@ -27,95 +27,61 @@
 @layer base {
   :root,
   [data-theme="light"] {
-    /* Dusk — the canonical palette */
-    --paper: #efe6d0;        /* Dusk Paper */
-    --paper-2: #e6dabf;
-    --sand: #f7eed7;         /* Bone */
-    --sand-2: #e8d9b5;
-    --card: #f4ecd6;
-    --card-2: #ece0bd;
+    /* Dusk — the canonical palette · Edition II restyle (Design handback).
+       Colours updated for dusk; the palette-invariant scales below (type,
+       radius, motion) cascade to sahara/midnight too. */
+    --paper: #efe6d0;        --paper-2: #e7dcc1;
+    --sand: #f7eed7;         --sand-2: #e8d9b5;
+    --card: #f6efdc;         --card-2: #ece0bd;
 
-    --ink: #1e1812;          /* Walnut Ink */
-    --ink-2: #2c241a;
-    --ink-dim: #6b5c46;
-    --ink-faint: #a2917a;
+    --ink: #221b12;          --ink-2: #3a3022;
+    --ink-dim: #756849;      --ink-faint: #a2917a;
+    --label: #6e6149;        /* eyebrows, uc labels, mono micro-text (legible) */
 
-    --rule: #ddc99e;
-    --rule-2: #c8b074;
+    --rule: #ddcca4;         --rule-2: #ccb676;
+    --rail: var(--rule-2);   /* NEW semantic alias — the timeline rail */
 
-    /* Gold — the moon. Khonsera Gold #B8893F is the 400 step. */
-    --gold-100: #efdfb1;
-    --gold-200: #d4ae6a;
-    --gold: #b8893f;         /* 400 */
-    --gold-2: #936820;       /* 600 */
-    --gold-800: #5c3f10;
-    --gold-soft: #efdfb1;
-    --gold-tint: rgba(184, 137, 63, 0.10);
+    /* Gold — the moon. Khonsera Gold #A97F33 is the 400 step (Edition II). */
+    --gold-100: #efdfb1;     --gold-200: #d4ae6a;
+    --gold: #a97f33;         --gold-2: #8a6418;
+    --gold-800: #5c3f10;     --gold-deep: #6f4f12;
+    --gold-soft: #efdfb1;    --gold-tint: rgba(169,127,51,0.10);
+    --gold-soft-alpha: rgba(169,127,51,0.16);
 
-    /* Terracotta — celebratory salt; also the notification badge per
-       p. 20. Not a primary palette colour; use sparingly. */
-    --terra: #c25c3a;
-    --terra-2: #a14c2c;
-    --terra-deep: #7d3a1e;
+    --terra: #bd5631;        --terra-2: #9c4524;   --terra-deep: #7d3a1e;
+    --plum: #5c3a48;         --plum-soft: #e3d5db;
+    --slate: #475569;        --slate-2: #334155;   --slate-soft: #dde3ea;
 
-    /* Plum — overnight, ceremony. Rare. */
-    --plum: #5c3a48;
-    --plum-soft: #e3d5db;
+    --sage: #5f7050;         --sage-2: #dce0cd;    --sage-soft: #dde2cc;
+    --amber: #9a6f24;        --amber-2: #f0e0b5;   --amber-soft: #f1e4bd;
+    --rust: #a43f25;         --rust-2: #f0d6cf;    --rust-soft: #f1d9d1;
 
-    /* Cool foil — slate, retained for non-warm chips and links. Not on
-       the canonical six but used inside the app for state contrast. */
-    --slate: #475569;
-    --slate-2: #334155;
-    --slate-soft: #dde3ea;
+    --ink-soft: rgba(34,27,18,0.06);
+    --shadow-sm: 0 1px 3px rgba(34,27,18,0.05);
+    --shadow: 0 6px 22px -10px rgba(34,27,18,0.18);
+    --shadow-lg: 0 22px 50px -26px rgba(34,27,18,0.30);
 
-    /* Status families — sage for success, amber for caution, rust for
-       danger. Sage = Khorasan Sage. */
-    --sage: #687856;
-    --sage-2: #dce0cd;
-    --sage-soft: #dce0cd;
-    --amber: #a87526;
-    --amber-2: #f0e0b5;
-    --amber-soft: #f0e0b5;
-    --rust: #9b3422;
-    --rust-2: #f0d6cf;
-    --rust-soft: #f0d6cf;
-
-    --ink-soft: rgba(30, 24, 18, 0.06);
-    --gold-soft-alpha: rgba(184, 137, 63, 0.16);
-    --shadow-sm: 0 1px 3px rgba(30, 24, 18, 0.06);
-    --shadow: 0 4px 16px rgba(30, 24, 18, 0.09);
-    --shadow-lg: 0 16px 40px rgba(30, 24, 18, 0.14);
-
-    /* Type stack — Satoshi for display + wordmark + headlines, Inter for
-       body & UI, JetBrains Mono for codes & eyebrows, Cormorant Garamond
-       for decorative serif italic. (Brand book pp. 13–15.) */
+    /* Type — Edition II: SANS-LED. Satoshi for wordmark/headlines/UI/body;
+       Spectral italic a rare editorial accent; JetBrains Mono for codes+times. */
     --display: "Satoshi", var(--font-sans), -apple-system, system-ui, sans-serif;
-    --serif: var(--font-serif), "Cormorant Garamond", Georgia, serif;
-    --sans: var(--font-sans), "Inter", -apple-system, system-ui, sans-serif;
+    --serif: var(--font-serif), "Spectral", Georgia, serif;
+    --sans: "Satoshi", var(--font-sans), -apple-system, system-ui, sans-serif;
     --mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+    --font-editorial: var(--serif);
+    --font-display: var(--display);
+    --font-ui: var(--sans);
+    --font-technical: var(--mono);
 
-    /* ── Scale + semantic tokens (palette-invariant) ──────────────────────
-       Defined once on :root so they cascade to every palette. Semantic colour
-       aliases point at the brand ramp, which each palette redefines, so they
-       follow the active theme automatically. Values equal what the brand
-       classes already render — see docs/design-tokens.md. */
-
-    /* Font role aliases */
-    --font-editorial: var(--serif);   /* Cormorant Garamond — decorative italic */
-    --font-display: var(--display);   /* Satoshi — headlines + wordmark */
-    --font-ui: var(--sans);           /* Inter — body + UI */
-    --font-technical: var(--mono);    /* JetBrains Mono — codes, times, eyebrows */
-
-    /* Type scale — size / line-height / letter-spacing / weight */
-    --fs-display: 56px;  --lh-display: 1.02; --ls-display: -0.035em;
-    --fs-h1: 40px;       --lh-h1: 1.05;      --ls-h1: -0.03em;
-    --fs-h2: 28px;       --lh-h2: 1.1;       --ls-h2: -0.025em;
-    --fs-h3: 15px;       --lh-h3: 1.3;       --ls-h3: -0.005em;
-    --fs-body: 14px;     --lh-body: 1.5;
-    --fs-label: 12px;    --lh-label: 1.45;
+    /* Type scale */
+    --fs-display: 52px;  --lh-display: 1.0;  --ls-display: -0.035em;
+    --fs-h1: 34px;       --lh-h1: 1.06;      --ls-h1: -0.03em;
+    --fs-h2: 27px;       --lh-h2: 1.1;       --ls-h2: -0.022em;
+    --fs-h3: 17px;       --lh-h3: 1.28;      --ls-h3: -0.012em;
+    --fs-body: 15px;     --lh-body: 1.55;
+    --fs-label: 12.5px;  --lh-label: 1.45;
     --fs-micro: 10.5px;  --lh-micro: 1.4;
     --fw-regular: 400;   --fw-medium: 500;   --fw-semibold: 600;
-    --ls-uc: 0.12em;     --ls-eyebrow: 0.22em;
+    --ls-uc: 0.14em;     --ls-eyebrow: 0.22em;
 
     /* Spacing scale — 4px base */
     --space-0: 0;        --space-0-5: 2px;   --space-1: 4px;    --space-1-5: 6px;
@@ -123,12 +89,13 @@
     --space-4-5: 18px;   --space-5: 20px;    --space-6: 24px;   --space-8: 32px;
     --space-12: 48px;
 
-    /* Radius scale */
-    --radius-xs: 3px;    --radius-sm: 4px;   --radius-md: 6px;
-    --radius-lg: 12px;   --radius-xl: 18px;  --radius-pill: 999px;
+    /* Radius scale — Edition II: crisp, near-square */
+    --radius-xs: 2px;    --radius-sm: 3px;   --radius-md: 4px;
+    --radius-lg: 5px;    --radius-xl: 6px;   --radius-pill: 999px;
 
-    /* Motion — durations + easings (calm by default) */
-    --dur-fast: 80ms;    --dur-base: 120ms;  --dur-slow: 150ms;
+    /* Motion — Edition II curated curve + calmer durations */
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --dur-fast: 220ms;   --dur-base: 280ms;  --dur-slow: 420ms;
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
     --ease-out: cubic-bezier(0, 0, 0, 1);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
@@ -137,7 +104,7 @@
     --success: var(--sage);    --success-soft: var(--sage-soft);
     --warning: var(--amber);   --warning-soft: var(--amber-soft);
     --danger: var(--rust);     --danger-soft: var(--rust-soft);
-    --disruption: var(--rust); --info: var(--slate);  --info-soft: var(--slate-soft);
+    --disruption: var(--terra); --info: var(--slate);  --info-soft: var(--slate-soft);
   }
 
   /* Sun-up — for daylight contexts: in-flight magazines, beach hotels,
