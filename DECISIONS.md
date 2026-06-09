@@ -89,6 +89,21 @@ Newest at the bottom of each section.
   privacy boundary (personal mode shows "never visible to a workspace"). Reads workspace + role +
   member count; placeholder §15 sections (approvals, allowance/per-diem, policy).
 
+## Process / operating model
+- **D21 — Relay operating model adopted; Round 1 Track B shipped.** Connor's middle layer formalised
+  the Code↔Design relay: I own the repo, Design owns the look, Connor relays packs; I **start the
+  chain** and **alternate** with Design (`docs/process/code-standing-brief.md` + the two P1 screen
+  specs in `docs/process/screen-specs/`). Round 1 = (Track B) ship `for-design.zip` so Design isn't
+  blocked — done; (Track A) the structural build continues next. Supersedes where they differ:
+  - **Nav is now 4 items** (Today · Plan · Tasks · People; mode = a toggle not a tab; Work→People
+    becomes Clients; Compare/Workspace/Welcome are not nav items) — **supersedes the blueprint's
+    6-item proposal**.
+  - **Parity before strip:** legacy `/itineraries/new` + the old editor stay live until the new
+    planner reaches parity; stripping is a later round.
+  - **`customer_sites` stay wired into the planner in all modes** (places, not just CRM); only the
+    visit-CRM management UI is Work-mode gated.
+  - **globals.css is untouchable** (the D19/D20 lesson); Design's overrides are additive only.
+
 ## Design adoption
 - **D19 — Edition II restyle adopted into the app (full, per your call).** The Design→Code handback
   (a drop-in restyle of the two hero screens) is now in the canonical theme + components, in three
@@ -113,7 +128,6 @@ Newest at the bottom of each section.
     offsets are best-effort; and sahara/midnight keep their old colours (they inherit the new scales) —
     a full palette reconciliation is a later pass.
 
-## Design adoption
 - **D20 — Authoritative Edition II package adopted; the D19 hand-port reverted.** Design shipped the
   refresh as a clean drop-in (`Khonsera_4`): one override file, `globals.css` untouched. My previous
   turn (D19) had hand-ported an *earlier* handback (`Khonsera_3`) directly into `globals.css` with
