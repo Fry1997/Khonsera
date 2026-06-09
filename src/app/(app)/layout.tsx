@@ -22,16 +22,28 @@ export default async function AppLayout({
       className="khonsera-app"
       style={{ minHeight: "100vh", background: "var(--paper)" }}
     >
-      {/* Mobile / tablet — top bar + bottom tab bar. */}
-      <div className="lg:hidden flex min-h-screen flex-col">
+      {/* Mobile / tablet — sticky top bar + FIXED bottom tab bar. */}
+      <div className="lg:hidden">
         <MobileTopbar email={ctx.email} isStaff={ctx.isStaff} mode={ctx.activeMode} />
         <main
-          className="flex-1 paper-tex"
-          style={{ padding: "20px 18px 24px" }}
+          className="paper-tex"
+          style={{ padding: "16px 16px 96px", minHeight: "100vh" }}
         >
           {children}
         </main>
-        <MobileTabbar mode={ctx.activeMode} />
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 20,
+            paddingBottom: "env(safe-area-inset-bottom)",
+            background: "var(--card)",
+          }}
+        >
+          <MobileTabbar mode={ctx.activeMode} />
+        </div>
       </div>
 
       {/* Desktop — sidebar shell. */}

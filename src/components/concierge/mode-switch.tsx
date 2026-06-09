@@ -2,45 +2,37 @@
 
 import type { Mode } from "./types";
 
-// ModeSwitch — the Work/Personal spine made visible (handover §2). Presentational
-// toggle; the privacy boundary itself is enforced in the data layer (RLS), not here.
+// ModeSwitch — the Work/Personal toggle, rebuilt to Design's contract
+// (`.cc-modeswitch`). A toggle, not a tab. The privacy boundary is enforced in
+// the data layer (RLS); this is just the lens. (Round 2 · Nav.html.)
 export function ModeSwitch({
   mode,
   onChange,
-  size = "md",
 }: {
   mode: Mode;
   onChange?: (mode: Mode) => void;
   size?: "sm" | "md";
 }) {
-  const pad = size === "sm" ? "px-2.5 py-1" : "px-3.5 py-1.5";
   return (
-    <div
-      className="row inline-flex items-center gap-0.5 rounded-pill border border-rule"
-      role="tablist"
-      aria-label="Work or personal mode"
-      style={{ background: "var(--card-2)", padding: "var(--space-0-5)" }}
-    >
-      {(["personal", "work"] as const).map((m) => {
-        const active = m === mode;
-        return (
-          <button
-            key={m}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange?.(m)}
-            className={`uc rounded-pill ${pad} transition-colors`}
-            style={{
-              background: active ? "var(--gold)" : "transparent",
-              color: active ? "var(--paper)" : "var(--ink-soft)",
-              fontWeight: active ? 600 : 500,
-            }}
-          >
-            {m === "personal" ? "Personal" : "Work"}
-          </button>
-        );
-      })}
+    <div className="cc-modeswitch" role="tablist" aria-label="Work or personal mode">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "personal"}
+        data-active={mode === "personal" ? "true" : "false"}
+        onClick={() => onChange?.("personal")}
+      >
+        Personal
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "work"}
+        data-active={mode === "work" ? "true" : "false"}
+        onClick={() => onChange?.("work")}
+      >
+        Work
+      </button>
     </div>
   );
 }
