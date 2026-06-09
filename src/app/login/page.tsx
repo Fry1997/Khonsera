@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { login } from "./actions";
-import { KhonseraBrand } from "@/components/khonsera-brand";
 
+// Login — Design Round 2 auth template (`.cc-auth-*`). Locked emblem, a warm
+// one-word Spectral accent, the .field form, calm inline error.
 export default async function LoginPage({
   searchParams,
 }: {
@@ -9,114 +10,46 @@ export default async function LoginPage({
 }) {
   const sp = await searchParams;
   return (
-    <main
-      className="paper-tex"
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--paper)",
-      }}
-    >
-      <div
-        style={{
-          margin: "0 auto",
-          width: "100%",
-          maxWidth: 420,
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: 28,
-          justifyContent: "center",
-          padding: "48px 24px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <KhonseraBrand size="md" href="/" />
-        </div>
+    <main className="cc-auth paper-tex">
+      <div className="cc-auth-inner">
+        <span className="cc-auth-lockup">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/mk-ink.png" alt="" />
+          <span className="wm">KHONSERA</span>
+        </span>
 
-        <div style={{ textAlign: "center" }}>
-          <h1
-            className="display-i"
-            style={{
-              margin: 0,
-              fontSize: 38,
-              letterSpacing: "-0.02em",
-              color: "var(--ink)",
-            }}
-          >
-            Welcome <em style={{ color: "var(--gold)" }}>back.</em>
-          </h1>
-          <p
-            className="serif-i"
-            style={{
-              marginTop: 6,
-              color: "var(--ink-dim)",
-              fontSize: 15,
-            }}
-          >
-            The evening, kept.
-          </p>
-        </div>
+        <h1 className="cc-auth-greeting">
+          Welcome <em>back.</em>
+        </h1>
+        <p className="cc-auth-sub">The evening, kept.</p>
 
-        <form action={login} className="card" style={{ padding: 20 }}>
+        <form
+          action={login}
+          className="cc-auth-card"
+          style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
+        >
           <input type="hidden" name="next" value={sp.next ?? "/today"} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <label
-              style={{ display: "flex", flexDirection: "column", gap: 6 }}
-            >
-              <span className="uc">Email</span>
-              <input
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                className="field"
-              />
-            </label>
-            <label
-              style={{ display: "flex", flexDirection: "column", gap: 6 }}
-            >
-              <span className="uc">Password</span>
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                className="field"
-              />
-            </label>
-            {sp.error ? (
-              <p style={{ fontSize: 13, color: "var(--rust)" }}>{sp.error}</p>
-            ) : null}
-            <button
-              type="submit"
-              className="btn btn-gold btn-full btn-lg"
-              style={{ marginTop: 4 }}
-            >
-              Sign in
-            </button>
+          <div className="cc-auth-field" data-error={sp.error ? "true" : "false"}>
+            <label>Email</label>
+            <input name="email" type="email" required autoComplete="email" className="field" />
           </div>
+          <div className="cc-auth-field" data-error={sp.error ? "true" : "false"}>
+            <label>Password</label>
+            <input name="password" type="password" required autoComplete="current-password" className="field" />
+          </div>
+          {sp.error ? <p className="cc-auth-error">{sp.error}</p> : null}
+          <button type="submit" className="cc-btn cc-btn-gold cc-btn-block">
+            Sign in
+          </button>
         </form>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: 13,
-            color: "var(--ink-dim)",
-            padding: "0 4px",
-          }}
-        >
-          <Link href="/forgot-password" style={{ textDecoration: "underline" }}>
+        <div className="cc-auth-links">
+          <Link href="/forgot-password" className="cc-auth-link">
             Forgot password?
           </Link>
-          <span>
-            No account?{" "}
-            <Link href="/signup" style={{ color: "var(--gold-2)", fontWeight: 600 }}>
-              Create one
-            </Link>
-          </span>
+          <Link href="/signup" className="cc-auth-link-gold">
+            Create account
+          </Link>
         </div>
       </div>
     </main>

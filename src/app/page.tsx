@@ -1,234 +1,63 @@
 import Link from "next/link";
-import { MoonMark } from "@/components/khonsera-brand";
 
-export default function LandingPage() {
+// Landing / first-touch — Design Round 2 (`.cc-landing-*`). Edition II: the
+// locked emblem (no crescent), Satoshi wordmark, one Spectral clause, one gold CTA.
+
+const VALUES = [
+  { k: "Plan", d: "Your journey, end to end.", icon: "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M4 10h16M8 2v4M16 2v4" },
+  { k: "Book", d: "Everything in one place.", icon: "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-2z M9 7v10" },
+  { k: "Keep", d: "Stay on time, on track.", icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 8v4l3 2" },
+  { k: "Go", d: "Travel with confidence.", icon: "M3 11l18-8-8 18-2-8-8-2z" },
+];
+
+function Ico({ d }: { d: string }) {
   return (
-    <main
-      className="paper-tex"
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--paper)",
-      }}
-    >
-      {/* Eyebrow */}
-      <div
-        style={{
-          padding: "26px 28px 0",
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <span
-          className="eyebrow"
-          style={{ color: "var(--gold-2)", letterSpacing: "0.22em" }}
-        >
-          KHONSU · SERA
-        </span>
-      </div>
-
-      {/* Wordmark hero */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: "0 28px",
-          gap: 22,
-          textAlign: "center",
-        }}
-      >
-        <MoonMark size={56} color="var(--gold)" />
-        <h1
-          className="wordmark"
-          style={{ fontSize: "clamp(56px, 11vw, 110px)", margin: 0 }}
-        >
-          Khon<span className="em">sera</span>
-        </h1>
-
-        <Ornament />
-
-        <p
-          className="standfirst"
-          style={{ maxWidth: 520, fontSize: 18, color: "var(--ink-2)" }}
-        >
-          A quiet concierge for the slow blue hour. <em>Plan the in-between
-          hours</em> — the train that might not be running, the taxi at
-          dusk, the careful arithmetic of getting there.
-        </p>
-      </div>
-
-      {/* Four pillars */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-          padding: "8px 28px 32px",
-          maxWidth: 720,
-          margin: "0 auto",
-          width: "100%",
-        }}
-      >
-        {[
-          ["Plan", "Your journey,\nend to end.", "calendar"],
-          ["Book", "Everything in\none place.", "ticket"],
-          ["Keep", "Stay on time\nand on track.", "clock"],
-          ["Go", "Travel with\nconfidence.", "nav"],
-        ].map(([label, copy, glyph]) => (
-          <Pillar key={label} label={label as string} copy={copy as string} glyph={glyph as string} />
-        ))}
-      </div>
-
-      {/* CTAs */}
-      <div
-        style={{
-          padding: "0 28px 36px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          maxWidth: 460,
-          margin: "0 auto",
-          width: "100%",
-        }}
-      >
-        <Link href="/login" className="btn btn-gold btn-full btn-lg">
-          Begin · sign in
-          <Arrow />
-        </Link>
-        <Link href="/signup" className="btn btn-ghost btn-full">
-          Create an account
-        </Link>
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: 11,
-            color: "var(--ink-faint)",
-            margin: "6px 0 0",
-            letterSpacing: 0.02,
-          }}
-        >
-          Calm. Considered. Precise. Premium.
-        </p>
-      </div>
-    </main>
-  );
-}
-
-function Ornament() {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ width: 32, height: 1, background: "var(--rule-2)" }} />
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-        <path
-          d="M5 0 L5.7 4.3 L10 5 L5.7 5.7 L5 10 L4.3 5.7 L0 5 L4.3 4.3 Z"
-          fill="var(--gold)"
-        />
-      </svg>
-      <span style={{ width: 32, height: 1, background: "var(--rule-2)" }} />
-    </div>
-  );
-}
-
-function Pillar({
-  label,
-  copy,
-  glyph,
-}: {
-  label: string;
-  copy: string;
-  glyph: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 8,
-      }}
-    >
-      <div
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 999,
-          border: "1px solid var(--gold)",
-          background: "var(--gold-tint)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--gold-2)",
-        }}
-      >
-        <PillarIcon name={glyph} />
-      </div>
-      <span
-        className="mono"
-        style={{
-          fontSize: 10,
-          letterSpacing: 0.18,
-          textTransform: "uppercase",
-          color: "var(--ink-2)",
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: 11,
-          textAlign: "center",
-          color: "var(--ink-dim)",
-          lineHeight: 1.4,
-          whiteSpace: "pre-line",
-        }}
-      >
-        {copy}
-      </span>
-    </div>
-  );
-}
-
-function PillarIcon({ name }: { name: string }) {
-  const d =
-    name === "calendar"
-      ? "M4 6 a2 2 0 0 1 2-2 h12 a2 2 0 0 1 2 2 v14 a2 2 0 0 1-2 2 H6 a2 2 0 0 1-2-2 z M4 10 h16 M8 2 v4 M16 2 v4"
-      : name === "ticket"
-        ? "M3 9 a2 2 0 0 1 2-2 h14 a2 2 0 0 1 2 2 v2 a2 2 0 0 0 0 2 v2 a2 2 0 0 1-2 2 H5 a2 2 0 0 1-2-2 v-2 a2 2 0 0 0 0-2 z M9 7 v10"
-        : name === "clock"
-          ? "M12 22 a10 10 0 1 0 0-20 a10 10 0 0 0 0 20 z M12 6 v6 l4 2"
-          : "M3 11 L21 3 L13 21 L11 13 L3 11 z";
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={d} />
     </svg>
   );
 }
 
-function Arrow() {
+export default function LandingPage() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M5 12h14M13 6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <main className="cc-landing paper-tex">
+      <div className="cc-landing-inner">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="cc-landing-emblem" src="/brand/mk-ink.png" alt="" />
+        <div className="cc-landing-wm">KHONSERA</div>
+
+        <div className="cc-landing-rule">
+          <span className="dot" />
+        </div>
+
+        <p className="cc-landing-prop">
+          A quiet concierge for the slow blue hour — Khonsera plans{" "}
+          <em>the in-between hours of getting there</em>: the train that might not be
+          running, the taxi at dusk, the careful arithmetic.
+        </p>
+
+        <div className="cc-landing-values">
+          {VALUES.map((v) => (
+            <div key={v.k} className="cc-landing-value">
+              <span className="ic"><Ico d={v.icon} /></span>
+              <span className="k">{v.k}</span>
+              <span className="d">{v.d}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="cc-landing-cta">
+          <Link href="/login" className="cc-btn cc-btn-gold cc-btn-block">
+            Begin · sign in
+          </Link>
+          <Link href="/signup" className="cc-btn cc-btn-ghost cc-btn-block">
+            Create an account
+          </Link>
+        </div>
+
+        <div className="cc-landing-foot">Calm · Considered · Precise</div>
+      </div>
+    </main>
   );
 }
