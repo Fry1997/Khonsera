@@ -113,6 +113,28 @@ Newest at the bottom of each section.
     offsets are best-effort; and sahara/midnight keep their old colours (they inherit the new scales) —
     a full palette reconciliation is a later pass.
 
+## Design adoption
+- **D20 — Authoritative Edition II package adopted; the D19 hand-port reverted.** Design shipped the
+  refresh as a clean drop-in (`Khonsera_4`): one override file, `globals.css` untouched. My previous
+  turn (D19) had hand-ported an *earlier* handback (`Khonsera_3`) directly into `globals.css` with
+  divergent values — so I **reverted all of D19** to baseline (`globals.css` + the concierge
+  components are now byte-for-byte baseline) and installed the authoritative package:
+  `src/app/khonsera-edition-ii.css` (override, imported after globals.css) + the designer's
+  `layout.tsx`. The override re-points tokens on all three palettes (incl. a **Midnight** refresh),
+  goes **sans-led** (Satoshi UI+body, Inter retired, Spectral accent), cleaner `#f5f1e8` paper,
+  gold held to punctuation, and crisp 4–7px radii on the legacy atom classes.
+  - **Two package fixes I made (and why):** (a) un-wrapped its `@layer components` block — a bare
+    `@layer` can't be processed in a standalone imported file; un-layered, the atoms also win cleanly
+    over globals' layered ones. (b) Added the `--font-sans → Satoshi` rebind the override's README
+    specifies but the file omitted (covers 2 direct `var(--font-sans)` refs once Inter is dropped).
+  - **This supersedes D19** entirely (and the K3 handback, incl. its data-corruption — not carried over).
+  - **Known gap (flagged, follow-up offered by the designer):** the override targets the **legacy**
+    atom classes; it doesn't reach the `rounded-card`/`rounded-field` tokens, so the newer **concierge
+    contract screens** (today/timeline/tasks/contacts/compare/workspace) inherit Edition II **colour +
+    type** but keep rounder corners until a screen-by-screen pass. `docs/design-tokens.md` notes this.
+  - **`design-export/` pack** still carries the K3 CSS — it's a historical handoff artifact, now
+    superseded by the in-repo Edition II; left as-is unless you want it refreshed.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
