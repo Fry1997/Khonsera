@@ -113,33 +113,70 @@
 /* ===========================================================================
  * AUTH (.cc-auth-*) — the shared form template
  * ========================================================================= */
-.cc-auth { background: var(--paper); min-height: 100%; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: var(--space-8) var(--space-6); }
-.cc-auth-inner { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
-.cc-auth-lockup { display: flex; align-items: center; gap: 9px; margin-bottom: var(--space-8); }
+/* ---------------------------------------------------------------------------
+ * THE THRESHOLD. Auth is the doorway, rendered on the brand's own Midnight —
+ * the "slow blue hour". Atmospheric aubergine→ink ground, brass emblem, an
+ * editorial LEFT-anchored composition (not a centred SaaS gate), fields open on
+ * the dark with brass hairline underlines. Always Midnight, regardless of the
+ * user's app theme — this moment sets the mood before the working light surface.
+ * Brass tokens are fixed values so the threshold reads identically everywhere.
+ * ------------------------------------------------------------------------- */
+.cc-auth {
+  --t-ink: #f4ecd9;            /* paper-on-dark */
+  --t-ink-2: #cdbfa6;          /* muted */
+  --t-dim: #8d8068;            /* labels */
+  --t-rule: rgba(244,236,217,0.16);
+  --t-brass: #d4a559;          /* the warm metal on dark */
+  --t-brass-2: #e8c684;
+  position: relative; min-height: 100%; display: flex; flex-direction: column;
+  justify-content: space-between; padding: var(--space-12) var(--space-6) var(--space-8);
+  color: var(--t-ink); overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 18% -8%, #3a2c44 0%, transparent 52%),
+    radial-gradient(130% 90% at 92% 108%, rgba(180,137,63,0.20) 0%, transparent 50%),
+    linear-gradient(168deg, #271d31 0%, #1a1422 46%, #120d18 100%);
+}
+/* a single hairline "horizon" low in the frame — the dusk line */
+.cc-auth::after { content: ""; position: absolute; left: 0; right: 0; bottom: 26%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--t-rule) 30%, var(--t-rule) 70%, transparent);
+  pointer-events: none; }
+.cc-auth-inner { position: relative; z-index: 1; width: 100%; max-width: 380px; margin: 0 auto;
+  flex: 1; display: flex; flex-direction: column; }
+/* top sign — emblem + wordmark, quiet, left */
+.cc-auth-lockup { display: flex; align-items: center; gap: 10px; margin-bottom: auto; }
 .cc-auth-lockup img { height: 26px; width: auto; }
-.cc-auth-lockup .wm { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 18px;
-  letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); }
-.cc-auth-greeting { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 34px;
-  letter-spacing: -0.03em; color: var(--ink); margin: 0 0 var(--space-2); text-align: center; }
-/* accent word: gold COLOUR, still Satoshi — never serif-italic (that's the retired look) */
-.cc-auth-greeting em { color: var(--gold-2); font-style: normal; font-weight: var(--fw-medium,500); }
-.cc-auth-sub { font-family: var(--sans); font-style: normal; font-size: 14px; color: var(--ink-dim);
-  margin: 0 0 var(--space-8); text-align: center; }
-.cc-auth-card { width: 100%; background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
-  padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
-.cc-auth-field { display: flex; flex-direction: column; gap: var(--space-2); }
-.cc-auth-field label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); }
-.cc-auth-field .field { width: 100%; }
-.cc-auth-field[data-error="true"] .field { border-color: var(--danger); }
-.cc-auth-error { font-size: 12px; color: var(--danger); }
+.cc-auth-lockup .wm { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 14px;
+  letter-spacing: 0.26em; text-transform: uppercase; color: var(--t-ink); }
+/* the greeting — large, editorial, LEFT. Asymmetric like the app's screen titles. */
+.cc-auth-greeting { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 44px;
+  letter-spacing: -0.035em; line-height: 1.0; color: var(--t-ink); margin: var(--space-8) 0 0; text-align: left; }
+.cc-auth-greeting em { color: inherit; font-style: normal; font-weight: var(--fw-medium,500); }
+.cc-auth-sub { font-family: var(--sans); font-size: 14.5px; line-height: 1.5; color: var(--t-ink-2);
+  margin: var(--space-3) 0 var(--space-8); text-align: left; max-width: 30ch; }
+/* the form — open on the dark, brass hairline underlines */
+.cc-auth-card { width: 100%; background: transparent; border: none; border-radius: 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--space-6); }
+.cc-auth-field { display: flex; flex-direction: column; gap: var(--space-2-5,10px); }
+.cc-auth-field label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--t-dim); }
+.cc-auth-field .field { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--t-rule);
+  border-radius: 0; padding: 8px 0; font-size: 18px; color: var(--t-ink);
+  transition: border-color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-auth-field .field::placeholder { color: var(--t-dim); }
+.cc-auth-field .field:focus-within, .cc-auth-field .field.is-focus { border-bottom-color: var(--t-brass); outline: none; }
+.cc-auth-field[data-error="true"] .field { border-bottom-color: #d97a5a; }
+/* the one fill — brass on dark */
+.cc-auth-card .cc-btn-gold { margin-top: var(--space-4); background: var(--t-brass); border-color: var(--t-brass);
+  color: #1a1422; font-weight: var(--fw-semibold,600); }
+.cc-auth-error { font-size: 12.5px; color: #e29274; display: flex; align-items: center; gap: 6px; }
 .cc-auth-links { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-  width: 100%; margin-top: var(--space-5); font-size: 13px; color: var(--ink-dim); }
-.cc-auth-links a, .cc-auth-link { color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; }
-.cc-auth-link-gold { color: var(--gold-2); font-weight: var(--fw-semibold,600); text-decoration: none; }
-.cc-auth-success { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center;
-  padding: var(--space-4) 0; }
-.cc-auth-success .ic { width: 34px; height: 34px; color: var(--sage); }
+  width: 100%; margin-top: var(--space-6); font-size: 13px; color: var(--t-dim); }
+.cc-auth-links a, .cc-auth-link { color: var(--t-ink-2); text-decoration: none; border-bottom: 1px solid var(--t-rule); padding-bottom: 1px; }
+.cc-auth-link-gold { color: var(--t-brass-2); font-weight: var(--fw-semibold,600); border: none; }
+/* the closing mark — a mono creed pinned to the foot */
+.cc-auth-creed { position: relative; z-index: 1; text-align: center; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--t-dim); margin-top: var(--space-8); }
+.cc-auth-success { display: flex; flex-direction: column; gap: var(--space-3); text-align: left; padding: var(--space-2) 0; }
+.cc-auth-success .ic { width: 32px; height: 32px; color: var(--t-brass-2); }
 
 /* ===========================================================================
  * SECONDARY · shared list/section furniture

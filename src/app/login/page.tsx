@@ -14,7 +14,7 @@ export default async function LoginPage({
       <div className="cc-auth-inner">
         <span className="cc-auth-lockup">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mk-ink.png" alt="" />
+          <img src="/brand/mk-brass.png" alt="" />
           <span className="wm">KHONSERA</span>
         </span>
 
@@ -51,6 +51,8 @@ export default async function LoginPage({
             Create account
           </Link>
         </div>
+
+        <p className="cc-auth-creed">Calm · Considered · Precise</p>
       </div>
     </main>
   );
