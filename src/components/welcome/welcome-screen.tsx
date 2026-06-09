@@ -4,133 +4,80 @@ import { useState, useTransition } from "react";
 import type { Mode } from "@/components/concierge";
 import { chooseAndContinue } from "@/lib/actions/welcome";
 
-// First-run (§3) — the highest-priority minute. Khonsera introduces itself, then
-// offers an HONEST FORK (not a wizard): something coming up, or find me later.
-// Voiced entirely as Khonsera; no emojis. Placeholder visuals, restyled later.
+// First-run (§3) — Design Round 2 (`.cc-welcome`). Chromeless: emblem, a warm
+// Satoshi self-intro (one Spectral-gold word), then the honest fork.
 
-type Step = "intro" | "booked";
+const Chevron = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
 
 export function WelcomeScreen({ mode }: { mode: Mode }) {
-  const [step, setStep] = useState<Step>("intro");
+  const [step, setStep] = useState<"intro" | "booked">("intro");
   const [pending, startTransition] = useTransition();
-
-  function go(target: string) {
-    startTransition(() => chooseAndContinue(target));
-  }
+  const go = (target: string) => startTransition(() => chooseAndContinue(target));
 
   return (
-    <main
-      className="paper-tex"
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "var(--paper)",
-        padding: "var(--space-6) var(--space-4)",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 520 }}>
-        <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
-          {mode === "work" ? "Work" : "Personal"}
-        </span>
+    <main className="cc-welcome" style={{ minHeight: "100dvh" }}>
+      <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="cc-welcome-emblem" src="/brand/mk-ink.png" alt="" />
 
         {step === "intro" ? (
           <>
-            <h1 className="h1" style={{ marginTop: "var(--space-2)" }}>
-              I&apos;m Khonsera.
+            <h1 className="cc-welcome-intro">
+              I&apos;m Khonsera. I&apos;ll make sure your days <em>run smoothly</em> —
+              plan ahead, tie it together, see you have what you need.
             </h1>
-            <p
-              className="serif-i"
-              style={{
-                fontSize: 18,
-                color: "var(--ink-2)",
-                margin: "var(--space-3) 0 var(--space-5)",
-                lineHeight: 1.55,
-              }}
-            >
-              I&apos;m here to make sure your days run smoothly — help you plan
-              ahead, tie everything together, and make sure you&apos;ve got
-              everything you need.
-            </p>
-
-            <p className="text-ink" style={{ marginBottom: "var(--space-3)" }}>
-              Anything you need right now — an upcoming trip or event I should look
-              after? Or shall I find you when you need me?
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-              <button
-                type="button"
-                className="btn btn-gold btn-lg btn-full"
-                onClick={() => setStep("booked")}
-                disabled={pending}
-              >
-                Something&apos;s coming up
+            <div className="cc-welcome-fork">
+              <button type="button" className="cc-fork-option" data-primary="true" disabled={pending} onClick={() => setStep("booked")}>
+                <div>
+                  <span className="t">Something&apos;s coming up</span>
+                  <span className="s">A trip or event I should look after.</span>
+                </div>
+                <span className="ic"><Chevron /></span>
               </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-full"
-                onClick={() => go("/today")}
-                disabled={pending}
-              >
-                Find me later
+              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/today")}>
+                <div>
+                  <span className="t">Find me later</span>
+                  <span className="s">I&apos;ll be here when you need me.</span>
+                </div>
+                <span className="ic"><Chevron /></span>
               </button>
             </div>
           </>
         ) : (
           <>
-            <h1 className="h1" style={{ marginTop: "var(--space-2)" }}>
-              Is it booked — in part or full?
+            <h1 className="cc-welcome-intro">
+              Is it <em>booked</em> — in part or full? However much you know, I&apos;ll take it from there.
             </h1>
-            <p
-              className="serif-i"
-              style={{
-                fontSize: 17,
-                color: "var(--ink-2)",
-                margin: "var(--space-3) 0 var(--space-5)",
-                lineHeight: 1.55,
-              }}
-            >
-              However much you know, I&apos;ll take it from there and fill in the
-              rest.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-              <button
-                type="button"
-                className="btn btn-gold btn-lg btn-full"
-                onClick={() => go("/settings")}
-                disabled={pending}
-              >
-                Booked — and it&apos;s in my inbox
+            <div className="cc-welcome-fork">
+              <button type="button" className="cc-fork-option" data-primary="true" disabled={pending} onClick={() => go("/settings")}>
+                <div>
+                  <span className="t">Booked — it&apos;s in my inbox</span>
+                  <span className="s">Connect your email; I&apos;ll find the confirmations.</span>
+                </div>
+                <span className="ic"><Chevron /></span>
               </button>
-              <button
-                type="button"
-                className="btn btn-ink btn-full"
-                onClick={() => go("/capture")}
-                disabled={pending}
-              >
-                Tell you in my own words
+              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/capture")}>
+                <div>
+                  <span className="t">Tell you in my own words</span>
+                  <span className="s">Natural language; I&apos;ll thread it.</span>
+                </div>
+                <span className="ic"><Chevron /></span>
               </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-full"
-                onClick={() => go("/itineraries/new")}
-                disabled={pending}
-              >
-                Fill it in field by field
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm btn-full"
-                onClick={() => setStep("intro")}
-                disabled={pending}
-              >
-                Back
+              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/plan")}>
+                <div>
+                  <span className="t">Fill it in on the spine</span>
+                  <span className="s">Add the facts as you go.</span>
+                </div>
+                <span className="ic"><Chevron /></span>
               </button>
             </div>
+            <button type="button" className="cc-btn cc-btn-ghost" disabled={pending} onClick={() => setStep("intro")} style={{ alignSelf: "flex-start" }}>
+              Back
+            </button>
           </>
         )}
       </div>

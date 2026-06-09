@@ -25,18 +25,14 @@ export default async function TasksPage() {
   }));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+    <div className="cc-screen">
       <header>
-        <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
+        <span className="cc-eyebrow">
           {ctx.activeMode === "work" ? "Work" : "Personal"} · Tasks
         </span>
-        <h1 className="h1" style={{ marginTop: 6 }}>
+        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           Things to do
         </h1>
-        <p className="small" style={{ marginTop: 8, maxWidth: "56ch" }}>
-          Anything with a date surfaces on that day&apos;s journey, so it&apos;s in
-          front of you when it matters.
-        </p>
       </header>
 
       <TasksScreen initial={tasks} />
