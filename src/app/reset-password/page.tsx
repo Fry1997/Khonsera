@@ -18,7 +18,7 @@ export default async function ResetPasswordPage({
   }
 
   return (
-    <main className="cc-auth paper-tex">
+    <main className="cc-auth" style={{ minHeight: "100dvh" }}>
       <div className="cc-auth-inner">
         <span className="cc-auth-lockup">
           {/* eslint-disable-next-line @next/next/no-img-element */}

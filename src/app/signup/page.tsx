@@ -10,7 +10,7 @@ export default async function SignupPage({
   const sp = await searchParams;
   const err = sp.error ? "true" : "false";
   return (
-    <main className="cc-auth paper-tex">
+    <main className="cc-auth" style={{ minHeight: "100dvh" }}>
       <div className="cc-auth-inner">
         <span className="cc-auth-lockup">
           {/* eslint-disable-next-line @next/next/no-img-element */}
