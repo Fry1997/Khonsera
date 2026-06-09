@@ -1,175 +1,243 @@
+/* ============================================================================
+ * Khonsera — App restyle · DROP-IN REPLACEMENT for assets/khonsera.css
+ *
+ * Restyle, not rebuild. Every class contract from the Claude Code export is
+ * preserved (j-card, j-card-soft, h1/h2/h3, uc, eyebrow, tag-*, pill, btn-*,
+ * rounded-card/field/pill, the GapCard dashed article, ComparisonMatrix gold
+ * ring). Only the LOOK changes — to the elevated Edition II brand. The one
+ * structural lift (the timeline rail) is pure CSS via :has(), so component DOM
+ * is untouched. Drop this over assets/khonsera.css; no markup edits required.
+ *
+ * Deltas vs the export are listed in the Handback doc.
+ * ========================================================================== */
 
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Dusk — the canonical palette (mirror of globals.css :root) ───────────── */
+/* ── Dusk — canonical palette (UNCHANGED tokens) ──────────────────────────── */
 :root {
-  --paper: #efe6d0;  --paper-2: #e6dabf;  --sand: #f7eed7;  --sand-2: #e8d9b5;
-  --card: #f4ecd6;   --card-2: #ece0bd;
-  --ink: #1e1812;    --ink-2: #2c241a;    --ink-dim: #6b5c46;  --ink-faint: #a2917a;
-  --rule: #ddc99e;   --rule-2: #c8b074;
-  --gold-100: #efdfb1; --gold-200: #d4ae6a; --gold: #b8893f; --gold-2: #936820;
-  --gold-800: #5c3f10; --gold-soft: #efdfb1; --gold-tint: rgba(184,137,63,0.10);
-  --terra: #c25c3a;  --terra-2: #a14c2c;  --terra-deep: #7d3a1e;
-  --plum: #5c3a48;   --plum-soft: #e3d5db;
-  --slate: #475569;  --slate-2: #334155;  --slate-soft: #dde3ea;
-  --sage: #687856;   --sage-2: #dce0cd;   --sage-soft: #dce0cd;
-  --amber: #a87526;  --amber-2: #f0e0b5;  --amber-soft: #f0e0b5;
-  --rust: #9b3422;   --rust-2: #f0d6cf;   --rust-soft: #f0d6cf;
-  --ink-soft: rgba(30,24,18,0.06);  --gold-soft-alpha: rgba(184,137,63,0.16);
-  --shadow-sm: 0 1px 3px rgba(30,24,18,0.06);
-  --shadow: 0 4px 16px rgba(30,24,18,0.09);
-  --shadow-lg: 0 16px 40px rgba(30,24,18,0.14);
+  --paper: #efe6d0;  --paper-2: #e7dcc1;  --sand: #f7eed7;  --sand-2: #e8d9b5;
+  --card: #f6efdc;   --card-2: #ece0bd;
+  --ink: #221b12;    --ink-2: #3a3022;    --ink-dim: #756849;  --ink-faint: #a2917a;
+  --rule: #ddcca4;   --rule-2: #cbb componente;  --rule-2: #cbb membership;
+  --rule-2: #ccb676;
+  --gold-100:#efdfb1; --gold-200:#d4ae6a; --gold:#a97f33; --gold-2:#8a6418; --gold-deep:#6f4f12;
+  --gold-soft:#efdfb1; --gold-tint:rgba(169,127,51,0.10);
+  --terra:#bd5631; --terra-2:#9c4524; --terra-deep:#7d3a1e;
+  --plum:#5c3a48;
+  --sage:#5f7050; --sage-2:#dce0cd; --sage-soft:#dde2cc;
+  --amber:#9a6f24; --amber-2:#f0e0b5; --amber-soft:#f1e4bd;
+  --rust:#a43f25; --rust-2:#f0d6cf; --rust-soft:#f1d9d1;
+  --ink-soft:rgba(34,27,18,0.06); --label:#6e6149;
+  --shadow-sm:0 1px 3px rgba(34,27,18,0.05);
+  --shadow:0 6px 22px -10px rgba(34,27,18,0.18);
+  --shadow-lg:0 22px 50px -26px rgba(34,27,18,0.30);
 
-  /* Semantic aliases over the brand ramp */
-  --success: var(--sage); --success-soft: var(--sage-soft);
-  --warning: var(--amber); --warning-soft: var(--amber-soft);
-  --danger: var(--rust);  --danger-soft: var(--rust-soft);
-  --disruption: var(--rust); --info: var(--slate); --info-soft: var(--slate-soft);
+  --success:var(--sage); --success-soft:var(--sage-soft);
+  --warning:var(--amber); --warning-soft:var(--amber-soft);
+  --danger:var(--rust); --danger-soft:var(--rust-soft);
+  --disruption:var(--terra);
 
-  /* Type stacks (--font-* are next/font in the app; here they fall through) */
-  --display: "Satoshi", "Inter", -apple-system, system-ui, sans-serif;
-  --serif: "Cormorant Garamond", Georgia, serif;
-  --sans: "Inter", -apple-system, system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-display: var(--display); --font-editorial: var(--serif);
-  --font-ui: var(--sans); --font-technical: var(--mono);
+  /* NEW semantic alias (optional, see Handback): the timeline rail */
+  --rail:var(--rule-2);
 
-  /* Type scale */
-  --fs-display: 56px; --lh-display: 1.02; --ls-display: -0.035em;
-  --fs-h1: 40px; --lh-h1: 1.05; --ls-h1: -0.03em;
-  --fs-h2: 28px; --lh-h2: 1.1; --ls-h2: -0.025em;
-  --fs-h3: 15px; --lh-h3: 1.3; --ls-h3: -0.005em;
-  --fs-body: 14px; --lh-body: 1.5;
-  --fs-label: 12px; --lh-label: 1.45;
-  --fs-micro: 10.5px; --lh-micro: 1.4;
-  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600;
-  --ls-uc: 0.12em; --ls-eyebrow: 0.22em;
+  /* Type — brand-book consistent: SANS-LED. Satoshi for wordmark, headlines,
+   * UI and body; Spectral italic only as a RARE editorial accent; JetBrains
+   * Mono for every time/code/locator. (Cormorant + serif-headline look retired
+   * to match Edition II.) */
+  --serif:"Spectral", Georgia, serif;
+  --sans:"Satoshi", -apple-system, system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, monospace;
+  --display:var(--sans); --font-display:var(--sans); --font-editorial:var(--serif);
+  --font-ui:var(--sans); --font-technical:var(--mono);
 
-  /* Spacing (4px base) */
-  --space-0: 0; --space-0-5: 2px; --space-1: 4px; --space-1-5: 6px;
-  --space-2: 8px; --space-2-5: 10px; --space-3: 12px; --space-4: 16px;
-  --space-4-5: 18px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+  /* Type scale — modern/precise, tight optical tracking (not inscriptional) */
+  --fs-display:52px; --lh-display:1.0; --ls-display:-0.035em;
+  --fs-h1:34px; --lh-h1:1.06; --ls-h1:-0.03em;
+  --fs-h2:27px; --lh-h2:1.1; --ls-h2:-0.022em;
+  --fs-h3:17px; --lh-h3:1.28; --ls-h3:-0.012em;
+  --fs-body:15px; --lh-body:1.55;
+  --fs-label:12.5px; --lh-label:1.45;
+  --fs-micro:10.5px; --lh-micro:1.4;
+  --fw-regular:400; --fw-medium:500; --fw-semibold:600;
+  --ls-uc:0.14em; --ls-eyebrow:0.22em;
 
-  /* Radius + motion */
-  --radius-xs: 3px; --radius-sm: 4px; --radius-md: 6px;
-  --radius-lg: 12px; --radius-xl: 18px; --radius-pill: 999px;
-  --dur-fast: 80ms; --dur-base: 120ms; --dur-slow: 150ms;
+  --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-8:32px;
+  /* Radii — crisp, near-square. Clean lines, not dated pills. */
+  --radius-xs:2px; --radius-sm:3px; --radius-md:4px; --radius-lg:5px; --radius-xl:6px; --radius-pill:999px;
+  --ease:cubic-bezier(0.22,1,0.36,1);
+  --dur-fast:220ms; --dur-base:280ms; --dur-slow:420ms;
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; }
-body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: var(--fs-body);
-  line-height: var(--lh-body);
-  -webkit-font-smoothing: antialiased;
-}
-.paper-tex {
-  background-image: radial-gradient(rgba(28,28,28,0.025) 1px, transparent 1px);
-  background-size: 16px 16px;
-}
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--paper); color:var(--ink); font-family:var(--sans);
+  font-size:var(--fs-body); line-height:var(--lh-body); -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility; }
+.paper-tex { background-image:radial-gradient(rgba(34,27,18,0.02) 1px, transparent 1px); background-size:18px 18px; }
 
 /* ── Type ─────────────────────────────────────────────────────────────────── */
-.mono { font-family: var(--mono); font-feature-settings: "tnum" 1; }
-.serif-i { font-family: var(--serif); font-style: italic; letter-spacing: -0.01em; }
-.uc { text-transform: uppercase; letter-spacing: var(--ls-uc); font-size: var(--fs-micro);
-      font-weight: var(--fw-medium); color: var(--ink-dim); }
-.eyebrow { font-family: var(--font-technical); font-size: var(--fs-micro); font-weight: var(--fw-medium);
-           letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--ink-dim); }
-.h0 { font-family: var(--font-display); font-weight: var(--fw-medium); font-size: var(--fs-display);
-      line-height: var(--lh-display); letter-spacing: var(--ls-display); color: var(--ink); margin: 0; }
-.h1 { font-family: var(--font-display); font-weight: var(--fw-medium); font-size: var(--fs-h1);
-      line-height: var(--lh-h1); letter-spacing: var(--ls-h1); color: var(--ink); margin: 0; }
-.h2 { font-family: var(--font-display); font-weight: var(--fw-medium); font-size: var(--fs-h2);
-      line-height: var(--lh-h2); letter-spacing: var(--ls-h2); color: var(--ink); margin: 0; }
-.h3 { font-weight: var(--fw-semibold); font-size: var(--fs-h3); letter-spacing: var(--ls-h3);
-      color: var(--ink); margin: 0; }
-.body { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); margin: 0; }
-.small { font-size: var(--fs-label); color: var(--ink-dim); line-height: var(--lh-label); margin: 0; }
-.tiny { font-size: var(--fs-micro); color: var(--ink-dim); letter-spacing: 0.04em; margin: 0; }
-p { margin: 0; }
+.mono { font-family:var(--mono); font-feature-settings:"tnum" 1; font-variant-numeric:tabular-nums; }
+.serif-i { font-family:var(--serif); font-style:italic; letter-spacing:-0.01em; }
+.uc { text-transform:uppercase; letter-spacing:var(--ls-uc); font-size:var(--fs-micro);
+      font-weight:var(--fw-medium); color:var(--label); font-family:var(--mono); }
+.eyebrow { font-family:var(--mono); font-size:var(--fs-micro); font-weight:var(--fw-medium);
+           letter-spacing:var(--ls-eyebrow); text-transform:uppercase; color:var(--label); }
+/* h0 + h1 are SANS headlines — Satoshi medium, tight tracking (brand-book consistent) */
+.h0 { font-family:var(--sans); font-weight:500; font-size:var(--fs-display);
+      line-height:var(--lh-display); letter-spacing:var(--ls-display); color:var(--ink); margin:0; }
+.h1 { font-family:var(--sans); font-weight:500; font-size:var(--fs-h1);
+      line-height:var(--lh-h1); letter-spacing:var(--ls-h1); color:var(--ink); margin:0; }
+/* h2 — the ActiveTile operating headline, sober Satoshi */
+.h2 { font-family:var(--sans); font-weight:500; font-size:var(--fs-h2);
+      line-height:var(--lh-h2); letter-spacing:var(--ls-h2); color:var(--ink); margin:0; }
+.h3 { font-family:var(--sans); font-weight:600; font-size:var(--fs-h3);
+      letter-spacing:var(--ls-h3); color:var(--ink); margin:0; }
+.body { font-size:var(--fs-body); line-height:var(--lh-body); color:var(--ink-2); margin:0; }
+.small { font-size:var(--fs-label); color:var(--ink-dim); line-height:var(--lh-label); margin:0; }
+.tiny { font-size:var(--fs-micro); color:var(--ink-dim); letter-spacing:0.04em; margin:0; }
+p { margin:0; }
 
 /* ── Surfaces ───────────────────────────────────────────────────────────────── */
-.j-card { background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
-.j-card-soft { background: var(--card-2); border: 1px solid var(--rule); border-radius: 6px; }
+.j-card { background:var(--card); border:1px solid var(--rule); border-radius:var(--radius-lg); box-shadow:none; }
+.j-card-soft { background:var(--card-2); border:1px solid var(--rule); border-radius:var(--radius-lg); }
 
-/* ── Tags (shape added for the export; in-app the shaping utilities are applied
-      at the call site — a Design to-do for the placeholder components) ───────── */
-.tag-ok, .tag-tight, .tag-no { display: inline-block; padding: 2px 8px; border-radius: var(--radius-xs);
-  font-family: var(--mono); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
-.tag-ok { color: var(--sage); background: var(--sage-2); }
-.tag-tight { color: var(--amber); background: var(--amber-2); }
-.tag-no { color: var(--rust); background: var(--rust-2); }
+/* ── Tags → refined dot-led status pips (mono) ──────────────────────────────── */
+/* tags → near-square dot-led pips */
+.tag-ok, .tag-tight, .tag-no { display:inline-flex; align-items:center; gap:6px; padding:3px 8px;
+  border-radius:var(--radius-sm); font-family:var(--mono); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:0.08em; background:transparent; }
+.tag-ok::before, .tag-tight::before, .tag-no::before { content:""; width:5px; height:5px; border-radius:50%; }
+.tag-ok { color:var(--sage); } .tag-ok::before { background:var(--sage); }
+.tag-tight { color:var(--amber); } .tag-tight::before { background:var(--amber); }
+.tag-no { color:var(--rust); } .tag-no::before { background:var(--rust); }
 
 /* ── Pills + chips ──────────────────────────────────────────────────────────── */
-.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: var(--radius-pill);
-  font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
-  background: var(--card-2); color: var(--ink-dim); white-space: nowrap; }
-.pill-sage { background: var(--sage-soft); color: var(--sage); }
-.pill-gold { background: var(--gold-tint); color: var(--gold-2); }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 3px;
-  background: var(--ink-soft); font-size: 11.5px; color: var(--ink-2); }
+/* status pills — clean, near-square plates, not capsules */
+.pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:var(--radius-sm);
+  font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase;
+  background:var(--card-2); color:var(--label); white-space:nowrap; border:1px solid var(--rule); }
+.pill-sage { background:var(--sage-soft); color:var(--sage); border-color:transparent; }
+.pill-gold { background:var(--gold-tint); color:var(--gold-2); border-color:transparent; }
+/* ActiveTile status: quiet plate + coloured dot — urgency is the dot, not a slab */
+.pill-status { background:var(--card-2); border:1px solid var(--rule); color:var(--ink-2);
+  padding:5px 12px 5px 10px; font-weight:600; }
+.pill-status::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--ink-dim); }
+.pill-ok::before { background:var(--success); }
+.pill-soon { color:var(--amber); } .pill-soon::before { background:var(--warning); }
+.pill-late { color:var(--terra); border-color:var(--terra); background:var(--rust-soft); }
+.pill-late::before { background:var(--terra); animation:khse-pulse 1.8s var(--ease) infinite; }
+@keyframes khse-pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+.chip { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:var(--radius-sm);
+  background:var(--ink-soft); font-size:11.5px; color:var(--ink-2); }
 
-/* ── Buttons (final Khonsera shapes) ────────────────────────────────────────── */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px;
-  border-radius: 14px; font-family: var(--sans); font-weight: 600; font-size: 15px; letter-spacing: -0.005em;
-  line-height: 1; border: 1px solid transparent; cursor: pointer;
-  transition: transform var(--dur-fast), background var(--dur-slow), border-color var(--dur-slow); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 10px; }
-.btn-lg { padding: 16px 22px; font-size: 16px; border-radius: 16px; }
-.btn-full { width: 100%; }
-.btn-gold { background: var(--gold); color: #fff; border: 1px solid var(--gold); }
-.btn-gold:hover:not(:disabled) { background: var(--gold-2); border-color: var(--gold-2); }
-.btn-ink { background: var(--ink); color: var(--paper); border: 1px solid var(--ink); }
-.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
-.btn-ghost:hover:not(:disabled) { background: var(--ink-soft); }
+/* ── Buttons (calmer radius, curated motion) ────────────────────────────────── */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:13px 22px;
+  border-radius:var(--radius-md); font-family:var(--sans); font-weight:600; font-size:14.5px;
+  letter-spacing:-0.005em; line-height:1; border:1px solid transparent; cursor:pointer;
+  transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.btn:hover:not(:disabled) { transform:translateY(-1px); }
+.btn:active:not(:disabled) { transform:translateY(0); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-sm { padding:9px 15px; font-size:12.5px; border-radius:var(--radius-sm); }
+.btn-lg { padding:16px 24px; font-size:16px; border-radius:var(--radius-md); }
+.btn-full { width:100%; }
+.btn-gold { background:var(--gold); color:#fff8ea; border-color:var(--gold); box-shadow:0 1px 2px rgba(111,79,18,0.25); }
+.btn-gold:hover:not(:disabled) { background:var(--gold-2); border-color:var(--gold-2); }
+.btn-ink { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.btn-ghost { background:transparent; color:var(--ink-2); border:1px solid var(--rule-2); }
+.btn-ghost:hover:not(:disabled) { background:var(--ink-soft); border-color:var(--ink-dim); }
 
 /* ── Fields ─────────────────────────────────────────────────────────────────── */
-.field { width: 100%; padding: 14px 16px; background: var(--card); border: 1px solid var(--rule);
-  border-radius: var(--radius-lg); font-size: 15px; color: var(--ink); outline: none; }
+.field { width:100%; padding:14px 16px; background:var(--card); border:1px solid var(--rule);
+  border-radius:var(--radius-md); font-size:15px; color:var(--ink); outline:none; font-family:var(--sans); }
+.field:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-tint); }
 
-/* ── Section flank ──────────────────────────────────────────────────────────── */
-.desk-flank { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 10.5px;
-  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }
-.desk-flank::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+/* ── Section flank → hairline rule with a gold crescent bullet ──────────────── */
+.desk-flank { display:flex; align-items:center; gap:12px; font-family:var(--mono); font-size:10px;
+  letter-spacing:0.2em; text-transform:uppercase; color:var(--label); }
+.desk-flank::before { content:""; width:9px; height:9px; border-radius:50%; flex:none; background:var(--gold);
+  -webkit-mask:radial-gradient(circle at 72% 50%, transparent 47%, #000 48%);
+          mask:radial-gradient(circle at 72% 50%, transparent 47%, #000 48%); }
+.desk-flank::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, var(--rule), transparent); }
 
-/* ── Layout utilities used by the components (subset of Tailwind) ───────────── */
-.flex { display: flex; } .inline-flex { display: inline-flex; }
-.flex-col { flex-direction: column; } .flex-wrap { flex-wrap: wrap; } .flex-1 { flex: 1 1 0%; }
-.items-center { align-items: center; } .items-baseline { align-items: baseline; }
-.items-end { align-items: flex-end; } .justify-between { justify-content: space-between; }
-.gap-1 { gap: 4px; } .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; }
-.gap-0\.5 { gap: 2px; }
-.mb-1 { margin-bottom: 4px; } .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; }
-.mt-1 { margin-top: 4px; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
-.mt-0\.5 { margin-top: 2px; }
-.block { display: block; } .text-left { text-align: left; } .text-ink { color: var(--ink); }
-.rounded-card { border-radius: var(--radius-xl); } .rounded-field { border-radius: var(--radius-lg); }
-.rounded-pill { border-radius: var(--radius-pill); }
+/* ════════════════════════════════════════════════════════════════════════════
+ * THE TIMELINE RAIL — CSS-only via :has(). Any flex-col holding solid .j-card
+ * children (and not the soft intention card) becomes a spine: a hairline rail
+ * with a node per stop. Zero markup change.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.x-screen section:has(> .j-card):not(:has(.j-card-soft)),
+.timeline-chain { position:relative; padding-left:30px; }
+.x-screen section:has(> .j-card):not(:has(.j-card-soft)) > .desk-flank { margin-left:-30px; }
+.x-screen section:has(> .j-card):not(:has(.j-card-soft))::before {
+  content:""; position:absolute; left:9px; top:46px; bottom:14px; width:1px;
+  background:linear-gradient(180deg, transparent 0, var(--rail) 8px, var(--rail) calc(100% - 16px), transparent 100%); }
+.x-screen section:has(> .j-card):not(:has(.j-card-soft)) > .j-card,
+.x-screen section:has(> .j-card):not(:has(.j-card-soft)) > .flex { position:relative; }
+/* Anchor node — solid walnut dot with paper ring (fixed bones of the day) */
+.x-screen .j-card:has(.h3)::before {
+  content:""; position:absolute; left:-25px; top:20px; width:11px; height:11px; border-radius:50%;
+  background:var(--ink); box-shadow:0 0 0 4px var(--paper), 0 0 0 5px var(--rule-2); }
+/* Leg node — hollow diamond (connective travel, subordinate) */
+.x-screen .j-card:not(:has(.h3))::before {
+  content:""; position:absolute; left:-24px; top:18px; width:9px; height:9px; background:var(--paper);
+  border:1.5px solid var(--rule-2); transform:rotate(45deg); }
+/* Gap node — dashed ghost ring */
+.x-screen section:has(> .j-card):not(:has(.j-card-soft)) > .flex::before {
+  content:""; position:absolute; left:-25px; top:20px; width:11px; height:11px; border-radius:50%;
+  border:1.5px dashed var(--rule-2); background:var(--paper); }
 
-/* ── Export chrome (not part of the product — frames each sample) ───────────── */
-.x-shell { max-width: 720px; margin: 0 auto; padding: 0 18px 64px; }
-.x-bar { position: sticky; top: 0; z-index: 5; background: rgba(239,230,208,0.92);
-  backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); padding: 12px 18px; margin-bottom: 24px; }
-.x-bar-in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.x-nav { display: flex; flex-wrap: wrap; gap: 6px; }
-.x-nav a { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--ink-dim); text-decoration: none; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 999px; }
-.x-nav a.on { background: var(--ink); color: var(--gold); border-color: var(--ink); }
-.x-caption { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--gold-2); margin-bottom: 6px; }
-.x-screen { display: flex; flex-direction: column; gap: 20px; }
-.x-note { font-size: 12px; color: var(--ink-dim); border-left: 2px solid var(--gold); padding-left: 12px; margin: 8px 0 24px; }
-.x-swatch { width: 100%; height: 56px; border-radius: 6px; border: 1px solid var(--rule); }
-.x-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
-.x-tok { font-family: var(--mono); font-size: 11px; }
-.x-tok b { display: block; color: var(--ink); font-weight: 600; margin-top: 6px; }
-.x-tok span { color: var(--ink-dim); }
-table.x-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.x-tbl th, table.x-tbl td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-table.x-tbl th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); }
-table.x-tbl code { font-family: var(--mono); font-size: 12px; color: var(--gold-2); }
+/* ── ANCHORCARD — the solid fixed point ─────────────────────────────────────── */
+.j-card.p-4, .x-screen .j-card { padding:17px 18px; }
+.x-screen .j-card:has(.h3) .uc { color:var(--label); }
+.x-screen .j-card:has(.h3) .h3 { margin-top:3px; }
+
+/* ── LEGCARD — connective tissue: de-boxed, quiet on the paper ──────────────── */
+.x-screen .j-card:not(:has(.h3)) { background:transparent; border:none; box-shadow:none; padding:4px 4px 12px; border-radius:0; }
+.x-screen .j-card:not(:has(.h3)) .uc { color:var(--gold-2); }
+.x-screen .j-card:not(:has(.h3)) .text-ink { font-size:14px; color:var(--ink-2); }
+
+/* ── INTENTIONCARD — soft goal with a gold left-rule, above the chain ───────── */
+.j-card-soft { padding:16px 18px; position:relative; overflow:hidden; }
+.j-card-soft::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold-200); }
+
+/* ── GAPCARD — ghosted "needs input"; the prompt invites in editorial italic ── */
+.x-screen article[style*="dashed"] { border:1px dashed var(--rule-2) !important; background:var(--gold-tint) !important;
+  border-radius:var(--radius-lg) !important; padding:17px 18px !important; }
+.x-screen article[style*="dashed"] header { flex-wrap:wrap; gap:6px 10px; margin-bottom:10px !important; align-items:center; }
+.x-screen article[style*="dashed"] .uc { color:var(--ink-dim) !important; flex:1 1 auto; line-height:1.4; }   /* fixes faint --ink-soft endpoint label */
+.x-screen article[style*="dashed"] > p.small { font-family:var(--sans); font-size:14px;
+  color:var(--ink-2); line-height:1.45; margin-top:0; }
+.x-screen article[style*="dashed"] .tag-tight { color:var(--gold-2); }
+.x-screen article[style*="dashed"] .tag-tight::before { background:var(--gold); }
+
+/* ── ACTIVETILE — the day-of hero (the .rounded-card with status pill) ──────── */
+.x-screen section[style*="border-radius:18px"] { background:var(--card) !important; border:1px solid var(--rule) !important;
+  border-radius:var(--radius-xl) !important; padding:24px !important; box-shadow:none !important; }
+.x-screen section[style*="border-radius:18px"] .h2 { letter-spacing:-0.022em; line-height:1.14; margin-top:3px; }
+.x-screen section[style*="border-radius:18px"] div[style*="border-radius:14px"], .x-screen section[style*="border-radius:18px"] .rounded-field { border-radius:var(--radius-md) !important; }
+/* neutralise the loud inline status plate; re-skin as quiet dot pill */
+.x-screen section[style*="border-radius:18px"] .pill[style] { background:var(--card-2) !important; color:var(--ink-2) !important;
+  border:1px solid var(--rule); border-radius:var(--radius-sm); padding:5px 11px 5px 9px; display:inline-flex; align-items:center; gap:7px; }
+.x-screen section[style*="border-radius:18px"] .pill[style]::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--sage); }
+
+/* ── ComparisonMatrix — selected option carries the single gold ring ────────── */
+.x-screen button[style*="--gold"] { border-color:var(--gold) !important; box-shadow:inset 3px 0 0 var(--gold) !important; }
+
+/* ── Headlines breathe — clear the flank/labels beneath a title ───────────── */
+/* x-screen is the vertical rhythm column — flex so `gap` actually applies */
+.x-screen { display:flex; flex-direction:column; gap:30px; }
+.x-screen .h1 { padding-bottom:2px; }
+.desk-flank { margin-bottom:2px; }
+
+/* ── Layout utilities (verbatim subset — unchanged contract) ────────────────── */
+.flex { display:flex; } .inline-flex { display:inline-flex; }
+.flex-col { flex-direction:column; } .flex-wrap { flex-wrap:wrap; } .flex-1 { flex:1 1 0%; }
+.items-center { align-items:center; } .items-baseline { align-items:baseline; }
+.items-end { align-items:flex-end; } .justify-between { justify-content:space-between; }
+.gap-1 { gap:4px; } .gap-2 { gap:10px; } .gap-3 { gap:12px; } .gap-4 { gap:16px; } .gap-0\.5 { gap:2px; }
+.mb-1 { margin-bottom:4px; } .mb-2 { margin-bottom:8px; } .mb-3 { margin-bottom:12px; } .mb-4 { margin-bottom:16px; }
+.mt-1 { margin-top:4px; } .mt-2 { margin-top:8px; } .mt-3 { margin-top:12px; } .mt-4 { margin-top:16px; } .mt-0\.5 { margin-top:2px; }
+.block { display:block; } .text-left { text-align:left; } .text-ink { color:var(--ink); }
+.rounded-card { border-radius:var(--radius-xl); } .rounded-field { border-radius:var(--radius-md); } .rounded-pill { border-radius:var(--radius-pill); }
+.p-3 { padding:12px; } .p-4 { padding:16px; } .p-5 { padding:20px; }
