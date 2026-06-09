@@ -81,19 +81,12 @@ export default async function TodayPage() {
   const firstLeave = anchors[0]?.time?.from;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
-            Today
-          </span>
-          <h1 className="h1" style={{ marginTop: 6 }}>
-            Right now
-          </h1>
-        </div>
-        <span className={live?.mode === "work" ? "pill" : "pill pill-sage"}>
-          {live?.mode ?? "personal"}
-        </span>
+    <div className="cc-screen">
+      <header>
+        <span className="cc-eyebrow">{live?.mode === "work" ? "Work" : "Personal"} · Today</span>
+        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
+          Right now
+        </h1>
       </header>
 
       {live ? (

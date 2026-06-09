@@ -3,75 +3,55 @@
 import type { AnchorVM, LegVM } from "./types";
 import { formatClock } from "./types";
 
-// ActiveTile — the day-of hero (handover §18 day-of, §10 radius). Shows the
-// current focus, the next anchor, and the leave-by, with an escalating urgency
-// state. Placeholder; Design owns the final look of this identity surface.
+// ActiveTile — Today's hero, rebuilt to Design's contract
+// (`.cc-active-tile[data-urgency]`). Fixed layout across the four states; only
+// the status dot + words change. (Round 2 · today.md.)
 
 export type ActiveUrgency = "comfortable" | "urgent" | "breach";
 
-const URGENCY: Record<ActiveUrgency, { color: string; label: string }> = {
-  comfortable: { color: "var(--success)", label: "On track" },
-  urgent: { color: "var(--warning)", label: "Leave soon" },
-  breach: { color: "var(--danger)", label: "Running late" },
+const URGENCY: Record<ActiveUrgency, string> = {
+  comfortable: "On track",
+  urgent: "Leave soon",
+  breach: "Running late",
 };
 
 export function ActiveTile({
   headline,
+  sub,
   nextAnchor,
   nextLeg,
   leaveBy,
   urgency = "comfortable",
 }: {
   headline?: string;
+  sub?: string;
   nextAnchor?: AnchorVM;
   nextLeg?: LegVM;
   leaveBy?: string;
   urgency?: ActiveUrgency;
 }) {
-  const u = URGENCY[urgency];
+  const subline = sub ?? (nextLeg ? `via ${nextLeg.mode} — ${nextLeg.fromLabel} → ${nextLeg.toLabel}` : undefined);
   return (
-    <section
-      className="rounded-card p-5"
-      style={{
-        background: "var(--card)",
-        border: "1px solid var(--rule)",
-        boxShadow: "0 1px 0 var(--rule)",
-      }}
-    >
-      <header className="mb-3 flex items-center justify-between gap-3">
-        <span className="uc">Right now</span>
-        <span
-          className="pill"
-          style={{ background: u.color, color: "var(--paper)" }}
-        >
-          {u.label}
-        </span>
-      </header>
+    <section className="cc-active-tile" data-urgency={urgency}>
+      <span className="cc-at-status">
+        <span className="cc-at-dot" />
+        {URGENCY[urgency]}
+      </span>
 
-      <h2 className="h2">{headline ?? "Nothing on right now"}</h2>
-
-      {nextAnchor ? (
-        <p className="small mt-1">
-          Next: <span className="text-ink">{nextAnchor.title}</span>
-          {nextAnchor.time ? (
-            <span className="mono"> · {formatClock(nextAnchor.time.from)}</span>
-          ) : null}
-        </p>
-      ) : null}
-
-      {nextLeg ? (
-        <p className="small mt-0.5">
-          via {nextLeg.mode} — {nextLeg.fromLabel} → {nextLeg.toLabel}
-        </p>
-      ) : null}
+      <h2 className="cc-at-headline">{headline ?? "Nothing in motion today"}</h2>
+      {subline ? <p className="cc-at-sub">{subline}</p> : null}
 
       {leaveBy ? (
-        <div
-          className="mt-4 flex items-baseline justify-between rounded-field p-3"
-          style={{ background: "var(--card-2)" }}
-        >
-          <span className="uc">Leave by</span>
-          <span className="mono h3">{formatClock(leaveBy)}</span>
+        <div className="cc-at-leaveby">
+          <span className="l">Leave by</span>
+          <span className="v">{formatClock(leaveBy)}</span>
+        </div>
+      ) : null}
+
+      {nextAnchor ? (
+        <div className="cc-at-next">
+          <span className="who">Next · {nextAnchor.title}</span>
+          {nextAnchor.time ? <span className="when">{formatClock(nextAnchor.time.from)}</span> : null}
         </div>
       ) : null}
     </section>
