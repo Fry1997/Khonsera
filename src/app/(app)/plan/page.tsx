@@ -1,0 +1,149 @@
+import Link from "next/link";
+import type { Route } from "next";
+import { createClient } from "@/lib/supabase/server";
+import { requireUserContext } from "@/lib/auth";
+import { AnchorCard, LegCard, GapCard, IntentionCard } from "@/components/concierge";
+import type { AnchorVM, AnchorType, LegVM, LegMode, GapVM, IntentionVM } from "@/components/concierge";
+
+// Plan — the single planner (display + input), rendered as Design's spine.
+// Replaces the legacy "Build my day" brief as the primary planning surface.
+// (Round 2 · planner.md · the .cc-spine.) Editing interactions land next; this
+// renders the user's current journey on the new spine + the capture affordance.
+
+function mapStopType(t: string): AnchorType {
+  if (t.includes("appointment")) return "appointment";
+  if (t.includes("flight")) return "flight";
+  if (t.includes("arrival") || t.includes("transit")) return "transport_arrival";
+  if (t.includes("checkin") || t.includes("check_in")) return "accommodation_check_in";
+  if (t.includes("checkout") || t.includes("check_out")) return "accommodation_check_out";
+  if (t.includes("hotel") || t.includes("accommodation")) return "accommodation_check_in";
+  return "custom";
+}
+const LEG_MODES = new Set(["walk", "drive", "taxi", "bus", "tube", "train", "flight", "mixed"]);
+const mapLegMode = (m: string): LegMode => (LEG_MODES.has(m) ? m : "mixed") as LegMode;
+
+type StopRow = { id: string; sequence: number; type: string; title: string | null; start_time: string | null; location: { name?: string } | null };
+type TransRow = { from_stop_id: string; to_stop_id: string; mode: string; is_locked: boolean | null; computed_duration_minutes: number | null };
+
+function Capture() {
+  return (
+    <div className="cc-capture">
+      <Link href={"/capture" as Route} className="cc-capture-field" style={{ textDecoration: "none" }}>
+        <span style={{ flex: 1, color: "var(--ink-faint)", fontSize: 15 }}>
+          Tell Khonsera in a sentence…
+        </span>
+        <span className="cc-mono" style={{ color: "var(--gold-2)", fontSize: 11 }}>ADD</span>
+      </Link>
+      <p className="cc-capture-hint">A train, a meeting, a place — in any order. I&apos;ll thread it.</p>
+    </div>
+  );
+}
+
+export default async function PlanPage() {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: journey } = await supabase
+    .from("itineraries")
+    .select("id, title, mode, date_start, date_end, status")
+    .eq("mode", ctx.activeMode)
+    .gte("date_end", today)
+    .in("status", ["draft", "planning", "planned", "in_progress"])
+    .order("date_start")
+    .limit(1)
+    .maybeSingle();
+
+  let stops: StopRow[] = [];
+  let transitions: TransRow[] = [];
+  let intentions: IntentionVM[] = [];
+  if (journey?.id) {
+    const [{ data: s }, { data: t }, { data: i }] = await Promise.all([
+      supabase.from("stops").select("id, sequence, type, title, start_time, location:locations(name)").eq("itinerary_id", journey.id).order("sequence"),
+      supabase.from("transitions").select("from_stop_id, to_stop_id, mode, is_locked, computed_duration_minutes").eq("itinerary_id", journey.id),
+      supabase.from("intentions").select("id, description, target, buffer_minutes, state, flexibility, leave_by").eq("itinerary_id", journey.id),
+    ]);
+    stops = (s ?? []) as never;
+    transitions = (t ?? []) as never;
+    intentions = (i ?? []).map((x) => ({
+      id: x.id as string, description: x.description as string,
+      target: (x.target as string | null) ?? undefined,
+      state: x.state as IntentionVM["state"], flexibility: x.flexibility as IntentionVM["flexibility"],
+      leaveBy: (x.leave_by as string | null) ?? undefined,
+    }));
+  }
+  const transByPair = new Map<string, TransRow>();
+  for (const t of transitions) transByPair.set(`${t.from_stop_id}->${t.to_stop_id}`, t);
+
+  const anchorOf = (s: StopRow): AnchorVM => ({
+    id: s.id, type: mapStopType(s.type), title: s.title ?? s.location?.name ?? "Stop",
+    place: s.location?.name ?? undefined, time: s.start_time ? { from: s.start_time } : undefined, fixed: true,
+  });
+  const legOf = (t: TransRow, from: StopRow, to: StopRow): LegVM => ({
+    id: `${t.from_stop_id}->${t.to_stop_id}`, mode: mapLegMode(t.mode),
+    fromLabel: from.title ?? "—", toLabel: to.title ?? "—",
+    departure: from.start_time ?? undefined, arrival: to.start_time ?? undefined,
+    notes: t.computed_duration_minutes ? `${t.computed_duration_minutes} min` : undefined,
+    bookingStatus: t.is_locked ? "booked_in_app" : "manual",
+  });
+
+  return (
+    <div className="cc-screen" style={{ minHeight: "100%" }}>
+      <header>
+        <span className="cc-eyebrow">{ctx.activeMode === "work" ? "Work" : "Personal"} · Plan</span>
+        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
+          {journey?.title ?? "A clear day."}
+        </h1>
+      </header>
+
+      {!journey || stops.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "var(--space-8) 0", color: "var(--ink-dim)" }}>
+          <p className="cc-serif" style={{ fontSize: 18, color: "var(--ink-2)" }}>
+            {journey ? "An empty spine, ready for the first fact." : "Nothing in motion."}
+          </p>
+          <p className="small" style={{ marginTop: 8 }}>Tell me the first thing you know.</p>
+        </div>
+      ) : (
+        <>
+          {intentions.length > 0 ? (
+            <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+              {intentions.map((i) => <IntentionCard key={i.id} intention={i} />)}
+            </section>
+          ) : null}
+
+          <div className="cc-spine">
+            <span className="cc-spine-rail" />
+            {stops.map((s, idx) => {
+              const next = stops[idx + 1];
+              const trans = next ? transByPair.get(`${s.id}->${next.id}`) : undefined;
+              return (
+                <div key={s.id}>
+                  <div className="cc-node">
+                    <div className="cc-node-dot"><span className="cc-dot-anchor" /></div>
+                    <div><AnchorCard anchor={anchorOf(s)} /></div>
+                  </div>
+                  {next ? (
+                    <div className="cc-node">
+                      <div className="cc-node-dot">
+                        <span className={trans ? "cc-dot-leg" : "cc-dot-gap"} />
+                      </div>
+                      <div>
+                        {trans ? (
+                          <LegCard leg={legOf(trans, s, next)} />
+                        ) : (
+                          <GapCard gap={{ id: `gap-${s.id}-${next.id}`, type: "transport_gap", fromLabel: s.title ?? "here", toLabel: next.title ?? "next", state: "open" } satisfies GapVM} />
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <Capture />
+    </div>
+  );
+}

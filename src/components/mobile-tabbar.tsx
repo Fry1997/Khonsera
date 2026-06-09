@@ -14,7 +14,7 @@ type Tab = { href: Route; label: string; icon: keyof typeof GLYPHS };
 function tabs(mode: AppMode): Tab[] {
   return [
     { href: "/today" as Route, label: "Today", icon: "today" },
-    { href: "/itineraries" as Route, label: "Plan", icon: "plan" },
+    { href: "/plan" as Route, label: "Plan", icon: "plan" },
     { href: "/tasks" as Route, label: "Tasks", icon: "tasks" },
     mode === "work"
       ? { href: "/customers" as Route, label: "Clients", icon: "clients" }

@@ -23,7 +23,7 @@ type NavItem = {
 function navFor(mode: AppMode): NavItem[] {
   return [
     { href: "/today" as Route, label: "Today", icon: "bolt", section: "primary" },
-    { href: "/itineraries" as Route, label: "Plan", icon: "nav", section: "primary" },
+    { href: "/plan" as Route, label: "Plan", icon: "nav", section: "primary" },
     { href: "/tasks" as Route, label: "Tasks", icon: "case", section: "primary" },
     mode === "work"
       ? { href: "/customers" as Route, label: "Clients", icon: "case", section: "primary" }

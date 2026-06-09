@@ -151,7 +151,7 @@ export function MoonMark({
 // Horizontal lockup per p. 7.
 export function KhonseraBrand({
   size = "md",
-  href = "/dashboard",
+  href = "/today",
   asLink = true,
   markColor,
   variant = "seal",
@@ -178,10 +178,16 @@ export function KhonseraBrand({
       }}
       aria-label="Khonsera home"
     >
-      <MoonMark
-        size={glyph}
-        color={markColor ?? "var(--gold)"}
-        variant={variant}
+      {/* Edition II emblem (cradle + chevron). The old crescent/moon mark is
+          retired per the brand book + Round 1 redline — one mark, used with
+          discipline (wordmark lockup + the NudgeCard mark only). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/brand/mk-ink.png"
+        alt=""
+        width={glyph}
+        height={glyph}
+        style={{ display: "block", objectFit: "contain" }}
       />
       <span
         style={{

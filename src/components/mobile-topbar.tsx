@@ -11,7 +11,7 @@ import type { Route } from "next";
 // per parity-before-strip but are no longer surfaced.)
 const NAV = [
   { href: "/today" as Route, label: "Today" },
-  { href: "/itineraries" as Route, label: "Plan" },
+  { href: "/plan" as Route, label: "Plan" },
   { href: "/tasks" as Route, label: "Tasks" },
   { href: "/contacts" as Route, label: "People" },
   { href: "/expenses" as Route, label: "Expenses" },

@@ -3,9 +3,9 @@
 import type { AnchorVM, GapVM, IntentionVM, LegVM } from "./types";
 import { formatClock, formatMoney } from "./types";
 
-// The four timeline primitives (handover §5). Anchors render SOLID; gaps render
-// GHOSTED ("needs input"); intentions are soft/toggleable; legs are resolved
-// movements. Placeholder visuals — Design restyles via tokens, not restructure.
+// The four spine primitives, rebuilt to Design's Edition II screen contract
+// (`khonsera-edition-ii-screens.css` · `.cc-*` + data-* states). Code keeps the
+// names + data; the CSS owns the look. (Round 2 / Design for-code.zip.)
 
 const ANCHOR_LABEL: Record<AnchorVM["type"], string> = {
   appointment: "Appointment",
@@ -24,23 +24,36 @@ export function AnchorCard({
   anchor: AnchorVM;
   onSelect?: (id: string) => void;
 }) {
-  const window = anchor.time
-    ? anchor.time.to
-      ? `${formatClock(anchor.time.from)}–${formatClock(anchor.time.to)}`
-      : formatClock(anchor.time.from)
-    : "Time t.b.c.";
+  const arriveBy = anchor.time ? formatClock(anchor.time.from) : null;
+  const leaveBy = anchor.time?.to ? formatClock(anchor.time.to) : null;
   return (
     <article
-      className="j-card p-4"
+      className="cc-anchor-card"
+      data-type={anchor.type}
       onClick={onSelect ? () => onSelect(anchor.id) : undefined}
       style={onSelect ? { cursor: "pointer" } : undefined}
     >
-      <header className="mb-1 flex items-baseline justify-between gap-3">
-        <span className="uc">{ANCHOR_LABEL[anchor.type]}</span>
-        <span className="mono small">{window}</span>
-      </header>
-      <h3 className="h3">{anchor.title}</h3>
-      {anchor.place ? <p className="small">{anchor.place}</p> : null}
+      <div className="cc-anchor-head">
+        <span className="cc-anchor-type">{ANCHOR_LABEL[anchor.type]}</span>
+      </div>
+      <h3 className="cc-anchor-title">{anchor.title}</h3>
+      {anchor.place ? <p className="cc-anchor-place">{anchor.place}</p> : null}
+      {arriveBy || leaveBy ? (
+        <div className="cc-vars">
+          {arriveBy ? (
+            <div className="cc-var" data-state="precise">
+              <span className="cc-var-label">Arrive by</span>
+              <span className="cc-var-value">{arriveBy}</span>
+            </div>
+          ) : null}
+          {leaveBy ? (
+            <div className="cc-var" data-state="derived">
+              <span className="cc-var-label">Leave by</span>
+              <span className="cc-var-value">{leaveBy}</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -54,46 +67,29 @@ export function IntentionCard({
   onToggle?: (id: string) => void;
   onPromote?: (id: string) => void;
 }) {
-  const off = intention.state === "toggled_off";
+  const active = intention.state !== "toggled_off";
   return (
-    <article
-      className="j-card-soft p-4"
-      style={off ? { opacity: 0.55 } : undefined}
-    >
-      <header className="mb-1 flex items-baseline justify-between gap-3">
-        <span className="uc">Intention</span>
-        {intention.flexibility === "promoted_to_hard" ? (
-          <span className="tag-ok">promoted</span>
-        ) : (
-          <span className="tag-tight">soft</span>
-        )}
-      </header>
-      <p className="text-ink">{intention.description}</p>
-      {intention.target ? (
-        <p className="small mt-0.5">{intention.target}</p>
-      ) : null}
-      {intention.leaveBy ? (
-        <p className="small mt-2">
-          Leave by <span className="mono">{formatClock(intention.leaveBy)}</span>
+    <article className="cc-intention-card" data-active={active ? "true" : "false"}>
+      <div className="cc-intention-label">
+        <span>Intention</span>
+        <span>{intention.flexibility === "promoted_to_hard" ? "promoted" : "soft"}</span>
+      </div>
+      <p className="cc-intention-desc">{intention.description}</p>
+      {intention.target || intention.leaveBy ? (
+        <p className="cc-intention-meta">
+          {intention.target ?? ""}
+          {intention.leaveBy ? `  ·  leave by ${formatClock(intention.leaveBy)}` : ""}
         </p>
       ) : null}
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => onToggle?.(intention.id)}
-        >
-          {off ? "Turn on" : "Turn off"}
-        </button>
+      <div className="cc-intention-actions">
         {intention.flexibility === "soft" ? (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => onPromote?.(intention.id)}
-          >
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => onPromote?.(intention.id)}>
             Make it fixed
           </button>
         ) : null}
+        <button type="button" className="cc-btn cc-btn-quiet" onClick={() => onToggle?.(intention.id)}>
+          {active ? "Dismiss" : "Restore"}
+        </button>
       </div>
     </article>
   );
@@ -114,29 +110,19 @@ export function GapCard({
   onResolve?: (id: string) => void;
 }) {
   return (
-    <article
-      className="rounded-card p-4"
-      style={{
-        border: "1px dashed var(--rule)",
-        background: "transparent",
-      }}
-    >
-      <header className="mb-1 flex items-baseline justify-between gap-3">
-        <span className="uc" style={{ color: "var(--ink-soft)" }}>
-          {gap.fromLabel && gap.toLabel
-            ? `${gap.fromLabel} → ${gap.toLabel}`
-            : "Gap"}
-        </span>
-        <span className="tag-tight">needs input</span>
-      </header>
-      <p className="small">{gap.prompt ?? GAP_PROMPT[gap.type]}</p>
-      <button
-        type="button"
-        className="btn btn-gold btn-sm mt-3"
-        onClick={() => onResolve?.(gap.id)}
-      >
-        Resolve
-      </button>
+    <article className="cc-gap-card" data-state={gap.state}>
+      {gap.fromLabel && gap.toLabel ? (
+        <p className="cc-gap-ends">
+          {gap.fromLabel} &rarr; {gap.toLabel}
+        </p>
+      ) : null}
+      <p className="cc-gap-prompt">{gap.prompt ?? GAP_PROMPT[gap.type]}</p>
+      <div className="cc-gap-actions">
+        <button type="button" className="cc-btn cc-btn-gold" onClick={() => onResolve?.(gap.id)}>
+          Resolve
+        </button>
+        <button type="button" className="cc-btn cc-btn-ghost">Later</button>
+      </div>
     </article>
   );
 }
@@ -152,35 +138,36 @@ const LEG_LABEL: Record<LegVM["mode"], string> = {
   mixed: "Mixed",
 };
 
-const BOOKING_TAG: Record<LegVM["bookingStatus"], { cls: string; label: string }> = {
-  synced: { cls: "tag-ok", label: "synced" },
-  booked_in_app: { cls: "tag-ok", label: "booked" },
-  manual: { cls: "tag-tight", label: "manual" },
-  unbooked_stub: { cls: "tag-no", label: "not booked" },
+// booking status → the design's leg states
+const LEG_STATE: Record<LegVM["bookingStatus"], "chosen" | "proposed" | "unresolved"> = {
+  synced: "chosen",
+  booked_in_app: "chosen",
+  manual: "proposed",
+  unbooked_stub: "unresolved",
 };
 
 export function LegCard({ leg }: { leg: LegVM }) {
-  const tag = BOOKING_TAG[leg.bookingStatus];
+  const total = leg.notes ?? (leg.departure && leg.arrival
+    ? `${formatClock(leg.departure)}–${formatClock(leg.arrival)}`
+    : "Travel needed");
   return (
-    <article className="j-card p-4">
-      <header className="mb-1 flex items-baseline justify-between gap-3">
-        <span className="uc">{LEG_LABEL[leg.mode]}</span>
-        <span className={tag.cls}>{tag.label}</span>
-      </header>
-      <p className="text-ink">
-        {leg.fromLabel} → {leg.toLabel}
-      </p>
-      <div className="mt-2 flex flex-wrap items-baseline gap-3">
-        <span className="mono small">
-          {formatClock(leg.departure)} → {formatClock(leg.arrival)}
+    <div className="cc-leg-card" data-state={LEG_STATE[leg.bookingStatus]}>
+      <div className="cc-leg-head">
+        <span className="cc-leg-total">{total} door-to-door</span>
+        <span className="cc-leg-pattern">Direct</span>
+      </div>
+      <div className="cc-subseq">
+        <span className="cc-subleg">{LEG_LABEL[leg.mode]}</span>
+      </div>
+      <div className="cc-leg-meta">
+        <span className="cc-mono">
+          {formatClock(leg.departure)} &rarr; {formatClock(leg.arrival)}
         </span>
         {leg.cost != null ? (
-          <span className="mono small">
-            {formatMoney(leg.cost, leg.currency)}
-          </span>
+          <span className="cc-mono">{formatMoney(leg.cost, leg.currency)}</span>
         ) : null}
       </div>
-      {leg.notes ? <p className="small mt-2">{leg.notes}</p> : null}
-    </article>
+      <p className="cc-leg-tap">Tap to compare &rarr;</p>
+    </div>
   );
 }
