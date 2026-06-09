@@ -149,7 +149,7 @@ export default async function TimelinePage({
         </section>
       ) : null}
 
-      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <section className="k-timeline" style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         <div className="desk-flank"><span>The chain · {stops.length}</span></div>
         {stops.length === 0 ? (
           <div className="j-card p-6" style={{ textAlign: "center" }}>

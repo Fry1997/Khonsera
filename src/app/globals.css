@@ -3783,3 +3783,76 @@
   font-weight: 700;
   color: var(--gold-2, var(--gold));
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EDITION II restyle (Design handback) — component layer.
+   Appended last so it wins at equal specificity. Real modifier classes
+   (.active-tile / .gap-card / .leg-card / .is-selected / .k-timeline) replace
+   the export pack's inline-style hooks, as the handback's "requests for Code"
+   asked. Everything traces to tokens.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* Crisp radii — point the canonical surfaces at the near-square tokens */
+  .j-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+  .j-card-soft { border-radius: var(--radius-lg); }
+  .btn { border-radius: var(--radius-md);
+    transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+  .btn-gold, .btn-ink, .btn-ghost { border-radius: var(--radius-md); }
+  .btn-sm { border-radius: var(--radius-sm); }
+  .btn-lg { border-radius: var(--radius-md); }
+  .field, .input-base { border-radius: var(--radius-md); }
+
+  /* Eyebrows / uc labels onto the legible --label ink */
+  .uc, .eyebrow { color: var(--label); }
+
+  /* Status tags — quiet dot + text, not a filled slab */
+  .tag-ok, .tag-tight, .tag-no {
+    display: inline-flex; align-items: center; gap: 6px; padding: 0;
+    background: transparent; border-radius: 0; font-family: var(--mono);
+    font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .tag-ok::before, .tag-tight::before, .tag-no::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+  }
+  .tag-ok { color: var(--sage); }     .tag-ok::before { background: var(--sage); }
+  .tag-tight { color: var(--amber); } .tag-tight::before { background: var(--amber); }
+  .tag-no { color: var(--rust); }     .tag-no::before { background: var(--rust); }
+
+  /* ActiveTile status — quiet plate + coloured dot (never a loud slab) */
+  .pill-status { background: var(--card-2); border: 1px solid var(--rule); color: var(--ink-2); padding: 4px 11px; }
+  .pill-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-dim); }
+  .pill-ok::before { background: var(--success); }
+  .pill-soon { color: var(--amber); border-color: var(--amber); }  .pill-soon::before { background: var(--warning); }
+  .pill-late { color: var(--terra); border-color: var(--terra); background: var(--rust-soft); }
+  .pill-late::before { background: var(--terra); animation: khse-pulse 1.8s var(--ease) infinite; }
+  @keyframes khse-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ActiveTile shell — replaces the inline-style hook */
+  .active-tile { background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--radius-xl); box-shadow: var(--shadow); padding: var(--space-5); }
+
+  /* GapCard — ghosted dashed plate on a faint gold wash; fixes the faint label */
+  .gap-card { border: 1px dashed var(--rule); background: var(--gold-tint);
+    border-radius: var(--radius-lg); padding: var(--space-4); }
+
+  /* LegCard — de-boxed: travel is connective tissue between anchors */
+  .leg-card { background: transparent; border: none; box-shadow: none; border-radius: 0; padding: 4px 4px 10px; }
+  .leg-card .uc { color: var(--gold-2); }
+
+  /* IntentionCard — gold-200 left rule */
+  .intention-card { position: relative; overflow: hidden; }
+  .intention-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold-200); }
+
+  /* ComparisonMatrix selected option — inset gold bar, not a full ring */
+  .is-selected { box-shadow: inset 3px 0 0 var(--gold); }
+
+  /* ── Timeline rail — a spine with a node per stop. Real .k-timeline wrapper.
+     Offsets are best-effort; fine-tune in a browser pass. ──────────────────── */
+  .k-timeline { position: relative; padding-left: 28px; }
+  .k-timeline::before { content: ""; position: absolute; left: 8px; top: 8px; bottom: 8px; width: 1px; background: var(--rail); }
+  .k-timeline .anchor-card, .k-timeline .gap-card, .k-timeline .leg-card { position: relative; }
+  .k-timeline .anchor-card::before { content: ""; position: absolute; left: -24px; top: 18px;
+    width: 9px; height: 9px; border-radius: 50%; background: var(--ink); border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--rule); }
+  .k-timeline .leg-card::before, .k-timeline .gap-card::before { content: ""; position: absolute; left: -21px; top: 14px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--paper); border: 1px solid var(--rail); }
+}

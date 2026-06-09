@@ -35,11 +35,7 @@ export function ComparisonMatrix({
             key={opt.id}
             type="button"
             onClick={() => setSelected(opt.id)}
-            className="j-card p-4 text-left transition-colors duration-fast"
-            style={{
-              borderColor: active ? "var(--gold)" : undefined,
-              boxShadow: active ? "0 0 0 1px var(--gold)" : undefined,
-            }}
+            className={`j-card p-4 text-left transition-colors duration-fast${active ? " is-selected" : ""}`}
           >
             <header className="mb-1 flex items-baseline justify-between gap-3">
               <span className="uc">{opt.mode}</span>
