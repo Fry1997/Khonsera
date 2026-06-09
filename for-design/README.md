@@ -1,22 +1,43 @@
-# for-design.zip — Round 1 pack (Code → Design)
+# for-design.zip — Round 2 (Code → Design): the surfaces you haven't designed yet
 
-Everything Design needs to design the two P1 screens — **Planner/Timeline** and **Today** — on the
-real Edition II skin and real data shapes. (The brand book is Design's own artifact; not included.)
+Round 1 designed **Planner** + **Today** + the bottom nav. Everything *around* them is still
+un-designed, so Code has been guessing — and it shows (see `current-state/`). This pack hands you
+the rest, precisely, so we stop guessing.
 
-## Contents
-- `screen-specs/planner.md`, `screen-specs/today.md` — per-screen: purpose, every data element,
-  every state, morph behaviour (the three-variable AnchorCard model, the train booking-pair, gap/
-  leg/ComparisonMatrix logic; Today's four states + the morph).
-- `component-contract.md` — the 13 named concierge components: data + states. **Keep the names.**
-- `design-tokens.md` — the Edition II token manifest (the values + the iron rule).
-- `khonsera-edition-ii.css` — the **live** skin. Extend it; don't reinvent. (It currently re-skins
-  legacy atom classes; the concierge components consume the same tokens.)
-- `example-data/` — real JSON, no lorem: `fact-list.json` (a full day, anchors+legs+sub-legs+gap+
-  intention), `multi-day-trip.json` (flight + inferred accommodation/luggage proposals),
-  `today-{dormant,readiness,intransit,arrived}.json` (a payload per Today state).
-- `breakpoints.md` — the three mobile-first sizes.
+## What I need designed (in priority order)
 
-## What to return (`for-code.zip`)
-Screen designs for Planner + Today (all states × 3 sizes), an **additive override CSS** (never edits
-to globals.css), and redlines. Code implements on live data, reaches parity, strips legacy, then
-ships `live-screenshots.zip` for you to react to.
+1. **App shell / chrome** — `screen-specs/app-shell.md`. The header (emblem + wordmark + mode
+   toggle + actions), the bottom bar in context, and the desktop rail. **This is the worst offender:**
+   the wordmark truncates to "KHONSER", the mode toggle crowds the logo, and there's a stray
+   "Demo off" + "Tell" + hamburger pile-up. The shell wraps *every* screen, so it sets the whole feel.
+2. **Landing / first-touch** — `screen-specs/landing.md`. Still the **retired crescent moon + old
+   layout** (`current-state/02`). Needs the full Edition II treatment — it's the first thing anyone sees.
+3. **Auth** — `screen-specs/auth.md`. Login / signup / forgot / reset. Still old.
+4. **Secondary screens** — `screen-specs/secondary-screens.md`. Tasks · People/Clients · Expenses ·
+   Settings · Workspace · Welcome (first-run). Lower craft bar than Planner/Today, but they must
+   belong to the same family.
+
+## Ground truth to design against (don't reinvent)
+
+- `current-state/` — **screenshots of the actual live app**, annotated in the specs with what's wrong.
+- `reference/design-tokens.md` — the Edition II token manifest (the values + the iron rule).
+- `reference/component-contract.md` — the 13 named components (data + states); the shell composes these.
+- `reference/khonsera-edition-ii.css` (brand layer) + `khonsera-edition-ii-screens.css` (the `.cc-*`
+  screen components you already authored). **Extend these; same architecture.** globals.css is untouched.
+- `reference/brand/mk-ink.png` (light) / `mk-brass.png` (dark) — the **only** sanctioned mark.
+  The crescent/moon is retired (your own Round-1 redline) — it must not appear anywhere, incl. landing.
+
+## Exactly what to return (`for-code.zip`)
+
+For each spec: **all states × the three sizes (390 / 744 / 1280)**, plus:
+- An **additive override CSS** that styles the shell + these screens **by class/contract name**,
+  imported after the existing two layers. **Never edit globals.css.** Tokens only.
+- A **class + `data-*` map** (like Round 1's `token-class-map.md`) so Code wires the exact hooks.
+- **Redlines** (spacing, type, the states, mobile rules, the morph/motion where relevant).
+- The **shell** especially needs: emblem size + lockup rules, where the mode toggle lives at each
+  size, how actions (Tell / overflow) are reached, and the **desktop rail** layout.
+- No shim/demo files in the repo set; production tokens come from the layers above.
+
+Mobile (390) is the source of truth. Calm by default; one gold fill, one accent per view; no emojis;
+copy voiced as "Khonsera". Hand it back and Code implements on live data, reaches parity, then strips
+the legacy.
