@@ -1,20 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Spectral } from "next/font/google";
+import { JetBrains_Mono, Spectral } from "next/font/google";
 import "./globals.css";
+import "./khonsera-edition-ii.css"; // ← Edition II brand update (must load AFTER globals.css)
 
-// Canonical Khonsera type stack — Edition II (sans-led, per the brand book):
+// Canonical Khonsera type stack, per the Visual Identity brand book
+// (Edition II · MMXXVI) — SANS-LED:
 //
-//   • Satoshi         — wordmark + headlines + UI + body. Loaded from
-//                       Fontshare via a <link>; not on Google Fonts.
-//   • JetBrains Mono  — codes, times, eyebrows
-//   • Spectral        — rare editorial serif italic accent (Cormorant retired)
-//   • Inter           — retained only as a graceful --font-sans fallback
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
+//   • Satoshi         — wordmark, display, headlines, UI *and* body.
+//                       Loaded from Fontshare via the <link> below.
+//   • JetBrains Mono  — codes, times, eyebrows (the travel-document signature)
+//   • Spectral        — rare editorial italic accent only (replaces Cormorant)
+//
+// Inter is retired: Satoshi now carries body too. The --font-sans variable is
+// left bound to Satoshi via khonsera-edition-ii.css, so --sans resolves to
+// Satoshi even where globals.css references var(--font-sans).
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 const serif = Spectral({
   subsets: ["latin"],
   style: ["italic", "normal"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
   variable: "--font-serif",
 });
 
@@ -27,7 +31,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#efe6d0",
+  themeColor: "#f5f1e8", // Edition II screen paper
 };
 
 export default function RootLayout({
@@ -39,18 +43,16 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="light"
-      className={`${sans.variable} ${mono.variable} ${serif.variable}`}
+      className={`${mono.variable} ${serif.variable}`}
     >
       <head>
-        {/* Satoshi — display face per the brand book. Self-served via
-            Fontshare; Satoshi is not on Google Fonts. */}
+        {/* Satoshi — the brand face, carrying wordmark, headlines, UI and
+            body in Edition II. Self-served via Fontshare. */}
         <link
           rel="stylesheet"
           href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900,300i,400i,500i,700i,900i&display=swap"
         />
-        {/* No-FOUC theme init — applies the persisted palette (dusk /
-            sahara / midnight) before first paint. Settings → Palette
-            sets the key. Currently only staff can change it. */}
+        {/* No-FOUC theme init — applies the persisted palette before paint. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem('khonsera:theme');if(t==='sahara'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}`,

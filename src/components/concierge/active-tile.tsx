@@ -9,10 +9,10 @@ import { formatClock } from "./types";
 
 export type ActiveUrgency = "comfortable" | "urgent" | "breach";
 
-const URGENCY: Record<ActiveUrgency, { cls: string; label: string }> = {
-  comfortable: { cls: "pill-ok", label: "On track" },
-  urgent: { cls: "pill-soon", label: "Leave soon" },
-  breach: { cls: "pill-late", label: "Running late" },
+const URGENCY: Record<ActiveUrgency, { color: string; label: string }> = {
+  comfortable: { color: "var(--success)", label: "On track" },
+  urgent: { color: "var(--warning)", label: "Leave soon" },
+  breach: { color: "var(--danger)", label: "Running late" },
 };
 
 export function ActiveTile({
@@ -30,10 +30,22 @@ export function ActiveTile({
 }) {
   const u = URGENCY[urgency];
   return (
-    <section className="active-tile">
+    <section
+      className="rounded-card p-5"
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--rule)",
+        boxShadow: "0 1px 0 var(--rule)",
+      }}
+    >
       <header className="mb-3 flex items-center justify-between gap-3">
         <span className="uc">Right now</span>
-        <span className={`pill pill-status ${u.cls}`}>{u.label}</span>
+        <span
+          className="pill"
+          style={{ background: u.color, color: "var(--paper)" }}
+        >
+          {u.label}
+        </span>
       </header>
 
       <h2 className="h2">{headline ?? "Nothing on right now"}</h2>
