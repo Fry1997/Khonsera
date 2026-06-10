@@ -60,9 +60,11 @@ function stubMeta(t: TicketVM): { label: string; value: string } | null {
 export function Pass({
   ticket,
   onShow,
+  docked = false,
 }: {
   ticket: TicketVM;
   onShow?: (ticket: TicketVM) => void;
+  docked?: boolean; // on the Planner spine: barcode collapses to "Ticket ready"
 }) {
   const leg = ticket.legs[0];
   const isStay = ticket.kind === "stay";
@@ -77,7 +79,7 @@ export function Pass({
   const stub = stubMeta(ticket);
 
   return (
-    <div className="cc-pass" data-kind={ticket.kind}>
+    <div className={docked ? "cc-pass cc-pass--docked" : "cc-pass"} data-kind={ticket.kind}>
       <div className="cc-pass-band">
         <div className="cc-pass-operator">
           <span className="cc-pass-kind">{KIND_LABEL[ticket.kind]}</span>
@@ -117,7 +119,16 @@ export function Pass({
 
       {ticket.consequence ? <p className="cc-pass-consequence">{ticket.consequence}</p> : null}
 
-      {stub ? (
+      {/* On the spine the barcode collapses to a quiet "Ticket ready" line; the
+          full code lives behind Show ticket / in the Wallet (brief §8). */}
+      {docked && stub ? (
+        <div className="cc-pass-ready">
+          <span className="cc-pass-ready-tag"><span className="dot" />Ticket ready</span>
+          <button className="cc-pass-show" onClick={() => onShow?.(ticket)}>
+            {ticket.kind === "air" ? "Show pass" : "Show ticket"} ›
+          </button>
+        </div>
+      ) : !docked && stub ? (
         <>
           <div className="cc-pass-perf" />
           <div className="cc-pass-stub">

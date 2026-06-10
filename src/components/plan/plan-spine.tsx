@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AnchorCard, LegCard, GapCard } from "@/components/concierge";
+import { AnchorCard, LegCard, GapCard, Pass, ScanView } from "@/components/concierge";
 import type {
   AnchorVM,
   AnchorVariableKind,
   AnchorVariableSlot,
   LegVM,
   GapVM,
+  TicketVM,
+  BarcodeVM,
 } from "@/components/concierge";
 import {
   setAnchorVariable,
@@ -27,7 +29,9 @@ import {
 type LegBetween = { transitionId?: string; itineraryId: string; fromStopId: string; toStopId: string };
 
 export type SpineNode = {
-  anchor: AnchorVM;
+  key: string;
+  anchor?: AnchorVM; // a normal anchor node
+  pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8)
   after?:
     | ({ kind: "leg"; leg: LegVM } & LegBetween)
     | ({ kind: "gap"; gap: GapVM } & LegBetween)
@@ -36,6 +40,7 @@ export type SpineNode = {
 
 type EditTarget = { anchor: AnchorVM; slot: AnchorVariableSlot };
 type CompareTarget = LegBetween & { title: string };
+type ScanTarget = { summary: string; barcodes: BarcodeVM[] };
 
 export function PlanSpine({
   nodes,
@@ -46,24 +51,35 @@ export function PlanSpine({
 }) {
   const [edit, setEdit] = useState<EditTarget | null>(null);
   const [compare, setCompare] = useState<CompareTarget | null>(null);
+  const [scan, setScan] = useState<ScanTarget | null>(null);
 
   const resolving = edit != null || compare != null;
+
+  function openScan(ticket: TicketVM) {
+    const leg = ticket.legs[0];
+    if (!leg?.barcodes?.length) return;
+    setScan({ summary: `${ticket.operator} · ${leg.origin.place} → ${leg.destination.place}`, barcodes: leg.barcodes });
+  }
 
   return (
     <>
       <div className="cc-spine" data-resolving={resolving ? "" : undefined}>
         <span className="cc-spine-rail" />
         {nodes.map((n) => (
-          <div key={n.anchor.id}>
+          <div key={n.key}>
             <div className="cc-node">
               <div className="cc-node-dot">
-                <span className="cc-dot-anchor" />
+                <span className={n.pass ? "cc-dot-leg" : "cc-dot-anchor"} />
               </div>
               <div>
-                <AnchorCard
-                  anchor={n.anchor}
-                  onEditVariable={(id, slot) => setEdit({ anchor: n.anchor, slot })}
-                />
+                {n.pass ? (
+                  <Pass ticket={n.pass} docked onShow={openScan} />
+                ) : n.anchor ? (
+                  <AnchorCard
+                    anchor={n.anchor}
+                    onEditVariable={(id, slot) => setEdit({ anchor: n.anchor!, slot })}
+                  />
+                ) : null}
               </div>
             </div>
             {n.after ? (
@@ -81,7 +97,7 @@ export function PlanSpine({
                           itineraryId: n.after!.itineraryId,
                           fromStopId: n.after!.fromStopId,
                           toStopId: n.after!.toStopId,
-                          title: `${n.after!.fromStopId === n.anchor.id ? n.anchor.title : ""}`,
+                          title: n.anchor?.title ?? "",
                         })
                       }
                     />
@@ -111,6 +127,10 @@ export function PlanSpine({
 
       {compare ? (
         <CompareSheet target={compare} onClose={() => setCompare(null)} />
+      ) : null}
+
+      {scan ? (
+        <ScanView summary={scan.summary} barcodes={scan.barcodes} onClose={() => setScan(null)} />
       ) : null}
     </>
   );

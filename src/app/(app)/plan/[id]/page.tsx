@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
+import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { IntentionCard } from "@/components/concierge";
 import {
   formatClock,
@@ -21,6 +22,7 @@ import {
   type LegVM,
   type GapVM,
   type IntentionVM,
+  type TicketVM,
 } from "@/components/concierge";
 
 // Plan — the Event DETAIL (proposal §3b). The single spine, scoped to one Event:
@@ -194,28 +196,54 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   };
 
   const constraints = await loadConstraints();
-  const nodes: SpineNode[] = stops.map((st, idx) => {
-    const next = stops[idx + 1];
+  const stopById = new Map(stops.map((st) => [st.id, st]));
+
+  // Collapse each booked transit run (departure → changeover(s) → arrival) into a
+  // single docked Pass node (proposal §8); the internal locked legs fold into the
+  // ticket. A return is a second Pass downstream — the timeline carries the order.
+  const folded = foldStopsToTickets(
+    stops.map((st) => ({ id: st.id, type: st.type, title: st.title, start_time: st.start_time, metadata: st.metadata })),
+  );
+  const runByDeparture = new Map(folded.map((f) => [f.departureStopId, f]));
+  const consumed = new Set<string>();
+  for (const f of folded) for (const sid of f.stopIds) if (sid !== f.departureStopId) consumed.add(sid);
+
+  type Unit = { key: string; entryId: string; exitId: string; anchor?: AnchorVM; pass?: TicketVM };
+  const units: Unit[] = [];
+  for (const st of stops) {
+    if (consumed.has(st.id)) continue;
+    const run = runByDeparture.get(st.id);
+    if (run) {
+      units.push({ key: `pass-${st.id}`, entryId: st.id, exitId: run.arrivalStopId, pass: run.ticket });
+    } else {
+      units.push({ key: `anchor-${st.id}`, entryId: st.id, exitId: st.id, anchor: anchorOf(st) });
+    }
+  }
+
+  const nodes: SpineNode[] = units.map((u, idx) => {
+    const next = units[idx + 1];
     let after: SpineNode["after"] = null;
     if (next) {
-      const tr = transByPair.get(`${st.id}->${next.id}`);
+      const fromStop = stopById.get(u.exitId)!;
+      const toStop = stopById.get(next.entryId)!;
+      const tr = transByPair.get(`${u.exitId}->${next.entryId}`);
       after = tr
-        ? { kind: "leg", leg: legOf(tr, st, next), transitionId: tr.id, itineraryId: id, fromStopId: st.id, toStopId: next.id }
+        ? { kind: "leg", leg: legOf(tr, fromStop, toStop), transitionId: tr.id, itineraryId: id, fromStopId: u.exitId, toStopId: next.entryId }
         : {
             kind: "gap",
             gap: {
-              id: `gap-${st.id}-${next.id}`,
+              id: `gap-${u.exitId}-${next.entryId}`,
               type: "transport_gap",
-              fromLabel: st.title ?? "here",
-              toLabel: next.title ?? "next",
+              fromLabel: fromStop?.title ?? "here",
+              toLabel: toStop?.title ?? "next",
               state: "open",
             } satisfies GapVM,
             itineraryId: id,
-            fromStopId: st.id,
-            toStopId: next.id,
+            fromStopId: u.exitId,
+            toStopId: next.entryId,
           };
     }
-    return { anchor: anchorOf(st), after };
+    return { key: u.key, anchor: u.anchor, pass: u.pass, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);
