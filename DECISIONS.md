@@ -166,6 +166,35 @@ Newest at the bottom of each section.
   - **`design-export/` pack** still carries the K3 CSS — it's a historical handoff artifact, now
     superseded by the in-repo Edition II; left as-is unless you want it refreshed.
 
+## Public front door (landing + waitlist brief)
+- **D23 — `/` is now the public marketing page; the app moved behind login at `/today`.** Per the
+  landing+waitlist brief, `/` is the brand front door, not the login wall. Three visitor states
+  (`src/app/page.tsx`, server): logged-out → marketing + waitlist + a discreet "Log in" link;
+  logged-in **approved** → `redirect("/today")`; logged-in **not approved** → the gated thank-you
+  screen. The privacy/route boundary was already enforced by `src/middleware.ts` (everything except
+  the public allowlist redirects to `/login`) — no app route is reachable logged-out.
+  - **Access gate = `isApproved()` (`src/lib/access.ts`) = `is_staff || is_admin`.** The brief frames
+    it as a `membership_role` gate, but signup auto-provisions an owner membership for every account,
+    so role alone can't distinguish "approved" from "not yet". `is_staff/is_admin` is the honest
+    signal while access is closed; widen this one predicate when the doors open. Enforced as a single
+    chokepoint in `src/app/(app)/layout.tsx` (`!isApproved → redirect("/")`), so **every** app route
+    is guarded, not just `/today`. No parallel auth — reuses the existing identity flags + RLS.
+  - **`waitlist` table (migration 0033):** `email` (unique on `lower(email)`), `name?`, `source?`,
+    `created_at`. RLS ON; **INSERT-only for anon+authenticated, no SELECT policy** — the list is not
+    API-readable, so duplicate detection rides the unique-index 23505 conflict, never a read. The
+    `WITH CHECK (true)` INSERT advisor WARN is intentional and by-design (public signup; same posture
+    as the existing `route_preview_cache`/`rail_route_cache` tables).
+  - **Signup UX:** single email + honeypot (`company` field, off-screen) → `joinWaitlist`
+    (`src/lib/actions/waitlist.ts`); morphs inline to the joined state (no reload) and sets the
+    `khonsera_waitlist=joined` cookie so a return visit shows "you're on the list"; a re-entered
+    known email shows "you're already on the list". No captcha.
+  - **Link preview (brief §7):** `src/app/opengraph-image.tsx` (`next/og`) renders the wordmark on
+    linen + tagline; page `metadata` sets title/description/OG/Twitter. Token values inlined as
+    literals there only because `next/og` can't read CSS custom properties.
+  - **Design:** all surfaces are Code-authored on Edition II tokens (`.cc-mkt-*`/`.cc-wl-*`/
+    `.cc-gated-*` appended to `khonsera-edition-ii-shell.css`, additive, never globals). This is a
+    flagged Design elevation candidate — handed off for a brand pass on the live screenshot.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

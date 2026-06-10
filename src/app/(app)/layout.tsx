@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { requireUserContext } from "@/lib/auth";
+import { isApproved } from "@/lib/access";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileAppbar } from "@/components/shell/mobile-appbar";
 import { MobileTabbar } from "@/components/mobile-tabbar";
@@ -10,6 +12,14 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const ctx = await requireUserContext();
+
+  // Access gate (landing+waitlist brief §4): every app route is guarded here.
+  // A signed-in but not-yet-approved account is bounced to `/`, which renders
+  // the gated thank-you screen. The single chokepoint — widen `isApproved`
+  // when we open the doors.
+  if (!isApproved(ctx)) {
+    redirect("/");
+  }
   const supabase = await createClient();
   const { data: workspace } = await supabase
     .from("workspaces")

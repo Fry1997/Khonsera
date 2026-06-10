@@ -1,63 +1,190 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import type { Metadata } from "next";
+import { getSessionUser } from "@/lib/auth";
+import { isApproved } from "@/lib/access";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/login/actions";
+import { WaitlistForm } from "@/components/landing/waitlist-form";
+import { WAITLIST_COOKIE } from "@/lib/waitlist-shared";
 
-// Landing / first-touch — Design Round 2 (`.cc-landing-*`). Edition II: the
-// locked emblem (no crescent), Satoshi wordmark, one Spectral clause, one gold CTA.
+// Landing+waitlist brief — `/` is the PUBLIC front door, not the login wall.
+// Three visitor states (§3): logged-out marketing+waitlist · logged-in approved
+// passes through to /today · logged-in non-approved sees the gated thank-you.
+// Brand-forward, restraint-led; Code-authored on Edition II tokens, a prime
+// Design elevation candidate (§9).
 
-const VALUES = [
-  { k: "Plan", d: "Your journey, end to end.", icon: "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M4 10h16M8 2v4M16 2v4" },
-  { k: "Book", d: "Everything in one place.", icon: "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-2z M9 7v10" },
-  { k: "Keep", d: "Stay on time, on track.", icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 8v4l3 2" },
-  { k: "Go", d: "Travel with confidence.", icon: "M3 11l18-8-8 18-2-8-8-2z" },
-];
+export const metadata: Metadata = {
+  title: "Khonsera — your travel, quietly handled.",
+  description:
+    "Tell Khonsera the day in plain words. It threads the plan, works the time around it back to the minute, and watches the world so you don't have to. The calm organising layer above the booking sites.",
+  openGraph: {
+    title: "Khonsera — your travel, quietly handled.",
+    description:
+      "The calm organising layer above the booking sites. Tell it the fixed points of your day; it works out everything in between, and keeps watch as things change.",
+    siteName: "Khonsera",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Khonsera — your travel, quietly handled.",
+    description:
+      "The calm organising layer above the booking sites. Tell it the day in plain words; it handles the rest.",
+  },
+};
 
-function Ico({ d }: { d: string }) {
+export default async function LandingPage() {
+  const user = await getSessionUser();
+
+  if (user) {
+    // Logged-in: decide by the existing identity gate. Approved → the app.
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_staff, is_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile && isApproved({ isStaff: profile.is_staff, isAdmin: profile.is_admin })) {
+      redirect("/today");
+    }
+    return <GatedScreen />;
+  }
+
+  // Logged-out: the marketing page. Cookie remembers a prior signup (§3).
+  const jar = await cookies();
+  const joined = jar.get(WAITLIST_COOKIE)?.value === "joined";
+
+  return <Marketing joined={joined} />;
+}
+
+/* ------------------------------------------------------------------ */
+/* Logged-in, not yet approved — the gated thank-you (brief §3 / §8).  */
+/* ------------------------------------------------------------------ */
+
+function GatedScreen() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={d} />
-    </svg>
+    <main className="cc-gated">
+      <div className="cc-gated-inner">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="cc-gated-emblem" src="/brand/mk-ink.png" alt="" />
+        <p className="cc-gated-lead">Thank you — your place is reserved.</p>
+        <p className="cc-gated-sub">
+          We&apos;ll let you know the moment your access is ready.
+        </p>
+        <form action={signOut} className="cc-gated-foot">
+          <button type="submit" className="cc-auth-link">
+            Sign out
+          </button>
+        </form>
+      </div>
+    </main>
   );
 }
 
-export default function LandingPage() {
+/* ------------------------------------------------------------------ */
+/* Logged-out — the marketing page (brief §5 sections, §8 draft copy). */
+/* ------------------------------------------------------------------ */
+
+const VALUE_PROPS = [
+  {
+    k: "Say it plainly.",
+    d: "Capture your day in plain language, in any order. Khonsera threads it into a coherent plan.",
+  },
+  {
+    k: "Time, worked backwards.",
+    d: "When to leave, which train, which connection — ranked by real door-to-door time, not guesswork.",
+  },
+  {
+    k: "It watches, so you don't.",
+    d: "Delays, gate changes, weather. Khonsera sees them coming and quietly tells you what to do.",
+  },
+];
+
+function Marketing({ joined }: { joined: boolean }) {
   return (
-    <main className="cc-landing paper-tex">
-      <div className="cc-landing-inner">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="cc-landing-emblem" src="/brand/mk-ink.png" alt="" />
-        <div className="cc-landing-wm">KHONSERA</div>
-
-        <div className="cc-landing-rule">
-          <span className="dot" />
+    <div className="cc-mkt">
+      <header className="cc-mkt-top">
+        <div className="cc-mkt-lockup">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/mk-ink.png" alt="" />
+          <span className="wm">Khonsera</span>
         </div>
+        <Link href="/login" className="cc-mkt-login">
+          Log in
+        </Link>
+      </header>
 
-        <p className="cc-landing-prop">
-          A quiet concierge for the slow blue hour — Khonsera plans{" "}
-          <em>the in-between hours of getting there</em>: the train that might not be
-          running, the taxi at dusk, the careful arithmetic.
-        </p>
+      <main className="cc-mkt-main">
+        {/* Hero */}
+        <section className="cc-mkt-hero">
+          <h1 className="cc-mkt-headline">Your travel, quietly handled.</h1>
+          <p className="cc-mkt-sub">
+            Tell Khonsera the day in plain words. It threads the plan, works the
+            time around it, and watches the world so you don&apos;t have to.
+          </p>
+          <a href="#waitlist" className="cc-btn cc-btn-gold cc-mkt-hero-cta">
+            Join the waitlist
+          </a>
+        </section>
 
-        <div className="cc-landing-values">
-          {VALUES.map((v) => (
-            <div key={v.k} className="cc-landing-value">
-              <span className="ic"><Ico d={v.icon} /></span>
-              <span className="k">{v.k}</span>
-              <span className="d">{v.d}</span>
-            </div>
-          ))}
-        </div>
+        {/* What it is */}
+        <section className="cc-mkt-section">
+          <span className="cc-mkt-eyebrow">What it is</span>
+          <p className="cc-mkt-lede">
+            Not another booking site. Khonsera is the layer above them —{" "}
+            <em>the part that thinks</em>. Tell it the fixed points of your day,
+            in any order; it works out everything in between, back to the minute,
+            and keeps watch as things change.
+          </p>
+        </section>
 
-        <div className="cc-landing-cta">
-          <Link href="/login" className="cc-btn cc-btn-gold cc-btn-block">
-            Begin · sign in
-          </Link>
-          <Link href="/signup" className="cc-btn cc-btn-ghost cc-btn-block">
-            Create an account
-          </Link>
-        </div>
+        {/* Three quiet value props */}
+        <section className="cc-mkt-section">
+          <div className="cc-mkt-props">
+            {VALUE_PROPS.map((v) => (
+              <div key={v.k} className="cc-mkt-prop">
+                <span className="cc-mkt-prop-dot" aria-hidden />
+                <h3 className="cc-mkt-prop-k">{v.k}</h3>
+                <p className="cc-mkt-prop-d">{v.d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <div className="cc-landing-foot">Calm · Considered · Precise</div>
-      </div>
-    </main>
+        {/* Who it's for */}
+        <section className="cc-mkt-section cc-mkt-who">
+          <span className="cc-mkt-eyebrow">Who it&apos;s for</span>
+          <p className="cc-mkt-lede">
+            Executive treatment, for people who don&apos;t have an assistant.
+            Khonsera gives an ordinary working day the attention a private office
+            would.
+          </p>
+        </section>
+
+        {/* Waitlist block */}
+        <section id="waitlist" className="cc-mkt-waitlist">
+          <h2 className="cc-mkt-waitlist-h">
+            Khonsera is being built with care.
+          </h2>
+          <p className="cc-mkt-waitlist-sub">
+            Join the waitlist and we&apos;ll tell you the moment it opens.
+          </p>
+          <WaitlistForm source="landing" initialJoined={joined} />
+        </section>
+
+        {/* Footer */}
+        <footer className="cc-mkt-foot">
+          <span className="cc-mkt-foot-name">Khonsera</span>
+          <span className="cc-mkt-foot-line">a calmer way to travel.</span>
+          <span className="cc-mkt-foot-meta">
+            <a href="mailto:hello@khonsera.com">contact</a>
+            <span aria-hidden>·</span>
+            <span>© Khonsera</span>
+          </span>
+        </footer>
+      </main>
+    </div>
   );
 }
