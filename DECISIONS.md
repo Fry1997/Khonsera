@@ -357,6 +357,22 @@ Newest at the bottom of each section.
     dividers + full Event header. In parallel: the stop-metadata ticket reader + docked Pass + Wallet
     nav (E3-adjacent). Browser re-testing dropped per your steer.
 
+- **D30 — Chunk 2 (capture routing) — built.** Capture now resolves the right Event instead of a
+  silent singleton, and never lands on a legacy page.
+  - **2a — append-in-Event.** `appendFactsToEvent` (factsToBrief → createStop the anchor facts into the
+    Event → re-sequence by time → re-solve). `captureToEvent`; `PlanCapture` is now scoped to `eventId`
+    and restored on the Event detail. Booked-travel / connection facts are deferred to the booking/scan
+    path and reported (a calm note), never silently dropped.
+  - **2b — global routing.** `routeCaptureGlobal` resolves the target from the fact's **date**: an
+    existing Event covering it → append; no Event → create from the facts; **no date → a Reminder**
+    (dateless intent). The `/capture` screen's confirm now routes through it and lands on **`/plan/[id]`**
+    (was pushing to legacy `/itineraries/[id]` + `/dashboard` — the "lands on the old page" bug);
+    close/save-later go to the Plan index. No primary surface links into legacy now.
+  - **Design contract:** unchanged surfaces; `.cc-*` throughout. tsc clean, build green, 204 tests.
+  - **Next:** chunk 3 span inference (E2) · chunk 4 Today lifecycle compose (E1) · chunk 5 day dividers;
+    in parallel the stop-metadata ticket reader + docked Pass + Wallet nav (E3-adjacent). A Reminders
+    surface (to read back dateless intents) rides chunk 4/5.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
