@@ -237,8 +237,9 @@ export async function addManualAnchor(input: {
     return { ok: false, error: msg };
   }
 
-  // Re-sequence chronologically (insert-by-time, not append) + re-solve so the
-  // surrounding legs recompute around the new fact.
+  // Bookend with home (created once, here in the mutation — not on render) then
+  // re-sequence + re-solve so the surrounding legs recompute around the new fact.
+  await ensureHomeBookend(input.itineraryId, { create: true });
   await resequenceAndSolve(input.itineraryId);
   revalidatePath(`/plan/${input.itineraryId}`);
   revalidatePath("/plan");
@@ -667,6 +668,7 @@ export async function importBookingAsRun(input: {
     }
   }
 
+  await ensureHomeBookend(itineraryId, { create: true });
   await resequenceAndSolve(itineraryId);
   revalidatePath(`/plan/${itineraryId}`);
   revalidatePath("/wallet");
@@ -678,11 +680,16 @@ export async function importBookingAsRun(input: {
 // (One Toolkit, Two Views). Without this, a day starts at the first appointment so
 // the solver can't back-calculate the leave-home time.
 //
-// SELF-HEALING: this runs on every Event open, and server components can render
-// concurrently, so a naive "add if missing" raced and produced duplicate home
-// stops ("home home office home home"). Here we COLLAPSE to one start + one end
-// each time — converging no matter how many duplicates a race created.
-export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: boolean; added: boolean }> {
+// IMPORTANT: `create` is true only from MUTATIONS (add a fact / import), which run
+// sequentially — so the bookend is created exactly once. The page RENDER calls it
+// with create:false (collapse-only); since server components render concurrently
+// (prefetch + navigate), creating on render raced and flashed duplicate home stops
+// ("home home work home home"). Collapse is idempotent and safe to race.
+export async function ensureHomeBookend(
+  itineraryId: string,
+  opts: { create?: boolean } = {},
+): Promise<{ ok: boolean; added: boolean }> {
+  const create = opts.create ?? false;
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
@@ -697,7 +704,6 @@ export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: bool
     profile?.default_rail_origin_location_id ??
     profile?.default_return_location_id ??
     null;
-  if (!homeId) return { ok: true, added: false };
 
   const { data: rows } = await supabase
     .from("stops")
@@ -724,19 +730,21 @@ export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: bool
     changed = true;
   }
 
-  if (starts.length === 0) {
-    await createStop({ itinerary_id: itineraryId, type: "start", location_id: homeId, is_time_fixed: false });
-    changed = true;
-  }
-  if (ends.length === 0) {
-    await createStop({
-      itinerary_id: itineraryId,
-      type: "end",
-      location_id: homeId,
-      is_time_fixed: false,
-      metadata: { kind: "return_home" },
-    });
-    changed = true;
+  if (create && homeId) {
+    if (starts.length === 0) {
+      await createStop({ itinerary_id: itineraryId, type: "start", location_id: homeId, is_time_fixed: false });
+      changed = true;
+    }
+    if (ends.length === 0) {
+      await createStop({
+        itinerary_id: itineraryId,
+        type: "end",
+        location_id: homeId,
+        is_time_fixed: false,
+        metadata: { kind: "return_home" },
+      });
+      changed = true;
+    }
   }
 
   if (changed) await resequenceAndSolve(itineraryId);

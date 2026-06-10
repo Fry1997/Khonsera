@@ -103,40 +103,26 @@ export function mergeTrainlineGroup(group: ParsedBooking[]): ParsedBooking {
     return b.segments.length - a.segments.length;
   })[0];
 
-  // Index every barcode-bearing leg across the group by its station pair, so we
-  // can graft it onto the matching base leg.
-  const legKey = (s: {
-    from_station: string;
-    to_station: string;
-    from_station_code: string | null;
-    to_station_code: string | null;
-  }) => {
-    const f = (s.from_station_code ?? s.from_station ?? "").slice(0, 3).toUpperCase();
-    const t = (s.to_station_code ?? s.to_station ?? "").slice(0, 3).toUpperCase();
-    return `${f}->${t}`;
-  };
-  const barcodeByLeg = new Map<
+  // Index barcode-bearing donor legs by their ORIGIN station — NOT the full
+  // station pair. A through-ticket Aztec from the eticket covers a whole journey
+  // (WEL→HAR) keyed at where you board (WEL), but the confirmation splits that
+  // journey into legs (WEL→Luton→Harpenden). Matching on origin attaches the
+  // barcode to the base leg you board at (WEL→Luton), so the Pass shows the Aztec.
+  const origin = (s: { from_station: string; from_station_code: string | null }) =>
+    (s.from_station_code ?? s.from_station ?? "").slice(0, 3).toUpperCase();
+  const barcodeByOrigin = new Map<
     string,
-    {
-      barcode_ref: string | null;
-      barcode_data: string | null;
-      from_station_code: string | null;
-      to_station_code: string | null;
-      ticket_type: string | null;
-      coach: string | null;
-      seat: string | null;
-    }
+    { barcode_ref: string | null; barcode_data: string | null; from_station_code: string | null; ticket_type: string | null; coach: string | null; seat: string | null }
   >();
   for (const b of transport) {
     for (const s of b.segments) {
       if (!s.barcode_ref && !s.barcode_data) continue;
-      const key = legKey(s);
-      if (!barcodeByLeg.has(key)) {
-        barcodeByLeg.set(key, {
+      const key = origin(s);
+      if (!barcodeByOrigin.has(key)) {
+        barcodeByOrigin.set(key, {
           barcode_ref: s.barcode_ref,
           barcode_data: s.barcode_data,
           from_station_code: s.from_station_code,
-          to_station_code: s.to_station_code,
           ticket_type: s.ticket_type,
           coach: s.coach,
           seat: s.seat,
@@ -145,16 +131,22 @@ export function mergeTrainlineGroup(group: ParsedBooking[]): ParsedBooking {
     }
   }
 
-  // Graft barcodes / codes / ticket detail onto base legs that lack them.
+  // Graft each donor barcode onto the FIRST base leg departing that origin (the
+  // boarding leg of the matching journey), so a barcode isn't duplicated across
+  // every same-origin leg.
+  const used = new Set<string>();
   const mergedSegments = base.segments.map((s) => {
-    const donor = barcodeByLeg.get(legKey(s));
+    if (s.barcode_data || s.barcode_ref) return s;
+    const key = origin(s);
+    if (used.has(key)) return s;
+    const donor = barcodeByOrigin.get(key);
     if (!donor) return s;
+    used.add(key);
     return {
       ...s,
-      barcode_ref: s.barcode_ref ?? donor.barcode_ref,
-      barcode_data: s.barcode_data ?? donor.barcode_data,
+      barcode_ref: donor.barcode_ref,
+      barcode_data: donor.barcode_data,
       from_station_code: s.from_station_code ?? donor.from_station_code,
-      to_station_code: s.to_station_code ?? donor.to_station_code,
       ticket_type: s.ticket_type ?? donor.ticket_type,
       coach: s.coach ?? donor.coach,
       seat: s.seat ?? donor.seat,

@@ -73,10 +73,9 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     // The intended times survive — NOT stranded at midnight.
     expect(merged.segments[0].departure_time).toBe("07:13");
     expect(merged.segments[0].arrival_time).toBe("09:42");
-    // The scannable barcode + codes are grafted from the eticket.
+    // The scannable barcode is grafted from the eticket onto the boarding leg.
     expect(merged.segments[0].barcode_ref).toBe("TTB5F6ZGTVQ");
     expect(merged.segments[0].from_station_code).toBe("WEL");
-    expect(merged.segments[0].to_station_code).toBe("HAR");
     expect(merged.segments[0].ticket_type).toBe("Anytime Day Return");
     // Price + ref filled from whichever member carried them.
     expect(merged.price).toBe(84.5);
@@ -144,6 +143,9 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     expect(merged.segments[0].departure_time).toBe("07:25");
     expect(merged.segments[3].arrival_time).toBe("18:08");
     expect(merged.price).toBe(24.5);
+    // The outbound eticket's through-ticket barcode grafts onto the WEL boarding
+    // leg (origin match), even though the confirmation splits WEL→Luton→Harpenden.
+    expect(merged.segments[0].barcode_ref).toBe("TTBSF6ZGTVQ");
   });
 
   it("does NOT merge two unrelated trips on the same date (no shared station)", () => {

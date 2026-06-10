@@ -85,7 +85,14 @@ function arriveKind(stop: StopRow): AnchorVariableKind {
 
 function buildVars(stop: StopRow): AnchorVM["vars"] {
   const vars: NonNullable<AnchorVM["vars"]> = {};
-  if (stop.start_time) {
+  // Home `start` is where the day BEGINS — it has no "arrive by", only a "leave
+  // by" (when you set off, derived from the first fixed thing downstream). Home
+  // `end` is the reverse: only an "arrive by" (when you get back), no "leave by".
+  // Without this the start showed a phantom arrive-by that broke the first leg.
+  const isStart = stop.type === "start";
+  const isEnd = stop.type === "end";
+
+  if (stop.start_time && !isStart) {
     const kind = arriveKind(stop);
     vars.arriveBy = {
       kind,
@@ -93,11 +100,11 @@ function buildVars(stop: StopRow): AnchorVM["vars"] {
       display: kind === "approximate" ? `~${formatClock(stop.start_time)}` : formatClock(stop.start_time),
     } satisfies AnchorVariable;
   }
-  if (stop.duration_minutes != null) {
+  if (stop.duration_minutes != null && !isStart && !isEnd) {
     const kind = (stop.metadata?.var_duration_kind as AnchorVariableKind) ?? "precise";
     vars.duration = { kind, minutes: stop.duration_minutes, display: durationDisplay(stop.duration_minutes) };
   }
-  if (stop.end_time) {
+  if (stop.end_time && !isEnd) {
     const kind = (stop.metadata?.var_leave_kind as AnchorVariableKind) ?? "derived";
     vars.leaveBy = { kind, iso: stop.end_time, display: formatClock(stop.end_time) };
   }
@@ -141,9 +148,10 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     .maybeSingle();
   if (!journey) notFound();
 
-  // Bookend the day with home (start + return-home), like the brief — so the
-  // day doesn't start at the first appointment with no leave-home time. Idempotent.
-  await ensureHomeBookend(id);
+  // Collapse any stray duplicate home stops (legacy data / earlier races). We do
+  // NOT create here — creation lives in the mutations so concurrent renders can't
+  // race and flash "home home … home home". Collapse is idempotent.
+  await ensureHomeBookend(id, { create: false });
 
   let [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
   let stops = (s ?? []) as unknown as StopRow[];
@@ -210,7 +218,10 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       mode: mapLegMode(tr.mode),
       fromLabel: from.title ?? "—",
       toLabel: to.title ?? "—",
-      departure: from.start_time ?? undefined,
+      // You LEAVE a stop at its end_time (its "leave by"); fall back to start_time
+      // for transit stops that only carry a departure. This stops the first leg
+      // reading backwards (it was using home's phantom start_time).
+      departure: from.end_time ?? from.start_time ?? undefined,
       arrival: to.start_time ?? undefined,
       notes: tr.computed_duration_minutes ? `${tr.computed_duration_minutes} min` : undefined,
       bookingStatus: tr.is_locked ? "booked_in_app" : "manual",
