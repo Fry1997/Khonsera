@@ -3,6 +3,7 @@ import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
 import { PlanCreate } from "@/components/plan/plan-create";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
+import { DeleteEventButton } from "@/components/plan/delete-event-button";
 import { loadReminders } from "@/lib/actions/reminders";
 
 // Plan — the INDEX of Events (proposal §3a). The two-level structure that fixes
@@ -115,7 +116,10 @@ export default async function PlanIndexPage() {
               <div className="cc-plan-group-head">{g.label}</div>
               <div className="cc-plan-list">
                 {g.items.map((vm) => (
-                  <JourneyListCard key={vm.id} journey={vm} />
+                  <div key={vm.id} className="cc-journey-row">
+                    <JourneyListCard journey={vm} />
+                    <DeleteEventButton id={vm.id} label={vm.title} />
+                  </div>
                 ))}
               </div>
             </section>
@@ -126,7 +130,10 @@ export default async function PlanIndexPage() {
               <div className="cc-plan-group-head">Past</div>
               <div className="cc-plan-list">
                 {archive.map((vm) => (
-                  <JourneyListCard key={vm.id} journey={vm} />
+                  <div key={vm.id} className="cc-journey-row">
+                    <JourneyListCard journey={vm} />
+                    <DeleteEventButton id={vm.id} label={vm.title} />
+                  </div>
                 ))}
               </div>
             </section>

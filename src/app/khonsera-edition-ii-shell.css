@@ -592,3 +592,17 @@
   color: var(--gold-2); display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0 var(--space-3); }
 .cc-day-divider::before { content: ""; width: 11px; height: 1px; background: var(--gold); }
 .cc-day-divider::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--rule-2), transparent 80%); }
+
+/* ---- Delete / remove affordances (Plan index rows + Event tiles) ----------- */
+.cc-journey-row { display: flex; align-items: stretch; gap: var(--space-2); }
+.cc-journey-row .cc-journey-card { flex: 1; min-width: 0; }
+.cc-journey-del { flex: none; width: 34px; align-self: stretch; background: none; border: 1px solid var(--rule-2);
+  border-radius: var(--radius-md); color: var(--ink-faint); font-size: 18px; line-height: 1; cursor: pointer;
+  transition: color var(--dur-base,120ms) var(--ease-standard,ease), border-color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-journey-del:hover { color: var(--rust); border-color: var(--rust); }
+.cc-node-anchor { position: relative; }
+.cc-node-remove { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: var(--radius-pill);
+  background: none; border: none; color: var(--ink-faint); font-size: 16px; line-height: 1; cursor: pointer; opacity: 0;
+  transition: opacity var(--dur-base,120ms) var(--ease-standard,ease), color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-node-anchor:hover .cc-node-remove, .cc-node-remove:focus-visible { opacity: 1; }
+.cc-node-remove:hover { color: var(--rust); }

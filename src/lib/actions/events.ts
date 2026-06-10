@@ -1,9 +1,23 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
+import { deleteItinerary } from "@/lib/actions/itineraries";
+
+// Delete an Event (and its stops/transitions, by cascade) — so you can clear out
+// a day you're no longer planning. The user-facing "stuck with bad data" fix.
+export async function deleteEvent(id: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await deleteItinerary(id);
+  if (!res.ok) {
+    const msg = "message" in res.error ? res.error.message : "Couldn't delete that.";
+    return { ok: false, error: msg };
+  }
+  revalidatePath("/plan");
+  return { ok: true };
+}
 
 // Events (proposal §1) — an Event is one `itineraries` row: a single day or a
 // multi-day trip, hinged on date_start, spanning to date_end (default single-day

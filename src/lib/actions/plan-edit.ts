@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
-import { updateStop } from "@/lib/actions/stops";
+import { updateStop, deleteStop } from "@/lib/actions/stops";
+import { resolveItineraryTimes } from "@/lib/actions/itineraries";
+import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
@@ -224,5 +226,22 @@ export async function addManualAnchor(input: {
   }
 
   revalidatePath("/plan");
+  return { ok: true };
+}
+
+// Remove a single tile (stop) from an Event — clear out a fact you no longer
+// want. Re-solves + re-infers the span after.
+export async function removeStop(
+  stopId: string,
+  eventId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await deleteStop(stopId);
+  if (!res.ok) {
+    const msg = "message" in res.error ? res.error.message : "Couldn't remove that.";
+    return { ok: false, error: msg };
+  }
+  await resolveItineraryTimes(eventId);
+  await inferAndUpdateSpan(eventId);
+  revalidatePath(`/plan/${eventId}`);
   return { ok: true };
 }

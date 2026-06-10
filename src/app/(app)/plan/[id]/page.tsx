@@ -314,7 +314,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
           <PlanConstraints initial={constraints} />
 
-          <PlanSpine nodes={nodes} journeyDate={dateStart} />
+          <PlanSpine nodes={nodes} journeyDate={dateStart} eventId={id} />
         </>
       )}
 

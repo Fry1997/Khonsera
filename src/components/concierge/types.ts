@@ -279,6 +279,12 @@ export function formatMoney(minor: number, currency = GBP): string {
   }).format(minor / 100);
 }
 
+// The app's display timezone. Times are stored as UTC ISO; without an explicit
+// zone the runtime (UTC on the server) renders an hour early in BST — the bug
+// where a 09:19 arrival showed as 08:19. Fixed to Europe/London (the workspace
+// default); thread a per-workspace tz here when multi-tz lands.
+export const DISPLAY_TZ = "Europe/London";
+
 export function formatClock(iso?: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -286,6 +292,7 @@ export function formatClock(iso?: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: DISPLAY_TZ,
   }).format(d);
 }
 

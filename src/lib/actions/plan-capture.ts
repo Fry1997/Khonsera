@@ -6,6 +6,7 @@ import { factsToBrief } from "@/lib/parser/materialise";
 import { createStop, reorderStops } from "@/lib/actions/stops";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
+import { wallClockToIso } from "@/lib/time-zone";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import type { ParsedPayload } from "@/lib/parser/types";
@@ -25,8 +26,8 @@ const KIND_STOP: Record<string, string> = {
 
 function isoFrom(date: string, time: string | null): string | null {
   if (!time) return null;
-  const d = new Date(`${date}T${time}:00`);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  const iso = wallClockToIso(date, time);
+  return iso || null;
 }
 
 // Materialise the ANCHOR facts of a parse into an existing Event. Booked travel,

@@ -12,11 +12,13 @@ import type {
   TicketVM,
   BarcodeVM,
 } from "@/components/concierge";
+import { wallClockToIso } from "@/lib/time-zone";
 import {
   setAnchorVariable,
   compareLeg,
   chooseLeg,
   createLeg,
+  removeStop,
   type LegOption,
 } from "@/lib/actions/plan-edit";
 
@@ -46,15 +48,25 @@ type ScanTarget = { summary: string; barcodes: BarcodeVM[] };
 export function PlanSpine({
   nodes,
   journeyDate,
+  eventId,
 }: {
   nodes: SpineNode[];
   journeyDate: string;
+  eventId: string;
 }) {
+  const router = useRouter();
   const [edit, setEdit] = useState<EditTarget | null>(null);
   const [compare, setCompare] = useState<CompareTarget | null>(null);
   const [scan, setScan] = useState<ScanTarget | null>(null);
 
   const resolving = edit != null || compare != null;
+
+  function remove(anchor: AnchorVM) {
+    if (!window.confirm(`Remove "${anchor.title}" from this day?`)) return;
+    void removeStop(anchor.id, eventId).then((res) => {
+      if (res.ok) router.refresh();
+    });
+  }
 
   function openScan(ticket: TicketVM) {
     const leg = ticket.legs[0];
@@ -77,10 +89,21 @@ export function PlanSpine({
                 {n.pass ? (
                   <Pass ticket={n.pass} docked onShow={openScan} />
                 ) : n.anchor ? (
-                  <AnchorCard
-                    anchor={n.anchor}
-                    onEditVariable={(id, slot) => setEdit({ anchor: n.anchor!, slot })}
-                  />
+                  <div className="cc-node-anchor">
+                    <AnchorCard
+                      anchor={n.anchor}
+                      onEditVariable={(id, slot) => setEdit({ anchor: n.anchor!, slot })}
+                    />
+                    <button
+                      type="button"
+                      className="cc-node-remove"
+                      onClick={() => remove(n.anchor!)}
+                      aria-label={`Remove ${n.anchor.title}`}
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -405,8 +428,6 @@ function baseDate(anchor: AnchorVM, slot: AnchorVariableSlot, journeyDate: strin
   return journeyDate;
 }
 function hhmmToIso(dateStr: string, hhmm: string): string {
-  // Local-time construction (matches the codebase's existing loose tz handling);
-  // workspace-tz correctness is a follow-up.
-  const d = new Date(`${dateStr}T${hhmm}:00`);
-  return d.toISOString();
+  // Interpret the typed time in the display timezone (Europe/London), not UTC.
+  return wallClockToIso(dateStr, hhmm);
 }

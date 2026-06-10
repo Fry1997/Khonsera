@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addManualAnchor } from "@/lib/actions/plan-edit";
+import { wallClockToIso } from "@/lib/time-zone";
 
 // Manual structured add (planner master brief §4.2) — the precise / fallback
 // capture door. Choose a fact type, fill structured fields; it lands on the
@@ -36,7 +37,7 @@ export function PlanAdd({ journeyId, journeyDate }: { journeyId: string; journey
     }
     setPending(true);
     setError(null);
-    const iso = time ? new Date(`${journeyDate}T${time}:00`).toISOString() : null;
+    const iso = time ? wallClockToIso(journeyDate, time) || null : null;
     const durationMinutes = hours * 60 + mins || null;
     void addManualAnchor({ itineraryId: journeyId, kind, title: title.trim(), iso, durationMinutes }).then(
       (res) => {
