@@ -28,18 +28,14 @@ export default async function ContactsPage() {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+    <div className="cc-screen">
       <header>
-        <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
+        <span className="cc-eyebrow">
           {ctx.activeMode === "work" ? "Work" : "Personal"} · People
         </span>
-        <h1 className="h1" style={{ marginTop: 6 }}>
-          Contacts
+        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
+          People
         </h1>
-        <p className="small" style={{ marginTop: 8, maxWidth: "56ch" }}>
-          The people tied to your days. When you&apos;re running late, Khonsera can
-          let them know.
-        </p>
       </header>
 
       <ContactsScreen initial={contacts} />

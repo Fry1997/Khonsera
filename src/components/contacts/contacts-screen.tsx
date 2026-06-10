@@ -6,69 +6,51 @@ import { ContactChip } from "@/components/concierge";
 import type { ContactVM } from "@/components/concierge";
 import { createContactQuick } from "@/lib/actions/contact-search";
 
-// Contacts surface — ContactChip grid over the mode-scoped contacts table, with a
-// quick-add (decoupled from the legacy customer linkage via createContactQuick).
+// People — Design Round 2 secondary template: .cc-add + a .cc-contact-chip grid,
+// the faint-emblem empty state.
 export function ContactsScreen({ initial }: { initial: ContactVM[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function add() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setError(null);
+    const t = name.trim();
+    if (!t) return;
     startTransition(async () => {
-      const res = await createContactQuick({ name: trimmed });
-      if (!res.ok) {
-        setError("Could not add that contact.");
-        return;
+      const res = await createContactQuick({ name: t });
+      if (res.ok) {
+        setName("");
+        router.refresh();
       }
-      setName("");
-      router.refresh();
     });
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div className="row flex items-center gap-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+      <label className="cc-add">
+        <span className="ic" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        </span>
         <input
-          className="input"
-          style={{ flex: 1 }}
-          placeholder="Add someone by name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") add();
-          }}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder="Add someone by name"
+          style={{ flex: 1, border: "none", background: "transparent", outline: "none", fontSize: 15, color: "var(--ink)" }}
+          disabled={pending}
         />
-        <button
-          type="button"
-          className="btn btn-gold"
-          onClick={add}
-          disabled={pending || !name.trim()}
-        >
-          Add
-        </button>
-      </div>
-      {error ? (
-        <p className="small" style={{ color: "var(--danger)" }}>
-          {error}
-        </p>
-      ) : null}
+      </label>
 
       {initial.length === 0 ? (
-        <div className="j-card p-6" style={{ textAlign: "center" }}>
-          <p className="small">
-            No contacts yet. Add the people you meet and travel to see — Khonsera
-            keeps them close to the days they belong to.
-          </p>
+        <div className="cc-empty">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/mk-ink.png" alt="" />
+          <p className="cc-empty-title">No one here yet</p>
+          <p className="cc-empty-sub">Add the people you meet and travel to see — Khonsera keeps them close to the days they belong to.</p>
         </div>
       ) : (
-        <div className="flex flex-wrap" style={{ gap: "var(--space-2)" }}>
-          {initial.map((c) => (
-            <ContactChip key={c.id} contact={c} />
-          ))}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+          {initial.map((c) => <ContactChip key={c.id} contact={c} />)}
         </div>
       )}
     </div>

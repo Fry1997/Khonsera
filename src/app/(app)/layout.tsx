@@ -62,15 +62,21 @@ export default async function AppLayout({
         </div>
       </div>
 
-      {/* Desktop — sidebar shell. */}
-      <div className="hidden lg:grid desk-shell">
-        <AppSidebar
-          email={ctx.email}
-          workspaceName={workspace?.name ?? "Personal"}
-          mode={ctx.activeMode}
-        />
-        <div className="desk-main">
-          <main className="desk-content">{children}</main>
+      {/* Desktop — the rail shell (Design Round 2 .cc-shell). */}
+      <div className="hidden lg:block" style={{ height: "100vh" }}>
+        <div className="cc-shell">
+          <AppSidebar
+            email={ctx.email}
+            firstName={firstName}
+            initials={initials}
+            workspaceName={workspace?.name ?? "Personal"}
+            mode={ctx.activeMode}
+          />
+          <div className="cc-shell-main">
+            <div className="cc-shell-canvas" style={{ overflowY: "auto" }}>
+              <main className="cc-shell-col">{children}</main>
+            </div>
+          </div>
         </div>
       </div>
     </div>

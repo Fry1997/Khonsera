@@ -1,19 +1,15 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 
-// Workspace / admin (handover §15). Built early because multi-tenancy is
-// foundational. Placeholder for the teams machinery (approvals, allowance/
-// per-diem, policy). Work-mode only — a visible restatement of the §2 privacy
-// boundary: personal travel is never surfaced to a workspace.
+// Workspace / admin (handover §15) — Design Round 2. Work-mode only; in Personal
+// mode it's the .cc-boundary privacy note (the §2 boundary made visible).
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: "Company admin",
-  company_admin: "Company admin",
-  admin: "Team manager",
-  team_manager: "Team manager",
-  member: "Traveller",
-  viewer: "Traveller",
-  traveller: "Traveller",
+  owner: "Company admin", company_admin: "Company admin",
+  admin: "Team manager", team_manager: "Team manager",
+  member: "Traveller", viewer: "Traveller", traveller: "Traveller",
 };
 
 export default async function WorkspacePage() {
@@ -22,86 +18,59 @@ export default async function WorkspacePage() {
 
   if (ctx.activeMode === "personal") {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <div className="cc-screen">
         <header>
-          <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
-            Personal
-          </span>
-          <h1 className="h1" style={{ marginTop: 6 }}>
-            Workspace
-          </h1>
+          <span className="cc-eyebrow">Personal</span>
+          <h1 className="cc-screen-title" style={{ marginTop: 6 }}>Workspace</h1>
         </header>
-        <div className="j-card p-6">
-          <p className="text-ink">You&apos;re in personal mode.</p>
-          <p className="small" style={{ marginTop: 8, maxWidth: "52ch" }}>
-            Workspaces are a work-mode thing. Your personal travel is yours alone —
-            never visible to any company, manager, or admin. Switch to work mode to
-            see your workspace.
+        <div className="cc-boundary">
+          <p className="t" style={{ fontSize: 16, color: "var(--ink)" }}>This is a work-mode thing.</p>
+          <p className="cc-empty-sub" style={{ margin: "8px 0 16px", maxWidth: "44ch" }}>
+            Your personal travel is yours alone — never visible to any company, manager, or admin.
           </p>
+          <Link href={"/today" as Route} className="cc-btn cc-btn-ghost">Switch to Work in the menu</Link>
         </div>
       </div>
     );
   }
 
-  const [{ data: workspace }, { data: membership }, { count: memberCount }] =
-    await Promise.all([
-      supabase.from("workspaces").select("name, type").eq("id", ctx.workspaceId).maybeSingle(),
-      supabase
-        .from("memberships")
-        .select("role")
-        .eq("workspace_id", ctx.workspaceId)
-        .eq("user_id", ctx.userId)
-        .maybeSingle(),
-      supabase
-        .from("memberships")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", ctx.workspaceId)
-        .eq("status", "active"),
-    ]);
+  const [{ data: workspace }, { data: membership }, { count: memberCount }] = await Promise.all([
+    supabase.from("workspaces").select("name, type").eq("id", ctx.workspaceId).maybeSingle(),
+    supabase.from("memberships").select("role").eq("workspace_id", ctx.workspaceId).eq("user_id", ctx.userId).maybeSingle(),
+    supabase.from("memberships").select("id", { count: "exact", head: true }).eq("workspace_id", ctx.workspaceId).eq("status", "active"),
+  ]);
 
   const roleLabel = ROLE_LABEL[membership?.role ?? "traveller"] ?? "Traveller";
+  const stubs = [
+    { t: "Approvals", b: "Bookings route to an approver before they're confirmed — booker initiates, approver approves or rejects." },
+    { t: "Allowance & per-diem", b: "A daily allowance tracker: receipts auto-submit, expenses deduct, the balance counts down." },
+    { t: "Travel policy", b: "Fare caps, approved providers, cost centres — kept without anyone having to read them." },
+  ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+    <div className="cc-screen">
       <header>
-        <span className="eyebrow" style={{ color: "var(--gold-2)" }}>
-          Work · Workspace
-        </span>
-        <h1 className="h1" style={{ marginTop: 6 }}>
-          {workspace?.name ?? "Your workspace"}
-        </h1>
-        <p className="small" style={{ marginTop: 8 }}>
-          You&apos;re a <span className="text-ink">{roleLabel}</span> ·{" "}
-          {memberCount ?? 1} {memberCount === 1 ? "member" : "members"}
-        </p>
+        <span className="cc-eyebrow">Work · Workspace</span>
+        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>{workspace?.name ?? "Your workspace"}</h1>
       </header>
 
-      <section style={{ display: "grid", gap: "var(--space-3)" }}>
-        <StubSection
-          title="Approvals"
-          body="Bookings route to an approver before they're confirmed. Booker initiates, approver approves or rejects — built against the booking stub now, wired to real providers later."
-        />
-        <StubSection
-          title="Allowance & per-diem"
-          body="A daily allowance tracker: receipts auto-submit, expenses deduct, the balance counts down. The per-diem view lands with the teams ledger."
-        />
-        <StubSection
-          title="Travel policy"
-          body="Fare caps, approved providers, cost centres. Khonsera keeps everyone inside policy without anyone having to read it."
-        />
+      <div className="cc-settings-group">
+        <div className="cc-settings-row"><span className="l">Your role</span><span className="v">{roleLabel}</span></div>
+        <div className="cc-settings-row"><span className="l">Members</span><span className="v">{memberCount ?? 1}</span></div>
+      </div>
+
+      <section className="cc-section">
+        <div className="cc-section-head"><span className="cc-section-title">Coming with teams</span></div>
+        {stubs.map((s) => (
+          <div className="cc-list-row" key={s.t}>
+            <div className="main">
+              <span className="t">{s.t}</span>
+              <span className="s">{s.b}</span>
+            </div>
+            <span className="r">soon</span>
+          </div>
+        ))}
       </section>
-    </div>
-  );
-}
-
-function StubSection({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="j-card-soft p-5">
-      <header className="mb-1 flex items-center justify-between gap-3">
-        <span className="uc">{title}</span>
-        <span className="tag-tight">coming</span>
-      </header>
-      <p className="small" style={{ maxWidth: "60ch" }}>{body}</p>
     </div>
   );
 }
