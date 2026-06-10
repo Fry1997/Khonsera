@@ -55,6 +55,24 @@ describe("solveTimes", () => {
     expect(result.conflicts).toEqual([]);
   });
 
+  it("leaves earlier by the arrival buffer when boarding (slack, not a longer leg)", () => {
+    // home → station (12 min walk) → train 09:20, with a 15-min station buffer.
+    // Leave = 09:20 - 12 - 15 = 08:53; the leg stays 12 min (the gap is slack).
+    const result = solveTimes({
+      stops: [
+        stop("a", 0),
+        stop("b", 1, {
+          is_time_fixed: true,
+          start_time: "2026-05-15T09:20:00.000Z",
+          arrival_buffer_minutes: 15,
+        }),
+      ],
+      transitions: [trans("t1", "a", "b", 12)],
+    });
+    const a = result.stops.find((s) => s.id === "a")!;
+    expect(a.end_time).toBe("2026-05-15T08:53:00.000Z");
+  });
+
   it("propagates forward through a chain with durations", () => {
     // anchor at 09:00, +30 min duration, walk 10 min, next stop
     const result = solveTimes({

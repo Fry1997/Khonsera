@@ -1560,11 +1560,11 @@ export async function resolveItineraryTimes(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  const [{ data: stops }, { data: transitions }] = await Promise.all([
+  const [{ data: stops }, { data: transitions }, { data: profile }] = await Promise.all([
     supabase
       .from("stops")
       .select(
-        "id, sequence, start_time, end_time, duration_minutes, is_time_fixed",
+        "id, sequence, type, start_time, end_time, duration_minutes, is_time_fixed",
       )
       .eq("itinerary_id", itineraryId)
       .eq("workspace_id", ctx.workspaceId)
@@ -1576,10 +1576,25 @@ export async function resolveItineraryTimes(
       )
       .eq("itinerary_id", itineraryId)
       .eq("workspace_id", ctx.workspaceId),
+    supabase
+      .from("travel_profiles")
+      .select("default_arrival_buffer_minutes")
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle(),
   ]);
 
+  // Boarding a train (a transit_departure stop) should get you to the platform
+  // the user's buffer-minutes early — applied in the solver as an earlier leave,
+  // not a longer leg (Settings → Travel profile, default 15m).
+  const buffer = (profile?.default_arrival_buffer_minutes as number | null) ?? 15;
+  const solverStops = (stops ?? []).map((s) => ({
+    ...s,
+    arrival_buffer_minutes: (s as { type?: string }).type === "transit_departure" ? buffer : 0,
+  }));
+
   const result = solveTimes({
-    stops: (stops ?? []) as Parameters<typeof solveTimes>[0]["stops"],
+    stops: solverStops as Parameters<typeof solveTimes>[0]["stops"],
     transitions:
       (transitions ?? []) as Parameters<typeof solveTimes>[0]["transitions"],
   });

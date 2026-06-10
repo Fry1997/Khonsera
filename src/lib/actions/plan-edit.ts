@@ -34,7 +34,7 @@ export async function setAnchorVariable(input: {
 
   const { data: stop } = await supabase
     .from("stops")
-    .select("type, metadata")
+    .select("type, metadata, itinerary_id")
     .eq("id", input.stopId)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
@@ -70,6 +70,11 @@ export async function setAnchorVariable(input: {
     const msg = "message" in res.error ? res.error.message : "Couldn't update that.";
     return { ok: false, error: msg };
   }
+  // Changing a stop's time can change WHERE it belongs in the day (e.g. an office
+  // edited to 09:00 must move after the morning train), so re-sequence + re-thread
+  // + re-solve. This is a user action (sequential) — safe, unlike doing it on render.
+  await resequenceAndSolve(stop.itinerary_id as string);
+  revalidatePath(`/plan/${stop.itinerary_id as string}`);
   revalidatePath("/plan");
   return { ok: true };
 }
@@ -480,17 +485,6 @@ async function threadTransitions(itineraryId: string): Promise<void> {
   }>;
   if (stops.length < 2) return;
 
-  // The user's station arrival buffer (Settings → Travel profile, default 15m):
-  // a leg that BOARDS a train should get you to the platform this many minutes
-  // early, so the solver makes you leave home/work that bit sooner.
-  const { data: profile } = await supabase
-    .from("travel_profiles")
-    .select("default_arrival_buffer_minutes")
-    .eq("user_id", ctx.userId)
-    .eq("workspace_id", ctx.workspaceId)
-    .maybeSingle();
-  const arrivalBuffer = (profile?.default_arrival_buffer_minutes as number | null) ?? 15;
-
   const { data: trans } = await supabase
     .from("transitions")
     .select("id, from_stop_id, to_stop_id, is_locked")
@@ -527,33 +521,13 @@ async function threadTransitions(itineraryId: string): Promise<void> {
       const miles = haversineMeters(pa.lat, pa.lng, pb.lat, pb.lng) / 1609.344;
       mode = miles < 2 ? "walk" : "drive";
     }
-    const res = await upsertTransition({
+    await upsertTransition({
       itinerary_id: itineraryId,
       from_stop_id: a.id,
       to_stop_id: b.id,
       mode,
     });
-    // Boarding a train → add the station arrival buffer onto the leg so the
-    // solver leaves earlier. Non-cumulative: this runs only for newly-created
-    // legs (existing ones are skipped above), and the duration is the fresh
-    // routing result, not a re-padded value.
-    if (res.ok && b.type === "transit_departure" && arrivalBuffer > 0) {
-      await supabase
-        .from("transitions")
-        .update({ computed_duration_minutes: (res.value.computed_duration_minutes ?? 0) + arrivalBuffer })
-        .eq("id", res.value.id)
-        .eq("workspace_id", ctx.workspaceId);
-    }
   }
-}
-
-// Public self-heal called when an Event is opened: re-sequence chronologically,
-// re-thread legs (with the station buffer), re-solve, re-infer the span. Cheap
-// when already in order (the reorder is skipped). This is why a day always opens
-// correctly ordered even if a fact was added via a path that didn't re-sequence.
-export async function reflowPlanEvent(itineraryId: string): Promise<{ ok: boolean }> {
-  await resequenceAndSolve(itineraryId);
-  return { ok: true };
 }
 
 // Import a parsed transport booking as a proper booked RUN — transit_departure →

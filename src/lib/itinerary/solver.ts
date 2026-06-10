@@ -15,6 +15,11 @@ export type SolverStop = {
   end_time: string | null;
   duration_minutes: number | null;
   is_time_fixed: boolean;
+  // Minutes you should ARRIVE before this stop's start (a station boarding
+  // buffer). Applied when back-propagating INTO this stop: the previous stop's
+  // leave time is pulled this much earlier, WITHOUT lengthening the leg — so the
+  // buffer reads as slack in a wider window, not an inflated journey.
+  arrival_buffer_minutes?: number;
 };
 
 export type SolverTransition = {
@@ -152,8 +157,11 @@ export function solveTimes(input: {
       if (trDur == null && !tr.is_locked) break;
       if (!cur.start_time) break;
       const trEnd = cur.start_time;
+      // Leave the buffer earlier when arriving INTO a buffered stop (a station),
+      // so the leg sits in a wider window with the buffer as slack.
+      const buf = cur.arrival_buffer_minutes ?? 0;
       const trStart =
-        trDur != null ? addMinutes(trEnd, -trDur) : tr.start_time;
+        trDur != null ? addMinutes(trEnd, -(trDur + buf)) : tr.start_time;
       if (!trStart) break;
 
       if (tr.is_locked && tr.end_time && tr.end_time !== trEnd) {
