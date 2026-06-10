@@ -10,10 +10,8 @@ import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
-import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { setTransitionMode } from "@/lib/actions/transitions";
-import { inferAndUpdateSpan } from "@/lib/actions/events";
-import { ensureHomeBookend } from "@/lib/actions/plan-edit";
+import { ensureHomeBookend, reflowPlanEvent } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { IntentionCard } from "@/components/concierge";
@@ -154,26 +152,26 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   await ensureHomeBookend(id, { create: false });
 
   let [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
-  let stops = (s ?? []) as unknown as StopRow[];
   let transitions = (t ?? []) as unknown as TransRow[];
 
   // E3 — opening heals stale plans (incl. legacy data routed before the
   // transport-hub-coords fix / the distance fallback). Re-route any unbooked leg
-  // missing a duration so it gets a real door-to-door time, then re-solve.
+  // missing a duration so it gets a real door-to-door time.
   const staleLegs = transitions.filter((x) => !x.is_locked && x.computed_duration_minutes == null);
   if (staleLegs.length > 0) {
     for (const leg of staleLegs) {
       await setTransitionMode({ id: leg.id, mode: leg.mode as Parameters<typeof setTransitionMode>[0]["mode"] });
     }
-    await resolveItineraryTimes(id);
-    [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
-    stops = (s ?? []) as unknown as StopRow[];
-    transitions = (t ?? []) as unknown as TransRow[];
   }
 
-  // Backfill the span from the facts (§5) — extends a legacy single-day Event to
-  // its real bounds (return travel / hotel). Idempotent; reflect it in the header.
-  await inferAndUpdateSpan(id);
+  // Self-heal on open: re-sequence chronologically (so a fact added out of order
+  // — e.g. an office whose start is after the morning train — lands in the right
+  // place), re-thread legs with the station buffer, re-solve, re-infer the span.
+  // Cheap when already in order. Then re-load the healed spine.
+  await reflowPlanEvent(id);
+  [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
+  let stops = (s ?? []) as unknown as StopRow[];
+  transitions = (t ?? []) as unknown as TransRow[];
   const { data: spanRow } = await supabase
     .from("itineraries")
     .select("date_start, date_end")

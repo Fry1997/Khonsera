@@ -413,7 +413,7 @@ async function resequenceAndSolve(itineraryId: string): Promise<void> {
   const supabase = await createClient();
   const { data: rows } = await supabase
     .from("stops")
-    .select("id, type, start_time, metadata")
+    .select("id, type, sequence, start_time, metadata")
     .eq("itinerary_id", itineraryId)
     .eq("workspace_id", ctx.workspaceId);
 
@@ -425,19 +425,26 @@ async function resequenceAndSolve(itineraryId: string): Promise<void> {
   const isStart = (r: { type: string; metadata: Record<string, unknown> | null }) =>
     r.type === "start" && !(r.metadata && r.metadata.kind === "be_home_by");
 
-  const ordered = (rows ?? [])
+  const sorted = (rows ?? []).slice().sort((a, b) => {
+    const aS = isStart(a as never), bS = isStart(b as never);
+    if (aS !== bS) return aS ? -1 : 1;
+    const aE = isEnd(a as never), bE = isEnd(b as never);
+    if (aE !== bE) return aE ? 1 : -1;
+    const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
+    const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
+    return ta - tb;
+  });
+  const ordered = sorted.map((r) => r.id as string);
+  // Only rewrite sequences when the chronological order differs from the stored
+  // one — cheap enough to call on every Event open as a self-heal.
+  const currentOrder = (rows ?? [])
     .slice()
-    .sort((a, b) => {
-      const aS = isStart(a as never), bS = isStart(b as never);
-      if (aS !== bS) return aS ? -1 : 1;
-      const aE = isEnd(a as never), bE = isEnd(b as never);
-      if (aE !== bE) return aE ? 1 : -1;
-      const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
-      const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
-      return ta - tb;
-    })
+    .sort((a, b) => (a.sequence as number) - (b.sequence as number))
     .map((r) => r.id as string);
-  if (ordered.length > 1) await reorderStops({ itinerary_id: itineraryId, stop_ids: ordered });
+  const needsReorder = ordered.some((id, i) => id !== currentOrder[i]);
+  if (ordered.length > 1 && needsReorder) {
+    await reorderStops({ itinerary_id: itineraryId, stop_ids: ordered });
+  }
   await threadTransitions(itineraryId);
   await resolveItineraryTimes(itineraryId);
   await inferAndUpdateSpan(itineraryId);
@@ -538,6 +545,15 @@ async function threadTransitions(itineraryId: string): Promise<void> {
         .eq("workspace_id", ctx.workspaceId);
     }
   }
+}
+
+// Public self-heal called when an Event is opened: re-sequence chronologically,
+// re-thread legs (with the station buffer), re-solve, re-infer the span. Cheap
+// when already in order (the reorder is skipped). This is why a day always opens
+// correctly ordered even if a fact was added via a path that didn't re-sequence.
+export async function reflowPlanEvent(itineraryId: string): Promise<{ ok: boolean }> {
+  await resequenceAndSolve(itineraryId);
+  return { ok: true };
 }
 
 // Import a parsed transport booking as a proper booked RUN — transit_departure →
