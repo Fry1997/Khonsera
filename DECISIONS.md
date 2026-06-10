@@ -389,6 +389,25 @@ Newest at the bottom of each section.
   - **Remaining:** chunk 3 span inference (E2) · chunk 4 Today lifecycle compose + Reminders surface
     (E1) · chunk 5 day dividers.
 
+- **D32 — Chunks 3–5 (span inference · Today lifecycle + Reminders · day dividers) — built.**
+  The events-by-day P0 is complete.
+  - **3 — span inference.** `inferAndUpdateSpan`: an Event's span = [earliest, latest] across its
+    stops (never shrinking the hinge) → a return flight/train or hotel checkout makes a multi-day
+    Event automatically; single-day until extended. Wired into append + global-create, and backfilled
+    on Event open (idempotent → legacy multi-day plans get real bounds).
+  - **4 — Today lifecycle + composition + Reminders.** Today projects **every** Event whose span
+    covers today, any active status (no publish toggle / status dead-end — fixes "today had nothing"),
+    and **composes** overlapping Events into one timeline (E1). A **Reminders** strip on the Plan index
+    reads back dateless intents (`loadReminders`/`dismissReminder`) — the third capture outcome.
+  - **5 — day dividers.** Multi-day Events show "Day N · Wed 25 Jun" dividers on the spine.
+  - **Design contract held:** `.cc-*` + tokens throughout (`.cc-reminder*`, `.cc-day-divider`,
+    `.cc-pass--docked`, `.cc-journey-*`, Plan index/Event-header) — all DESIGN-PENDING for a round.
+    tsc clean, build green, 204 tests across chunks 1→5.
+  - **Remaining:** E2 route-reversal for a *separately*-captured return (edge — together-capture works
+    via span inference; a lone later return currently makes its own day) · the **legacy strip** once
+    you confirm parity · (P2, infra) reactive live signals + email forward-to-import. The new
+    surfaces are ready for a **Design screenshot round**.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
