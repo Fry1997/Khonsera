@@ -1,0 +1,356 @@
+/* ============================================================================
+ * KHONSERA · EDITION II — SHELL & SURFACES  ·  Round 2
+ * ----------------------------------------------------------------------------
+ * ADDITIVE override. Import order in the repo:
+ *
+ *     import "./globals.css";                       // base tokens + legacy atoms
+ *     import "./khonsera-edition-ii.css";           // Edition II brand layer
+ *     import "./khonsera-edition-ii-screens.css";   // Round 1 (.cc-* components)
+ *     import "./khonsera-edition-ii-shell.css";     // ← THIS FILE (Round 2)
+ *
+ * Styles the app shell (header / bottom bar / desktop rail / overflow sheet) and
+ * the un-designed surfaces (landing · auth · the secondary screens) BY CLASS.
+ * Tokens only. globals.css untouched. The ONLY mark is the locked emblem
+ * (mk-ink.png light / mk-brass.png dark) — never a crescent.
+ * ========================================================================== */
+
+/* ===========================================================================
+ * SHELL · the brand lockup — sized so the wordmark CANNOT truncate
+ * ========================================================================= */
+.cc-lockup { display: inline-flex; align-items: center; gap: 9px; min-width: 0; flex: 0 0 auto; }
+.cc-lockup img { height: 22px; width: auto; flex: none; display: block; }
+.cc-lockup .wm { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 16px;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+/* mobile: emblem-only by default (the wordmark is what truncates at 390) */
+.cc-lockup[data-compact="true"] .wm { display: none; }
+.cc-lockup[data-compact="true"] img { height: 24px; }
+
+/* ===========================================================================
+ * SHELL · the header band (.cc-appbar) — clear hierarchy, no pile-up
+ * lockup left · (mode toggle, desktop only) · actions right
+ * ========================================================================= */
+.cc-appbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  height: 56px; padding: 0 var(--space-4); background: var(--paper);
+  border-bottom: 1px solid transparent; }
+.cc-appbar[data-scrolled="true"] { border-bottom-color: var(--rule); background: var(--paper); }
+.cc-appbar-left { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+.cc-appbar-right { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+/* a single quiet icon button for header actions (Tell / overflow) */
+.cc-iconbtn { width: 40px; height: 40px; border-radius: 6px; display: inline-flex; align-items: center;
+  justify-content: center; background: transparent; border: 1px solid var(--rule); color: var(--ink-2);
+  cursor: pointer; flex: none; }
+.cc-iconbtn[data-variant="ghost"] { border-color: transparent; }
+.cc-iconbtn svg { width: 20px; height: 20px; }
+/* the route eyebrow under the header (PERSONAL · TODAY) lives in the screen, not the bar */
+
+/* ===========================================================================
+ * SHELL · overflow / profile sheet — the secondary destinations live here
+ * ========================================================================= */
+.cc-overflow { background: var(--card); border-radius: 12px 12px 0 0; border: 1px solid var(--rule);
+  box-shadow: var(--shadow-lg); padding: var(--space-3) var(--space-5) var(--space-6); }
+.cc-overflow-grip { width: 38px; height: 4px; border-radius: 999px; background: var(--rule-2); margin: 0 auto var(--space-5); }
+.cc-overflow-id { display: flex; align-items: center; gap: var(--space-3); padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--rule); margin-bottom: var(--space-3); }
+.cc-overflow-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--card-2);
+  border: 1px solid var(--rule); display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 13px; color: var(--ink-dim); }
+.cc-overflow-name { font-size: 15px; color: var(--ink); }
+.cc-overflow-email { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+.cc-overflow-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3-5,14px) 0;
+  border-top: 1px solid var(--rule); font-size: 15px; color: var(--ink); cursor: pointer; }
+.cc-overflow-row:first-of-type { border-top: none; }
+.cc-overflow-row .ic { width: 20px; height: 20px; color: var(--ink-dim); }
+.cc-overflow-row[data-tone="quiet"] { color: var(--ink-dim); }
+.cc-overflow-row[data-staff="true"] { color: var(--ink-dim); }
+/* the mode toggle, when relocated into the sheet on mobile */
+.cc-overflow .cc-modeswitch { width: 100%; justify-content: stretch; margin-bottom: var(--space-4); }
+.cc-overflow .cc-modeswitch button { flex: 1; }
+
+/* ===========================================================================
+ * SHELL · desktop rail (1280) — quiet left nav; content stays centred
+ * ========================================================================= */
+.cc-rail { width: 248px; flex: none; height: 100%; display: flex; flex-direction: column;
+  gap: var(--space-1); padding: var(--space-6) var(--space-5); background: var(--paper-2);
+  border-right: 1px solid var(--rule); }
+.cc-rail .cc-lockup { margin: 0 var(--space-2) var(--space-8); }
+.cc-rail-item { display: flex; align-items: center; gap: var(--space-3); padding: 11px 12px; border-radius: 5px;
+  font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.cc-rail-item .ic { width: 20px; height: 20px; color: var(--ink-dim); display: flex; }
+.cc-rail-item[data-active="true"] { background: var(--card); border: 1px solid var(--rule); color: var(--ink); }
+.cc-rail-item[data-active="true"] .ic { color: var(--gold-2); }
+.cc-rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-shell { display: flex; height: 100%; }
+.cc-shell-main { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.cc-shell-canvas { flex: 1; overflow: hidden; display: flex; justify-content: center; }
+.cc-shell-col { width: 100%; max-width: 600px; padding: var(--space-6) var(--space-5); }
+
+/* ===========================================================================
+ * LANDING (.cc-landing-*) — Edition II first-touch
+ * ========================================================================= */
+.cc-landing { background: var(--paper); color: var(--ink); min-height: 100%; display: flex;
+  flex-direction: column; align-items: center; text-align: center; padding: var(--space-12) var(--space-6) var(--space-8); }
+.cc-landing-inner { width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: center; }
+.cc-landing-emblem { height: 64px; width: auto; margin-bottom: var(--space-6); }
+.cc-landing-wm { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 44px;
+  letter-spacing: 0.10em; text-transform: uppercase; color: var(--ink); margin: 0; }
+.cc-landing-rule { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0; color: var(--gold); }
+.cc-landing-rule::before, .cc-landing-rule::after { content: ""; height: 1px; width: 56px; background: var(--rule-2); }
+.cc-landing-rule .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+.cc-landing-prop { font-size: 19px; line-height: 1.5; letter-spacing: -0.01em; color: var(--ink-2); margin: 0; max-width: 34ch; }
+.cc-landing-prop em { font-family: var(--serif); font-style: italic; color: var(--ink); }
+.cc-landing-values { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4);
+  width: 100%; margin: var(--space-8) 0; }
+.cc-landing-value { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.cc-landing-value .ic { width: 24px; height: 24px; color: var(--ink-dim); }
+.cc-landing-value .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); }
+.cc-landing-value .d { font-size: 11.5px; line-height: 1.35; color: var(--ink-dim); }
+.cc-landing-cta { width: 100%; display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-landing-foot { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-faint); margin-top: var(--space-8); }
+/* full-width buttons for landing/auth CTAs */
+.cc-btn-block { width: 100%; padding: 15px; font-size: 15px; }
+
+/* ===========================================================================
+ * AUTH (.cc-auth-*) — the shared form template
+ * ========================================================================= */
+/* ---------------------------------------------------------------------------
+ * THE THRESHOLD. Auth is the doorway, rendered on the brand's own Midnight —
+ * the "slow blue hour". Atmospheric aubergine→ink ground, brass emblem, an
+ * editorial LEFT-anchored composition (not a centred SaaS gate), fields open on
+ * the dark with brass hairline underlines. Always Midnight, regardless of the
+ * user's app theme — this moment sets the mood before the working light surface.
+ * Brass tokens are fixed values so the threshold reads identically everywhere.
+ * ------------------------------------------------------------------------- */
+.cc-auth {
+  --t-ink: #f4ecd9;            /* paper-on-dark */
+  --t-ink-2: #cdbfa6;          /* muted */
+  --t-dim: #8d8068;            /* labels */
+  --t-rule: rgba(244,236,217,0.16);
+  --t-brass: #d4a559;          /* the warm metal on dark */
+  --t-brass-2: #e8c684;
+  position: relative; min-height: 100%; display: flex; flex-direction: column;
+  justify-content: space-between; padding: var(--space-12) var(--space-6) var(--space-8);
+  color: var(--t-ink); overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 18% -8%, #3a2c44 0%, transparent 52%),
+    radial-gradient(130% 90% at 92% 108%, rgba(180,137,63,0.20) 0%, transparent 50%),
+    linear-gradient(168deg, #271d31 0%, #1a1422 46%, #120d18 100%);
+}
+/* a single hairline "horizon" low in the frame — the dusk line */
+.cc-auth::after { content: ""; position: absolute; left: 0; right: 0; bottom: 26%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--t-rule) 30%, var(--t-rule) 70%, transparent);
+  pointer-events: none; }
+.cc-auth-inner { position: relative; z-index: 1; width: 100%; max-width: 380px; margin: 0 auto;
+  flex: 1; display: flex; flex-direction: column; }
+/* top sign — emblem + wordmark, quiet, left */
+.cc-auth-lockup { display: flex; align-items: center; gap: 10px; margin-bottom: auto; }
+.cc-auth-lockup img { height: 26px; width: auto; }
+.cc-auth-lockup .wm { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 14px;
+  letter-spacing: 0.26em; text-transform: uppercase; color: var(--t-ink); }
+/* the greeting — large, editorial, LEFT. Asymmetric like the app's screen titles. */
+.cc-auth-greeting { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 44px;
+  letter-spacing: -0.035em; line-height: 1.0; color: var(--t-ink); margin: var(--space-8) 0 0; text-align: left; }
+.cc-auth-greeting em { color: inherit; font-style: normal; font-weight: var(--fw-medium,500); }
+.cc-auth-sub { font-family: var(--sans); font-size: 14.5px; line-height: 1.5; color: var(--t-ink-2);
+  margin: var(--space-3) 0 var(--space-8); text-align: left; max-width: 30ch; }
+/* the form — open on the dark, brass hairline underlines */
+.cc-auth-card { width: 100%; background: transparent; border: none; border-radius: 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--space-6); }
+.cc-auth-field { display: flex; flex-direction: column; gap: var(--space-2-5,10px); }
+.cc-auth-field label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--t-dim); }
+.cc-auth-field .field { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--t-rule);
+  border-radius: 0; padding: 8px 0; font-size: 18px; color: var(--t-ink);
+  transition: border-color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-auth-field .field::placeholder { color: var(--t-dim); }
+.cc-auth-field .field:focus-within, .cc-auth-field .field.is-focus { border-bottom-color: var(--t-brass); outline: none; }
+.cc-auth-field[data-error="true"] .field { border-bottom-color: #d97a5a; }
+/* the one fill — brass on dark */
+.cc-auth-card .cc-btn-gold { margin-top: var(--space-4); background: var(--t-brass); border-color: var(--t-brass);
+  color: #1a1422; font-weight: var(--fw-semibold,600); }
+.cc-auth-error { font-size: 12.5px; color: #e29274; display: flex; align-items: center; gap: 6px; }
+.cc-auth-links { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  width: 100%; margin-top: var(--space-6); font-size: 13px; color: var(--t-dim); }
+.cc-auth-links a, .cc-auth-link { color: var(--t-ink-2); text-decoration: none; border-bottom: 1px solid var(--t-rule); padding-bottom: 1px; }
+.cc-auth-link-gold { color: var(--t-brass-2); font-weight: var(--fw-semibold,600); border: none; }
+/* the closing mark — a mono creed pinned to the foot */
+.cc-auth-creed { position: relative; z-index: 1; text-align: center; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--t-dim); margin-top: var(--space-8); }
+.cc-auth-success { display: flex; flex-direction: column; gap: var(--space-3); text-align: left; padding: var(--space-2) 0; }
+.cc-auth-success .ic { width: 32px; height: 32px; color: var(--t-brass-2); }
+
+/* ===========================================================================
+ * SECONDARY · shared list/section furniture
+ * ========================================================================= */
+.cc-screen-pad { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+.cc-section { display: flex; flex-direction: column; }
+.cc-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
+  margin-bottom: var(--space-3); }
+.cc-section-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); }
+.cc-section-meta { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+/* empty state — calm, one line, never padded with filler */
+.cc-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3);
+  padding: var(--space-12) var(--space-6); }
+.cc-empty img { height: 44px; width: auto; opacity: 0.35; }
+.cc-empty-title { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 20px;
+  letter-spacing: -0.02em; color: var(--ink); }
+.cc-empty-sub { font-size: 13.5px; color: var(--ink-dim); max-width: 30ch; line-height: 1.5; }
+/* a quiet list row used by People/Clients/Settings */
+.cc-list-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
+  border-top: 1px solid var(--rule); }
+.cc-list-row:first-child { border-top: none; }
+.cc-list-row .main { flex: 1; min-width: 0; }
+.cc-list-row .t { font-size: 15px; color: var(--ink); }
+.cc-list-row .s { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+.cc-list-row .r { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); flex: none; }
+/* client/customer detail — sites + visit history */
+.cc-detail-head { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--rule); margin-bottom: var(--space-4); }
+.cc-detail-title { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 24px; letter-spacing: -0.025em; color: var(--ink); }
+/* settings grouped sections */
+.cc-settings-group { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.cc-settings-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-4) var(--space-4-5); border-top: 1px solid var(--rule); }
+.cc-settings-row:first-child { border-top: none; }
+.cc-settings-row .l { font-size: 14px; color: var(--ink); }
+.cc-settings-row .v { font-family: var(--mono); font-size: 13px; color: var(--ink-dim); }
+/* expenses running total */
+.cc-total-bar { display: flex; align-items: baseline; justify-content: space-between; padding: var(--space-4) 0;
+  border-top: 2px solid var(--ink); margin-top: var(--space-2); }
+.cc-total-bar .l { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); }
+.cc-total-bar .v { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 24px; color: var(--ink); }
+/* an add affordance */
+.cc-add { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-4);
+  border: 1px dashed var(--rule-2); border-radius: 6px; background: transparent; color: var(--ink-dim);
+  font-size: 14px; cursor: pointer; }
+.cc-add .ic { width: 18px; height: 18px; color: var(--gold-2); }
+/* privacy-boundary note (workspace in personal mode) */
+.cc-boundary { border: 1px solid var(--rule); border-radius: 8px; background: var(--card-2);
+  padding: var(--space-5); font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.5; }
+
+/* ===========================================================================
+ * WELCOME / first-run (chromeless) — the honest fork
+ * ========================================================================= */
+.cc-welcome { background: var(--paper); min-height: 100%; display: flex; flex-direction: column;
+  align-items: center; text-align: center; justify-content: center; padding: var(--space-12) var(--space-6); gap: var(--space-6); }
+.cc-welcome-emblem { height: 60px; width: auto; align-self: center; }
+.cc-welcome-intro { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 30px;
+  line-height: 1.12; letter-spacing: -0.03em; color: var(--ink); margin: 0; max-width: 20ch; text-align: center; }
+.cc-welcome-intro em { color: var(--gold-2); font-style: normal; font-weight: var(--fw-medium,500); }
+.cc-welcome-fork { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); width: 100%; text-align: left; }
+.cc-fork-option { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-5); border: 1px solid var(--rule); border-radius: 8px; background: var(--card); cursor: pointer; }
+.cc-fork-option[data-primary="true"] { border-color: var(--gold); }
+.cc-fork-option > div { flex: 1; min-width: 0; }
+.cc-fork-option .t { font-size: 16px; color: var(--ink); }
+.cc-fork-option .s { font-size: 13px; color: var(--ink-dim); margin-top: 2px; }
+.cc-fork-option .ic { width: 20px; height: 20px; color: var(--ink-dim); flex: none; }
+
+/* ============================================================================
+ * MARKETING (.cc-mkt-*) + GATED (.cc-gated-*) — the public front door
+ * Landing+waitlist brief §5/§6. Code-authored on Edition II tokens; restraint-
+ * led (warm linen, one gold accent, lots of paper). A prime Design elevation
+ * candidate (§9) — the loop refines voice + spacing from a live screenshot.
+ * ========================================================================== */
+
+.cc-mkt { background: var(--paper); color: var(--ink); min-height: 100%; min-height: 100dvh;
+  display: flex; flex-direction: column; }
+
+/* Top bar — emblem lockup + the discreet "Log in" link */
+.cc-mkt-top { display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-5) var(--space-5); max-width: 920px; width: 100%; margin: 0 auto; }
+.cc-mkt-lockup { display: flex; align-items: center; gap: var(--space-2-5); }
+.cc-mkt-lockup img { height: 24px; width: auto; }
+.cc-mkt-lockup .wm { font-family: var(--display); font-weight: var(--fw-medium); font-size: 17px;
+  letter-spacing: -0.01em; color: var(--ink); }
+.cc-mkt-login { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); text-decoration: none; border-bottom: 1px solid var(--rule-2); padding-bottom: 2px;
+  transition: color var(--dur-base, 120ms) var(--ease-standard, ease); }
+.cc-mkt-login:hover { color: var(--gold-2); }
+
+.cc-mkt-main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto;
+  padding: 0 var(--space-5) var(--space-12); }
+
+/* Hero — the one-line promise + the single primary action. Lots of paper. */
+.cc-mkt-hero { padding: var(--space-12) 0 var(--space-8); text-align: left; }
+.cc-mkt-headline { font-family: var(--display); font-weight: var(--fw-medium); font-size: 46px;
+  line-height: 1.04; letter-spacing: -0.025em; color: var(--ink); margin: 0; max-width: 14ch; }
+.cc-mkt-sub { font-size: 19px; line-height: 1.55; color: var(--ink-2); margin: var(--space-5) 0 0;
+  max-width: 46ch; }
+.cc-mkt-hero-cta { margin-top: var(--space-6); display: inline-flex; padding: 14px 28px; font-size: 15px;
+  text-decoration: none; }
+
+/* Editorial sections — "What it is", "Who it's for" */
+.cc-mkt-section { padding: var(--space-8) 0; border-top: 1px solid var(--rule); }
+.cc-mkt-eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gold-2); display: block; margin-bottom: var(--space-4); }
+.cc-mkt-lede { font-size: 22px; line-height: 1.5; letter-spacing: -0.012em; color: var(--ink); margin: 0;
+  max-width: 40ch; }
+.cc-mkt-lede em { font-family: var(--serif); font-style: italic; color: var(--ink); }
+
+/* Three quiet value props — not a feature list */
+.cc-mkt-props { display: grid; grid-template-columns: 1fr; gap: var(--space-6); }
+.cc-mkt-prop-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); display: block;
+  margin-bottom: var(--space-3); }
+.cc-mkt-prop-k { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px;
+  letter-spacing: -0.01em; color: var(--ink); margin: 0 0 var(--space-2); }
+.cc-mkt-prop-d { font-size: 15px; line-height: 1.55; color: var(--ink-dim); margin: 0; max-width: 38ch; }
+
+/* Waitlist block — the one conversion moment */
+.cc-mkt-waitlist { padding: var(--space-12) 0 var(--space-8); border-top: 1px solid var(--rule);
+  text-align: left; }
+.cc-mkt-waitlist-h { font-family: var(--display); font-weight: var(--fw-medium); font-size: 28px;
+  letter-spacing: -0.02em; color: var(--ink); margin: 0; max-width: 22ch; }
+.cc-mkt-waitlist-sub { font-size: 16px; line-height: 1.5; color: var(--ink-2); margin: var(--space-3) 0 var(--space-6); }
+
+/* The form */
+.cc-wl-form { width: 100%; max-width: 460px; }
+.cc-wl-row { display: flex; gap: var(--space-3); align-items: stretch; }
+.cc-wl-input { flex: 1; min-width: 0; background: var(--card); color: var(--ink);
+  border: 1px solid var(--rule-2); border-radius: var(--radius-md); padding: 13px 15px; font-size: 15px;
+  font-family: var(--sans); transition: border-color var(--dur-base, 120ms) var(--ease-standard, ease); }
+.cc-wl-input::placeholder { color: var(--ink-faint); }
+.cc-wl-input:focus { outline: none; border-color: var(--gold); }
+.cc-wl-submit { flex: none; white-space: nowrap; padding: 13px 22px; }
+.cc-wl-error { font-size: 13px; color: #c4623f; margin: var(--space-3) 0 0; }
+/* Honeypot — off-screen, never shown, never tab-reachable */
+.cc-wl-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Joined state — the calm "you're on the list" morph */
+.cc-wl-joined { width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: flex-start;
+  gap: var(--space-2); padding: var(--space-2) 0; }
+.cc-wl-joined-mark { width: 30px; height: 30px; color: var(--gold-2); margin-bottom: var(--space-2); }
+.cc-wl-joined-lead { font-family: var(--display); font-weight: var(--fw-medium); font-size: 20px;
+  color: var(--ink); margin: 0; }
+.cc-wl-joined-sub { font-size: 15px; line-height: 1.55; color: var(--ink-dim); margin: 0; max-width: 40ch; }
+
+/* Footer — minimal */
+.cc-mkt-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2-5);
+  padding-top: var(--space-8); border-top: 1px solid var(--rule); margin-top: var(--space-8); }
+.cc-mkt-foot-name { font-family: var(--display); font-weight: var(--fw-medium); font-size: 14px; color: var(--ink); }
+.cc-mkt-foot-line { font-size: 13px; color: var(--ink-dim); }
+.cc-mkt-foot-meta { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-faint); display: inline-flex; gap: var(--space-2); margin-left: auto; }
+.cc-mkt-foot-meta a { color: var(--ink-dim); text-decoration: none; }
+.cc-mkt-foot-meta a:hover { color: var(--gold-2); }
+
+/* Wider canvas: props become a 3-up row */
+@media (min-width: 720px) {
+  .cc-mkt-headline { font-size: 60px; }
+  .cc-mkt-props { grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+  .cc-mkt-prop-d { max-width: none; }
+}
+
+/* Gated thank-you — logged-in, not yet approved */
+.cc-gated { background: var(--paper); color: var(--ink); min-height: 100%; min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center; padding: var(--space-6); }
+.cc-gated-inner { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center;
+  text-align: center; }
+.cc-gated-emblem { height: 48px; width: auto; margin-bottom: var(--space-6); }
+.cc-gated-lead { font-family: var(--display); font-weight: var(--fw-medium); font-size: 24px;
+  letter-spacing: -0.015em; color: var(--ink); margin: 0; }
+.cc-gated-sub { font-size: 15px; line-height: 1.55; color: var(--ink-dim); margin: var(--space-3) 0 0; max-width: 34ch; }
+.cc-gated-foot { margin-top: var(--space-8); }
+.cc-gated-foot .cc-auth-link { background: none; border: none; cursor: pointer; font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint);
+  border-bottom: 1px solid var(--rule-2); padding: 0 0 2px; }
+.cc-gated-foot .cc-auth-link:hover { color: var(--gold-2); }

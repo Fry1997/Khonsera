@@ -1,17 +1,29 @@
-# for-design.zip — Round 2 (Code → Design): the surfaces you haven't designed yet
+# for-design.zip — Code → Design
+
+## ★ THIS ROUND (priority): the new public landing + waitlist
+
+`/` has been rebuilt from a sign-in splash into the **public marketing front door** (what Khonsera
+is + a waitlist; the app gated behind login at `/today`). It's **live and Code-built on Edition II
+tokens** — the brief flags it as the **prime brand-elevation candidate**, so it goes round the loop
+first. **Spec: `screen-specs/landing-marketing.md`** (this **supersedes** the old `landing.md`).
+Screenshot `/` logged-out at 390/744/1280 and elevate over it. 8 states enumerated in the spec.
+
+---
+
+## Still outstanding from the prior round (lower priority, design when you can)
 
 Round 1 designed **Planner** + **Today** + the bottom nav. Everything *around* them is still
 un-designed, so Code has been guessing — and it shows (see `current-state/`). This pack hands you
 the rest, precisely, so we stop guessing.
 
-## What I need designed (in priority order)
+### What I need designed (in priority order)
 
 1. **App shell / chrome** — `screen-specs/app-shell.md`. The header (emblem + wordmark + mode
    toggle + actions), the bottom bar in context, and the desktop rail. **This is the worst offender:**
    the wordmark truncates to "KHONSER", the mode toggle crowds the logo, and there's a stray
    "Demo off" + "Tell" + hamburger pile-up. The shell wraps *every* screen, so it sets the whole feel.
-2. **Landing / first-touch** — `screen-specs/landing.md`. Still the **retired crescent moon + old
-   layout** (`current-state/02`). Needs the full Edition II treatment — it's the first thing anyone sees.
+2. ~~**Landing / first-touch** — `screen-specs/landing.md`~~ **SUPERSEDED** by the new public landing
+   above (`screen-specs/landing-marketing.md`). `/` is now marketing + waitlist, not a sign-in splash.
 3. **Auth** — `screen-specs/auth.md`. Login / signup / forgot / reset. Still old.
 4. **Secondary screens** — `screen-specs/secondary-screens.md`. Tasks · People/Clients · Expenses ·
    Settings · Workspace · Welcome (first-run). Lower craft bar than Planner/Today, but they must
