@@ -7,6 +7,7 @@ import { createStop, reorderStops } from "@/lib/actions/stops";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
+import type { ParsedPayload } from "@/lib/parser/types";
 
 // Capture → an Event (proposal §4). Chunk 2: when you're inside an Event, a
 // plain-language fact APPENDS to that Event, by time — the same model as a
@@ -59,6 +60,9 @@ async function appendFactsToEvent(
   }
 
   if (added === 0) {
+    // Nothing addable, but there were booked-travel/connection facts → not a
+    // failure, just deferred to the booking/scan path.
+    if (deferred) return { ok: true, added: 0, deferred: true };
     return { ok: false, added: 0, deferred, error: "I couldn't place that on this day." };
   }
 
@@ -109,8 +113,74 @@ export async function captureToEvent(
   };
 }
 
-// Legacy create-from-empty path (kept for the global Tell until chunk 2b routes
-// by date). Creates a NEW Event from the facts.
+// Global "Tell Khonsera" routing (proposal §4) — resolve the target Event from
+// the fact's DATE, never a silent singleton:
+//   · a date that an existing Event covers  → append to it
+//   · a date with no Event                  → create one from the facts (confirmCapture)
+//   · no date at all                        → a Reminder (a dateless intent)
+// Takes the (possibly slot-edited) payload from the capture screen.
+export async function routeCaptureGlobal(input: {
+  captured_input_id?: string | null;
+  payload: ParsedPayload;
+}): Promise<{ ok: boolean; eventId?: string; reminder?: boolean; note?: string; error?: string }> {
+  const payload = input.payload;
+  const { brief } = factsToBrief(payload);
+
+  const dates: string[] = [];
+  for (const a of brief.anchors) if (a.date) dates.push(a.date);
+  for (const b of brief.transport_bookings) if (b.date) dates.push(b.date);
+  for (const ac of brief.accommodation_bookings) if (ac.check_in_date) dates.push(ac.check_in_date);
+  const primaryDate = dates.sort()[0] ?? null;
+
+  const { confirmCapture } = await import("@/lib/actions/tell-khonsera");
+
+  // Dateless → a Reminder (confirmCapture routes anchorless facts to intents).
+  if (!primaryDate) {
+    const res = await confirmCapture(input as unknown as Parameters<typeof confirmCapture>[0]);
+    if (!res.ok) {
+      const msg = "message" in res.error ? res.error.message : "Couldn't save that.";
+      return { ok: false, error: msg };
+    }
+    return { ok: true, reminder: true };
+  }
+
+  // Find an existing Event whose span covers the date.
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data: found } = await supabase
+    .from("itineraries")
+    .select("id")
+    .eq("mode", ctx.activeMode)
+    .lte("date_start", primaryDate)
+    .gte("date_end", primaryDate)
+    .order("date_start", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (found) {
+    const res = await appendFactsToEvent(found.id as string, payload);
+    if (!res.ok) return { ok: false, error: res.error ?? "Couldn't add that." };
+    revalidatePath(`/plan/${found.id}`);
+    return {
+      ok: true,
+      eventId: found.id as string,
+      note: res.deferred ? "Booked travel and connections add via Scan / + Transport — coming next." : undefined,
+    };
+  }
+
+  // No Event for that date → create one from the facts.
+  const res = await confirmCapture(input as unknown as Parameters<typeof confirmCapture>[0]);
+  if (!res.ok) {
+    const msg = "message" in res.error ? res.error.message : "Couldn't add that.";
+    return { ok: false, error: msg };
+  }
+  revalidatePath("/plan");
+  return res.value.itinerary_id
+    ? { ok: true, eventId: res.value.itinerary_id }
+    : { ok: true, reminder: true };
+}
+
+// Legacy create-from-empty path (kept for compatibility). Creates a NEW Event.
 export async function captureOnPlan(text: string): Promise<{ ok: boolean; error?: string }> {
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, error: "Tell me something to add." };

@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import type { SlotDef } from "@/lib/dictionary/types";
 import type { ParsedPayload, Slot } from "@/lib/parser/types";
 import {
   previewCapture,
   saveCaptureDraft,
   updateCaptureDraft,
-  confirmCapture,
 } from "@/lib/actions/tell-khonsera";
+import { routeCaptureGlobal } from "@/lib/actions/plan-capture";
 import { feedbackFromError } from "@/lib/actions/_form";
 import {
   applyCorrections,
@@ -145,7 +146,7 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         setFeedback(feedbackFromError(res.error).message);
         return;
       }
-      router.push("/dashboard");
+      router.push("/plan" as Route);
       router.refresh();
     });
   };
@@ -155,16 +156,15 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
     if (!draft) return;
     setFeedback(null);
     startTransition(async () => {
-      const res = await confirmCapture({
-        captured_input_id: capturedId,
-        payload: draft as unknown as { original_text: string; facts: unknown[] },
-      });
+      // Route by the fact's date into the right Event (find-or-create), or a
+      // Reminder if it has no date — and land on the new Plan, never legacy.
+      const res = await routeCaptureGlobal({ captured_input_id: capturedId, payload: draft });
       if (!res.ok) {
-        setFeedback(feedbackFromError(res.error).message);
+        setFeedback(res.error ?? "Couldn't add that.");
         return;
       }
-      if (res.value.itinerary_id) router.push(`/itineraries/${res.value.itinerary_id}`);
-      else router.push("/dashboard");
+      if (res.eventId) router.push(`/plan/${res.eventId}` as Route);
+      else router.push("/plan" as Route); // a reminder — back to the Plan index
       router.refresh();
     });
   };
@@ -230,7 +230,7 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
           type="button"
           aria-label="Close"
           className="btn btn-ghost btn-sm"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/plan" as Route)}
           style={{ fontSize: 18, lineHeight: 1, padding: "4px 8px", color: "var(--ink-dim)" }}
         >
           ✕
