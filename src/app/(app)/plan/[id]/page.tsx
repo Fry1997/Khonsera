@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { PlanCapture } from "@/components/plan/plan-capture";
 import { PlanAdd } from "@/components/plan/plan-add";
+import { PlanImport } from "@/components/plan/plan-import";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
@@ -323,7 +324,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </>
       )}
 
-      <PlanAdd journeyId={id} journeyDate={dateStart} />
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        <PlanAdd journeyId={id} journeyDate={dateStart} />
+        <PlanImport
+          itineraryId={id}
+          lastStopId={stops.length ? stops[stops.length - 1].id : null}
+          lastStopLabel={stops.length ? (stops[stops.length - 1].title ?? "your day") : "your day"}
+        />
+      </div>
 
       <PlanCapture eventId={id} />
     </div>
