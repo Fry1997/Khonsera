@@ -500,3 +500,16 @@
 .cc-sheet-note { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-dim); margin: 0; }
 .cc-sheet-error { font-size: 13px; color: var(--rust); margin: 0; }
 .cc-sheet-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-2); }
+
+/* ---- Leg comparison list (.cc-compare-*) — §5.7, fastest-first ------------ */
+.cc-compare-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-compare-opt { display: flex; align-items: baseline; gap: var(--space-3); width: 100%; text-align: left;
+  background: var(--paper); border: 1px solid var(--rule-2); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); cursor: pointer;
+  transition: border-color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-compare-opt:hover { border-color: var(--gold); }
+.cc-compare-opt[data-best] { border-color: var(--gold); background: var(--gold-tint); }
+.cc-compare-mode { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15px; color: var(--ink); flex: 1; }
+.cc-compare-time { font-family: var(--mono); font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cc-compare-miles { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.cc-compare-state { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-2); }

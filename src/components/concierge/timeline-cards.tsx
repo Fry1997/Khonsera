@@ -212,12 +212,18 @@ const LEG_STATE: Record<LegVM["bookingStatus"], "chosen" | "proposed" | "unresol
   unbooked_stub: "unresolved",
 };
 
-export function LegCard({ leg }: { leg: LegVM }) {
+export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: string) => void }) {
   const total = leg.notes ?? (leg.departure && leg.arrival
     ? `${formatClock(leg.departure)}–${formatClock(leg.arrival)}`
     : "Travel needed");
+  const Tag = onCompare ? "button" : "div";
   return (
-    <div className="cc-leg-card" data-state={LEG_STATE[leg.bookingStatus]}>
+    <Tag
+      className="cc-leg-card"
+      data-state={LEG_STATE[leg.bookingStatus]}
+      onClick={onCompare ? () => onCompare(leg.id) : undefined}
+      style={onCompare ? { width: "100%", textAlign: "left", cursor: "pointer", background: "transparent" } : undefined}
+    >
       <div className="cc-leg-head">
         <span className="cc-leg-total">{total} door-to-door</span>
         <span className="cc-leg-pattern">Direct</span>
@@ -233,7 +239,7 @@ export function LegCard({ leg }: { leg: LegVM }) {
           <span className="cc-mono">{formatMoney(leg.cost, leg.currency)}</span>
         ) : null}
       </div>
-      <p className="cc-leg-tap">Tap to compare &rarr;</p>
-    </div>
+      {onCompare ? <p className="cc-leg-tap">Tap to compare &rarr;</p> : null}
+    </Tag>
   );
 }

@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { updateStop } from "@/lib/actions/stops";
+import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
+import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
+import type { TransitionMode } from "@/lib/types/domain";
 import type { AnchorVariableKind, AnchorVariableSlot } from "@/components/concierge";
 
 // Planner master brief §5.3 — set any two of {arrive-by, duration, leave-by}; the
@@ -58,6 +61,102 @@ export async function setAnchorVariable(input: {
   const res = await updateStop(patch);
   if (!res.ok) {
     const msg = "message" in res.error ? res.error.message : "Couldn't update that.";
+    return { ok: false, error: msg };
+  }
+  revalidatePath("/plan");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Leg comparison (planner master brief §3.3 / §5.7) — rank transport options
+// for a leg by composite door-to-door time. Speed ranks; exclusions filter.
+// Candidate single-mode options are priced by the routing provider (previewRoute,
+// cached); the engine (topViable) ranks them. Multi-mode first/last-mile mixes
+// come with the constraints + first/last-mile slice.
+// ---------------------------------------------------------------------------
+
+const CANDIDATE_MODES: TransitionMode[] = ["walk", "taxi", "drive", "bus", "tube", "train"];
+
+export type LegOption = {
+  id: string;
+  mode: TransitionMode;
+  minutes: number; // door-to-door total
+  miles?: number;
+};
+
+export async function compareLeg(input: {
+  fromStopId: string;
+  toStopId: string;
+  exclude?: TransitionMode[];
+}): Promise<{ ok: boolean; options?: LegOption[]; error?: string }> {
+  const routed = await Promise.all(
+    CANDIDATE_MODES.map(async (mode) => {
+      const res = await previewRoute({
+        from_stop_id: input.fromStopId,
+        to_stop_id: input.toStopId,
+        mode,
+      });
+      if (!res.ok || res.value.durationMinutes == null) return null;
+      return { mode, minutes: res.value.durationMinutes, miles: res.value.distanceMiles };
+    }),
+  );
+
+  const options: (DoorToDoorOption & { mode: TransitionMode; miles?: number })[] = routed
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .map((r) => ({
+      id: r.mode,
+      mode: r.mode,
+      subLegs: [{ mode: r.mode, minutes: r.minutes }],
+      miles: r.miles ?? undefined,
+    }));
+
+  if (options.length === 0) {
+    return { ok: false, error: "No routable options for this leg." };
+  }
+
+  const ranked = topViable(options, 4, { exclude: input.exclude ?? [] });
+  return {
+    ok: true,
+    options: ranked.map((o) => ({
+      id: o.id,
+      mode: o.mode,
+      minutes: doorToDoorMinutes(o),
+      miles: o.miles,
+    })),
+  };
+}
+
+// Commit a leg to a chosen mode (§5.7: choosing commits the leg + re-routes +
+// re-solves, hardening the bracketing anchors via the solver).
+export async function chooseLeg(input: {
+  transitionId: string;
+  mode: TransitionMode;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await setTransitionMode({ id: input.transitionId, mode: input.mode });
+  if (!res.ok) {
+    const msg = "message" in res.error ? res.error.message : "Couldn't choose that.";
+    return { ok: false, error: msg };
+  }
+  revalidatePath("/plan");
+  return { ok: true };
+}
+
+// Resolve a gap into a chosen leg (§5.5 → §5.4): create the transition between
+// two adjacent stops with the chosen mode; routing + re-solve happen inside.
+export async function createLeg(input: {
+  itineraryId: string;
+  fromStopId: string;
+  toStopId: string;
+  mode: TransitionMode;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await upsertTransition({
+    itinerary_id: input.itineraryId,
+    from_stop_id: input.fromStopId,
+    to_stop_id: input.toStopId,
+    mode: input.mode,
+  });
+  if (!res.ok) {
+    const msg = "message" in res.error ? res.error.message : "Couldn't add that leg.";
     return { ok: false, error: msg };
   }
   revalidatePath("/plan");

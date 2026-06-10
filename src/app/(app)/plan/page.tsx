@@ -44,6 +44,7 @@ type StopRow = {
   location: { name?: string } | null;
 };
 type TransRow = {
+  id: string;
   from_stop_id: string;
   to_stop_id: string;
   mode: string;
@@ -115,7 +116,7 @@ export default async function PlanPage() {
         .order("sequence"),
       supabase
         .from("transitions")
-        .select("from_stop_id, to_stop_id, mode, is_locked, computed_duration_minutes")
+        .select("id, from_stop_id, to_stop_id, mode, is_locked, computed_duration_minutes")
         .eq("itinerary_id", journey.id),
       supabase
         .from("intentions")
@@ -158,13 +159,21 @@ export default async function PlanPage() {
     bookingStatus: t.is_locked ? "booked_in_app" : "manual",
   });
 
+  const itineraryId = journey?.id as string;
   const nodes: SpineNode[] = stops.map((s, idx) => {
     const next = stops[idx + 1];
     let after: SpineNode["after"] = null;
     if (next) {
       const trans = transByPair.get(`${s.id}->${next.id}`);
       after = trans
-        ? { kind: "leg", leg: legOf(trans, s, next) }
+        ? {
+            kind: "leg",
+            leg: legOf(trans, s, next),
+            transitionId: trans.id,
+            itineraryId,
+            fromStopId: s.id,
+            toStopId: next.id,
+          }
         : {
             kind: "gap",
             gap: {
@@ -174,6 +183,9 @@ export default async function PlanPage() {
               toLabel: next.title ?? "next",
               state: "open",
             } satisfies GapVM,
+            itineraryId,
+            fromStopId: s.id,
+            toStopId: next.id,
           };
     }
     return { anchor: anchorOf(s), after };

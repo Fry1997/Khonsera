@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnchorCard, LegCard, GapCard } from "@/components/concierge";
 import type {
@@ -10,19 +10,32 @@ import type {
   LegVM,
   GapVM,
 } from "@/components/concierge";
-import { setAnchorVariable } from "@/lib/actions/plan-edit";
+import {
+  setAnchorVariable,
+  compareLeg,
+  chooseLeg,
+  createLeg,
+  type LegOption,
+} from "@/lib/actions/plan-edit";
 
 // The interactive planner spine (planner master brief §5). Renders the
 // chronological rail of anchors + the leg/gap between each pair, and hosts the
-// AnchorCard three-variable editor (§5.3): tap a variable → pick its kind +
-// value → persist → the engine re-solves and the derived value recomputes.
+// AnchorCard three-variable editor (§5.3) and the leg ComparisonMatrix (§5.7):
+// tap a leg/gap → the engine ranks transport options door-to-door → choosing
+// commits the leg and re-solves (hardening the anchors).
+
+type LegBetween = { transitionId?: string; itineraryId: string; fromStopId: string; toStopId: string };
 
 export type SpineNode = {
   anchor: AnchorVM;
-  after?: { kind: "leg"; leg: LegVM } | { kind: "gap"; gap: GapVM } | null;
+  after?:
+    | ({ kind: "leg"; leg: LegVM } & LegBetween)
+    | ({ kind: "gap"; gap: GapVM } & LegBetween)
+    | null;
 };
 
 type EditTarget = { anchor: AnchorVM; slot: AnchorVariableSlot };
+type CompareTarget = LegBetween & { title: string };
 
 export function PlanSpine({
   nodes,
@@ -32,6 +45,7 @@ export function PlanSpine({
   journeyDate: string;
 }) {
   const [edit, setEdit] = useState<EditTarget | null>(null);
+  const [compare, setCompare] = useState<CompareTarget | null>(null);
 
   return (
     <>
@@ -57,9 +71,30 @@ export function PlanSpine({
                 </div>
                 <div>
                   {n.after.kind === "leg" ? (
-                    <LegCard leg={n.after.leg} />
+                    <LegCard
+                      leg={n.after.leg}
+                      onCompare={() =>
+                        setCompare({
+                          transitionId: n.after!.transitionId,
+                          itineraryId: n.after!.itineraryId,
+                          fromStopId: n.after!.fromStopId,
+                          toStopId: n.after!.toStopId,
+                          title: `${n.after!.fromStopId === n.anchor.id ? n.anchor.title : ""}`,
+                        })
+                      }
+                    />
                   ) : (
-                    <GapCard gap={n.after.gap} />
+                    <GapCard
+                      gap={n.after.gap}
+                      onResolve={() =>
+                        setCompare({
+                          itineraryId: n.after!.itineraryId,
+                          fromStopId: n.after!.fromStopId,
+                          toStopId: n.after!.toStopId,
+                          title: n.after!.kind === "gap" ? n.after!.gap.toLabel ?? "this leg" : "this leg",
+                        })
+                      }
+                    />
                   )}
                 </div>
               </div>
@@ -69,14 +104,119 @@ export function PlanSpine({
       </div>
 
       {edit ? (
-        <VariableEditor
-          target={edit}
-          journeyDate={journeyDate}
-          onClose={() => setEdit(null)}
-        />
+        <VariableEditor target={edit} journeyDate={journeyDate} onClose={() => setEdit(null)} />
+      ) : null}
+
+      {compare ? (
+        <CompareSheet target={compare} onClose={() => setCompare(null)} />
       ) : null}
     </>
   );
+}
+
+// ComparisonMatrix sheet (§5.7) — fastest-first, door-to-door. Choosing commits.
+function CompareSheet({ target, onClose }: { target: CompareTarget; onClose: () => void }) {
+  const router = useRouter();
+  const [options, setOptions] = useState<LegOption[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [committing, setCommitting] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void compareLeg({ fromStopId: target.fromStopId, toStopId: target.toStopId }).then((res) => {
+      if (!live) return;
+      if (res.ok && res.options) setOptions(res.options);
+      else setError(res.error ?? "No options.");
+      setLoading(false);
+    });
+    return () => {
+      live = false;
+    };
+  }, [target.fromStopId, target.toStopId]);
+
+  function choose(o: LegOption) {
+    setCommitting(o.id);
+    setError(null);
+    const run = target.transitionId
+      ? chooseLeg({ transitionId: target.transitionId, mode: o.mode })
+      : createLeg({
+          itineraryId: target.itineraryId,
+          fromStopId: target.fromStopId,
+          toStopId: target.toStopId,
+          mode: o.mode,
+        });
+    void run.then((res) => {
+      if (!res.ok) {
+        setError(res.error ?? "Couldn't choose that.");
+        setCommitting(null);
+        return;
+      }
+      onClose();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="cc-sheet-scrim" onClick={onClose}>
+      <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
+        <div className="cc-sheet-grip" />
+        <header className="cc-sheet-head">
+          <span className="cc-eyebrow">How you get there</span>
+          <h3 className="cc-sheet-title">Fastest first</h3>
+        </header>
+
+        {loading ? (
+          <p className="cc-sheet-note">Working out the door-to-door options…</p>
+        ) : error && !options ? (
+          <p className="cc-sheet-error">{error}</p>
+        ) : (
+          <div className="cc-compare-list">
+            {options!.map((o, i) => (
+              <button
+                key={o.id}
+                type="button"
+                className="cc-compare-opt"
+                data-best={i === 0 ? "" : undefined}
+                disabled={committing != null}
+                onClick={() => choose(o)}
+              >
+                <span className="cc-compare-mode">{MODE_LABEL[o.mode] ?? o.mode}</span>
+                <span className="cc-compare-time">{minutesLabel(o.minutes)}</span>
+                {o.miles != null ? <span className="cc-compare-miles">{o.miles.toFixed(1)} mi</span> : null}
+                {committing === o.id ? <span className="cc-compare-state">choosing…</span> : null}
+              </button>
+            ))}
+          </div>
+        )}
+        {error && options ? <p className="cc-sheet-error">{error}</p> : null}
+
+        <div className="cc-sheet-actions">
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const MODE_LABEL: Record<string, string> = {
+  walk: "Walk",
+  taxi: "Taxi",
+  drive: "Drive",
+  bus: "Bus",
+  tube: "Tube",
+  train: "Train",
+  flight: "Flight",
+  mixed: "Mixed",
+};
+function minutesLabel(m: number): string {
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  if (h && min) return `${h}h ${min}m`;
+  if (h) return `${h}h`;
+  return `${min}m`;
 }
 
 // Which kinds are offered per slot (planner master brief §5.3).
