@@ -47,9 +47,11 @@ export function PlanSpine({
   const [edit, setEdit] = useState<EditTarget | null>(null);
   const [compare, setCompare] = useState<CompareTarget | null>(null);
 
+  const resolving = edit != null || compare != null;
+
   return (
     <>
-      <div className="cc-spine">
+      <div className="cc-spine" data-resolving={resolving ? "" : undefined}>
         <span className="cc-spine-rail" />
         {nodes.map((n) => (
           <div key={n.anchor.id}>

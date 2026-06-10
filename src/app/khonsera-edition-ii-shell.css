@@ -531,3 +531,6 @@
 .cc-constraints-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
 .cc-constraints-value { font-size: 13px; color: var(--ink-2); text-align: right; }
 .cc-constraints-body { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
+
+/* ---- Planner states (§5.9). Resolving dims the spine to focus the sheet. ---- */
+.cc-spine[data-resolving] { opacity: 0.55; transition: opacity var(--dur-slow,160ms) var(--ease-standard,ease); }

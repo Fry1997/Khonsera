@@ -5,6 +5,7 @@ import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
+import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { IntentionCard } from "@/components/concierge";
 import {
   formatClock,
@@ -151,16 +152,30 @@ export default async function PlanPage() {
     fixed: s.is_time_fixed ?? undefined,
     vars: buildVars(s),
   });
-  const legOf = (t: TransRow, from: StopRow, to: StopRow): LegVM => ({
-    id: `${t.from_stop_id}->${t.to_stop_id}`,
-    mode: mapLegMode(t.mode),
-    fromLabel: from.title ?? "—",
-    toLabel: to.title ?? "—",
-    departure: from.start_time ?? undefined,
-    arrival: to.start_time ?? undefined,
-    notes: t.computed_duration_minutes ? `${t.computed_duration_minutes} min` : undefined,
-    bookingStatus: t.is_locked ? "booked_in_app" : "manual",
-  });
+  const legOf = (t: TransRow, from: StopRow, to: StopRow): LegVM => {
+    // Feasibility flags an at-risk leg (§5.9). A locked (booked) leg's 0m slack
+    // is a fact, not a warning (CLAUDE.md hard-won fix) — skip the check.
+    const feas = t.is_locked
+      ? ({ state: "ok" } as const)
+      : checkLegFeasibility({
+          fromEnd: from.end_time ? new Date(from.end_time) : from.start_time ? new Date(from.start_time) : null,
+          toStart: to.start_time ? new Date(to.start_time) : null,
+          travelMinutes: t.computed_duration_minutes,
+        });
+    const atRisk = feas.state === "tight" || feas.state === "late";
+    return {
+      id: `${t.from_stop_id}->${t.to_stop_id}`,
+      mode: mapLegMode(t.mode),
+      fromLabel: from.title ?? "—",
+      toLabel: to.title ?? "—",
+      departure: from.start_time ?? undefined,
+      arrival: to.start_time ?? undefined,
+      notes: t.computed_duration_minutes ? `${t.computed_duration_minutes} min` : undefined,
+      bookingStatus: t.is_locked ? "booked_in_app" : "manual",
+      atRisk,
+      riskNote: atRisk && "message" in feas ? feas.message : undefined,
+    };
+  };
 
   const constraints = await loadConstraints();
   const itineraryId = journey?.id as string;
@@ -195,8 +210,14 @@ export default async function PlanPage() {
     return { anchor: anchorOf(s), after };
   });
 
+  // The five planner states (§5.9). empty/sparse/threaded by shape; at-risk when
+  // any leg is flagged; "resolving" is a client state (a sheet open) on the spine.
+  const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);
+  const planState: "empty" | "sparse" | "threaded" | "at-risk" =
+    stops.length === 0 ? "empty" : anyAtRisk ? "at-risk" : stops.length <= 2 ? "sparse" : "threaded";
+
   return (
-    <div className="cc-screen" style={{ minHeight: "100%" }}>
+    <div className="cc-screen" data-plan-state={planState} style={{ minHeight: "100%" }}>
       <header>
         <span className="cc-eyebrow">{ctx.activeMode === "work" ? "Work" : "Personal"} · Plan</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>

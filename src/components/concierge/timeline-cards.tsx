@@ -217,10 +217,11 @@ export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: strin
     ? `${formatClock(leg.departure)}–${formatClock(leg.arrival)}`
     : "Travel needed");
   const Tag = onCompare ? "button" : "div";
+  const state = leg.atRisk ? "at-risk" : LEG_STATE[leg.bookingStatus];
   return (
     <Tag
       className="cc-leg-card"
-      data-state={LEG_STATE[leg.bookingStatus]}
+      data-state={state}
       onClick={onCompare ? () => onCompare(leg.id) : undefined}
       style={onCompare ? { width: "100%", textAlign: "left", cursor: "pointer", background: "transparent" } : undefined}
     >
@@ -239,6 +240,11 @@ export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: strin
           <span className="cc-mono">{formatMoney(leg.cost, leg.currency)}</span>
         ) : null}
       </div>
+      {leg.atRisk && leg.riskNote ? (
+        <p className="cc-leg-risk">
+          <span aria-hidden>!</span> {leg.riskNote}
+        </p>
+      ) : null}
       {onCompare ? <p className="cc-leg-tap">Tap to compare &rarr;</p> : null}
     </Tag>
   );

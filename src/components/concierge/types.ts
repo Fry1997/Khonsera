@@ -99,6 +99,8 @@ export type LegVM = {
   currency?: string;
   notes?: string;
   bookingStatus: BookingStatus;
+  atRisk?: boolean; // engine flagged a tight/late connection (§5.9)
+  riskNote?: string; // the calm one-line caution
 };
 
 // One scheduled-transport option in the §7 comparison (two bracket the target).
