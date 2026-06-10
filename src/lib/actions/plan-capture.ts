@@ -5,6 +5,7 @@ import { previewCapture } from "@/lib/actions/tell-khonsera";
 import { factsToBrief } from "@/lib/parser/materialise";
 import { createStop, reorderStops } from "@/lib/actions/stops";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
+import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import type { ParsedPayload } from "@/lib/parser/types";
@@ -84,6 +85,7 @@ async function appendFactsToEvent(
     .map((r) => r.id as string);
   if (ordered.length > 1) await reorderStops({ itinerary_id: eventId, stop_ids: ordered });
   await resolveItineraryTimes(eventId);
+  await inferAndUpdateSpan(eventId); // a bounding fact may extend the Event's span (§5)
 
   return { ok: true, added, deferred };
 }
@@ -174,6 +176,7 @@ export async function routeCaptureGlobal(input: {
     const msg = "message" in res.error ? res.error.message : "Couldn't add that.";
     return { ok: false, error: msg };
   }
+  if (res.value.itinerary_id) await inferAndUpdateSpan(res.value.itinerary_id);
   revalidatePath("/plan");
   return res.value.itinerary_id
     ? { ok: true, eventId: res.value.itinerary_id }

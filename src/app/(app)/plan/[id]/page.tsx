@@ -9,6 +9,7 @@ import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
+import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { IntentionCard } from "@/components/concierge";
@@ -150,6 +151,17 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     transitions = (t ?? []) as unknown as TransRow[];
   }
 
+  // Backfill the span from the facts (§5) — extends a legacy single-day Event to
+  // its real bounds (return travel / hotel). Idempotent; reflect it in the header.
+  await inferAndUpdateSpan(id);
+  const { data: spanRow } = await supabase
+    .from("itineraries")
+    .select("date_start, date_end")
+    .eq("id", id)
+    .maybeSingle();
+  const dateStart = (spanRow?.date_start as string) ?? (journey.date_start as string);
+  const dateEnd = (spanRow?.date_end as string) ?? (journey.date_end as string);
+
   const intentions: IntentionVM[] = (i ?? []).map((x) => ({
     id: x.id as string,
     description: x.description as string,
@@ -250,7 +262,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const planState: "empty" | "sparse" | "threaded" | "at-risk" =
     stops.length === 0 ? "empty" : anyAtRisk ? "at-risk" : stops.length <= 2 ? "sparse" : "threaded";
 
-  const title = journey.title || spanLabel(journey.date_start as string, journey.date_start as string);
+  const title = journey.title || spanLabel(dateStart, dateStart);
 
   return (
     <div className="cc-screen" data-plan-state={planState} style={{ minHeight: "100%" }}>
@@ -258,7 +270,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         <Link href={"/plan" as Route} className="cc-event-back">
           ← Plan
         </Link>
-        <span className="cc-eyebrow">{spanLabel(journey.date_start as string, journey.date_end as string)}</span>
+        <span className="cc-eyebrow">{spanLabel(dateStart, dateEnd)}</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           {title}
         </h1>
@@ -281,11 +293,11 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
           <PlanConstraints initial={constraints} />
 
-          <PlanSpine nodes={nodes} journeyDate={journey.date_start as string} />
+          <PlanSpine nodes={nodes} journeyDate={dateStart} />
         </>
       )}
 
-      <PlanAdd journeyId={id} journeyDate={journey.date_start as string} />
+      <PlanAdd journeyId={id} journeyDate={dateStart} />
 
       <PlanCapture eventId={id} />
     </div>

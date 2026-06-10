@@ -53,3 +53,52 @@ export async function createEventAndOpen(formData: FormData): Promise<void> {
   if (res.ok && res.id) redirect(`/plan/${res.id}` as Route);
   redirect("/plan" as Route);
 }
+
+// Span inference (proposal §5): a multi-day Event's bounds are derived from its
+// facts — a return flight/train, a hotel checkout — so "fly out the 25th, back
+// the 28th" becomes a 4-day Event automatically; a lone appointment stays single
+// day until a bounding fact appears. Mechanism: the span is [earliest, latest]
+// across the Event's stops (every bounding fact is a stop with a time), never
+// shrinking below the user's chosen start. Idempotent — safe on every
+// materialise and on open (backfills legacy Events).
+function ymd(iso: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+  return m ? m[1] : null;
+}
+
+export async function inferAndUpdateSpan(itineraryId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: journey } = await supabase
+    .from("itineraries")
+    .select("date_start, date_end")
+    .eq("id", itineraryId)
+    .maybeSingle();
+  if (!journey) return;
+
+  const { data: stops } = await supabase
+    .from("stops")
+    .select("start_time, end_time")
+    .eq("itinerary_id", itineraryId);
+
+  const dates: string[] = [];
+  for (const s of stops ?? []) {
+    const a = ymd((s.start_time as string | null) ?? "");
+    const b = ymd((s.end_time as string | null) ?? "");
+    if (a) dates.push(a);
+    if (b) dates.push(b);
+  }
+  if (dates.length === 0) return;
+
+  dates.sort();
+  const earliest = dates[0];
+  const latest = dates[dates.length - 1];
+  const newStart = earliest < (journey.date_start as string) ? earliest : (journey.date_start as string);
+  const newEnd = latest > (journey.date_end as string) ? latest : (journey.date_end as string);
+
+  if (newStart !== journey.date_start || newEnd !== journey.date_end) {
+    await supabase
+      .from("itineraries")
+      .update({ date_start: newStart, date_end: newEnd })
+      .eq("id", itineraryId);
+  }
+}
