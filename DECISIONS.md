@@ -299,6 +299,35 @@ Newest at the bottom of each section.
   - **Stale-clone recurred again** mid-session (container re-cloned at D19 `eea9d23`); reset hard to
     origin — no work lost.
 
+- **D28 — Planner wiring slices 7–8 (constraints + planner states).**
+  - **Slice 7 — Constraints & exclusions (§5.8).** `loadConstraints`/`toggleModeExclusion`/`setHomeBy`
+    over `standing_facts` (global, user+workspace scoped, full RLS). `compareLeg` now always merges the
+    user's excluded modes into `topViable`'s filter — exclusions remove options from the matrix
+    entirely (speed ranks; exclusions filter). `PlanConstraints` is a calm summary + avoid-mode chips +
+    be-home-by on `/plan`.
+  - **Slice 8 — Five planner states + at-risk legs (§5.9).** `LegVM` gains `atRisk`/`riskNote`;
+    `checkLegFeasibility` flags tight/late legs on the spine (locked/booked legs skip — 0m slack on a
+    booked train is a fact, not a warning). `LegCard` renders `data-state="at-risk"` + the caution.
+    `/plan` sets `data-plan-state` (empty/sparse/threaded/at-risk); `PlanSpine` sets `data-resolving`
+    to dim the spine while a sheet is open. 204 tests, build green, tsc clean.
+  - **Done-when now met:** #1 (manual + NLP land by time, recompute), #2 (three-variable edit/derive/
+    harden), #3 (leg ranks door-to-door, exclusions filter, commits, hardens), #4 (booked rail →
+    TicketCard + scannable Aztec in ScanView, from Wallet + Today), #6 (Wallet grouped/time-needed/
+    offline barcodes), #8 (Today is a projection); plus the five planner states render.
+  - **Remaining P1 items are blocked on infra/schema, not effort — flagged rather than faked:**
+    - **Docked pass on the spine** (`.cc-pass--docked`): needs a clean booking↔spine-stop mapping. A
+      booked journey is modelled as transit_departure → transit_changeover(s) → transit_arrival STOPS
+      with locked transitions, but nothing records which stop-span a `travel_booking` covers, so the
+      pass can't be collapsed onto the spine reliably. Right fix = a small schema add (e.g.
+      `booking_intents.arrival_stop_id`, or render the spine's booked span from `travel_bookings`).
+      The CSS + `Pass`/`.cc-pass--docked` are ready; this is the next concrete step when we add that.
+    - **Reactive recompute on live signals (§3.9/§8.2):** the recompute→consequence→NudgeCard
+      mechanism is buildable, but there is no live-signal feed (rail status/TfL) wired in this env, so
+      it can't be exercised end-to-end. Needs a signal source (or a deliberate "simulate delay" test
+      harness) first.
+    - **Email forward-to-import (§4.3, P1.5):** the parsers exist, but inbound email (a receiving
+      address + webhook) is external infra not provisioned here.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
