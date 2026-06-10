@@ -20,6 +20,7 @@ function navFor(mode: AppMode): NavItem[] {
     mode === "work"
       ? { href: "/customers" as Route, label: "Clients", icon: "clients" }
       : { href: "/contacts" as Route, label: "People", icon: "people" },
+    { href: "/wallet" as Route, label: "Wallet", icon: "wallet" },
     { href: "/expenses" as Route, label: "Expenses", icon: "receipt" },
     ...(mode === "work" ? [{ href: "/workspace" as Route, label: "Workspace", icon: "clients" } as NavItem] : []),
     { href: "/settings" as Route, label: "Settings", icon: "settings" },
@@ -91,6 +92,7 @@ const Glyphs = {
   people: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21c0-4 4-7 8-7s8 3 8 7",
   clients: "M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2",
   receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6M9 12h6M9 16h4",
+  wallet: "M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2 M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1h-4a2 2 0 0 0 0 4h4 M16 12h.01",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18",
   exit: "M9 4H4v16h5 M16 17l5-5-5-5 M21 12H9",
 } as const;

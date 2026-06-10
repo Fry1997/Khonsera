@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { connectionBufferMinutes } from "@/lib/planning/door-to-door";
+import { foldStopsToTickets, type TransitStop } from "@/lib/tickets/from-stops";
 import type {
   TicketVM,
   TicketLegVM,
@@ -85,26 +86,55 @@ async function ticketsForItineraries(itinIds: string[]): Promise<TicketVM[]> {
   if (itinIds.length === 0) return [];
   const supabase = await createClient();
 
-  const { data: intents } = await supabase
-    .from("booking_intents")
-    .select("id")
-    .in("itinerary_id", itinIds);
+  // Primary source: booked travel folded from STOP METADATA (where the Gmail /
+  // brief import actually writes it — the user's real tickets + Aztec barcodes).
+  const { data: stops } = await supabase
+    .from("stops")
+    .select("id, itinerary_id, sequence, type, title, start_time, metadata")
+    .in("itinerary_id", itinIds)
+    .order("itinerary_id")
+    .order("sequence");
+
+  const byItin = new Map<string, TransitStop[]>();
+  for (const st of stops ?? []) {
+    const arr = byItin.get(st.itinerary_id as string) ?? [];
+    arr.push({
+      id: st.id as string,
+      type: st.type as string,
+      title: (st.title as string | null) ?? null,
+      start_time: (st.start_time as string | null) ?? null,
+      metadata: (st.metadata as Record<string, unknown> | null) ?? null,
+    });
+    byItin.set(st.itinerary_id as string, arr);
+  }
+  const stopTickets: TicketVM[] = [];
+  for (const list of byItin.values()) {
+    for (const f of foldStopsToTickets(list)) stopTickets.push(f.ticket);
+  }
+
+  // Secondary source: travel_bookings rows (future/affiliate path), deduped by
+  // reference so we don't double-list the same booking.
+  const { data: intents } = await supabase.from("booking_intents").select("id").in("itinerary_id", itinIds);
   const intentIds = (intents ?? []).map((r) => r.id as string);
-  if (intentIds.length === 0) return [];
+  let bookingTickets: TicketVM[] = [];
+  if (intentIds.length) {
+    const { data: bookings } = await supabase
+      .from("travel_bookings")
+      .select(
+        `id, provider, booking_reference, ticket_status, actual_price, currency,
+         departure_at, arrival_at, seat_reservation, source,
+         segments:travel_booking_segments(
+           sequence, from_location_name, to_location_name, from_station_code, to_station_code,
+           departure_at, arrival_at, train_number, platform_dep, platform_arr, operator,
+           ticket_type, route_restriction, coach, seat, barcode_ref, barcode_data)`,
+      )
+      .in("booking_intent_id", intentIds);
+    bookingTickets = ((bookings ?? []) as unknown as BookingRow[]).map(toTicket);
+  }
 
-  const { data: bookings } = await supabase
-    .from("travel_bookings")
-    .select(
-      `id, provider, booking_reference, ticket_status, actual_price, currency,
-       departure_at, arrival_at, seat_reservation, source,
-       segments:travel_booking_segments(
-         sequence, from_location_name, to_location_name, from_station_code, to_station_code,
-         departure_at, arrival_at, train_number, platform_dep, platform_arr, operator,
-         ticket_type, route_restriction, coach, seat, barcode_ref, barcode_data)`,
-    )
-    .in("booking_intent_id", intentIds);
-
-  return ((bookings ?? []) as unknown as BookingRow[]).map(toTicket);
+  const seen = new Set(stopTickets.map((t) => t.reference).filter(Boolean));
+  const merged = [...stopTickets, ...bookingTickets.filter((t) => !t.reference || !seen.has(t.reference))];
+  return merged;
 }
 
 function toTicket(b: BookingRow): TicketVM {

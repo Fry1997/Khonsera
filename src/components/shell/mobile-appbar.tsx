@@ -16,6 +16,7 @@ const I = {
   plus: "M12 5v14M5 12h14",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   receipt: "M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2-1.5L5 21z M8 8h8M8 12h6",
+  ticket: "M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2 M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1h-4a2 2 0 0 0 0 4h4 M16 12h.01",
   case: "M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18",
   tell: "M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4z",
@@ -88,6 +89,9 @@ export function MobileAppbar({
 
             <ModeSwitchControl mode={mode} size="md" />
 
+            <Link href={"/wallet" as Route} className="cc-overflow-row" onClick={() => setOpen(false)}>
+              <span className="ic"><Ico d={I.ticket} /></span>Wallet
+            </Link>
             <Link href={"/expenses" as Route} className="cc-overflow-row" onClick={() => setOpen(false)}>
               <span className="ic"><Ico d={I.receipt} /></span>Expenses
             </Link>
