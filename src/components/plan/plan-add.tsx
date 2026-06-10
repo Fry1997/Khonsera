@@ -185,24 +185,29 @@ export function PlanAdd({
               </>
             ) : (
               <>
-                <label className="cc-time-field">
-                  <span className="cc-var-label">{kind === "appointment" ? "What" : "Name (optional)"}</span>
-                  <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                    placeholder={kind === "appointment" ? "Client meeting" : "The office"} autoFocus />
-                </label>
+                {/* An Appointment has its own name ("what"), distinct from where
+                    it happens. A Place IS its place — one search box, no separate
+                    name field (the picked place's name becomes the title). */}
+                {kind === "appointment" ? (
+                  <label className="cc-time-field">
+                    <span className="cc-var-label">What</span>
+                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Client meeting" autoFocus />
+                  </label>
+                ) : null}
                 {/* NOT a <label>: PlacePicker renders its own input plus a
                     dropdown of <button> options. A wrapping <label> forwards
                     clicks to its control, which swallowed the option click and
                     left the selection unsaved. Use a plain div. */}
                 <div className="cc-time-field">
-                  <span className="cc-var-label">{kind === "appointment" ? "Where (pins it on the map)" : "Place (pins it on the map)"}</span>
+                  <span className="cc-var-label">{kind === "appointment" ? "Where" : "Place"}</span>
                   <PlacePicker
                     customers={customers}
                     customerSites={customerSites}
                     locations={locations}
                     value={place}
                     onChange={setPlace}
-                    placeholder="Search — your saved places pin to the top"
+                    placeholder={kind === "appointment" ? "Search where it happens" : "Search a place, or type a new one"}
                   />
                 </div>
                 <div className="cc-dur-row">

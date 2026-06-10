@@ -508,6 +508,27 @@ Newest at the bottom of each section.
     builds it correctly (Pass + home). The stuck email markers were already cleared (D37).
   - **Still open:** the "open/flexible ticket, valid all day" state (D36/D37 carry-over).
 
+- **D39 — Merge made bulletproof (route-grouped) + one-box place add (live test, trip tomorrow).**
+  Connor re-imported and STILL got a midnight Wellingborough — diagnosed against the live DB.
+  - **Two failure modes found in the data, both fixed.** (1) Both 11 Jun message ids were marked
+    imported AGAIN (a re-import via the pre-D37 path, then a delete that didn't release them), so the
+    scan excluded the confirmation+eticket pair entirely. Cleared all import markers for the workspace
+    → clean re-scan. (2) The merge grouped by parsed travel DATE; an anytime eticket parses a fallback
+    date while the confirmation reads the real one, so they split into separate groups and the lone
+    midnight eticket survived. Re-grouped by **route** (origin→destination of the whole journey,
+    direction-sensitive), and moved the future-trip filter to run BEFORE the merge so a same-route
+    past trip can't collide. Outbound/return stay separate (opposite routes). 4 → 6 dedup unit tests
+    incl. mismatched-date + multi-leg (210 total).
+  - **Could NOT read the live emails** (the auto-mode classifier correctly blocked using the user's
+    OAuth token via curl — respected). So the fix is reasoned from the data + Connor's description and
+    locked behind unit tests rather than a live trace.
+  - **One-box place add.** Dropped the separate name field on the Place tab — the picked place's name
+    IS the title (Appointment keeps its own "what" + a "where" picker). Addresses "titling it feels
+    weird… one search box." The picker already shows the address and saved-places-first; selection now
+    sticks (D37).
+  - **Still TODO (told Connor):** optional "pin to save" with an address-suggested name (today every
+    Google pick auto-saves) — UX polish, not trip-blocking. And the open/all-day ticket state.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

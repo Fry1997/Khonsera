@@ -246,23 +246,23 @@ export async function scanGmailForBookings(): Promise<
     }
   }
 
-  // Deduplicate: when Trainline sends both a booking confirmation and an
-  // eticket for the same trip, keep only the booking confirmation (it has
-  // times and price; the eticket just has station codes).
+  // Drop past trips FIRST — before reconciling confirmation+eticket. The merge
+  // groups by route (WEL→HAR), so a same-route trip from last week must be gone
+  // before merging or it could collide with tomorrow's. Users want future trips.
   console.log("[gmail-scan] parsed:", bookings.length, bookings.map(b => `${b.type}:${b.raw_subject?.slice(0,40)}`));
-  const deduped = deduplicateTrainlineBookings(bookings);
-  console.log("[gmail-scan] after dedup:", deduped.length);
-
-  // Drop bookings where the travel date is in the past — users want
-  // present/future bookings, not historical trips.
   const today = new Date().toISOString().slice(0, 10);
-  const futureBookings = deduped.filter((b) => {
+  const future = bookings.filter((b) => {
     const travelDate = getTravelDate(b);
     const keep = !travelDate || travelDate >= today;
     if (!keep) console.log("[gmail-scan] dropped past:", b.raw_subject, "date:", travelDate);
     return keep;
   });
-  console.log("[gmail-scan] after date filter:", futureBookings.length);
+
+  // Reconcile: Trainline sends a booking confirmation (intended times + price)
+  // AND an eticket (barcodes); merge them into one booking per route so an
+  // anytime ticket isn't stranded at midnight.
+  const futureBookings = deduplicateTrainlineBookings(future);
+  console.log("[gmail-scan] after future filter + dedup:", futureBookings.length);
 
   // Update last_scan_at
   await supabase

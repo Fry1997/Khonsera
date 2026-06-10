@@ -2,7 +2,7 @@
 // without a Gmail/Supabase harness. Imported by the scan action in
 // `src/lib/actions/gmail.ts`.
 
-import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
+import { type ParsedBooking } from "@/lib/gmail/types";
 
 type TransportBooking = Extract<ParsedBooking, { type: "transport" }>;
 
@@ -20,19 +20,24 @@ export function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedB
 
   if (trainline.length <= 1) return bookings;
 
-  // Group by travel date — bookings on the same date are likely duplicates
-  // (or the two halves of one trip: outbound vs return live on different dates,
-  // so they group separately and each reconciles its own confirmation+eticket).
-  const byDate = new Map<string, ParsedBooking[]>();
+  // Group by ROUTE (origin → destination of the whole journey), NOT by parsed
+  // travel date. The confirmation and the eticket of the same trip can parse
+  // slightly different dates (an anytime eticket has no real time, the
+  // confirmation reads the intended one), which used to split them into separate
+  // date-groups → the lone midnight eticket survived. Route is stable across both
+  // emails. Outbound (WEL→HAR) and return (HAR→WEL) have different route keys, so
+  // they correctly stay separate. (Callers filter to future trips BEFORE this, so
+  // a last-week trip on the same route can't collide with tomorrow's.)
+  const byRoute = new Map<string, ParsedBooking[]>();
   for (const b of trainline) {
-    const date = getTravelDate(b) ?? "unknown";
-    const group = byDate.get(date) ?? [];
+    const key = b.type === "transport" ? routeKey(b as TransportBooking) : "unknown";
+    const group = byRoute.get(key) ?? [];
     group.push(b);
-    byDate.set(date, group);
+    byRoute.set(key, group);
   }
 
   const kept: ParsedBooking[] = [];
-  for (const group of byDate.values()) {
+  for (const group of byRoute.values()) {
     if (group.length === 1) {
       kept.push(group[0]);
       continue;
@@ -41,6 +46,18 @@ export function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedB
   }
 
   return [...rest, ...kept];
+}
+
+// A direction-sensitive route key from the first segment's origin to the last
+// segment's destination. Prefers CRS codes, falls back to the first 3 letters of
+// the station name (so "Wellingborough" and code "WEL" agree).
+function routeKey(b: TransportBooking): string {
+  const first = b.segments[0];
+  const last = b.segments[b.segments.length - 1];
+  if (!first || !last) return "unknown";
+  const o = (first.from_station_code ?? first.from_station ?? "").slice(0, 3).toUpperCase();
+  const d = (last.to_station_code ?? last.to_station ?? "").slice(0, 3).toUpperCase();
+  return `${o}->${d}`;
 }
 
 // Trainline sends two emails for one trip: a booking CONFIRMATION (carries the
