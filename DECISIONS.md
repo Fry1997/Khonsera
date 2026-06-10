@@ -529,6 +529,25 @@ Newest at the bottom of each section.
   - **Still TODO (told Connor):** optional "pin to save" with an address-suggested name (today every
     Google pick auto-saves) — UX polish, not trip-blocking. And the open/all-day ticket state.
 
+- **D40 — The train, cracked from a live scan dump (build/debug-scan).** Connor pasted the real
+  scanner output. Verdict: **the parser was right all along** — the 11 Jun confirmation parses all
+  four legs with real times (WEL 07:25 → Luton → Harpenden 08:21; Harpenden 17:22 → Luton → WEL
+  18:08). Three of MY bugs were in the way:
+  - **Route-grouping regressed the real case.** A return-trip confirmation runs WEL→…→WEL, so its
+    end-to-end route never matched the outbound eticket's WEL→HAR. Reverted to **date-grouping +
+    station-overlap clustering**: the confirmation and eticket of one trip share stations and
+    reconcile; two unrelated same-day trips share none and stay separate (the Codex P1).
+  - **One run for a round trip.** `importBookingAsRun` jammed out+return into a single Pass. Now it
+    **splits a booking into journeys** wherever the inter-leg gap exceeds 3h (the hours at the
+    destination) → an outbound Pass + a return Pass, with the office day between.
+  - **No station coords from a confirmation.** Its legs carry station NAMES, not CRS codes, so the
+    station→office walk couldn't route. Now resolves hubs by name (rail-station preferred). (Aside:
+    Harpenden's real CRS is HPD, not the eticket's HAR — name resolution is what works.)
+  - Also this round: **threadTransitions** (Plan days now auto-create routed legs between adjacent
+    stops — the walking-legs fix), **self-healing home bookend** (collapses the "home home office
+    home home" duplicates from a render race), and a temporary **/plan/debug-scan** view (read-only)
+    that produced the ground truth.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
