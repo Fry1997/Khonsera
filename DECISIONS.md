@@ -265,6 +265,40 @@ Newest at the bottom of each section.
     no work lost. tsc clean (excluded `for-design/` reference copies from tsconfig), build green, 197
     tests.
 
+## Planner wiring (master brief — proceeding to completion)
+- **D27 — Planner wiring slices 2–6 (real data + engine + editing + projection).** Building the
+  master brief by dependency, committing each vertical. Mapped the data model first (travel_bookings
+  + travel_booking_segments hold the booked docs incl. `barcode_data`; `updateStop`/`upsertTransition`/
+  `setTransitionMode`/`previewRoute` exist; `bwip-js` is a dependency).
+  - **Slice 2 — Wallet on real data + real barcodes.** `BarcodePresenter` renders genuine
+    Aztec/PDF417/QR via bwip-js into a canvas (client, dynamic import, offline from cached payload,
+    honest fallback). `loadWalletTickets` maps bookings+segments → TicketVM (origin/destination,
+    changes with tight-connection flags, per-segment barcodes, seat/coach/type/price). `/wallet`
+    shows real bookings; `?demo=1` keeps the fixtures overlay.
+  - **Slice 3 — AnchorCard three-variable editing + hardening (§5.3).** AnchorVM gains the
+    arrive-by/duration/leave-by model (six kinds); AnchorCard renders the editable triad; PlanSpine
+    hosts the kind+value editor; `setAnchorVariable` maps kind→stop fields + re-solves so the derived
+    value recomputes; kinds round-trip in `stops.metadata`.
+  - **Slice 4 — LegCard → ComparisonMatrix on the door-to-door engine (§3.3/§5.7).** `compareLeg`
+    prices candidate modes via `previewRoute`, ranks fastest-first (`topViable`/`doorToDoorMinutes`),
+    exclusions filter; `chooseLeg` commits (`setTransitionMode`), `createLeg` resolves a gap into a
+    leg (`upsertTransition`); a fastest-first sheet opens from a leg or a gap.
+  - **Slice 5 — Today as a projection (§8, the thesis).** `projectToday` pure engine selects
+    dormant/readiness/in-transit/arrived + urgency from now vs the plan (7 unit tests); `/today`
+    renders purely as a projection and promotes the next booked document one tap from `ScanView`
+    (`loadJourneyTickets`).
+  - **Slice 6 — Manual structured add (§4.2, the reliable floor).** `addManualAnchor`: createStop →
+    re-sequence by time (insert-by-time, not append) → re-solve; `PlanAdd` "+ Add a fact" sheet
+    (Appointment/Place + title/time/duration). Manual fact ≡ parsed fact in the model.
+  - **One token added** earlier (`--space-3-5`); 204 tests green, build green, tsc clean throughout.
+  - **Still to wire (next sessions):** docked passes on the spine (`.cc-pass--docked` for booked legs)
+    + ScanView from the plan; constraints/exclusions surface feeding the engine (§5.8); the five
+    planner states incl. at-risk (§5.9); reactive recompute on live signals (§3.9/§8.2 — needs a live
+    feed, likely a stubbed signal source first); email forward-to-import (§4.3, P1.5). The tz handling
+    on time edits is the codebase's existing loose local→ISO (a noted follow-up for workspace-tz).
+  - **Stale-clone recurred again** mid-session (container re-cloned at D19 `eea9d23`); reset hard to
+    origin — no work lost.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
