@@ -11,6 +11,7 @@ import { wallClockToIso } from "@/lib/time-zone";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
+import { haversineMeters } from "@/lib/geo";
 import type { TransitionMode } from "@/lib/types/domain";
 import type { ParsedTransportBooking } from "@/lib/gmail/types";
 import type { AnchorVariableKind, AnchorVariableSlot } from "@/components/concierge";
@@ -417,8 +418,83 @@ async function resequenceAndSolve(itineraryId: string): Promise<void> {
     })
     .map((r) => r.id as string);
   if (ordered.length > 1) await reorderStops({ itinerary_id: itineraryId, stop_ids: ordered });
+  await threadTransitions(itineraryId);
   await resolveItineraryTimes(itineraryId);
   await inferAndUpdateSpan(itineraryId);
+}
+
+// Thread the day: ensure a transition (leg) exists between each adjacent pair of
+// stops, so the spine shows real legs with door-to-door times — not bare gaps.
+// The brief does this; the Plan flow didn't, which is why manually-built / captured
+// days never computed walk/drive times. Default mode is distance-based (short =
+// walk, longer = drive); the user can tap-to-compare to change it, and booked
+// runs keep their locked legs. Also clears stale unlocked legs whose endpoints are
+// no longer adjacent (e.g. after a train splits a home→office leg).
+async function threadTransitions(itineraryId: string): Promise<void> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data: stopRows } = await supabase
+    .from("stops")
+    .select(
+      `id, sequence,
+       location:locations(latitude, longitude),
+       customer_site:customer_sites(latitude, longitude),
+       transport_hub:transport_hubs(latitude, longitude)`,
+    )
+    .eq("itinerary_id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .order("sequence");
+  const stops = (stopRows ?? []) as unknown as Array<{
+    id: string;
+    location: { latitude: number | null; longitude: number | null } | null;
+    customer_site: { latitude: number | null; longitude: number | null } | null;
+    transport_hub: { latitude: number | null; longitude: number | null } | null;
+  }>;
+  if (stops.length < 2) return;
+
+  const { data: trans } = await supabase
+    .from("transitions")
+    .select("id, from_stop_id, to_stop_id, is_locked")
+    .eq("itinerary_id", itineraryId);
+  const have = new Set((trans ?? []).map((t) => `${t.from_stop_id}->${t.to_stop_id}`));
+
+  // Adjacent pairs in the current order.
+  const adjacent = new Set<string>();
+  for (let k = 0; k + 1 < stops.length; k++) adjacent.add(`${stops[k].id}->${stops[k + 1].id}`);
+
+  // Drop stale unlocked legs that no longer bridge adjacent stops (booked/locked
+  // legs are always kept — they're the train rides).
+  const stale = (trans ?? []).filter(
+    (t) => !t.is_locked && !adjacent.has(`${t.from_stop_id}->${t.to_stop_id}`),
+  );
+  if (stale.length) {
+    await supabase.from("transitions").delete().in("id", stale.map((t) => t.id as string));
+  }
+
+  const coordOf = (s: (typeof stops)[number]) => {
+    const lat = s.location?.latitude ?? s.customer_site?.latitude ?? s.transport_hub?.latitude;
+    const lng = s.location?.longitude ?? s.customer_site?.longitude ?? s.transport_hub?.longitude;
+    return lat != null && lng != null ? { lat, lng } : null;
+  };
+
+  for (let k = 0; k + 1 < stops.length; k++) {
+    const a = stops[k];
+    const b = stops[k + 1];
+    if (have.has(`${a.id}->${b.id}`)) continue;
+    let mode: TransitionMode = "walk";
+    const pa = coordOf(a);
+    const pb = coordOf(b);
+    if (pa && pb) {
+      const miles = haversineMeters(pa.lat, pa.lng, pb.lat, pb.lng) / 1609.344;
+      mode = miles < 2 ? "walk" : "drive";
+    }
+    await upsertTransition({
+      itinerary_id: itineraryId,
+      from_stop_id: a.id,
+      to_stop_id: b.id,
+      mode,
+    });
+  }
 }
 
 // Import a parsed transport booking as a proper booked RUN — transit_departure →
@@ -538,11 +614,15 @@ export async function importBookingAsRun(input: {
   return { ok: true };
 }
 
-// Ensure a Plan Event is bookended by the user's home/base — a `start` stop at
-// the front and a `return_home` `end` stop at the back — exactly as the brief
-// builds a day (One Toolkit, Two Views). Idempotent: only adds what's missing.
-// Without this, a day captured/imported on the Plan flow starts at the first
-// appointment (not home), so the solver can't back-calculate the leave-home time.
+// Ensure a Plan Event is bookended by the user's home/base — exactly ONE `start`
+// stop at the front and ONE `return_home` `end` stop at the back — like the brief
+// (One Toolkit, Two Views). Without this, a day starts at the first appointment so
+// the solver can't back-calculate the leave-home time.
+//
+// SELF-HEALING: this runs on every Event open, and server components can render
+// concurrently, so a naive "add if missing" raced and produced duplicate home
+// stops ("home home office home home"). Here we COLLAPSE to one start + one end
+// each time — converging no matter how many duplicates a race created.
 export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: boolean; added: boolean }> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
@@ -562,28 +642,34 @@ export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: bool
 
   const { data: rows } = await supabase
     .from("stops")
-    .select("id, type, metadata")
+    .select("id, type, sequence, metadata")
     .eq("itinerary_id", itineraryId)
-    .eq("workspace_id", ctx.workspaceId);
+    .eq("workspace_id", ctx.workspaceId)
+    .order("sequence");
   const stops = rows ?? [];
   if (stops.length === 0) return { ok: true, added: false }; // empty Event — nothing to bookend yet
 
-  const hasStart = stops.some((s) => s.type === "start");
-  const hasReturn = stops.some(
+  const starts = stops.filter((s) => s.type === "start");
+  const ends = stops.filter(
     (s) => s.type === "end" || (s.metadata as Record<string, unknown> | null)?.kind === "return_home",
   );
 
-  let added = false;
-  if (!hasStart) {
-    await createStop({
-      itinerary_id: itineraryId,
-      type: "start",
-      location_id: homeId,
-      is_time_fixed: false,
-    });
-    added = true;
+  // Collapse duplicates: keep the first start + the last end, delete the rest
+  // (and any transitions touching them) — this is what self-heals a race.
+  const extra = [...starts.slice(1), ...ends.slice(0, -1)].map((s) => s.id as string);
+  let changed = false;
+  if (extra.length) {
+    await supabase.from("transitions").delete().eq("itinerary_id", itineraryId).in("from_stop_id", extra);
+    await supabase.from("transitions").delete().eq("itinerary_id", itineraryId).in("to_stop_id", extra);
+    await supabase.from("stops").delete().eq("workspace_id", ctx.workspaceId).in("id", extra);
+    changed = true;
   }
-  if (!hasReturn) {
+
+  if (starts.length === 0) {
+    await createStop({ itinerary_id: itineraryId, type: "start", location_id: homeId, is_time_fixed: false });
+    changed = true;
+  }
+  if (ends.length === 0) {
     await createStop({
       itinerary_id: itineraryId,
       type: "end",
@@ -591,9 +677,9 @@ export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: bool
       is_time_fixed: false,
       metadata: { kind: "return_home" },
     });
-    added = true;
+    changed = true;
   }
 
-  if (added) await resequenceAndSolve(itineraryId);
-  return { ok: true, added };
+  if (changed) await resequenceAndSolve(itineraryId);
+  return { ok: true, added: changed };
 }

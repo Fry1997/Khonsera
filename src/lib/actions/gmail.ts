@@ -393,3 +393,84 @@ export async function debugFetchEmail(messageId: string): Promise<
     parsed,
   });
 }
+
+// Debug: dump what the scanner sees + parses for every matching email, so we can
+// diagnose why a booking's times aren't extracted (e.g. an anytime ticket where
+// only the confirmation carries times). Read-only; surfaced at /plan/debug-scan.
+export async function debugScanTrainline(): Promise<
+  Result<{
+    rows: Array<{
+      id: string;
+      from: string;
+      subject: string;
+      detected: boolean;
+      type: string | null;
+      provider: string | null;
+      trainTimesUrls: string[];
+      segments: Array<{ from: string; to: string; depDate: string; depTime: string; arrTime: string }>;
+      textSnippet: string;
+    }>;
+  }>
+> {
+  await requireUserContext();
+  const gmail = await getValidGmailAccessToken();
+  if (!gmail) return err(errors.integration("gmail", "Gmail not connected."));
+
+  let refs;
+  try {
+    refs = await gmailSearchMessages({ accessToken: gmail.accessToken, query: buildSearchQuery(), maxResults: 30 });
+  } catch (e) {
+    return err(errors.integration("gmail", `Search failed: ${String(e)}`));
+  }
+
+  type DebugRow = {
+    id: string;
+    from: string;
+    subject: string;
+    detected: boolean;
+    type: string | null;
+    provider: string | null;
+    trainTimesUrls: string[];
+    segments: Array<{ from: string; to: string; depDate: string; depTime: string; arrTime: string }>;
+    textSnippet: string;
+  };
+  const rows: DebugRow[] = [];
+
+  for (const ref of refs.slice(0, 30)) {
+    try {
+      const msg = await gmailGetMessage({ accessToken: gmail.accessToken, messageId: ref.id });
+      const from = getHeader(msg.payload.headers, "From") ?? "";
+      const subject = getHeader(msg.payload.headers, "Subject") ?? "";
+      const { html, text } = extractMessageBody(msg);
+      const cleaned = text ?? (html ? stripHtmlPublic(html) : "");
+      // Trainline embeds intended times in /train-times/{from}-to-{to}/{date}/{HHMM} URLs.
+      const urls = [...(html ?? "").matchAll(/train-times\/[^"'\s)]+/gi)].map((m) => m[0]).slice(0, 12);
+      const parsed = detectAndParse(from, subject, html, text);
+      const segs =
+        parsed?.type === "transport"
+          ? (parsed.segments ?? []).map((s) => ({
+              from: s.from_station,
+              to: s.to_station,
+              depDate: s.departure_date,
+              depTime: s.departure_time,
+              arrTime: s.arrival_time,
+            }))
+          : [];
+      rows.push({
+        id: ref.id,
+        from,
+        subject,
+        detected: parsed != null,
+        type: parsed?.type ?? null,
+        provider: parsed && "provider" in parsed ? (parsed as { provider?: string }).provider ?? null : null,
+        trainTimesUrls: urls,
+        segments: segs,
+        textSnippet: cleaned.slice(0, 1500),
+      });
+    } catch {
+      // skip unreadable message
+    }
+  }
+
+  return ok({ rows });
+}
