@@ -284,9 +284,24 @@ export async function reorderStops(
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Update each stop's sequence number. Done in a loop because supabase-js
-  // doesn't support bulk-update-with-CASE-WHEN; fine for 10-20 stops.
-  for (const [idx, stopId] of parsed.value.stop_ids.entries()) {
+  // TWO PASSES to avoid the unique (itinerary_id, sequence) constraint. Assigning
+  // final sequences one-by-one collides the moment a stop's target sequence is
+  // still held by another not-yet-moved stop — the update fails and aborts the
+  // reorder half-done (the bug that left an out-of-order office "before" the
+  // train). First park everything in a high, collision-free range, then assign
+  // the finals into the now-empty low range.
+  const ids = parsed.value.stop_ids;
+  const PARK = 100000;
+  for (const [idx, stopId] of ids.entries()) {
+    const { error } = await supabase
+      .from("stops")
+      .update({ sequence: PARK + idx })
+      .eq("id", stopId)
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("itinerary_id", parsed.value.itinerary_id);
+    if (error) return dbResult<{ itinerary_id: string }>(null, error, "stop");
+  }
+  for (const [idx, stopId] of ids.entries()) {
     const { error } = await supabase
       .from("stops")
       .update({ sequence: idx })
