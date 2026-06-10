@@ -1,6 +1,6 @@
-# Spec — Landing / marketing page + waitlist (`/`) · **NEW, supersedes `landing.md`**
+# Spec — Landing / marketing page + waitlist (`/`)
 
-This **replaces** the old first-touch spec. `/` is no longer a sign-in splash — it's the **public
+`/` is no longer a sign-in splash — it's the **public
 marketing front door**: what Khonsera is, a waitlist to capture interest, the app gated behind login.
 Built per `landingwaitlistbrief.md`. **This is the single most brand-forward surface in the product**
 — "private jet, not Monarch" matters most here. It's live and Code-built on Edition II tokens; this
