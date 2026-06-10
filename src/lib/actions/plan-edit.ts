@@ -6,6 +6,7 @@ import { requireUserContext } from "@/lib/auth";
 import { updateStop, deleteStop } from "@/lib/actions/stops";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
+import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
@@ -243,5 +244,61 @@ export async function removeStop(
   await resolveItineraryTimes(eventId);
   await inferAndUpdateSpan(eventId);
   revalidatePath(`/plan/${eventId}`);
+  return { ok: true };
+}
+
+// Delete a booked travel run (a transit_departure → changeover(s) → arrival span)
+// — clears it from BOTH the timeline (the docked Pass) and the Wallet, since both
+// read the same stops. Removes the run's stops + their transitions + any linked
+// travel_booking/booking_intent, then re-solves. `departureStopId` = the ticket id.
+export async function deleteBookedRun(departureStopId: string): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: dep } = await supabase
+    .from("stops")
+    .select("itinerary_id")
+    .eq("id", departureStopId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if (!dep) return { ok: false, error: "That booking couldn't be found." };
+  const itineraryId = dep.itinerary_id as string;
+
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, type, title, start_time, metadata")
+    .eq("itinerary_id", itineraryId)
+    .order("sequence");
+  const folded = foldStopsToTickets(
+    (rows ?? []).map((s) => ({
+      id: s.id as string,
+      type: s.type as string,
+      title: (s.title as string | null) ?? null,
+      start_time: (s.start_time as string | null) ?? null,
+      metadata: (s.metadata as Record<string, unknown> | null) ?? null,
+    })),
+  );
+  const run = folded.find((f) => f.departureStopId === departureStopId);
+  if (!run) return { ok: false, error: "Couldn't resolve that booking." };
+  const ids = run.stopIds;
+
+  // Linked booking rows (when the booking lives in travel_bookings, not just stops).
+  const { data: intents } = await supabase.from("booking_intents").select("id").in("stop_id", ids);
+  const intentIds = (intents ?? []).map((r) => r.id as string);
+  if (intentIds.length) {
+    await supabase.from("travel_bookings").delete().in("booking_intent_id", intentIds);
+    await supabase.from("booking_intents").delete().in("id", intentIds);
+  }
+
+  // Transitions touching the run, then the stops themselves.
+  await supabase.from("transitions").delete().eq("itinerary_id", itineraryId).in("from_stop_id", ids);
+  await supabase.from("transitions").delete().eq("itinerary_id", itineraryId).in("to_stop_id", ids);
+  await supabase.from("stops").delete().eq("workspace_id", ctx.workspaceId).in("id", ids);
+
+  await resolveItineraryTimes(itineraryId);
+  await inferAndUpdateSpan(itineraryId);
+  revalidatePath(`/plan/${itineraryId}`);
+  revalidatePath("/plan");
+  revalidatePath("/wallet");
   return { ok: true };
 }

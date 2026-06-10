@@ -19,6 +19,7 @@ import {
   chooseLeg,
   createLeg,
   removeStop,
+  deleteBookedRun,
   type LegOption,
 } from "@/lib/actions/plan-edit";
 
@@ -68,6 +69,13 @@ export function PlanSpine({
     });
   }
 
+  function removeBooking(ticket: TicketVM) {
+    if (!window.confirm(`Remove the ${ticket.operator} booking from this day? It clears from the Wallet too.`)) return;
+    void deleteBookedRun(ticket.id).then((res) => {
+      if (res.ok) router.refresh();
+    });
+  }
+
   function openScan(ticket: TicketVM) {
     const leg = ticket.legs[0];
     if (!leg?.barcodes?.length) return;
@@ -87,7 +95,18 @@ export function PlanSpine({
               </div>
               <div>
                 {n.pass ? (
-                  <Pass ticket={n.pass} docked onShow={openScan} />
+                  <div className="cc-node-anchor">
+                    <Pass ticket={n.pass} docked onShow={openScan} />
+                    <button
+                      type="button"
+                      className="cc-node-remove"
+                      onClick={() => removeBooking(n.pass!)}
+                      aria-label="Remove booking"
+                      title="Remove booking"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ) : n.anchor ? (
                   <div className="cc-node-anchor">
                     <AnchorCard

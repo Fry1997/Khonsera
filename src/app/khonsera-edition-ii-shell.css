@@ -606,3 +606,12 @@
   transition: opacity var(--dur-base,120ms) var(--ease-standard,ease), color var(--dur-base,120ms) var(--ease-standard,ease); }
 .cc-node-anchor:hover .cc-node-remove, .cc-node-remove:focus-visible { opacity: 1; }
 .cc-node-remove:hover { color: var(--rust); }
+
+/* ---- Wallet pass delete affordance ---------------------------------------- */
+.cc-pass-wrap { position: relative; }
+.cc-pass-del { position: absolute; top: 10px; right: 10px; z-index: 3; width: 26px; height: 26px;
+  border-radius: var(--radius-pill); border: 1px solid var(--rule); background: var(--card);
+  color: var(--ink-faint); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0;
+  transition: opacity var(--dur-base,120ms) var(--ease-standard,ease), color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-pass-wrap:hover .cc-pass-del, .cc-pass-del:focus-visible { opacity: 1; }
+.cc-pass-del:hover { color: var(--rust); border-color: var(--rust); }

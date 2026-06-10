@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Pass, PassPeek, ScanView } from "@/components/concierge";
 import type { TicketVM, BarcodeVM } from "@/components/concierge";
 import { ticketUseMoment } from "@/components/concierge";
+import { deleteBookedRun } from "@/lib/actions/plan-edit";
 
 // The Wallet (planner master brief §7) — document-centric: every booking across
 // trips, grouped by date, ordered within a date by *time-needed* (§7.1). Round 5b
@@ -15,9 +17,17 @@ import { ticketUseMoment } from "@/components/concierge";
 type Group = { key: string; when?: "today" | "tomorrow"; label: string; tickets: TicketVM[] };
 
 export function WalletScreen({ tickets }: { tickets: TicketVM[] }) {
+  const router = useRouter();
   const [scan, setScan] = useState<{ summary: string; barcodes: BarcodeVM[] } | null>(null);
 
   const { upcoming, archive } = useMemo(() => splitGroups(tickets), [tickets]);
+
+  function remove(t: TicketVM) {
+    if (!window.confirm(`Remove the ${t.operator} booking? It clears from your plan too.`)) return;
+    void deleteBookedRun(t.id).then((res) => {
+      if (res.ok) router.refresh();
+    });
+  }
 
   if (tickets.length === 0) {
     return (
@@ -38,13 +48,13 @@ export function WalletScreen({ tickets }: { tickets: TicketVM[] }) {
   return (
     <div className="cc-wallet cc-wallet--lux">
       {upcoming.map((g) => (
-        <Stack key={g.key} group={g} onScan={(t) => openScan(t, setScan)} />
+        <Stack key={g.key} group={g} onScan={(t) => openScan(t, setScan)} onRemove={remove} />
       ))}
 
       {archive.length ? (
         <div className="cc-wallet-archive">
           {archive.map((g) => (
-            <Stack key={g.key} group={g} onScan={(t) => openScan(t, setScan)} />
+            <Stack key={g.key} group={g} onScan={(t) => openScan(t, setScan)} onRemove={remove} />
           ))}
         </div>
       ) : null}
@@ -56,15 +66,31 @@ export function WalletScreen({ tickets }: { tickets: TicketVM[] }) {
   );
 }
 
-function Stack({ group, onScan }: { group: Group; onScan: (t: TicketVM) => void }) {
+function Stack({
+  group,
+  onScan,
+  onRemove,
+}: {
+  group: Group;
+  onScan: (t: TicketVM) => void;
+  onRemove: (t: TicketVM) => void;
+}) {
   const [hero, ...rest] = group.tickets;
   return (
     <section className="cc-wallet-group" data-when={group.when}>
       <div className="cc-wallet-group-head">{group.label}</div>
       <div className="cc-pass-stack">
-        {hero ? <Pass ticket={hero} onShow={onScan} /> : null}
+        {hero ? (
+          <div className="cc-pass-wrap">
+            <Pass ticket={hero} onShow={onScan} />
+            <button type="button" className="cc-pass-del" onClick={() => onRemove(hero)} aria-label="Remove booking" title="Remove">×</button>
+          </div>
+        ) : null}
         {rest.map((t) => (
-          <PassPeek key={t.id} ticket={t} onSelect={onScan} />
+          <div key={t.id} className="cc-pass-wrap">
+            <PassPeek ticket={t} onSelect={onScan} />
+            <button type="button" className="cc-pass-del" onClick={() => onRemove(t)} aria-label="Remove booking" title="Remove">×</button>
+          </div>
         ))}
       </div>
     </section>
