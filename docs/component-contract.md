@@ -49,10 +49,19 @@ museum by 16:10").
 **States:** `open` (a focused **sheet/overlay** on mobile, not a wide table) · one `selected`
 (hardens fuzzy values) · `empty` (no viable options).
 
-### JourneyListCard — one journey in a list
-**Data:** title, mode, date range, anchor count, open-gap count, status. **States:** list · empty.
-**Distinct from `TicketCard`:** JourneyListCard summarises a *whole plan* in the trips list; a
-TicketCard is *one booked document* within a plan. They are not interchangeable.
+### JourneyListCard — one Event in the Plan index `.cc-journey-card`
+**Data:** title, mode, **span** (single date, or range + "N days"), stop count, open-gap count,
+status. **States:** list · archive (dimmed) · empty. Now `.cc-*`-styled (the one list component that
+hadn't had an Edition II pass) and links into the **Event detail** (`/plan/[id]`), not legacy.
+**Distinct from `TicketCard`:** JourneyListCard summarises a *whole Event*; a TicketCard is *one
+booked document* within it. **DESIGN-PENDING** — queued for a round with the rest of §Plan surfaces.
+
+### Plan surfaces — Code floor, DESIGN-PENDING (proposal "events-by-day")
+New compositions styled by `.cc-*` + tokens as a functional floor, **awaiting a Design round**:
+`.cc-plan-group`/`.cc-plan-list` (index day-groups, Wallet-mirrored) · `.cc-plan-new` + the new-Event
+`.cc-sheet` (start date + optional name) · `.cc-plan-empty` · `.cc-event-head`/`.cc-event-back` (the
+Event detail header) · the variable-editor / comparison / constraints / manual-add `.cc-sheet`s and
+`.cc-kind-*`/`.cc-compare-*`/`.cc-constraints-*` already in use. Day dividers land in a later chunk.
 
 ---
 

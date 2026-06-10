@@ -534,3 +534,45 @@
 
 /* ---- Planner states (§5.9). Resolving dims the spine to focus the sheet. ---- */
 .cc-spine[data-resolving] { opacity: 0.55; transition: opacity var(--dur-slow,160ms) var(--ease-standard,ease); }
+
+/* ============================================================================
+ * PLAN INDEX + EVENT DETAIL (.cc-plan-* / .cc-journey-* / .cc-event-*) —
+ * proposal §3. Code-authored functional floor on Edition II tokens; QUEUED for a
+ * Design round (index rows, the new-Event sheet, the Event header, day dividers).
+ * ========================================================================== */
+
+/* New-Event trigger */
+.cc-plan-new { align-self: flex-start; padding: 12px 20px; }
+
+/* Day groups (mirror the Wallet) */
+.cc-plan-group { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-plan-group-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ink-dim); display: flex; align-items: center; gap: var(--space-3); }
+.cc-plan-group-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--rule-2), transparent 70%); }
+.cc-plan-group[class*="today"] .cc-plan-group-head, .cc-plan-list + * { }
+.cc-plan-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-plan-archive .cc-journey-card { opacity: 0.72; }
+
+/* JourneyListCard — one Event in the index */
+.cc-journey-card { display: flex; flex-direction: column; gap: 2px; background: var(--card);
+  border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);
+  text-decoration: none; transition: border-color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-journey-card:hover { border-color: var(--gold); }
+.cc-journey-when { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.cc-journey-span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--gold-2); }
+.cc-journey-status { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-journey-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px; letter-spacing: -0.01em;
+  color: var(--ink); margin: 4px 0 0; }
+.cc-journey-meta { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }
+.cc-journey-gaps { color: var(--warning); }
+
+/* Empty state */
+.cc-plan-empty { padding: var(--space-8) var(--space-4); max-width: 46ch; }
+.cc-plan-empty-lead { font-family: var(--display); font-weight: var(--fw-medium); font-size: 20px; color: var(--ink); margin: 0; }
+.cc-plan-empty-sub { font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); margin: var(--space-3) 0 0; }
+
+/* Event detail header */
+.cc-event-head { display: flex; flex-direction: column; gap: 2px; }
+.cc-event-back { align-self: flex-start; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-dim); text-decoration: none; margin-bottom: var(--space-3); }
+.cc-event-back:hover { color: var(--gold-2); }

@@ -328,6 +328,35 @@ Newest at the bottom of each section.
     - **Email forward-to-import (§4.3, P1.5):** the parsers exist, but inbound email (a receiving
       address + webhook) is external infra not provisioned here.
 
+## Events-by-day re-architecture (approved; chunked build)
+- **D29 — Functional-integrity review owned; "events organised by day" proposed, approved, chunk 1
+  built.** A live review (code + DB traced) found the real defect: `/plan` was a **singleton** that
+  silently picked a journey — no way to choose/create/switch the day a fact belongs to; capture
+  created hidden new journeys; Today couldn't go live (status stranded at `planning`, only advanceable
+  from a legacy page); the new Wallet read the wrong table so real tickets (intact in stop metadata,
+  Aztecs and all) never showed; the new app routed into legacy pages. Corrected my over-generous prior
+  handoff (done-when #4/#6 were true only on fixtures; the docked pass was **never** schema-blocked).
+  Wrote `docs/functional-integrity-review.md` + the `docs/proposal-events-by-day.md`.
+  - **Approved by the middle layer** with decisions: `Event` is a code-only label (UI shows content +
+    span, no category noun); Today go-live is **automatic** (project any Event whose span covers today);
+    span defaults single-day until a bounding fact extends it; index grouped Today/This week/Later/
+    Past mirroring the Wallet; **build in reviewable chunks**. Edges logged: Today composes overlapping
+    Events (E1); a later bounding fact extends the originating Event or prompts, never silent-new (E2);
+    opening an Event re-runs the solver (E3).
+  - **Chunk 1 (structural split) — built.** `/plan` is now the **index** of Events (JourneyListCard
+    grouped by start date, `PlanCreate` = start date + optional name → opens the Event); `/plan/[id]`
+    is the **Event detail** (the spine moved here: AnchorCard editing, leg comparison, constraints,
+    manual add, planner states), with an Event header + back-to-index and the **E3 guarded re-solve on
+    open**. Events are itineraries — **no migration**. `createEvent` action added.
+  - **Design contract held:** all new surfaces are `.cc-*` + tokens; `JourneyListCard` rebuilt to
+    `.cc-journey-card` (it lacked an Edition II pass) and repointed to `/plan/[id]`; contract doc marks
+    the Plan index/Event-header/new-Event surfaces **DESIGN-PENDING** for a round. tsc clean, build
+    green, 204 tests.
+  - **Next chunks:** 2 capture routing (append-in-Event; global Tell find-or-create by date; dateless
+    → reminder; repoint /capture + Today CTA) · 3 span inference (E2) · 4 Today lifecycle (E1) · 5 day
+    dividers + full Event header. In parallel: the stop-metadata ticket reader + docked Pass + Wallet
+    nav (E3-adjacent). Browser re-testing dropped per your steer.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

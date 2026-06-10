@@ -190,3 +190,36 @@ rule is honoured by bringing the missing tools (scan/transport/hotel) onto the E
 
 *Awaiting your go (and your middle layer's read) before I implement. I'll build nothing until you
 confirm — and I'll adjust this proposal to whatever comes back.*
+
+---
+
+## CONFIRMED (middle-layer review — build it, in chunks)
+
+**Approved.** Decisions locked:
+1. **Naming** — `Event` is the **internal/code** label only; **not surfaced in UI**. UI shows each
+   entry by **content + span** ("Dentist · Tue 15", "Sweden · Wed 25–Sat 28"), no category noun.
+2. **Today go-live** — **automatic**, no toggle: Today projects every Event whose span includes today.
+3. **Span default** — single-day until a bounding fact appears.
+4. **Index grouping** — Today / This week / Later / Past→archive, **mirroring the Wallet's grouping**.
+5. **Scope** — land P0 in **reviewable chunks**, not one programme.
+
+**Edges to resolve in-build:**
+- **E1 — Today under overlap:** if multiple Events cover today, Today **composes** today's slice across
+  all of them (union of today's stops, ordered by time) — never silently pick one.
+- **E2 — Return-fact association:** a later-dated bounding fact at a *global* Tell **extends the
+  originating Event** only when (a) captured inside it, or (b) route-reversal matches an existing
+  Event's outbound; a lone bounding fact matching nothing → one-tap chooser, **never a silent new Event**.
+- **E3 — Legacy leg-recompute:** opening any Event in the new detail **re-runs the leg solver** (guarded)
+  so old plans don't show bare legs.
+
+**Chunked sequence (each a checkpoint):**
+1. **Structural split** — `/plan` index + `/plan/[id]` detail (move the spine to the detail). ← *this chunk*
+2. Capture routing (append-in-Event; global Tell find-or-create; dateless → reminder); repoint /capture + Today CTA.
+3. Span inference (E2).
+4. Today lifecycle (E1).
+5. Day dividers + Event header (full).
+*In parallel/early:* ticket reader + docked Pass + Wallet reader + Wallet nav + ScanView (E3).
+
+**Design contract:** all new surfaces (Plan index, Event header, create affordance, day dividers,
+reminders strip) are Code-built on `.cc-*` + tokens and **queued for a Design round**; `JourneyListCard`
+is rebuilt to `.cc-*` (it had no Edition II pass) and repointed to `/plan/[id]`.
