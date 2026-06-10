@@ -12,8 +12,9 @@ import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 
 // Today / Live — the day-of surface, rendered purely as a PROJECTION of the plan
-// (planner master brief §8). The engine selects which of the four states is
-// active from current time vs the plan; nothing here is authored in Today.
+// (proposal §7 / brief §8). Today projects EVERY Event whose span covers today —
+// no "publish" toggle, no status trap (the lifecycle dead-end is gone) — and
+// COMPOSES overlapping Events into one timeline (E1). The engine picks the state.
 
 function mapStopType(type: string): AnchorType {
   if (type.includes("appointment")) return "appointment";
@@ -41,6 +42,14 @@ const STATE_HEADLINE: Record<string, string> = {
   arrived: "You're here",
 };
 
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function isToday(iso: string | null, today: string): boolean {
+  if (!iso) return false;
+  return new Date(iso).toISOString().slice(0, 10) === today || ymd(new Date(iso)) === today;
+}
+
 export default async function TodayPage() {
   const ctx = await requireUserContext();
   const supabase = await createClient();
@@ -51,37 +60,48 @@ export default async function TodayPage() {
   }
 
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = ymd(now);
 
-  const { data: live } = await supabase
+  // Every Event whose span covers today — any active status (no publish toggle).
+  const { data: events } = await supabase
     .from("itineraries")
-    .select("id, title, mode, date_start, date_end")
+    .select("id, title, mode, date_start, date_end, status")
     .eq("mode", ctx.activeMode)
+    .lte("date_start", today)
     .gte("date_end", today)
-    .in("status", ["planned", "in_progress"])
-    .order("date_start")
-    .limit(1)
-    .maybeSingle();
+    .in("status", ["draft", "planning", "planned", "in_progress"])
+    .order("date_start", { ascending: true });
 
-  let stops: StopRow[] = [];
-  let legFromStops = new Set<string>();
+  const covering = events ?? [];
+
+  // Compose today's slice across all covering Events (E1).
+  const allStops: StopRow[] = [];
+  const legFromStops = new Set<string>();
   let tickets: TicketVM[] = [];
-  if (live?.id) {
+  for (const ev of covering) {
     const [{ data: s }, { data: t }, jt] = await Promise.all([
       supabase
         .from("stops")
         .select("id, type, title, start_time, end_time, location:locations(name)")
-        .eq("itinerary_id", live.id)
+        .eq("itinerary_id", ev.id)
         .order("sequence"),
-      supabase.from("transitions").select("from_stop_id").eq("itinerary_id", live.id),
-      loadJourneyTickets(live.id),
+      supabase.from("transitions").select("from_stop_id").eq("itinerary_id", ev.id),
+      loadJourneyTickets(ev.id),
     ]);
-    stops = (s ?? []) as never;
-    legFromStops = new Set((t ?? []).map((r) => r.from_stop_id as string));
-    tickets = jt;
+    for (const st of (s ?? []) as unknown as StopRow[]) {
+      if (isToday(st.start_time, today)) allStops.push(st);
+    }
+    for (const tr of t ?? []) legFromStops.add(tr.from_stop_id as string);
+    tickets = tickets.concat(jt);
   }
 
-  const anchors: AnchorVM[] = stops.map((s) => ({
+  allStops.sort((a, b) => {
+    const ta = a.start_time ? new Date(a.start_time).getTime() : Infinity;
+    const tb = b.start_time ? new Date(b.start_time).getTime() : Infinity;
+    return ta - tb;
+  });
+
+  const anchors: AnchorVM[] = allStops.map((s) => ({
     id: s.id,
     type: mapStopType(s.type),
     title: s.title ?? s.location?.name ?? "Stop",
@@ -90,7 +110,7 @@ export default async function TodayPage() {
     fixed: true,
   }));
 
-  const projStops: ProjectionStop[] = stops.map((s) => ({
+  const projStops: ProjectionStop[] = allStops.map((s) => ({
     id: s.id,
     title: s.title ?? s.location?.name ?? "Stop",
     start: s.start_time,
@@ -98,10 +118,8 @@ export default async function TodayPage() {
     hasLegAfter: legFromStops.has(s.id),
   }));
   const proj = projectToday(projStops, now.getTime());
-
   const nextAnchor = proj.nextIndex != null ? anchors[proj.nextIndex] : undefined;
 
-  // Promote the next booked document (soonest use-moment from now on).
   const nowMs = now.getTime();
   const nextTicket =
     tickets
@@ -109,6 +127,13 @@ export default async function TodayPage() {
       .filter((x): x is { tk: TicketVM; m: string } => Boolean(x.m))
       .filter((x) => new Date(x.m).getTime() >= nowMs - 30 * 60000)
       .sort((a, b) => a.m.localeCompare(b.m))[0]?.tk ?? tickets[0];
+
+  const sub =
+    covering.length === 1
+      ? covering[0].title ?? undefined
+      : covering.length > 1
+        ? `${covering.length} plans today`
+        : undefined;
 
   return (
     <div className="cc-screen">
@@ -119,11 +144,11 @@ export default async function TodayPage() {
         </h1>
       </header>
 
-      {live && stops.length ? (
+      {anchors.length ? (
         <>
           <ActiveTile
-            headline={STATE_HEADLINE[proj.state] ?? live.title ?? "Your day"}
-            sub={live.title ?? undefined}
+            headline={STATE_HEADLINE[proj.state] ?? "Your day"}
+            sub={sub}
             nextAnchor={nextAnchor}
             leaveBy={proj.leaveByIso ?? undefined}
             urgency={proj.urgency as TodayUrgency}
@@ -134,7 +159,7 @@ export default async function TodayPage() {
           ) : null}
 
           <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            <div className="cc-eyebrow">The chain · {anchors.length}</div>
+            <div className="cc-eyebrow">Today · {anchors.length}</div>
             {anchors.map((a) => (
               <AnchorCard key={a.id} anchor={a} />
             ))}
@@ -152,14 +177,14 @@ export default async function TodayPage() {
             <span className="cc-at-dot" />
             At rest
           </span>
-          <h2 className="cc-at-headline">Nothing live right now</h2>
+          <h2 className="cc-at-headline">Nothing on today</h2>
           <p className="cc-at-sub">
-            When a journey is planned and the day arrives, Khonsera brings it here — the next move, the
+            When a day you&apos;ve planned arrives, Khonsera brings it here — the next move, the
             leave-by, and the chain ahead.
           </p>
           <div style={{ marginTop: "var(--space-4)" }}>
             <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">
-              Plan a day
+              Open the plan
             </Link>
           </div>
         </div>

@@ -576,3 +576,13 @@
 .cc-event-back { align-self: flex-start; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--ink-dim); text-decoration: none; margin-bottom: var(--space-3); }
 .cc-event-back:hover { color: var(--gold-2); }
+
+/* ---- Reminders strip (.cc-reminder*) on the Plan index — proposal §4 -------- */
+.cc-reminders { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-reminders-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.cc-reminder { display: inline-flex; align-items: center; gap: var(--space-2); background: var(--sand);
+  border: 1px solid var(--rule); border-radius: var(--radius-pill); padding: 7px 8px 7px 14px; }
+.cc-reminder-label { font-size: 13px; color: var(--ink-2); }
+.cc-reminder-dismiss { width: 20px; height: 20px; border-radius: 50%; border: none; background: none;
+  color: var(--ink-faint); font-size: 15px; line-height: 1; cursor: pointer; }
+.cc-reminder-dismiss:hover { color: var(--gold-2); }

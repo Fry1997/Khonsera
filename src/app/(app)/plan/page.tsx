@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
 import { PlanCreate } from "@/components/plan/plan-create";
+import { RemindersStrip } from "@/components/plan/reminders-strip";
+import { loadReminders } from "@/lib/actions/reminders";
 
 // Plan — the INDEX of Events (proposal §3a). The two-level structure that fixes
 // the singleton bug: this lists every Event (a day or a multi-day trip) hinged
@@ -84,6 +86,7 @@ export default async function PlanIndexPage() {
   archive.reverse(); // most-recent past first
 
   const empty = itins.length === 0;
+  const reminders = await loadReminders();
 
   return (
     <div className="cc-screen">
@@ -95,6 +98,8 @@ export default async function PlanIndexPage() {
       </header>
 
       <PlanCreate />
+
+      <RemindersStrip initial={reminders} />
 
       {empty ? (
         <div className="cc-plan-empty">
