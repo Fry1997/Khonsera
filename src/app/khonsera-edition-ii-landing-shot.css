@@ -1,0 +1,94 @@
+/* ============================================================================
+ * KHONSERA · EDITION II — LANDING in-context APP SHOT (.cc-shot-* / .cc-tkt-*)
+ * ----------------------------------------------------------------------------
+ * Code-productionised from Design's Round-3 mock (Khonsera_2). Design shipped
+ * the app-shot + two-column layout as render-only in Landing.html and left Code
+ * to make it real ("a live mini-view or a static asset"); this is that layer,
+ * additive, tokens only, imported after khonsera-edition-ii-landing.css. The
+ * shot is the "proof layer" — a phone rendering the live planning view for the
+ * worked example (land 16:40 → make the 17:05 → dinner 19:30). DESIGN-PENDING
+ * for any further elevation.
+ * ========================================================================== */
+
+/* Container queries: split only when the reading COLUMN is wide (not the page),
+   so a narrow desktop shell never splits awkwardly. */
+.cc-mkt-main { container-type: inline-size; }
+
+.cc-mkt-body { font-size: 16px; line-height: 1.6; color: var(--ink-2); margin-top: var(--space-5); max-width: 42ch; }
+.cc-mkt-hero-shot, .cc-mkt-example-shot { margin-top: var(--space-6); }
+@container (min-width: 680px) {
+  .cc-mkt-hero { display: grid; grid-template-columns: 1fr 320px; align-items: center; gap: var(--space-8); }
+  .cc-mkt-hero-shot { margin-top: 0; }
+  .cc-mkt-example { display: grid; grid-template-columns: 1fr 320px; align-items: center; gap: var(--space-8); }
+  .cc-mkt-example-shot { margin-top: 0; }
+}
+
+/* ---- the phone + screen ---- */
+.cc-shot { display: flex; justify-content: center; width: 100%; }
+.cc-shot-phone { width: 100%; max-width: 312px; background: var(--card); border: 1px solid var(--rule);
+  border-radius: 14px; overflow: hidden; box-shadow: 0 24px 50px -30px rgba(20,16,10,.4), 0 2px 8px -4px rgba(20,16,10,.12); }
+.cc-shot-screen { background: var(--paper); border-radius: 14px; overflow: hidden; padding: 16px 16px 18px;
+  display: flex; flex-direction: column; gap: 13px; }
+.cc-shot-head { display: flex; align-items: center; justify-content: space-between; }
+.cc-shot-wm { display: inline-flex; align-items: center; gap: 7px; font-family: var(--display); font-weight: 300;
+  font-size: 11px; letter-spacing: .2em; color: var(--ink); }
+.cc-shot-wm img { height: 14px; width: auto; }
+.cc-shot-day { font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* the ActiveTile */
+.cc-shot-tile { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
+.cc-shot-status { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 8.5px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--sage); }
+.cc-shot-status .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); }
+.cc-shot-headline { font-family: var(--display); font-weight: 500; font-size: 17px; letter-spacing: -.02em;
+  color: var(--ink); line-height: 1.1; margin-top: 8px; }
+.cc-shot-leaveby { display: flex; align-items: baseline; justify-content: space-between; margin-top: 12px;
+  padding-top: 10px; border-top: 1px solid var(--rule); }
+.cc-shot-leaveby .l { font-family: var(--mono); font-size: 8px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+.cc-shot-leaveby .v { font-family: var(--mono); font-size: 20px; color: var(--gold-2); }
+.cc-shot-next { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+.cc-shot-mono { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+
+/* the spine */
+.cc-shot-spine { position: relative; padding-left: 22px; display: flex; flex-direction: column; }
+.cc-shot-rail { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 1px; background: var(--rule-2); }
+.cc-shot-node { position: relative; display: block; }
+.cc-shot-node + .cc-shot-node { margin-top: 12px; }
+.cc-shot-node .d { position: absolute; left: -19px; top: 3px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--paper); border: 1.5px solid var(--rule-2); }
+.cc-shot-node .d-done { background: var(--ink); border-color: var(--ink); }
+.cc-shot-node .d-now { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px var(--gold-soft); }
+.cc-shot-node .t { font-family: var(--mono); font-size: 9.5px; color: var(--ink-dim); }
+.cc-shot-node .t.cc-gold { color: var(--gold-2); }
+.cc-shot-node .n { font-size: 12.5px; color: var(--ink); margin-top: 1px; letter-spacing: -.01em; }
+.cc-shot-node .s { font-size: 10.5px; color: var(--ink-dim); margin-top: 1px; }
+.cc-shot-node .s.cc-italic { font-family: var(--serif); font-style: italic; color: var(--ink-2); }
+
+/* the concierge nudge */
+.cc-shot-nudge { display: flex; align-items: flex-start; gap: 8px; background: var(--gold-tint); border-radius: 8px; padding: 9px 11px; }
+.cc-shot-nudge img { height: 14px; width: auto; flex: none; margin-top: 1px; }
+.cc-shot-nudge span { font-family: var(--serif); font-style: italic; font-size: 11.5px; line-height: 1.4; color: var(--ink); }
+
+/* in-timeline ticket (the docked pass, compact) */
+.cc-shot-ticketnode .cc-tkt { margin-top: -2px; }
+.cc-tkt { background: var(--card); border: 1px solid var(--rule); border-radius: 9px; overflow: hidden; box-shadow: 0 6px 16px -10px rgba(20,16,10,.35); }
+.cc-tkt-band { display: flex; align-items: center; justify-content: space-between; padding: 8px 11px; position: relative; border-bottom: 1px solid var(--rule); }
+.cc-tkt-band::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--gold); }
+.cc-tkt-op { display: inline-flex; align-items: baseline; gap: 7px; font-family: var(--display); font-weight: 500; font-size: 13px; letter-spacing: -.01em; color: var(--ink); }
+.cc-tkt-op .k { font-family: var(--mono); font-size: 8px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-tkt-ref { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--ink-dim); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 6px; }
+.cc-tkt-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 11px; }
+.cc-tkt-end { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cc-tkt-time { font-family: var(--mono); font-size: 18px; color: var(--ink); line-height: 1; }
+.cc-tkt-place { font-size: 10.5px; color: var(--ink-2); }
+.cc-tkt-link { color: var(--ink-dim); }
+.cc-tkt-foot { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border-top: 1px solid var(--rule); }
+.cc-tkt-azt { width: 40px; height: 40px; flex: none; border: 1px solid var(--rule); border-radius: 3px; background: #fff; padding: 3px; display: block; }
+.cc-tkt-azt img, .cc-tkt-azt svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.cc-tkt-ready { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--sage); }
+.cc-tkt-ready .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); }
+.cc-tkt-seat { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); margin-left: auto; }
+
+/* The worked-example italic re-plan line. */
+.cc-mkt-example-note { font-family: var(--serif); font-style: italic; font-size: 18px; line-height: 1.5;
+  color: var(--ink); margin-top: var(--space-4); max-width: 40ch; }
