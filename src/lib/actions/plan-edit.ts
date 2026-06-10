@@ -162,3 +162,61 @@ export async function createLeg(input: {
   revalidatePath("/plan");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Manual structured add (planner master brief §4.2) — the reliable floor under
+// NLP. Lands a fact on the spine by time (createStop → re-sequence by start_time
+// → re-solve), so a manually-entered fact is identical to a parsed one once in
+// the model. Same insert-by-time + recompute as every other capture door.
+// ---------------------------------------------------------------------------
+
+import { createStop, reorderStops } from "@/lib/actions/stops";
+
+export async function addManualAnchor(input: {
+  itineraryId: string;
+  kind: "appointment" | "place";
+  title: string;
+  iso?: string | null;
+  durationMinutes?: number | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const title = input.title.trim();
+  if (!title) return { ok: false, error: "Give it a name." };
+
+  const created = await createStop({
+    itinerary_id: input.itineraryId,
+    type: input.kind === "appointment" ? "appointment" : "other",
+    title,
+    start_time: input.iso ?? null,
+    duration_minutes: input.durationMinutes ?? null,
+    is_time_fixed: Boolean(input.iso),
+  });
+  if (!created.ok) {
+    const msg = "message" in created.error ? created.error.message : "Couldn't add that.";
+    return { ok: false, error: msg };
+  }
+
+  // Re-sequence the whole spine chronologically (insert-by-time, not append).
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, start_time")
+    .eq("itinerary_id", input.itineraryId)
+    .eq("workspace_id", ctx.workspaceId);
+
+  const ordered = (rows ?? [])
+    .slice()
+    .sort((a, b) => {
+      const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
+      const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
+      return ta - tb;
+    })
+    .map((r) => r.id as string);
+
+  if (ordered.length > 1) {
+    await reorderStops({ itinerary_id: input.itineraryId, stop_ids: ordered });
+  }
+
+  revalidatePath("/plan");
+  return { ok: true };
+}

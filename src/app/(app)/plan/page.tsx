@@ -1,4 +1,5 @@
 import { PlanCapture } from "@/components/plan/plan-capture";
+import { PlanAdd } from "@/components/plan/plan-add";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
@@ -218,6 +219,8 @@ export default async function PlanPage() {
           ) : null}
 
           <PlanSpine nodes={nodes} journeyDate={journey.date_start as string} />
+
+          <PlanAdd journeyId={journey.id as string} journeyDate={journey.date_start as string} />
         </>
       )}
 

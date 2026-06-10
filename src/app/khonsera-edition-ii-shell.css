@@ -513,3 +513,11 @@
 .cc-compare-time { font-family: var(--mono); font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cc-compare-miles { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
 .cc-compare-state { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-2); }
+
+/* ---- Manual add trigger (.cc-add-trigger) — §4.2 -------------------------- */
+.cc-add-trigger { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-dim); background: none; border: 1px dashed var(--rule-2); border-radius: var(--radius-pill);
+  padding: 8px 14px; cursor: pointer; transition: border-color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-add-trigger:hover { border-color: var(--gold); color: var(--gold-2); }
+.cc-add-trigger span { font-size: 14px; }
