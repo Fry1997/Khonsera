@@ -353,7 +353,9 @@ export function GmailImportPanel({
   };
 
   const handleImportOne = (booking: ParsedBooking) => {
-    if (booking.type === "transport" && !lastStopId) {
+    // The Plan flow builds a standalone run (no prior stop needed); only the
+    // legacy attach path requires an existing stop to hang the booking off.
+    if (!standaloneRuns && booking.type === "transport" && !lastStopId) {
       setError("Add at least one stop to the itinerary before importing transport bookings.");
       return;
     }
@@ -371,7 +373,7 @@ export function GmailImportPanel({
   const handleImportAll = () => {
     if (!pending || pending.length === 0) return;
     const hasTransport = pending.some((b) => b.type === "transport");
-    if (hasTransport && !lastStopId) {
+    if (!standaloneRuns && hasTransport && !lastStopId) {
       setError("Add at least one stop to the itinerary before importing transport bookings.");
       return;
     }
