@@ -108,8 +108,12 @@ export function mergeTrainlineGroup(group: ParsedBooking[]): ParsedBooking {
   // (WEL→HAR) keyed at where you board (WEL), but the confirmation splits that
   // journey into legs (WEL→Luton→Harpenden). Matching on origin attaches the
   // barcode to the base leg you board at (WEL→Luton), so the Pass shows the Aztec.
+  // Key on the station NAME (first 3 letters), not the CRS code: a confirmation
+  // names the station ("Harpenden") while the eticket carries the code ("HPD"),
+  // and HPD ≠ HAR — so a code-first key would miss the return barcode. The PDF
+  // donor resolves its code to the same name ("Harpenden"), so name-first aligns.
   const origin = (s: { from_station: string; from_station_code: string | null }) =>
-    (s.from_station_code ?? s.from_station ?? "").slice(0, 3).toUpperCase();
+    (s.from_station ?? s.from_station_code ?? "").slice(0, 3).toUpperCase();
   const barcodeByOrigin = new Map<
     string,
     { barcode_ref: string | null; barcode_data: string | null; from_station_code: string | null; ticket_type: string | null; coach: string | null; seat: string | null }

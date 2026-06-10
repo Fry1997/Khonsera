@@ -37,6 +37,9 @@ const STATION_NAMES: Record<string, string> = {
   BMS: "Bromley South",
   MKC: "Milton Keynes Central",
   KET: "Kettering",
+  HPD: "Harpenden",
+  LUT: "Luton",
+  BDM: "Bedford",
   COV: "Coventry",
   PMH: "Portsmouth Harbour",
   SOT: "Southampton Central",
@@ -83,26 +86,36 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
   // Then: Itinerary section with intermediate stops + times
   // Then: Ticket Details with price, NRS ref, etc.
 
-  // Header line: "25 Jun 2026 WEL - LEI"
-  const headerMatch = pdfText.match(
-    /(\d{1,2}\s+\w+\s+\d{4})\s+([A-Z]{3})\s*-\s*([A-Z]{3})/,
-  );
-  const fromCode = headerMatch?.[2] ?? "";
-  const toCode = headerMatch?.[3] ?? "";
+  // Station code pair. Two known Trainline layouts:
+  //   "25 Jun 2026 WEL - LEI"            (Advance/seated tickets)
+  //   "11 Jun 2026 Out: WEL - HPD"       (Anytime Day Return etickets)
+  //   "11 Jun 2026 Ret: HPD - WEL"
+  // So find the first CODE - CODE pair (optionally behind Out:/Ret:) where both
+  // sides are plausible 3-letter CRS codes, rather than anchoring on the date.
+  let fromCode = "";
+  let toCode = "";
+  for (const m of pdfText.matchAll(/(?:Out|Ret(?:urn)?|Outbound|Inbound)?\s*:?\s*\b([A-Z]{3})\b\s*[-–]\s*\b([A-Z]{3})\b/g)) {
+    const a = m[1];
+    const b = m[2];
+    // Reject obvious non-stations (e.g. "ANY", "PER" from "ANY PERMITTED").
+    if (a === b) continue;
+    if (/^(ANY|PER|AND|THE|FOR|ADU|TIC)$/.test(a) || /^(ANY|PER|AND|THE|FOR|ADU|TIC)$/.test(b)) continue;
+    fromCode = a;
+    toCode = b;
+    break;
+  }
 
-  // Date
+  // Date — found anywhere ("11 Jun 2026"), independent of the code pair.
   let date = "";
-  if (headerMatch) {
+  const dateMatch = pdfText.match(/(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})/);
+  if (dateMatch) {
     const MONTHS: Record<string, string> = {
       jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
       jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
     };
-    const parts = headerMatch[1].match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
-    if (parts) {
-      const day = parts[1].padStart(2, "0");
-      const month = MONTHS[parts[2].toLowerCase()] ?? "01";
-      date = `${parts[3]}-${month}-${day}`;
-    }
+    const day = dateMatch[1].padStart(2, "0");
+    const month = MONTHS[dateMatch[2].slice(0, 3).toLowerCase()] ?? "01";
+    date = `${dateMatch[3]}-${month}-${day}`;
   }
 
   // Departure time: "DEPART\n07:13"

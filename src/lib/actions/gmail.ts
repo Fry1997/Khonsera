@@ -77,34 +77,36 @@ async function enrichTrainlineFromPdfs(
   const { extractText } = await import("unpdf").catch(() => ({ extractText: null }));
   if (!extractText) return parsed;
 
-  const tickets = await Promise.all(
+  // Parse text AND decode the Aztec for each PDF, keeping them aligned to their
+  // buffer (the previous code filtered nulls first, then decoded by index — so a
+  // single unparseable PDF mis-attached every barcode). One ticket per PDF; for a
+  // return booking that's the outbound eticket + the return eticket, each with its
+  // own Aztec.
+  const perPdf = await Promise.all(
     pdfBuffers.map(async (buf) => {
       if (!buf) return null;
+      const ab = new Uint8Array(buf).buffer;
+      let ticket: ReturnType<typeof parseTrainlinePdfText> = null;
       try {
-        const result = await extractText(new Uint8Array(buf).buffer);
+        const result = await extractText(ab);
         const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
-        return parseTrainlinePdfText(pdfText);
+        ticket = parseTrainlinePdfText(pdfText);
       } catch {
-        return null;
+        // text extraction failed
       }
+      if (!ticket) return null;
+      try {
+        const barcodeData = await decodeAztecFromPdf(ab);
+        if (barcodeData) ticket.barcode_data = barcodeData;
+      } catch {
+        // Barcode decoding is best-effort — the ticket detail still imports.
+      }
+      return ticket;
     }),
   );
 
-  const validTickets = tickets.filter((t): t is NonNullable<typeof t> => t !== null);
+  const validTickets = perPdf.filter((t): t is NonNullable<typeof t> => t !== null);
   if (validTickets.length === 0) return parsed;
-
-  // Decode Aztec barcodes from PDF images
-  for (let i = 0; i < validTickets.length; i++) {
-    if (validTickets[i].barcode_data) continue;
-    const buf = pdfBuffers[i];
-    if (!buf) continue;
-    try {
-      const barcodeData = await decodeAztecFromPdf(new Uint8Array(buf).buffer);
-      if (barcodeData) validTickets[i].barcode_data = barcodeData;
-    } catch {
-      // Barcode decoding is best-effort
-    }
-  }
 
   const fallbackDate = parsed.segments?.[0]?.departure_date ?? new Date().toISOString().slice(0, 10);
   const pdfSegments = pdfTicketsToSegments(validTickets, fallbackDate);
@@ -397,6 +399,106 @@ export async function debugFetchEmail(messageId: string): Promise<
 // Debug: dump what the scanner sees + parses for every matching email, so we can
 // diagnose why a booking's times aren't extracted (e.g. an anytime ticket where
 // only the confirmation carries times). Read-only; surfaced at /plan/debug-scan.
+// Debug: per-PDF detail for Trainline eticket attachments — did the text parse
+// give from/to, and did the Aztec decode? Read-only; surfaced at /plan/debug-scan.
+export async function debugTrainlinePdfs(): Promise<
+  Result<{
+    rows: Array<{
+      subject: string;
+      pdfs: Array<{
+        filename: string;
+        parsedFrom: string;
+        parsedTo: string;
+        ticketRef: string | null;
+        ticketType: string | null;
+        barcodeDecoded: boolean;
+        barcodeLen: number;
+        textSnippet: string;
+      }>;
+    }>;
+  }>
+> {
+  await requireUserContext();
+  const gmail = await getValidGmailAccessToken();
+  if (!gmail) return err(errors.integration("gmail", "Gmail not connected."));
+
+  let refs;
+  try {
+    refs = await gmailSearchMessages({ accessToken: gmail.accessToken, query: buildSearchQuery(), maxResults: 30 });
+  } catch (e) {
+    return err(errors.integration("gmail", `Search failed: ${String(e)}`));
+  }
+
+  const { extractText } = await import("unpdf").catch(() => ({ extractText: null }));
+  type PdfRow = {
+    filename: string;
+    parsedFrom: string;
+    parsedTo: string;
+    ticketRef: string | null;
+    ticketType: string | null;
+    barcodeDecoded: boolean;
+    barcodeLen: number;
+    textSnippet: string;
+  };
+  const rows: Array<{ subject: string; pdfs: PdfRow[] }> = [];
+
+  for (const ref of refs.slice(0, 30)) {
+    try {
+      const msg = await gmailGetMessage({ accessToken: gmail.accessToken, messageId: ref.id });
+      const from = getHeader(msg.payload.headers, "From") ?? "";
+      const subject = getHeader(msg.payload.headers, "Subject") ?? "";
+      if (!/trainline/i.test(from)) continue;
+      const attachments = extractAttachments(msg).filter(
+        (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+      );
+      if (attachments.length === 0) continue;
+
+      const pdfs: PdfRow[] = [];
+      for (const att of attachments) {
+        let buf: Buffer | null = null;
+        try {
+          buf = await gmailGetAttachment({ accessToken: gmail.accessToken, messageId: ref.id, attachmentId: att.attachmentId });
+        } catch {
+          // skip
+        }
+        let text = "";
+        if (buf && extractText) {
+          try {
+            const r = await extractText(new Uint8Array(buf).buffer);
+            text = Array.isArray(r.text) ? r.text.join("\n") : r.text;
+          } catch {
+            // extraction failed
+          }
+        }
+        const ticket = text ? parseTrainlinePdfText(text) : null;
+        let barcode: string | null = null;
+        if (buf) {
+          try {
+            barcode = await decodeAztecFromPdf(new Uint8Array(buf).buffer);
+          } catch {
+            // decode failed
+          }
+        }
+        pdfs.push({
+          filename: att.filename ?? "(no name)",
+          parsedFrom: ticket?.from_code ?? "",
+          parsedTo: ticket?.to_code ?? "",
+          ticketRef: ticket?.barcode_ref ?? null,
+          ticketType: ticket?.ticket_type ?? null,
+          barcodeDecoded: !!barcode,
+          barcodeLen: barcode?.length ?? 0,
+          textSnippet: text.slice(0, 700),
+        });
+      }
+      rows.push({ subject, pdfs });
+    } catch {
+      // skip unreadable message
+    }
+  }
+
+  return ok({ rows });
+}
+
 export async function debugScanTrainline(): Promise<
   Result<{
     rows: Array<{
