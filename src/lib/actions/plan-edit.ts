@@ -539,14 +539,24 @@ export async function importBookingAsRun(input: {
   // station then routes with real geography). By CRS code where present (etickets),
   // else by NAME — a confirmation's legs only carry station names, and without the
   // coords the station→office walk can't route.
+  // CRS codes are NOT unique across hub kinds — "WEL" is both Wellingborough
+  // (rail_station) AND Welkom Airport (airport, in South Africa). A train booking
+  // must resolve to the rail station, or the home→station leg becomes an 8000-mile
+  // "drive". Prefer the hub kind that matches the booking mode.
+  const wantKind = booking.mode === "flight" ? "airport" : "rail_station";
   const codes = [...new Set(segs.flatMap((s) => [s.from_station_code, s.to_station_code]).filter((c): c is string => !!c))];
   const hubByCode = new Map<string, string>();
   if (codes.length) {
     const { data: hubs } = await supabase
       .from("transport_hubs")
-      .select("id, code")
+      .select("id, code, kind")
       .in("code", codes.map((c) => c.toUpperCase()));
-    for (const h of hubs ?? []) if (h.code) hubByCode.set((h.code as string).toUpperCase(), h.id as string);
+    for (const c of codes) {
+      const cu = c.toUpperCase();
+      const matches = (hubs ?? []).filter((h) => (h.code as string)?.toUpperCase() === cu);
+      const pick = matches.find((h) => h.kind === wantKind) ?? matches[0];
+      if (pick) hubByCode.set(cu, pick.id as string);
+    }
   }
 
   const names = [...new Set(segs.flatMap((s) => [s.from_station, s.to_station]).filter((n): n is string => !!n))];
@@ -561,8 +571,8 @@ export async function importBookingAsRun(input: {
       // Prefer an exact rail-station name match (avoids "Luton Airport Parkway"
       // matching "Luton"); fall back to any exact-name hub.
       const matches = (hubs ?? []).filter((h) => (h.name as string)?.toLowerCase() === n.toLowerCase());
-      const rail = matches.find((h) => h.kind === "rail_station") ?? matches[0];
-      if (rail) hubByName.set(n.toLowerCase(), rail.id as string);
+      const pick = matches.find((h) => h.kind === wantKind) ?? matches[0];
+      if (pick) hubByName.set(n.toLowerCase(), pick.id as string);
     }
   }
 
