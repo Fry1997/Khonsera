@@ -1,10 +1,10 @@
-import { debugScanTrainline } from "@/lib/actions/gmail";
+import { scanGmailForBookings } from "@/lib/actions/gmail";
 
-// TEMPORARY diagnostic surface. Dumps what the Gmail scanner sees + parses for
-// every matching email, so we can see why a booking's times aren't extracted
-// (especially the anytime-day-return confirmation vs eticket). Read-only.
+// TEMPORARY diagnostic surface. Runs the REAL scan (PDF enrichment + merge) and
+// dumps the bookings the import would receive — so we can see whether a booking's
+// times survived the confirmation/eticket reconciliation. Read-only.
 export default async function DebugScanPage() {
-  const res = await debugScanTrainline();
+  const res = await scanGmailForBookings();
 
   if (!res.ok) {
     return (
@@ -17,14 +17,34 @@ export default async function DebugScanPage() {
     );
   }
 
-  const dump = JSON.stringify(res.value.rows, null, 2);
+  // Compact, readable view of exactly what import would get.
+  const view = res.value.bookings.map((b) =>
+    b.type === "transport"
+      ? {
+          kind: "transport",
+          subject: b.raw_subject,
+          ref: b.booking_reference,
+          price: b.price,
+          segments: b.segments.map((s) => ({
+            from: s.from_station,
+            to: s.to_station,
+            date: s.departure_date,
+            dep: s.departure_time,
+            arr: s.arrival_time,
+            barcode: s.barcode_data ? "yes" : s.barcode_ref ? "ref-only" : "no",
+          })),
+        }
+      : { kind: b.type, subject: b.raw_subject },
+  );
+  const dump = JSON.stringify(view, null, 2);
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ fontFamily: "var(--display)" }}>Scan debug — {res.value.rows.length} emails</h1>
+      <h1 style={{ fontFamily: "var(--display)" }}>
+        Scan debug — {res.value.bookings.length} bookings (scanned {res.value.scanned_count})
+      </h1>
       <p className="small">
-        Copy everything in the box below and paste it back to Khonsera so the parser can be fixed.
-        This page is temporary.
+        This is exactly what “Import” receives. Copy the box and paste it back to Khonsera. Temporary page.
       </p>
       <textarea
         readOnly
@@ -33,7 +53,7 @@ export default async function DebugScanPage() {
           width: "100%",
           height: "70vh",
           fontFamily: "var(--mono)",
-          fontSize: 11,
+          fontSize: 12,
           whiteSpace: "pre",
           padding: 12,
           marginTop: 12,
