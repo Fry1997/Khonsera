@@ -50,7 +50,24 @@ tokens — a flagged Design elevation candidate (screenshot it live and run it r
 
 ## Styling
 
-All classes are additive in `src/app/khonsera-edition-ii-shell.css` (never `globals.css`):
-`.cc-mkt-*` (marketing sections), `.cc-wl-*` (waitlist form + joined state), `.cc-gated-*` (gated
-screen). Restraint-led: warm linen, one gold accent, lots of paper. Copy is the brief §8 draft —
-**Design owns final voice.**
+Two layers, both additive (never `globals.css`):
+- **Base** in `src/app/khonsera-edition-ii-shell.css` — the `.cc-mkt-*` / `.cc-wl-*` / `.cc-gated-*`
+  structure Code authored.
+- **Elevation** in `src/app/khonsera-edition-ii-landing.css` (**Round 3, Design**, imported **last**
+  in `layout.tsx`) — the brand pass over those exact classes: the "slow blue hour" radial wash, 58px
+  hero, gold-hairline section dividers, the bone-panel waitlist frame, the joined-morph motion, and
+  the gated dead-end. No markup/class renames — purely token-driven restyle.
+
+### Markup hooks the elevation expects (added in Round 3)
+- Hero: `.cc-mkt-hero-eyebrow` (mono kicker) + `.cc-mkt-hero-meta` (scarcity line) — `src/app/page.tsx`.
+- Waitlist: `.cc-mkt-waitlist-inner` (bone panel wrapper); `.cc-wl-note` (mono reassurance, idle/error-free).
+- Joined block: `.cc-wl-joined-check` / `-h` / `-sub` — `src/components/landing/waitlist-form.tsx`.
+- Gated: `.cc-gated-h` / `-sub` (Spectral `<em>`) / `-signout`.
+
+### Joined-state morph
+Driven by `data-*` the form toggles: on success the form sets `[data-leaving]` (sinks out ~200ms),
+then after `SINK_MS` swaps to `.cc-wl-joined[data-enter]` (rises in ~360ms). The CSS gates both
+animations behind `prefers-reduced-motion: no-preference` → reduced motion gets a straight cross-fade.
+
+Copy is **Design's Round-3 final voice** (withholding, "by invitation · opening slowly"), adopted
+from the for-code pack. Tunable by Connor.

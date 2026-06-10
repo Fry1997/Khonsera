@@ -6,9 +6,14 @@ import type { WaitlistResult } from "@/lib/waitlist-shared";
 
 // Landing+waitlist brief §6 — single email + "Join the waitlist". On submit the
 // form morphs INLINE to the joined state (no reload). Honeypot, no captcha.
-// Code-authored on Edition II tokens; a prime Design elevation candidate (§9).
+// Round 3 (Design): the morph settles, never pops — the form sinks out
+// (data-leaving, ~200ms), the joined block rises in (data-enter, ~360ms); the
+// CSS gates both on prefers-reduced-motion → straight cross-fade.
 
 type View = "form" | "joined" | "already";
+
+// Matches the form sink-out duration in khonsera-edition-ii-landing.css.
+const SINK_MS = 200;
 
 export function WaitlistForm({
   source,
@@ -18,6 +23,7 @@ export function WaitlistForm({
   initialJoined?: boolean;
 }) {
   const [view, setView] = useState<View>(initialJoined ? "joined" : "form");
+  const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -31,27 +37,25 @@ export function WaitlistForm({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const res: WaitlistResult = await joinWaitlist(formData);
-      if (res.status === "joined") setView("joined");
-      else if (res.status === "already") setView("already");
-      else setError(res.message);
+      if (res.status === "invalid") {
+        setError(res.message);
+        return;
+      }
+      // Success: play the sink-out, then swap to the joined block (which rises in).
+      const next: View = res.status === "already" ? "already" : "joined";
+      setLeaving(true);
+      setTimeout(() => setView(next), SINK_MS);
     });
   }
 
   return (
-    <form className="cc-wl-form" onSubmit={onSubmit} noValidate>
+    <form
+      className="cc-wl-form"
+      onSubmit={onSubmit}
+      noValidate
+      data-leaving={leaving ? "" : undefined}
+    >
       {source ? <input type="hidden" name="source" value={source} /> : null}
-      {/* Honeypot — visually hidden, off the tab order. Bots fill it; humans don't. */}
-      <div className="cc-wl-trap" aria-hidden>
-        <label>
-          Company
-          <input
-            type="text"
-            name="company"
-            tabIndex={-1}
-            autoComplete="off"
-          />
-        </label>
-      </div>
 
       <div className="cc-wl-row">
         <input
@@ -63,36 +67,54 @@ export function WaitlistForm({
           required
           aria-label="Email address"
           aria-invalid={error ? true : undefined}
-          disabled={pending}
+          disabled={pending || leaving}
         />
         <button
           type="submit"
           className="cc-btn cc-btn-gold cc-wl-submit"
-          disabled={pending}
+          disabled={pending || leaving}
         >
           {pending ? "Joining…" : "Join the waitlist"}
         </button>
       </div>
-      {error ? <p className="cc-wl-error">{error}</p> : null}
+
+      {error ? (
+        <div className="cc-wl-error">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+          {error}
+        </div>
+      ) : (
+        <div className="cc-wl-note">One email. No noise. Leave whenever you like.</div>
+      )}
+
+      {/* Honeypot — visually hidden, off the tab order. Bots fill it; humans don't. */}
+      <div className="cc-wl-trap" aria-hidden>
+        <input type="text" name="company" tabIndex={-1} autoComplete="off" />
+      </div>
     </form>
   );
 }
 
 function JoinedState({ already }: { already: boolean }) {
   return (
-    <div className="cc-wl-joined" role="status">
-      <span className="cc-wl-joined-mark" aria-hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <div className="cc-wl-joined" role="status" data-enter="">
+      <span className="cc-wl-joined-check" aria-hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 6 9 17l-5-5" />
         </svg>
       </span>
-      <p className="cc-wl-joined-lead">
-        {already ? "You're already on the list." : "You're on the list."}
-      </p>
-      <p className="cc-wl-joined-sub">
-        We&apos;ll be in touch the moment Khonsera opens its doors. Until then,
-        safe travels.
-      </p>
+      <div>
+        <p className="cc-wl-joined-h">
+          {already ? "You're already on the list." : "You're on the list."}
+        </p>
+        <p className="cc-wl-joined-sub">
+          {already
+            ? "We have your place. We'll be in touch when it opens."
+            : "We'll write when your place is ready — nothing before."}
+        </p>
+      </div>
     </div>
   );
 }

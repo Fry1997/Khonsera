@@ -195,6 +195,23 @@ Newest at the bottom of each section.
     `.cc-gated-*` appended to `khonsera-edition-ii-shell.css`, additive, never globals). This is a
     flagged Design elevation candidate — handed off for a brand pass on the live screenshot.
 
+- **D24 — Round 3 landing elevation adopted (Design → Code, `Khonsera_14`).** Design returned the
+  brand pass over the live landing classes; applied verbatim. New layer
+  `src/app/khonsera-edition-ii-landing.css` imported **last** in `layout.tsx` (after globals → brand
+  → screens → shell). No class renames, markup-compatible: the "slow blue hour" radial wash, 58px
+  mobile-truthful hero, gold-hairline section dividers, 3-up props, the **bone-panel** waitlist frame,
+  the **joined-morph motion** (form sinks ~200ms → joined block rises ~360ms, reduced-motion
+  cross-fades), and the gated dead-end on deeper linen.
+  - **Thin markup hooks added** (`src/app/page.tsx` + `waitlist-form.tsx`): `.cc-mkt-hero-eyebrow`,
+    `.cc-mkt-hero-meta`, `.cc-mkt-waitlist-inner`, `.cc-wl-note`, `.cc-wl-joined-check/-h/-sub`,
+    `.cc-gated-h/-sub/-signout`; the form drives `[data-leaving]`/`[data-enter]` for the morph.
+  - **Copy adopted as Design's final voice** ("A travel concierge · est. MMXXVI", "By invitation ·
+    opening slowly", the Spectral `<em>` clauses, the three "How it helps" props). Tunable later.
+  - **OG card** rebuilt in `next/og` to mirror Design's `OG-card.html` composition + palette (Satori
+    can't load woff2/synthesise italics here, so type is the default sans; a flat PNG export is the
+    fallback if pixel-exact Satoshi is wanted). **Zero token requests** — all resolved on the manifest.
+  - tsc clean, build green, 197 tests.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

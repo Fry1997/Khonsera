@@ -65,21 +65,20 @@ export default async function LandingPage() {
 
 function GatedScreen() {
   return (
-    <main className="cc-gated">
-      <div className="cc-gated-inner">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="cc-gated-emblem" src="/brand/mk-ink.png" alt="" />
-        <p className="cc-gated-lead">Thank you — your place is reserved.</p>
-        <p className="cc-gated-sub">
-          We&apos;ll let you know the moment your access is ready.
-        </p>
-        <form action={signOut} className="cc-gated-foot">
-          <button type="submit" className="cc-auth-link">
-            Sign out
-          </button>
-        </form>
-      </div>
-    </main>
+    <div className="cc-gated">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="cc-gated-emblem" src="/brand/mk-ink.png" alt="Khonsera" />
+      <h1 className="cc-gated-h">Thank you — your place is reserved.</h1>
+      <p className="cc-gated-sub">
+        Khonsera is opening slowly. We&apos;ll write the moment{" "}
+        <em>your place is ready</em> — nothing before.
+      </p>
+      <form action={signOut}>
+        <button type="submit" className="cc-gated-signout">
+          Sign out
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -87,18 +86,19 @@ function GatedScreen() {
 /* Logged-out — the marketing page (brief §5 sections, §8 draft copy). */
 /* ------------------------------------------------------------------ */
 
+// Three quiet props — Design's Round-3 voice ("How it helps"), not a feature list.
 const VALUE_PROPS = [
   {
-    k: "Say it plainly.",
-    d: "Capture your day in plain language, in any order. Khonsera threads it into a coherent plan.",
+    k: "Plan the whole journey",
+    d: "Door to door, every leg threaded — not just the flight.",
   },
   {
-    k: "Time, worked backwards.",
-    d: "When to leave, which train, which connection — ranked by real door-to-door time, not guesswork.",
+    k: "Hold the timing",
+    d: "Leave-by, kept live, so you're never doing the arithmetic.",
   },
   {
-    k: "It watches, so you don't.",
-    d: "Delays, gate changes, weather. Khonsera sees them coming and quietly tells you what to do.",
+    k: "Stay ahead of trouble",
+    d: "The delay, the change — handled before it reaches you.",
   },
 ];
 
@@ -117,36 +117,38 @@ function Marketing({ joined }: { joined: boolean }) {
       </header>
 
       <main className="cc-mkt-main">
-        {/* Hero */}
+        {/* Hero — the money shot */}
         <section className="cc-mkt-hero">
+          <span className="cc-mkt-hero-eyebrow">A travel concierge · est. MMXXVI</span>
           <h1 className="cc-mkt-headline">Your travel, quietly handled.</h1>
           <p className="cc-mkt-sub">
-            Tell Khonsera the day in plain words. It threads the plan, works the
-            time around it, and watches the world so you don&apos;t have to.
+            A calm concierge for the hours between destinations —{" "}
+            <em>the train that might not run, the taxi at dusk,</em> the careful
+            arithmetic of getting there.
           </p>
           <a href="#waitlist" className="cc-btn cc-btn-gold cc-mkt-hero-cta">
             Join the waitlist
           </a>
+          <div className="cc-mkt-hero-meta">By invitation · opening slowly</div>
         </section>
 
         {/* What it is */}
         <section className="cc-mkt-section">
           <span className="cc-mkt-eyebrow">What it is</span>
           <p className="cc-mkt-lede">
-            Not another booking site. Khonsera is the layer above them —{" "}
-            <em>the part that thinks</em>. Tell it the fixed points of your day,
-            in any order; it works out everything in between, back to the minute,
-            and keeps watch as things change.
+            A quiet hand on the in-between hours —{" "}
+            <em>so the day holds together</em> without you having to hold it.
           </p>
         </section>
 
-        {/* Three quiet value props */}
+        {/* How it helps — three quiet props */}
         <section className="cc-mkt-section">
+          <span className="cc-mkt-eyebrow">How it helps</span>
           <div className="cc-mkt-props">
             {VALUE_PROPS.map((v) => (
               <div key={v.k} className="cc-mkt-prop">
                 <span className="cc-mkt-prop-dot" aria-hidden />
-                <h3 className="cc-mkt-prop-k">{v.k}</h3>
+                <p className="cc-mkt-prop-k">{v.k}</p>
                 <p className="cc-mkt-prop-d">{v.d}</p>
               </div>
             ))}
@@ -154,37 +156,36 @@ function Marketing({ joined }: { joined: boolean }) {
         </section>
 
         {/* Who it's for */}
-        <section className="cc-mkt-section cc-mkt-who">
+        <section className="cc-mkt-who">
           <span className="cc-mkt-eyebrow">Who it&apos;s for</span>
           <p className="cc-mkt-lede">
-            Executive treatment, for people who don&apos;t have an assistant.
-            Khonsera gives an ordinary working day the attention a private office
-            would.
+            For people who travel often and would rather{" "}
+            <em>arrive than organise</em>.
           </p>
         </section>
 
-        {/* Waitlist block */}
+        {/* Waitlist block — framed in bone, the one conversion moment */}
         <section id="waitlist" className="cc-mkt-waitlist">
-          <h2 className="cc-mkt-waitlist-h">
-            Khonsera is being built with care.
-          </h2>
-          <p className="cc-mkt-waitlist-sub">
-            Join the waitlist and we&apos;ll tell you the moment it opens.
-          </p>
-          <WaitlistForm source="landing" initialJoined={joined} />
+          <div className="cc-mkt-waitlist-inner">
+            <h2 className="cc-mkt-waitlist-h">Join the waitlist.</h2>
+            <p className="cc-mkt-waitlist-sub">
+              Khonsera opens slowly, by invitation. Leave your email and
+              we&apos;ll keep your place.
+            </p>
+            <WaitlistForm source="landing" initialJoined={joined} />
+          </div>
         </section>
-
-        {/* Footer */}
-        <footer className="cc-mkt-foot">
-          <span className="cc-mkt-foot-name">Khonsera</span>
-          <span className="cc-mkt-foot-line">a calmer way to travel.</span>
-          <span className="cc-mkt-foot-meta">
-            <a href="mailto:hello@khonsera.com">contact</a>
-            <span aria-hidden>·</span>
-            <span>© Khonsera</span>
-          </span>
-        </footer>
       </main>
+
+      {/* Footer — one mono line */}
+      <footer className="cc-mkt-foot">
+        <span className="name">Khonsera</span>
+        <span>Travel days, considered.</span>
+        <a className="sp" href="mailto:hello@khonsera.com">
+          hello@khonsera.com
+        </a>
+        <span>© MMXXVI</span>
+      </footer>
     </div>
   );
 }
