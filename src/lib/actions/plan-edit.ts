@@ -189,15 +189,22 @@ export async function addManualAnchor(input: {
   title: string;
   iso?: string | null;
   durationMinutes?: number | null;
-  address?: string | null; // a concrete address → geocoded to coords (so it routes)
+  // The PlacePicker resolves a real, geocoded place (saved location or a Google
+  // pin promoted into `locations`) and hands back its id — so the walk to/from
+  // it routes. Prefer these over the raw-address fallback.
+  locationId?: string | null;
+  customerSiteId?: string | null;
+  address?: string | null; // raw-text fallback → geocoded to coords
 }): Promise<{ ok: boolean; error?: string }> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "Give it a name." };
 
-  // A specific place → make a geocoded location so the walk to/from it routes.
-  let locationId: string | null = null;
+  // A specific place → coordinates so the leg routes. The picker already
+  // geocoded; only fall back to geocoding a raw address when no place was bound.
+  let locationId: string | null = input.locationId ?? null;
+  const customerSiteId = input.customerSiteId ?? null;
   const address = input.address?.trim();
-  if (address) {
+  if (!locationId && !customerSiteId && address) {
     const loc = await createLocation({ name: title, type: "other", address });
     if (loc.ok) locationId = loc.value.id;
   }
@@ -210,6 +217,7 @@ export async function addManualAnchor(input: {
     duration_minutes: input.durationMinutes ?? null,
     is_time_fixed: Boolean(input.iso),
     location_id: locationId,
+    customer_site_id: customerSiteId,
   });
   if (!created.ok) {
     const msg = "message" in created.error ? created.error.message : "Couldn't add that.";

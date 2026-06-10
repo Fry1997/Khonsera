@@ -454,6 +454,25 @@ Newest at the bottom of each section.
   - **Next:** a manual structured **add-transport** (operator + from/to + times + ref) for when there's
     no email; and an Edition II pass on the import panel.
 
+- **D36 — Geocoded PlacePicker on manual add + anytime-ticket parse merge (live-testing fixes).**
+  - **Real place-picker on manual Place/Appointment add.** The manual add's flat "Address" text box
+    never geocoded — so a place pinned nowhere and its leg couldn't route. Replaced it with the
+    existing `PlacePicker` (saved places pin to the top, then Google autocomplete; picking a Google
+    result promotes it into `locations` with a `google_place_id` → real coords). `addManualAnchor` now
+    takes a resolved `locationId`/`customerSiteId` (raw-address geocode kept only as a fallback). The
+    Event detail page loads customers/sites/locations and threads them in. One-toolkit parity: same
+    picker the brief uses.
+  - **Anytime Day Return → no more midnight trains.** Trainline sends a CONFIRMATION (intended times +
+    price) and an ETICKET (barcodes); for an open/anytime ticket the eticket/PDF has no scheduled time
+    (valid all day → 00:00), so the old dedup, by keeping just one email, could strand the trip at
+    midnight. Replaced "keep highest-scored, discard the rest" with **merge**: the member with real
+    times is the spine, then barcodes / station-codes / ticket-type from the others graft onto matching
+    legs by station pair. Confirmation gives the WHEN, eticket gives the WHAT-YOU-SCAN. Extracted to a
+    pure `src/lib/gmail/dedup.ts` with 4 unit tests (208 total). Needs a fresh Gmail re-scan to take
+    effect on the cached 11 Jun booking.
+  - **Still open (flagged by Connor):** a first-class "open/flexible ticket, valid all day" state
+    (show the intended train but mark the ticket all-day) — a model/UI feature, not just a parse fix.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

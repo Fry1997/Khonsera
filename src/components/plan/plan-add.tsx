@@ -5,24 +5,44 @@ import { useRouter } from "next/navigation";
 import { addManualAnchor, addTransport } from "@/lib/actions/plan-edit";
 import { wallClockToIso } from "@/lib/time-zone";
 import { TransportHubPicker } from "@/components/transport-hub-picker";
+import {
+  PlacePicker,
+  type PlaceSelection,
+  type PlacePickerCustomer,
+  type PlacePickerCustomerSite,
+  type PlacePickerLocation,
+} from "@/components/place-picker";
 
 // Manual structured add (planner master brief §4.2) — the precise / fallback
-// capture door. Three fact types: an Appointment or Place (with a concrete
-// ADDRESS so it gets coordinates and routes), or Transport as a STANDALONE fact
-// (a train/flight from A to B at a time — no fixed anchor required first).
+// capture door. Three fact types: an Appointment or Place (bound to a real,
+// geocoded place via the PlacePicker so it gets coordinates and routes), or
+// Transport as a STANDALONE fact (a train/flight from A to B at a time — no
+// fixed anchor required first).
 
 type Kind = "appointment" | "place" | "transport";
 type TMode = "train" | "flight";
 type Hub = { id: string | null; label: string | null };
 
-export function PlanAdd({ journeyId, journeyDate }: { journeyId: string; journeyDate: string }) {
+export function PlanAdd({
+  journeyId,
+  journeyDate,
+  customers,
+  customerSites,
+  locations,
+}: {
+  journeyId: string;
+  journeyDate: string;
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<Kind>("appointment");
 
   // anchor fields
   const [title, setTitle] = useState("");
-  const [address, setAddress] = useState("");
+  const [place, setPlace] = useState<PlaceSelection | null>(null);
   const [time, setTime] = useState("");
   const [hours, setHours] = useState(1);
   const [mins, setMins] = useState(0);
@@ -40,7 +60,7 @@ export function PlanAdd({ journeyId, journeyDate }: { journeyId: string; journey
   const [pending, setPending] = useState(false);
 
   function reset() {
-    setTitle(""); setAddress(""); setTime(""); setHours(1); setMins(0);
+    setTitle(""); setPlace(null); setTime(""); setHours(1); setMins(0);
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
     setError(null);
@@ -84,8 +104,11 @@ export function PlanAdd({ journeyId, journeyDate }: { journeyId: string; journey
       return;
     }
 
-    if (!title.trim()) {
-      setError("Give it a name.");
+    // For a Place, the bound place name IS the title when the user hasn't typed
+    // a more specific one. An Appointment keeps its own "what" + a place it sits at.
+    const resolvedTitle = title.trim() || (kind === "place" ? place?.label?.trim() ?? "" : "");
+    if (!resolvedTitle) {
+      setError(kind === "place" ? "Pick or name a place." : "Give it a name.");
       return;
     }
     setPending(true);
@@ -94,8 +117,9 @@ export function PlanAdd({ journeyId, journeyDate }: { journeyId: string; journey
     void addManualAnchor({
       itineraryId: journeyId,
       kind: kind === "appointment" ? "appointment" : "place",
-      title: title.trim(),
-      address: address.trim() || null,
+      title: resolvedTitle,
+      locationId: place?.kind === "location" ? place.location_id : null,
+      customerSiteId: place?.kind === "customer_site" ? place.customer_site_id : null,
       iso,
       durationMinutes,
     }).then(done);
@@ -162,14 +186,20 @@ export function PlanAdd({ journeyId, journeyDate }: { journeyId: string; journey
             ) : (
               <>
                 <label className="cc-time-field">
-                  <span className="cc-var-label">{kind === "appointment" ? "What" : "Where"}</span>
+                  <span className="cc-var-label">{kind === "appointment" ? "What" : "Name (optional)"}</span>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                     placeholder={kind === "appointment" ? "Client meeting" : "The office"} autoFocus />
                 </label>
                 <label className="cc-time-field">
-                  <span className="cc-var-label">Address (optional — pins it on the map)</span>
-                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                    placeholder="1 Example St, London EC1A 1BB" />
+                  <span className="cc-var-label">{kind === "appointment" ? "Where (pins it on the map)" : "Place (pins it on the map)"}</span>
+                  <PlacePicker
+                    customers={customers}
+                    customerSites={customerSites}
+                    locations={locations}
+                    value={place}
+                    onChange={setPlace}
+                    placeholder="Search — your saved places pin to the top"
+                  />
                 </label>
                 <div className="cc-dur-row">
                   <label>

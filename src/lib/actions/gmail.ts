@@ -14,6 +14,7 @@ import {
 } from "@/lib/google/gmail";
 import { detectAndParse, stripHtmlPublic } from "@/lib/gmail/parsers";
 import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
+import { deduplicateTrainlineBookings } from "@/lib/gmail/dedup";
 import {
   parseTrainlinePdfText,
   pdfTicketsToSegments,
@@ -46,53 +47,6 @@ const BOOKING_SENDERS = [
   "emirates",
   "virgin atlantic",
 ];
-
-function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedBooking[] {
-  const trainline: ParsedBooking[] = [];
-  const rest: ParsedBooking[] = [];
-
-  for (const b of bookings) {
-    if (b.type === "transport" && b.provider === "Trainline") {
-      trainline.push(b);
-    } else {
-      rest.push(b);
-    }
-  }
-
-  if (trainline.length <= 1) return bookings;
-
-  // Group by travel date — bookings on the same date are likely duplicates
-  const byDate = new Map<string, ParsedBooking[]>();
-  for (const b of trainline) {
-    const date = getTravelDate(b) ?? "unknown";
-    const group = byDate.get(date) ?? [];
-    group.push(b);
-    byDate.set(date, group);
-  }
-
-  const kept: ParsedBooking[] = [];
-  for (const group of byDate.values()) {
-    if (group.length === 1) {
-      kept.push(group[0]);
-      continue;
-    }
-    // Prefer booking confirmation (has departure times != "00:00") over eticket
-    const scored = group.map((b) => {
-      let score = 0;
-      if (b.type === "transport") {
-        if (/booking\s*confirmation/i.test(b.raw_subject)) score += 10;
-        if (b.price != null) score += 3;
-        const hasTimes = b.segments.some((s) => s.departure_time && s.departure_time !== "00:00");
-        if (hasTimes) score += 5;
-      }
-      return { booking: b, score };
-    });
-    scored.sort((a, b) => b.score - a.score);
-    kept.push(scored[0].booking);
-  }
-
-  return [...rest, ...kept];
-}
 
 async function enrichTrainlineFromPdfs(
   accessToken: string,

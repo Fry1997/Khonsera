@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { PlanCapture } from "@/components/plan/plan-capture";
 import { PlanAdd } from "@/components/plan/plan-add";
+import type { PlacePickerLocation } from "@/components/place-picker";
 import { PlanImport } from "@/components/plan/plan-import";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
@@ -216,6 +217,15 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const constraints = await loadConstraints();
   const stopById = new Map(stops.map((st) => [st.id, st]));
 
+  // PlacePicker data — saved places pin to the top, then Google autocomplete.
+  // Lets manual Place/Appointment adds bind a real, geocoded location so the
+  // leg to/from it routes (not a bare un-geocoded address string).
+  const [{ data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
+    supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
+    supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
+    supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
+  ]);
+
   // Collapse each booked transit run (departure → changeover(s) → arrival) into a
   // single docked Pass node (proposal §8); the internal locked legs fold into the
   // ticket. A return is a second Pass downstream — the timeline carries the order.
@@ -325,7 +335,13 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       )}
 
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-        <PlanAdd journeyId={id} journeyDate={dateStart} />
+        <PlanAdd
+          journeyId={id}
+          journeyDate={dateStart}
+          customers={pickCustomers ?? []}
+          customerSites={pickSites ?? []}
+          locations={(pickLocations ?? []) as PlacePickerLocation[]}
+        />
         <PlanImport
           itineraryId={id}
           lastStopId={stops.length ? stops[stops.length - 1].id : null}
