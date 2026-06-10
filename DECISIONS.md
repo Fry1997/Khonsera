@@ -585,3 +585,21 @@ Newest at the bottom of each section.
   Row-data recovery for the dropped tables is only possible via a Supabase point-in-time/backup
   restore (a dashboard action — I can't trigger it from here). Say the word if you want me to walk
   you through checking whether PITR is enabled and what it'd take.
+
+- **D41 — Real-journey road-test hardening (11 Jun Wellingborough↔Harpenden).** A long live-test
+  pass fixing the booked-day end to end, each at the right layer:
+  - **Anytime-return reconciliation:** merge confirmation (times) + eticket (barcodes) by date +
+    shared-station clustering; mark ALL source emails on import (the eticket no longer reappears alone
+    at midnight); split a round-trip booking into outbound + return Passes by the >3h dwell gap.
+  - **Two directional Aztecs:** tolerant PDF header parse (`Out:`/`Ret:`), per-PDF buffer alignment
+    (unpdf TRANSFERS the ArrayBuffer reading text → the decode needs its own), graft by station NAME
+    so HPD↔Harpenden reconciles. Both directions decode (len 233) and land on the right Pass.
+  - **Hub resolution by mode:** CRS `WEL` = Wellingborough rail OR Welkom Airport — a train resolves
+    to the rail station (was an 8000-mile "drive" to South Africa that back-dated the day to 3 Jun).
+  - **Ordering:** `setAnchorVariable` (editing a stop's time) now re-sequences — an office edited to
+    09:00 moves after the morning train. Reverted a render-time reflow that raced across concurrent
+    renders (order jumped every refresh).
+  - **Station buffer (Settings, 15m):** applied in the SOLVER as an earlier leave on boarding legs —
+    the walk keeps its real length and the buffer reads as slack, not an inflated "54m in a 39m
+    window".
+  - Removed the temporary `/plan/debug-scan` diagnostic. 217 tests.
