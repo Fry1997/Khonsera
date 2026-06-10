@@ -12,6 +12,7 @@ import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
 import type { TransitionMode } from "@/lib/types/domain";
+import type { ParsedTransportBooking } from "@/lib/gmail/types";
 import type { AnchorVariableKind, AnchorVariableSlot } from "@/components/concierge";
 
 // Planner master brief §5.3 — set any two of {arrive-by, duration, leave-by}; the
@@ -224,28 +225,10 @@ export async function addManualAnchor(input: {
     return { ok: false, error: msg };
   }
 
-  // Re-sequence the whole spine chronologically (insert-by-time, not append).
-  const ctx = await requireUserContext();
-  const supabase = await createClient();
-  const { data: rows } = await supabase
-    .from("stops")
-    .select("id, start_time")
-    .eq("itinerary_id", input.itineraryId)
-    .eq("workspace_id", ctx.workspaceId);
-
-  const ordered = (rows ?? [])
-    .slice()
-    .sort((a, b) => {
-      const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
-      const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
-      return ta - tb;
-    })
-    .map((r) => r.id as string);
-
-  if (ordered.length > 1) {
-    await reorderStops({ itinerary_id: input.itineraryId, stop_ids: ordered });
-  }
-
+  // Re-sequence chronologically (insert-by-time, not append) + re-solve so the
+  // surrounding legs recompute around the new fact.
+  await resequenceAndSolve(input.itineraryId);
+  revalidatePath(`/plan/${input.itineraryId}`);
   revalidatePath("/plan");
   return { ok: true };
 }
@@ -396,26 +379,221 @@ export async function addTransport(input: {
   });
 
   // Re-sequence the whole spine by time, then re-solve + re-infer the span.
+  await resequenceAndSolve(input.itineraryId);
+  revalidatePath(`/plan/${input.itineraryId}`);
+  revalidatePath("/wallet");
+  return { ok: true };
+}
+
+// Shared: re-sequence every stop in an Event chronologically (insert-by-time),
+// then re-solve + re-infer the span. Used by every Plan-flow mutation.
+async function resequenceAndSolve(itineraryId: string): Promise<void> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
   const { data: rows } = await supabase
     .from("stops")
-    .select("id, start_time")
-    .eq("itinerary_id", input.itineraryId)
+    .select("id, type, start_time, metadata")
+    .eq("itinerary_id", itineraryId)
     .eq("workspace_id", ctx.workspaceId);
+
+  // Home start stays first, the return-home / be-home-by end stays last, the
+  // rest sort by time (matches createItineraryFromBrief's ordering).
+  const isEnd = (r: { type: string; metadata: Record<string, unknown> | null }) =>
+    r.type === "end" ||
+    (r.metadata && (r.metadata.kind === "return_home" || r.metadata.kind === "be_home_by"));
+  const isStart = (r: { type: string; metadata: Record<string, unknown> | null }) =>
+    r.type === "start" && !(r.metadata && r.metadata.kind === "be_home_by");
+
   const ordered = (rows ?? [])
     .slice()
     .sort((a, b) => {
+      const aS = isStart(a as never), bS = isStart(b as never);
+      if (aS !== bS) return aS ? -1 : 1;
+      const aE = isEnd(a as never), bE = isEnd(b as never);
+      if (aE !== bE) return aE ? 1 : -1;
       const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
       const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
       return ta - tb;
     })
     .map((r) => r.id as string);
-  if (ordered.length > 1) await reorderStops({ itinerary_id: input.itineraryId, stop_ids: ordered });
-  await resolveItineraryTimes(input.itineraryId);
-  await inferAndUpdateSpan(input.itineraryId);
+  if (ordered.length > 1) await reorderStops({ itinerary_id: itineraryId, stop_ids: ordered });
+  await resolveItineraryTimes(itineraryId);
+  await inferAndUpdateSpan(itineraryId);
+}
 
-  revalidatePath(`/plan/${input.itineraryId}`);
+// Import a parsed transport booking as a proper booked RUN — transit_departure →
+// transit_changeover(s) → transit_arrival, one boarded-leg barcode per stop, locked
+// transitions between. This is the structure foldStopsToTickets folds into a Pass
+// (so the timeline + Wallet show the rail card, not a bare "by train" leg). Mirrors
+// the brief's transport-booking build (createItineraryFromBrief). Unlike the legacy
+// attachTransportBookingToStop, it does NOT repurpose a previous anchor as the
+// departure — the train is its own fact.
+export async function importBookingAsRun(input: {
+  itineraryId: string;
+  booking: ParsedTransportBooking;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { itineraryId, booking } = input;
+  const segs = booking.segments;
+  if (!segs.length) return { ok: false, error: "That booking had no journey legs." };
+
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  // Resolve station hubs by CRS code so the stops carry coordinates (the walk to/
+  // from the station then routes with real geography).
+  const codes = [...new Set(segs.flatMap((s) => [s.from_station_code, s.to_station_code]).filter((c): c is string => !!c))];
+  const hubByCode = new Map<string, string>();
+  if (codes.length) {
+    const { data: hubs } = await supabase
+      .from("transport_hubs")
+      .select("id, code")
+      .in("code", codes.map((c) => c.toUpperCase()));
+    for (const h of hubs ?? []) if (h.code) hubByCode.set((h.code as string).toUpperCase(), h.id as string);
+  }
+  const hubFor = (code: string | null) => (code ? hubByCode.get(code.toUpperCase()) ?? null : null);
+
+  const segIso = (date: string, time: string | null) => (time ? wallClockToIso(date, time) : null);
+
+  // 1. Departure (first boarded leg).
+  const dep = await createStop({
+    itinerary_id: itineraryId,
+    type: "transit_departure",
+    title: segs[0].from_station,
+    start_time: segIso(segs[0].departure_date, segs[0].departure_time),
+    is_time_fixed: true,
+    transport_hub_id: hubFor(segs[0].from_station_code),
+    metadata: {
+      kind: "transit_departure",
+      transport_mode: booking.mode,
+      booking_reference: booking.booking_reference,
+      price: booking.price != null ? String(booking.price) : null,
+      operator: segs[0].operator,
+      ticket_type: segs[0].ticket_type,
+      route_restriction: segs[0].route_restriction,
+      service_number: segs[0].service_number,
+      seat: segs[0].seat,
+      barcode_ref: segs[0].barcode_ref,
+      barcode_data: segs[0].barcode_data,
+      gmail_message_id: booking.gmail_message_id ?? null,
+    },
+  });
+  if (!dep.ok) return { ok: false, error: "Couldn't add the booking." };
+  const runStopIds: string[] = [dep.value.id];
+
+  // 2. A changeover per onward leg (the station you change at = next leg's origin).
+  for (let k = 1; k < segs.length; k++) {
+    const prev = segs[k - 1];
+    const cur = segs[k];
+    const co = await createStop({
+      itinerary_id: itineraryId,
+      type: "transit_changeover",
+      title: cur.from_station,
+      start_time: segIso(prev.arrival_date, prev.arrival_time), // arrive at the change
+      end_time: segIso(cur.departure_date, cur.departure_time), // depart onward
+      is_time_fixed: true,
+      transport_hub_id: hubFor(cur.from_station_code),
+      metadata: {
+        kind: "transit_changeover",
+        transport_mode: booking.mode,
+        operator: cur.operator,
+        ticket_type: cur.ticket_type,
+        route_restriction: cur.route_restriction,
+        service_number: cur.service_number,
+        seat: cur.seat,
+        barcode_ref: cur.barcode_ref,
+        barcode_data: cur.barcode_data,
+      },
+    });
+    if (co.ok) runStopIds.push(co.value.id);
+  }
+
+  // 3. Arrival (last leg's destination).
+  const lastSeg = segs[segs.length - 1];
+  const arr = await createStop({
+    itinerary_id: itineraryId,
+    type: "transit_arrival",
+    title: lastSeg.to_station,
+    start_time: segIso(lastSeg.arrival_date, lastSeg.arrival_time),
+    is_time_fixed: true,
+    transport_hub_id: hubFor(lastSeg.to_station_code),
+    metadata: { kind: "transit_arrival", transport_mode: booking.mode, service_number: lastSeg.service_number },
+  });
+  if (!arr.ok) return { ok: false, error: "Couldn't add the booking arrival." };
+  runStopIds.push(arr.value.id);
+
+  // 4. Locked transitions between each adjacent run stop (the booked rides).
+  for (let k = 0; k + 1 < runStopIds.length; k++) {
+    await upsertTransition({
+      itinerary_id: itineraryId,
+      from_stop_id: runStopIds[k],
+      to_stop_id: runStopIds[k + 1],
+      mode: booking.mode as TransitionMode,
+      is_locked: true,
+    });
+  }
+
+  await resequenceAndSolve(itineraryId);
+  revalidatePath(`/plan/${itineraryId}`);
   revalidatePath("/wallet");
   return { ok: true };
+}
+
+// Ensure a Plan Event is bookended by the user's home/base — a `start` stop at
+// the front and a `return_home` `end` stop at the back — exactly as the brief
+// builds a day (One Toolkit, Two Views). Idempotent: only adds what's missing.
+// Without this, a day captured/imported on the Plan flow starts at the first
+// appointment (not home), so the solver can't back-calculate the leave-home time.
+export async function ensureHomeBookend(itineraryId: string): Promise<{ ok: boolean; added: boolean }> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("travel_profiles")
+    .select("default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id")
+    .eq("user_id", ctx.userId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  const homeId =
+    profile?.default_drive_origin_location_id ??
+    profile?.default_rail_origin_location_id ??
+    profile?.default_return_location_id ??
+    null;
+  if (!homeId) return { ok: true, added: false };
+
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, type, metadata")
+    .eq("itinerary_id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId);
+  const stops = rows ?? [];
+  if (stops.length === 0) return { ok: true, added: false }; // empty Event — nothing to bookend yet
+
+  const hasStart = stops.some((s) => s.type === "start");
+  const hasReturn = stops.some(
+    (s) => s.type === "end" || (s.metadata as Record<string, unknown> | null)?.kind === "return_home",
+  );
+
+  let added = false;
+  if (!hasStart) {
+    await createStop({
+      itinerary_id: itineraryId,
+      type: "start",
+      location_id: homeId,
+      is_time_fixed: false,
+    });
+    added = true;
+  }
+  if (!hasReturn) {
+    await createStop({
+      itinerary_id: itineraryId,
+      type: "end",
+      location_id: homeId,
+      is_time_fixed: false,
+      metadata: { kind: "return_home" },
+    });
+    added = true;
+  }
+
+  if (added) await resequenceAndSolve(itineraryId);
+  return { ok: true, added };
 }

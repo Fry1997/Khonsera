@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { scanGmailForBookings, markBookingImported } from "@/lib/actions/gmail";
 import { attachTransportBookingToStop } from "@/lib/actions/bookings";
 import { attachAccommodationBooking } from "@/lib/actions/bookings";
+import { importBookingAsRun } from "@/lib/actions/plan-edit";
 import { feedbackFromError } from "@/lib/actions/_form";
 import { SubmitButton } from "@/components/ui/form";
 import { TrainTicketGroup, type TicketSegment } from "@/components/train-ticket-card";
@@ -190,12 +191,17 @@ export function GmailImportPanel({
   lastStopLabel,
   onClose,
   onImported,
+  // Plan flow: build the import as a standalone booked RUN (transit_departure →
+  // changeover → arrival) so it folds into a Pass, instead of attaching it as a
+  // leg off the previous anchor (the legacy itinerary-editor behaviour).
+  standaloneRuns = false,
 }: {
   itineraryId: string;
   lastStopId: string | null;
   lastStopLabel: string;
   onClose: () => void;
   onImported: () => void;
+  standaloneRuns?: boolean;
 }) {
   const router = useRouter();
   const [scanning, startScan] = useTransition();
@@ -227,6 +233,22 @@ export function GmailImportPanel({
     booking: ParsedTransportBooking,
     stopId: string,
   ): Promise<boolean> => {
+    // Plan flow: build a standalone booked run that folds into a Pass.
+    if (standaloneRuns) {
+      const res = await importBookingAsRun({ itineraryId, booking });
+      if (!res.ok) {
+        setError(res.error ?? "Couldn't import that booking.");
+        return false;
+      }
+      await markBookingImported({
+        gmail_message_id: booking.gmail_message_id,
+        booking_type: "transport",
+        travel_booking_id: null,
+      });
+      setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+      return true;
+    }
+
     const first = booking.segments[0];
     const last = booking.segments[booking.segments.length - 1];
 

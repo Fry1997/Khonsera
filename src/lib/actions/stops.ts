@@ -22,6 +22,9 @@ const stopTypeEnum = z.enum([
   // added stopover). Kept in lock-step here so editor patches for
   // those stop types pass validation.
   "transit_departure",
+  // Intermediate change station of a booked multi-leg run (the brief inserts
+  // these via raw supabase; the Plan-flow import creates them via createStop).
+  "transit_changeover",
   "stopover",
   "other",
 ]);

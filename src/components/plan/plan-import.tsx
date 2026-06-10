@@ -36,6 +36,7 @@ export function PlanImport({
       lastStopLabel={lastStopLabel}
       onClose={() => setOpen(false)}
       onImported={() => router.refresh()}
+      standaloneRuns
     />
   );
 }

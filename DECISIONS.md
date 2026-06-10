@@ -488,6 +488,26 @@ Newest at the bottom of each section.
     `travel_booking_id` on old import rows is why a travel_booking-keyed release wouldn't have worked —
     the stop-metadata link is the reliable one.)
 
+- **D38 — Imported trains fold into a Pass + Plan days bookend with home (live test, IMG_4244).**
+  The 11 Jun import pulled the right multi-leg times (merge working) but (a) rendered as a bare "by
+  train" leg instead of a rail-card Pass, and (b) the day started at the first appointment, not home.
+  - **Pass assembly.** Root cause: the Plan import used the legacy `attachTransportBookingToStop`,
+    which repurposes the *previous anchor* as the departure (enriches its metadata but leaves its
+    `type` as appointment), so `foldStopsToTickets` (keys on `type === "transit_departure"`) never
+    folded it. New `importBookingAsRun` builds a proper standalone run — `transit_departure` →
+    `transit_changeover`(s) → `transit_arrival` with one boarded-leg barcode per stop + locked
+    transitions — exactly the brief's structure, so it folds into a Pass on the timeline + Wallet.
+    `PlanImport` passes `standaloneRuns` to switch the shared panel onto this path; the legacy editor
+    keeps the attach behaviour. Resolves station hubs by CRS code so the walk to/from the station
+    routes. Added `transit_changeover` to `createStop`'s type enum (the brief inserts it raw).
+  - **Home bookend.** New `ensureHomeBookend(itineraryId)` adds a `start` stop at the user's base +
+    a `return_home` `end` stop when missing (idempotent), mirroring the brief — One Toolkit, Two
+    Views. Called on Event open, so existing Plan days self-heal. Shared `resequenceAndSolve` keeps
+    home first / return-home last when re-ordering (manual add + transport now re-solve too).
+  - **Connor must:** delete the old broken 11 Jun Event and re-scan + re-import — the new import
+    builds it correctly (Pass + home). The stuck email markers were already cleared (D37).
+  - **Still open:** the "open/flexible ticket, valid all day" state (D36/D37 carry-over).
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

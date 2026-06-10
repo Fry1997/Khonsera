@@ -13,6 +13,7 @@ import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { setTransitionMode } from "@/lib/actions/transitions";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
+import { ensureHomeBookend } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { IntentionCard } from "@/components/concierge";
@@ -139,6 +140,10 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     .eq("id", id)
     .maybeSingle();
   if (!journey) notFound();
+
+  // Bookend the day with home (start + return-home), like the brief — so the
+  // day doesn't start at the first appointment with no leave-home time. Idempotent.
+  await ensureHomeBookend(id);
 
   let [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
   let stops = (s ?? []) as unknown as StopRow[];
