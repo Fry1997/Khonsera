@@ -16,6 +16,24 @@ export type AnchorType =
 
 export type TimeWindow = { from: string; to?: string };
 
+// The six visually-distinct kinds a variable can take (planner master brief §5.3).
+export type AnchorVariableKind =
+  | "precise" // a settled clock time
+  | "approximate" // "~2", soft
+  | "ranged" // "2–3"
+  | "by-a-time" // "by 3", a ceiling
+  | "maximise" // as long as possible, bounded by a constraint
+  | "derived"; // engine-computed from the other two
+
+// One of the three anchor variables (arrive-by · duration · leave-by).
+export type AnchorVariable = {
+  kind: AnchorVariableKind;
+  iso?: string; // resolved clock value (arrive/leave) — ISO
+  minutes?: number; // duration value
+  display: string; // the rendered figure ("09:42", "~2pm", "as long as possible")
+  bound?: string; // for maximise: the constraint that caps it ("last train 17:02")
+};
+
 export type AnchorVM = {
   id: string;
   type: AnchorType;
@@ -24,7 +42,16 @@ export type AnchorVM = {
   time?: TimeWindow; // ISO strings; `to` present => window
   durationMinutes?: number;
   fixed?: boolean; // immovable hard point
+  // The three-variable model (§5.3). When present, the AnchorCard renders the
+  // editable arrive-by / duration / leave-by triad; the third is `derived`.
+  vars?: {
+    arriveBy?: AnchorVariable;
+    duration?: AnchorVariable;
+    leaveBy?: AnchorVariable;
+  };
 };
+
+export type AnchorVariableSlot = "arriveBy" | "duration" | "leaveBy";
 
 export type IntentionVM = {
   id: string;

@@ -1,6 +1,13 @@
 "use client";
 
-import type { AnchorVM, GapVM, IntentionVM, LegVM } from "./types";
+import type {
+  AnchorVM,
+  AnchorVariable,
+  AnchorVariableSlot,
+  GapVM,
+  IntentionVM,
+  LegVM,
+} from "./types";
 import { formatClock, formatMoney } from "./types";
 
 // The four spine primitives, rebuilt to Design's Edition II screen contract
@@ -17,15 +24,67 @@ const ANCHOR_LABEL: Record<AnchorVM["type"], string> = {
   custom: "Anchor",
 };
 
+const VAR_LABEL: Record<AnchorVariableSlot, string> = {
+  arriveBy: "Arrive by",
+  duration: "For",
+  leaveBy: "Leave by",
+};
+
+function VarView({
+  slot,
+  v,
+  onEdit,
+}: {
+  slot: AnchorVariableSlot;
+  v: AnchorVariable;
+  onEdit?: (slot: AnchorVariableSlot) => void;
+}) {
+  const editable = onEdit && v.kind !== "derived";
+  const body = (
+    <>
+      <span className="cc-var-label">{VAR_LABEL[slot]}</span>
+      <span className="cc-var-value">{v.display}</span>
+      {v.kind === "maximise" && v.bound ? (
+        <span className="cc-var-bound">{v.bound}</span>
+      ) : null}
+    </>
+  );
+  return editable ? (
+    <button
+      type="button"
+      className="cc-var"
+      data-state={v.kind}
+      onClick={(e) => {
+        e.stopPropagation();
+        onEdit!(slot);
+      }}
+    >
+      {body}
+    </button>
+  ) : (
+    <div className="cc-var" data-state={v.kind}>
+      {body}
+    </div>
+  );
+}
+
 export function AnchorCard({
   anchor,
   onSelect,
+  onEditVariable,
 }: {
   anchor: AnchorVM;
   onSelect?: (id: string) => void;
+  onEditVariable?: (id: string, slot: AnchorVariableSlot) => void;
 }) {
-  const arriveBy = anchor.time ? formatClock(anchor.time.from) : null;
-  const leaveBy = anchor.time?.to ? formatClock(anchor.time.to) : null;
+  // Three-variable model when `vars` is present; else the legacy time fallback.
+  const vars = anchor.vars;
+  const fallbackArrive = anchor.time ? formatClock(anchor.time.from) : null;
+  const fallbackLeave = anchor.time?.to ? formatClock(anchor.time.to) : null;
+  const editHandler = onEditVariable
+    ? (slot: AnchorVariableSlot) => onEditVariable(anchor.id, slot)
+    : undefined;
+
   return (
     <article
       className="cc-anchor-card"
@@ -38,18 +97,25 @@ export function AnchorCard({
       </div>
       <h3 className="cc-anchor-title">{anchor.title}</h3>
       {anchor.place ? <p className="cc-anchor-place">{anchor.place}</p> : null}
-      {arriveBy || leaveBy ? (
+
+      {vars ? (
         <div className="cc-vars">
-          {arriveBy ? (
+          {vars.arriveBy ? <VarView slot="arriveBy" v={vars.arriveBy} onEdit={editHandler} /> : null}
+          {vars.duration ? <VarView slot="duration" v={vars.duration} onEdit={editHandler} /> : null}
+          {vars.leaveBy ? <VarView slot="leaveBy" v={vars.leaveBy} onEdit={editHandler} /> : null}
+        </div>
+      ) : fallbackArrive || fallbackLeave ? (
+        <div className="cc-vars">
+          {fallbackArrive ? (
             <div className="cc-var" data-state="precise">
               <span className="cc-var-label">Arrive by</span>
-              <span className="cc-var-value">{arriveBy}</span>
+              <span className="cc-var-value">{fallbackArrive}</span>
             </div>
           ) : null}
-          {leaveBy ? (
+          {fallbackLeave ? (
             <div className="cc-var" data-state="derived">
               <span className="cc-var-label">Leave by</span>
-              <span className="cc-var-value">{leaveBy}</span>
+              <span className="cc-var-value">{fallbackLeave}</span>
             </div>
           ) : null}
         </div>
