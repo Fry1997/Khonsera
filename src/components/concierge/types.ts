@@ -97,6 +97,128 @@ export type JourneyVM = {
   openGapCount: number;
 };
 
+// ---------------------------------------------------------------------------
+// Booked-document family (planner master brief §6) — TicketCard / StatusStrip /
+// BarcodePresenter / ScanView. A chosen leg/anchor resolves into one or more of
+// these. Presentational VMs only; the engine/data layer maps real bookings in.
+// ---------------------------------------------------------------------------
+
+export type DocumentKind = "rail" | "air" | "stay" | "ground";
+
+// Mode-aware barcode symbology — rail = Aztec, air = PDF417/QR, transit = QR.
+export type BarcodeFormat = "aztec" | "pdf417" | "qr";
+
+// StatusStrip status set (rail + air). `stale` = last-known shown offline.
+export type TravelStatus =
+  | "on_time"
+  | "delayed"
+  | "platform_change"
+  | "gate_change"
+  | "boarding"
+  | "cancelled"
+  | "stale";
+
+export type StatusVM = {
+  status: TravelStatus;
+  label?: string; // copy override; otherwise derived from status
+  detail?: string; // "+18 min" · "Platform 4 → 1" · "Gate B12"
+  offline?: boolean; // render the stale marker (no signal at the barrier)
+};
+
+// Where a fact/document came from — governs trust + how much is pre-filled +
+// what can refresh live (§4.5). Mirrors the capture front doors.
+export type DocumentSource =
+  | "typed"
+  | "manual"
+  | "forwarded"
+  | "inbox"
+  | "affiliate"
+  | "wallet"
+  | "ocr";
+
+export type BarcodeVM = {
+  format: BarcodeFormat;
+  value: string; // payload (RSP Aztec for rail, etc.) — rendered by BarcodePresenter
+  passengerLabel?: string; // "Adult 1" — the swipeable stack in ScanView
+};
+
+export type TicketStop = {
+  place: string; // station / airport / property
+  code?: string; // CRS / IATA
+  time?: string; // ISO
+  platform?: string; // platform · gate · terminal
+};
+
+export type TicketChange = {
+  place: string;
+  arrive?: string; // ISO
+  depart?: string; // ISO
+  transferMinutes?: number;
+  platform?: string;
+  tight?: boolean; // tight-connection flag → ties to the leg's at-risk state
+};
+
+// One journey within a booking. A return booking is TWO of these (outbound +
+// inbound) → the booking-pair stepped by chevron in the TicketCard.
+export type TicketLegVM = {
+  id: string;
+  origin: TicketStop;
+  destination: TicketStop;
+  durationMinutes?: number;
+  changes?: TicketChange[];
+  // rail / air detail
+  coach?: string;
+  seat?: string;
+  travelClass?: string; // "Standard" · "Business"
+  ticketType?: string; // Advance / Off-Peak / Anytime
+  restrictions?: string;
+  boardingTime?: string; // air — ISO
+  boardingZone?: string; // air — "Zone 2"
+  baggage?: string; // air
+  barcodes?: BarcodeVM[]; // one per passenger
+  status?: StatusVM;
+};
+
+export type TicketVM = {
+  id: string;
+  kind: DocumentKind;
+  operator: string; // "LNER" · "easyJet" · "Premier Inn"
+  operatorSecondary?: string; // second operator on a mixed-operator journey
+  reference?: string; // 8-char collection / booking ref
+  price?: number; // minor units
+  currency?: string;
+  source: DocumentSource;
+  legs: TicketLegVM[]; // 1 = single · 2 = booking-pair (outbound + return)
+  consequence?: string; // the live band: "this return → leave the museum by 16:10"
+  // stay
+  address?: string;
+  checkIn?: string; // ISO
+  checkOut?: string; // ISO
+  roomType?: string;
+  nights?: number;
+  contact?: string;
+};
+
+// The Wallet orders within a date by *time-needed* — the moment the document is
+// used, not booked (§7.1): rail = departure · air = boarding · stay = check-in.
+export function ticketUseMoment(t: TicketVM): string | undefined {
+  if (t.kind === "stay") return t.checkIn;
+  const first = t.legs[0];
+  if (!first) return undefined;
+  if (t.kind === "air") return first.boardingTime ?? first.origin.time;
+  return first.origin.time; // rail / ground = departure / pickup
+}
+
+export const STATUS_LABEL: Record<TravelStatus, string> = {
+  on_time: "On time",
+  delayed: "Delayed",
+  platform_change: "Platform change",
+  gate_change: "Gate change",
+  boarding: "Boarding",
+  cancelled: "Cancelled",
+  stale: "Last known",
+};
+
 export type ContactVM = {
   id: string;
   name: string;

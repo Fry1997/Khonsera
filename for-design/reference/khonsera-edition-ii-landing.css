@@ -1,0 +1,143 @@
+/* ============================================================================
+ * KHONSERA · EDITION II — LANDING / MARKETING elevation  ·  Round 3
+ * ----------------------------------------------------------------------------
+ * ADDITIVE. Import order in the repo:
+ *
+ *   import "./globals.css";
+ *   import "./khonsera-edition-ii.css";
+ *   import "./khonsera-edition-ii-screens.css";
+ *   import "./khonsera-edition-ii-shell.css";
+ *   import "./khonsera-edition-ii-landing.css";   // ← THIS FILE (last)
+ *
+ * Elevates the Code-built `.cc-mkt-*` / `.cc-wl-*` / `.cc-gated-*` landing — the
+ * single most brand-forward surface ("private jet, not Monarch"). It does NOT
+ * rename a class or change the markup/JS: it refines type scale, rhythm, the
+ * hero atmosphere, the form, and designs the joined-morph + gated states.
+ * Tokens only. globals.css untouched. The honeypot (.cc-wl-trap) is left alone.
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * THE PAGE — a quiet "slow blue hour" ground: a single warm light at the top
+ * of an otherwise calm linen. One wash, not a gradient slop.
+ * ------------------------------------------------------------------------- */
+.cc-mkt, .cc-mkt *, .cc-gated, .cc-gated * { box-sizing: border-box; }
+
+.cc-mkt {
+  background:
+    radial-gradient(120% 62% at 50% -8%, color-mix(in oklab, var(--gold-100) 26%, transparent), transparent 60%),
+    var(--paper);
+}
+
+/* widen + recentre the reading column; suppliers read it on a phone, but the
+ * editorial rhythm wants more air than Code's functional default. */
+.cc-mkt-main { max-width: 760px; padding-left: var(--space-6); padding-right: var(--space-6); }
+.cc-mkt-top { max-width: 1000px; padding: var(--space-6); }
+
+/* ---- top bar lockup — emblem a touch larger, wordmark with quiet tracking -- */
+.cc-mkt-lockup img { height: 26px; }
+.cc-mkt-lockup .wm { font-size: 17px; letter-spacing: 0.02em; }
+.cc-mkt-login { border-bottom-color: var(--rule); }
+
+/* ---------------------------------------------------------------------------
+ * HERO — the money shot. Bigger, calmer, more paper. Left-anchored editorial.
+ * ------------------------------------------------------------------------- */
+.cc-mkt-hero { padding: var(--space-12) 0 var(--space-12); }
+.cc-mkt-hero-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.28em;
+  text-transform: uppercase; color: var(--ink-dim); display: block; margin-bottom: var(--space-6); }
+.cc-mkt-headline { font-size: 58px; line-height: 0.98; letter-spacing: -0.035em; max-width: 13ch; }
+.cc-mkt-sub { font-size: 20px; line-height: 1.55; color: var(--ink-2); margin-top: var(--space-6);
+  max-width: 42ch; }
+.cc-mkt-sub em { font-family: var(--serif); font-style: italic; color: var(--ink); }
+.cc-mkt-hero-cta { margin-top: var(--space-8); padding: 15px 30px; font-size: 15px; border-radius: 5px; white-space: nowrap; }
+/* a hairline "scroll on" cue under the hero — restraint, but a quiet invitation */
+.cc-mkt-hero-meta { margin-top: var(--space-8); display: flex; align-items: center; gap: var(--space-3);
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-mkt-hero-meta::before { content: ""; width: 28px; height: 1px; background: var(--rule-2); }
+
+/* ---------------------------------------------------------------------------
+ * EDITORIAL SECTIONS — generous rhythm, a gold-dot divider not a full rule
+ * ------------------------------------------------------------------------- */
+.cc-mkt-section, .cc-mkt-who { padding: var(--space-12) 0; border-top: none; position: relative; }
+.cc-mkt-section::before, .cc-mkt-who::before, .cc-mkt-waitlist::before {
+  content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 1px;
+  background: linear-gradient(90deg, var(--rule-2), transparent 64%); }
+.cc-mkt-eyebrow { font-size: 11px; letter-spacing: 0.24em; color: var(--gold-2); margin-bottom: var(--space-5); }
+.cc-mkt-lede { font-size: 25px; line-height: 1.46; letter-spacing: -0.015em; max-width: 26ch; }
+.cc-mkt-lede em { font-family: var(--serif); font-style: italic; }
+
+/* three quiet value props — more air; titles in Satoshi, lines calm */
+.cc-mkt-props { gap: var(--space-8); margin-top: var(--space-2); }
+.cc-mkt-prop-dot { width: 6px; height: 6px; margin-bottom: var(--space-4); }
+.cc-mkt-prop-k { font-size: 19px; }
+.cc-mkt-prop-d { font-size: 15px; line-height: 1.6; max-width: 34ch; }
+@media (min-width: 720px) {
+  .cc-mkt-props { grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+}
+
+/* ---------------------------------------------------------------------------
+ * WAITLIST — the one conversion moment. Framed as a calm bone panel.
+ * ------------------------------------------------------------------------- */
+.cc-mkt-waitlist { padding: var(--space-12) 0; }
+.cc-mkt-waitlist-inner { background: var(--sand); border: 1px solid var(--rule);
+  border-radius: 10px; padding: var(--space-8); box-shadow: var(--shadow-sm); }
+@media (min-width: 720px) { .cc-mkt-waitlist-inner { padding: var(--space-12); } }
+.cc-mkt-waitlist-h { font-size: 30px; letter-spacing: -0.025em; max-width: 18ch; }
+.cc-mkt-waitlist-sub { font-size: 16px; color: var(--ink-2); margin: var(--space-3) 0 var(--space-6); max-width: 40ch; }
+
+.cc-wl-form { max-width: 480px; }
+.cc-wl-row { gap: var(--space-2-5); }
+.cc-wl-input { background: var(--card); border-color: var(--rule-2); border-radius: 5px; padding: 14px 16px; }
+.cc-wl-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-tint); }
+.cc-wl-submit { border-radius: 5px; padding: 14px 24px; white-space: nowrap; }
+.cc-wl-submit[disabled] { opacity: 0.62; cursor: progress; }
+.cc-wl-error { color: var(--rust); font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em;
+  margin-top: var(--space-3); display: flex; align-items: center; gap: 7px; }
+.cc-wl-note { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--ink-faint);
+  margin-top: var(--space-3); }
+
+/* ---- the JOINED morph — the form is replaced inline by this block --------- *
+ * Motion: the form fades+lifts out, this rises+fades in. ~280ms, brand ease.
+ * Reduced-motion: straight cross-fade. */
+.cc-wl-joined { display: flex; align-items: flex-start; gap: var(--space-4);
+  background: var(--card); border: 1px solid var(--gold); border-radius: 8px;
+  padding: var(--space-5) var(--space-6); max-width: 480px; }
+.cc-wl-joined-check { flex: none; width: 30px; height: 30px; border-radius: 50%;
+  border: 1.5px solid var(--gold); display: flex; align-items: center; justify-content: center;
+  color: var(--gold-2); margin-top: 1px; }
+.cc-wl-joined-h { font-family: var(--display); font-weight: var(--fw-medium); font-size: 19px;
+  letter-spacing: -0.02em; color: var(--ink); margin: 0; }
+.cc-wl-joined-sub { font-size: 14px; line-height: 1.5; color: var(--ink-dim); margin: var(--space-1) 0 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .cc-wl-joined[data-enter] { animation: cc-wl-rise 360ms var(--ease-standard, cubic-bezier(.2,0,0,1)) both; }
+  .cc-wl-form[data-leaving] { animation: cc-wl-sink 200ms var(--ease-standard, ease) both; }
+}
+@keyframes cc-wl-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes cc-wl-sink { from { opacity: 1; } to { opacity: 0; transform: translateY(-6px); } }
+
+/* ---------------------------------------------------------------------------
+ * FOOTER — minimal, mono, one line
+ * ------------------------------------------------------------------------- */
+.cc-mkt-foot { border-top: 1px solid var(--rule); margin-top: var(--space-8);
+  padding: var(--space-8) var(--space-6); max-width: 1000px; margin-left: auto; margin-right: auto;
+  width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-6);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-faint); }
+.cc-mkt-foot .name { color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.16em; }
+.cc-mkt-foot .sp { margin-left: auto; }
+
+/* ---------------------------------------------------------------------------
+ * GATED — logged-in, not approved. A calm dead-end. Warmer, deeper linen.
+ * ------------------------------------------------------------------------- */
+.cc-gated { background:
+    radial-gradient(110% 60% at 50% 0%, color-mix(in oklab, var(--gold-100) 22%, transparent), transparent 58%),
+    var(--paper-2);
+  color: var(--ink); min-height: 100dvh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: var(--space-12) var(--space-6); gap: var(--space-5); }
+.cc-gated-emblem { height: 56px; width: auto; margin-bottom: var(--space-2); }
+.cc-gated-h { font-family: var(--display); font-weight: var(--fw-medium); font-size: 32px;
+  letter-spacing: -0.03em; color: var(--ink); margin: 0; max-width: 16ch; }
+.cc-gated-sub { font-size: 16px; line-height: 1.6; color: var(--ink-2); margin: 0; max-width: 36ch; }
+.cc-gated-sub em { font-family: var(--serif); font-style: italic; color: var(--ink); }
+.cc-gated-signout { margin-top: var(--space-4); font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim);
+  background: none; border: none; border-bottom: 1px solid var(--rule-2); padding: 0 0 3px; cursor: pointer; }
+.cc-gated-signout:hover { color: var(--gold-2); }

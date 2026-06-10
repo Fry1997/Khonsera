@@ -354,3 +354,119 @@
   font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint);
   border-bottom: 1px solid var(--rule-2); padding: 0 0 2px; }
 .cc-gated-foot .cc-auth-link:hover { color: var(--gold-2); }
+
+/* ============================================================================
+ * BOOKED-DOCUMENT FAMILY (.cc-ticket-* · .cc-status-* · .cc-barcode-* ·
+ * .cc-scanview-*) — planner master brief §6. Code-authored functional FLOOR on
+ * Edition II tokens: legible + correct structure, calm by default. Design
+ * elevates the finish via the loop — EXCEPT ScanView (function over finish:
+ * it must scan; do not prettify it into unscannability).
+ * ========================================================================== */
+
+/* ---- TicketCard ---------------------------------------------------------- */
+.cc-ticket { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius-lg);
+  padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-ticket[data-variant="compact"] { padding: var(--space-4); gap: var(--space-2-5); }
+.cc-ticket-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.cc-ticket-operator { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15px; color: var(--ink); }
+.cc-ticket-ref { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); }
+
+.cc-ticket-pair { display: flex; align-items: center; justify-content: center; gap: var(--space-3);
+  padding: var(--space-1) 0; }
+.cc-ticket-pair-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--gold-2); min-width: 8ch; text-align: center; }
+.cc-ticket-chev { background: none; border: 1px solid var(--rule-2); border-radius: var(--radius-pill);
+  width: 26px; height: 26px; color: var(--ink-dim); cursor: pointer; line-height: 1; font-size: 16px; }
+.cc-ticket-chev:disabled { opacity: 0.35; cursor: default; }
+
+.cc-ticket-journey { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-ticket-endpoints { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-3); }
+.cc-ticket-endpoint { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cc-ticket-endpoint[data-role="destination"] { text-align: right; }
+.cc-ticket-time { font-family: var(--mono); font-size: 18px; color: var(--ink); letter-spacing: 0.02em; }
+.cc-ticket-place { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+.cc-ticket-code { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.cc-ticket-platform { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--gold-2); }
+.cc-ticket-arrow { color: var(--ink-faint); font-size: 14px; }
+
+.cc-ticket-changes { list-style: none; margin: 0; padding: var(--space-2) 0 0; display: flex;
+  flex-direction: column; gap: var(--space-1-5); border-top: 1px dashed var(--rule); }
+.cc-ticket-change { display: flex; flex-wrap: wrap; gap: var(--space-2-5); font-size: 12px; color: var(--ink-dim); }
+.cc-ticket-change[data-tight] .cc-ticket-change-transfer { color: var(--warning); font-weight: var(--fw-medium); }
+.cc-ticket-change-place { color: var(--ink-2); }
+.cc-ticket-change-transfer, .cc-ticket-change-platform { font-family: var(--mono); font-size: 11px; }
+
+.cc-ticket-detail { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2) var(--space-4);
+  margin: 0; padding-top: var(--space-2); border-top: 1px solid var(--rule); }
+.cc-ticket-detail-row { display: flex; flex-direction: column; gap: 1px; }
+.cc-ticket-detail-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint); }
+.cc-ticket-detail-value { font-size: 13px; color: var(--ink); }
+.cc-ticket-address { font-size: 13px; color: var(--ink-dim); margin: 0; }
+
+.cc-ticket-consequence { font-size: 12.5px; line-height: 1.45; color: var(--ink-2);
+  background: var(--gold-tint); border-left: 2px solid var(--gold); border-radius: var(--radius-sm);
+  padding: var(--space-2-5) var(--space-3); margin: 0; }
+.cc-ticket-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding-top: var(--space-2); }
+.cc-ticket-action { padding: 10px 18px; font-size: 13.5px; }
+.cc-ticket-price { font-family: var(--mono); font-size: 14px; color: var(--ink); }
+
+/* ---- StatusStrip --------------------------------------------------------- */
+.cc-status-strip { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: 12px; color: var(--ink-2); }
+.cc-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex: none; }
+.cc-status-label { font-weight: var(--fw-medium); }
+.cc-status-detail { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.cc-status-stale { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-faint); }
+.cc-status-strip[data-status="on_time"] .cc-status-dot { background: var(--success); }
+.cc-status-strip[data-status="delayed"] .cc-status-dot,
+.cc-status-strip[data-status="platform_change"] .cc-status-dot,
+.cc-status-strip[data-status="gate_change"] .cc-status-dot { background: var(--warning); }
+.cc-status-strip[data-status="delayed"] .cc-status-label,
+.cc-status-strip[data-status="cancelled"] .cc-status-label { color: var(--danger); }
+.cc-status-strip[data-status="cancelled"] .cc-status-dot { background: var(--danger); }
+.cc-status-strip[data-status="boarding"] .cc-status-dot { background: var(--gold); }
+.cc-status-strip[data-status="stale"] .cc-status-dot,
+.cc-status-strip[data-offline] .cc-status-dot { background: var(--ink-faint); }
+
+/* ---- BarcodePresenter — the frame; pixels injected at wire-up ------------- */
+.cc-barcode { display: inline-flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.cc-barcode-quiet { background: #fff; padding: var(--space-4); border-radius: var(--radius-sm);
+  border: 1px solid var(--rule); }                 /* the quiet zone — never encroached */
+.cc-barcode-code { width: 132px; height: 132px; display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, #00000010 0 6px, transparent 6px 12px); }
+.cc-barcode[data-format="pdf417"] .cc-barcode-code { width: 220px; height: 88px; }
+.cc-barcode[data-size="scan"] .cc-barcode-code { width: 280px; height: 280px; }
+.cc-barcode[data-size="scan"][data-format="pdf417"] .cc-barcode-code { width: 320px; height: 128px; }
+.cc-barcode-pending { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; color: #00000040; }
+.cc-barcode-passenger { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-dim); }
+
+/* ---- ScanView — FUNCTION OVER FINISH. White ground, max contrast, big code. */
+.cc-scanview { position: fixed; inset: 0; z-index: 60; background: #fff; color: #111;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-6); padding: var(--space-6); }
+.cc-scanview-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center;
+  justify-content: space-between; padding: var(--space-4) var(--space-5); }
+.cc-scanview-summary { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: #333; }
+.cc-scanview-close { background: none; border: none; color: #333; cursor: pointer; padding: 4px; }
+.cc-scanview .cc-barcode-quiet { border: none; padding: var(--space-6); }
+.cc-scanview-pager { display: flex; align-items: center; gap: var(--space-4); }
+.cc-scanview-step { background: none; border: 1px solid #ccc; border-radius: var(--radius-pill);
+  width: 36px; height: 36px; font-size: 20px; color: #333; cursor: pointer; }
+.cc-scanview-step:disabled { opacity: 0.3; cursor: default; }
+.cc-scanview-dots { display: flex; gap: 6px; }
+.cc-scanview-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+.cc-scanview-dot[data-active] { background: #111; }
+
+/* ---- The Wallet (.cc-wallet-*) — §7. Document-centric grouped list. -------- */
+.cc-wallet { display: flex; flex-direction: column; gap: var(--space-6); }
+.cc-wallet-group { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-wallet-group-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--gold-2); margin: 0; }
+.cc-wallet-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-wallet-empty { padding: var(--space-8) var(--space-4); text-align: left; max-width: 46ch; }
+.cc-wallet-empty-lead { font-family: var(--display); font-weight: var(--fw-medium); font-size: 20px;
+  color: var(--ink); margin: 0; }
+.cc-wallet-empty-sub { font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); margin: var(--space-3) 0 0; }

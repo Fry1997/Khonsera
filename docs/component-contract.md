@@ -51,6 +51,49 @@ museum by 16:10").
 
 ### JourneyListCard — one journey in a list
 **Data:** title, mode, date range, anchor count, open-gap count, status. **States:** list · empty.
+**Distinct from `TicketCard`:** JourneyListCard summarises a *whole plan* in the trips list; a
+TicketCard is *one booked document* within a plan. They are not interchangeable.
+
+---
+
+## Booked-document family (planner master brief §6) — `src/components/concierge/document-cards.tsx`
+
+A chosen leg/anchor resolves into one or more booked documents. These four are the new contract
+members the Wallet (§7) and Today (§8) reuse — **no further new components for either surface.**
+
+### TicketCard — a booked travel document
+**Data:** `kind` (`rail | air | stay | ground`); operator(s); reference; price; `source` (synced ·
+manual · forwarded · inbox · affiliate · wallet · ocr — governs trust + pre-fill + live refresh);
+per journey **place+time pair(s)** with platform/gate/terminal; **changes** (each connection's
+station, transfer time, platform, **tight-connection flag**); coach/seat, class, ticket type +
+restrictions (rail); flight no., terminal, boarding time + zone, baggage (air); property + address,
+check-in/out, room, nights, contact (stay); an inline `StatusStrip`; a scannable code via
+`BarcodePresenter` where applicable. **Booking-pair:** a return = two legs, **outbound ↔ return**
+stepped by a chevron with a live **consequence band** ("this return → leave the museum by 16:10").
+**States:** `data-variant` = **compact** (Wallet/Today list, collapsed, StatusStrip inline) ·
+**full** (open). `data-kind` per mode. Plus the leg `StatusStrip` states below.
+
+### StatusStrip — the live status line
+**Data:** `status` (`on_time · delayed · platform_change · gate_change · boarding · cancelled ·
+stale`), optional detail ("+18 min" · "Platform 4 → 1"), `offline` (stale marker — last-known shown
+at the barrier without signal). **States:** the seven statuses (each visually distinct; only
+`cancelled`/`delayed` earn warmth, never alarm-red throughout) · `offline`/stale.
+
+### BarcodePresenter — the scannable code
+**Data:** `format` (`aztec` rail · `pdf417`/`qr` air · `qr` transit), payload value, optional
+passenger label. **The code *is* the ticket** — Design owns the **frame** (quiet zone preserved,
+high contrast, **nothing overlaid on the code**), Code injects the symbology pixels at wire-up.
+**States:** `data-size` = inline (in a TicketCard) · scan (fullscreen). Per-format framing.
+
+### ScanView — fullscreen presentation at the barrier
+**Data:** a one-line journey summary (for the guard), the barcode(s), a swipeable **stack for
+multiple passengers**. **THE function-over-finish exception (§6.3):** code large + centred,
+**brightness maxed**, minimal chrome — Design must **not** elevate it into something that won't
+scan. **States:** single · multi-passenger (pager) · per-format.
+
+> **Offline (hard requirement, §7.3):** TicketCard + BarcodePresenter/ScanView render from cache
+> with no signal; StatusStrip shows last-known + the stale marker. A wallet that needs a connection
+> at the barrier has failed.
 
 ### ModeSwitch — Work/Personal
 **Data:** `work | personal`. A **toggle, not a tab**; persisted; reachable from the shell.

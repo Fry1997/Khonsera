@@ -212,6 +212,33 @@ Newest at the bottom of each section.
     fallback if pixel-exact Satoshi is wanted). **Zero token requests** — all resolved on the manifest.
   - tsc clean, build green, 197 tests.
 
+## Planner programme (master build brief)
+- **D25 — Booked-document family scaffolded + handed to Design; planner brief reviewed (no conflicts).**
+  Reviewed `khonseraplannermasterbrief.md` against the codebase: it **layers on cleanly** — the spine
+  cards (`AnchorCard`/`LegCard`/`GapCard`/`IntentionCard`/`ComparisonMatrix`) already exist + had a
+  Round-1 Design pass; the door-to-door engine + capture→spine are built. The only genuinely-missing
+  UI is the §6 **booked-document family** + the §7 **Wallet**.
+  - **Registered + scaffolded** the four new contract components in `src/components/concierge/`
+    (`document-cards.tsx`): `TicketCard` (rail/air/stay/ground · compact/full · booking-pair +
+    consequence band), `StatusStrip` (7 statuses + offline/stale), `BarcodePresenter` (aztec/pdf417/qr
+    frame; pixels injected at wire-up), `ScanView` (fullscreen, function-over-finish, multi-passenger
+    pager). View-models + `ticketUseMoment` in `concierge/types.ts`; registered in `index.ts` +
+    `docs/component-contract.md` (incl. the JourneyListCard-vs-TicketCard clarification).
+  - **Wallet surface** (`/wallet`, secondary — NOT in nav, §7.5): real **empty state** on the product
+    path (the booked-document data layer isn't wired yet); `?demo=1` (staff only) renders fixtures so
+    Design elevates against a **live** screenshot (a harness, removed at wiring). Grouped by date,
+    ordered by time-needed; opens `ScanView` from a card.
+  - **Code-authored functional floor** in `khonsera-edition-ii-shell.css` (`.cc-ticket-*`/`.cc-status-*`/
+    `.cc-barcode-*`/`.cc-scanview-*`/`.cc-wallet-*`) — legible + correct, calm; Design elevates the
+    finish EXCEPT ScanView + the barcode frame (correctness, not taste — held the line in the spec).
+  - **Minor reconciliations logged (not conflicts):** planner column ~600px vs brief's 640–720 (Design
+    can widen); `ComparisonMatrix` exists as a page (D17) but the brief wants it as a tap-leg sheet —
+    reuse the component in a sheet at wiring.
+  - **for-design.zip** shipped: `documents-and-wallet.md` spec + `class-data-map.md` + reference
+    (components, fixtures, tokens, contract, CSS). tsc clean, build green, 197 tests. **Zero token
+    requests.** Next (post-Design): wire the family to real booked-document data + the engine, build
+    the §4.2 manual structured add, and the §8 Today projection.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

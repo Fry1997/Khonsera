@@ -5,6 +5,12 @@ export { AnchorCard, IntentionCard, GapCard, LegCard } from "./timeline-cards";
 export { ActiveTile, type ActiveUrgency } from "./active-tile";
 export { JourneyListCard } from "./journey-list-card";
 export { ComparisonMatrix } from "./comparison-matrix";
+export {
+  TicketCard,
+  StatusStrip,
+  BarcodePresenter,
+  ScanView,
+} from "./document-cards";
 export { ContactChip, TaskRow, ExpenseRow } from "./people-ledger";
 export { NudgeCard, ReadinessPrompt } from "./feedback";
 export * from "./types";

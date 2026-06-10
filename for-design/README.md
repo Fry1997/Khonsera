@@ -1,42 +1,44 @@
-# for-design.zip — Code → Design: the new public landing + waitlist
+# for-code.zip — Code → Design: the booked-document family + the Wallet
 
-**One thing this round.** `/` has been rebuilt from a sign-in splash into the **public marketing
-front door** — what Khonsera is, a waitlist to capture interest, the app gated behind login at
-`/today`. It's **live and Code-built on Edition II tokens**, and the brief flags it as the **prime
-brand-elevation candidate** (this is where "private jet, not Monarch" matters most), so it goes round
-the loop first.
+**One family this round.** The planner's travel-document layer (master brief §6–§7): the cards the
+user actually presents at the barrier, and the Wallet where they live. Four new components —
+`TicketCard`, `StatusStrip`, `BarcodePresenter`, `ScanView` — plus the Wallet surface that reuses
+them. Code has built them as **live, token-styled placeholders**; you elevate the finish.
 
-> Already designed in earlier rounds — **not in this pack, don't redo:** the app shell (top bar +
-> bottom nav + desktop rail), auth (login / signup / forgot / reset), Planner, Today. This pack is
-> *only* the new landing.
+> Already designed, **not in this pack:** the planner spine cards (`AnchorCard`, `LegCard`,
+> `GapCard`, `IntentionCard`, `ComparisonMatrix`) — Round 1. The app shell, auth, Today, landing.
+> This round is *only* the document family + Wallet.
 
 ## The ask
-
-- **Spec:** `screen-specs/landing-marketing.md` — the page top-to-bottom, the **8 states**, what Code
-  built, and exactly what to return.
-- **Design against the live page:** screenshot `/` logged-out at **390 / 744 / 1280** and elevate over
-  it. Mobile (390) is the source of truth — suppliers open it on a phone.
+- **Spec:** `screen-specs/documents-and-wallet.md` — every member, its data, its states, and the two
+  hard-line correctness surfaces (`BarcodePresenter` frame + `ScanView`).
+- **See it live:** `/wallet?demo=1` (staff) renders the whole family from fixtures — compact
+  TicketCards grouped by day, StatusStrips, and ScanView opens from a card. Screenshot **390 / 744 /
+  1280** and elevate over it. Mobile (390) is the source of truth — these are used one-handed, on a
+  platform, in a hurry.
 
 ## Ground truth (don't reinvent)
+- `handoff/class-data-map.md` — the exact DOM + `data-*` to style by.
+- `reference/document-cards.reference.tsx` · `fixtures.reference.ts` — the components + sample data.
+- `reference/design-tokens.md` · `component-contract.md` (the family is now registered).
+- `reference/khonsera-edition-ii-*.css` — the brand + screen + shell + landing layers. The document
+  family's functional floor is the `BOOKED-DOCUMENT FAMILY` + `.cc-wallet-*` blocks in `…-shell.css`.
+  **Extend; never globals.css. Tokens only.**
+- `reference/brand/mk-ink.png` (light) / `mk-brass.png` (dark) — the only mark. Crescent retired.
 
-- `reference/design-tokens.md` — the Edition II token manifest (values + the iron rule).
-- `reference/component-contract.md` — the named components + states.
-- `reference/khonsera-edition-ii.css` (brand) · `khonsera-edition-ii-screens.css` (`.cc-*` screen
-  components) · `khonsera-edition-ii-shell.css` (shell + the new `.cc-mkt-*` / `.cc-wl-*` /
-  `.cc-gated-*` landing classes). **Extend these; same architecture. globals.css is untouched.**
-- `reference/brand/mk-ink.png` (light) / `mk-brass.png` (dark) — the only sanctioned mark. The
-  crescent is retired; it must not appear.
+## Two places craft yields to correctness (hold the line)
+- **BarcodePresenter** — preserved quiet zone, maximum contrast, **nothing overlaid on the code**. No
+  gold tint, no texture, no mask biting the matrix. A lovely card that won't scan is a failure.
+- **ScanView** — white ground, brightness maxed, big centred code, minimal chrome. **Function over
+  finish (§6.3).** No dark mode, no low-contrast linen. Restraint here = getting out of the scanner's
+  way.
 
-## Exactly what to return (`for-code.zip`)
+## What to return (`for-code.zip`)
+- All members × their states × **390 / 744 / 1280** (list in the spec).
+- An **additive override CSS** by the existing classes/`data-*`, imported last. **Never globals.css.**
+- A **class + `data-*` map** for any new hooks; **token requests** for any new value.
+- **Redlines** — rail-card hierarchy, the consequence band, change/tight-connection treatment,
+  StatusStrip palette discipline, the barcode frame rules, the ScanView function-first layout.
 
-- **All 8 states × 3 sizes** (390 / 744 / 1280).
-- An **additive override CSS** styling the landing **by the existing class/`data-*` hooks**, imported
-  after the current layers. **Never globals.css. Tokens only** (request a token if you need a value).
-- A **class + `data-*` map** for any new hooks you introduce.
-- **Redlines** — hero type + rhythm, section spacing, the prop row, the form (input/button, focus,
-  error, the **joined-state inline morph + motion**), footer, the gated screen.
-- The **link-preview / OG card** — Code's placeholder is live at `/opengraph-image` (wordmark on
-  linen via `next/og`, 1200×630); return the elevated card (or a final flat PNG).
-
-Copy is the brief §8 **draft** — you own final voice. Withholding, calm; one gold fill per view; no
-emojis; voiced as "Khonsera". Hand it back and Code implements on live data.
+Calm by default; one accent; no emoji; copy voiced as "Khonsera". Hand it back and Code wires it to
+the real booked-document data (the §6 materialise + offline cache).
