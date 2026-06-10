@@ -456,7 +456,7 @@ async function threadTransitions(itineraryId: string): Promise<void> {
   const { data: stopRows } = await supabase
     .from("stops")
     .select(
-      `id, sequence,
+      `id, sequence, type,
        location:locations(latitude, longitude),
        customer_site:customer_sites(latitude, longitude),
        transport_hub:transport_hubs(latitude, longitude)`,
@@ -466,11 +466,23 @@ async function threadTransitions(itineraryId: string): Promise<void> {
     .order("sequence");
   const stops = (stopRows ?? []) as unknown as Array<{
     id: string;
+    type: string;
     location: { latitude: number | null; longitude: number | null } | null;
     customer_site: { latitude: number | null; longitude: number | null } | null;
     transport_hub: { latitude: number | null; longitude: number | null } | null;
   }>;
   if (stops.length < 2) return;
+
+  // The user's station arrival buffer (Settings → Travel profile, default 15m):
+  // a leg that BOARDS a train should get you to the platform this many minutes
+  // early, so the solver makes you leave home/work that bit sooner.
+  const { data: profile } = await supabase
+    .from("travel_profiles")
+    .select("default_arrival_buffer_minutes")
+    .eq("user_id", ctx.userId)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  const arrivalBuffer = (profile?.default_arrival_buffer_minutes as number | null) ?? 15;
 
   const { data: trans } = await supabase
     .from("transitions")
@@ -508,12 +520,23 @@ async function threadTransitions(itineraryId: string): Promise<void> {
       const miles = haversineMeters(pa.lat, pa.lng, pb.lat, pb.lng) / 1609.344;
       mode = miles < 2 ? "walk" : "drive";
     }
-    await upsertTransition({
+    const res = await upsertTransition({
       itinerary_id: itineraryId,
       from_stop_id: a.id,
       to_stop_id: b.id,
       mode,
     });
+    // Boarding a train → add the station arrival buffer onto the leg so the
+    // solver leaves earlier. Non-cumulative: this runs only for newly-created
+    // legs (existing ones are skipped above), and the duration is the fresh
+    // routing result, not a re-padded value.
+    if (res.ok && b.type === "transit_departure" && arrivalBuffer > 0) {
+      await supabase
+        .from("transitions")
+        .update({ computed_duration_minutes: (res.value.computed_duration_minutes ?? 0) + arrivalBuffer })
+        .eq("id", res.value.id)
+        .eq("workspace_id", ctx.workspaceId);
+    }
   }
 }
 
