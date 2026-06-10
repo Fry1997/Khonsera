@@ -408,6 +408,20 @@ Newest at the bottom of each section.
     you confirm parity · (P2, infra) reactive live signals + email forward-to-import. The new
     surfaces are ready for a **Design screenshot round**.
 
+- **D33 — Landing re-elevation adopted (Design → Code, `Khonsera_2`, Round 3 redux).** Connor wasn't
+  satisfied with the first landing (a design issue); Design returned a revised pass, applied verbatim.
+  - **Swapped** `khonsera-edition-ii-landing.css` (brand-book **wordmark** — Satoshi 300, uppercase,
+    0.26em tracking — replacing the title-case treatment; ground wash; hero/section rhythm).
+  - **Copy** per Connor's deck (concrete over poetic, show the engine, scarcity once): input→output
+    hero sub, hero meta "By invitation", two-line "What it is", mechanism-led props, "the executive
+    treatment, without the executive", waitlist "a few people at a time".
+  - **NEW "What it looks like"** worked-example section + the **in-context app shots** (a phone
+    rendering the live planning view + a docked-ticket view; Geneva→home to sidestep the
+    Leicester–Derby routing bug). Design shipped these **render-only** in the mock; Code productionised
+    them into `khonsera-edition-ii-landing-shot.css` (`.cc-shot-*`/`.cc-tkt-*`, tokens only, two-column
+    via **container queries**) + shipped `ticket-aztec.png`. DESIGN-PENDING for further elevation.
+  - OG card unchanged (the existing `next/og` already matches). tsc clean, build green, 204 tests.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
