@@ -7,6 +7,7 @@ import { updateStop, deleteStop } from "@/lib/actions/stops";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
+import { wallClockToIso } from "@/lib/time-zone";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
@@ -180,6 +181,7 @@ export async function createLeg(input: {
 // ---------------------------------------------------------------------------
 
 import { createStop, reorderStops } from "@/lib/actions/stops";
+import { createLocation } from "@/lib/actions/locations";
 
 export async function addManualAnchor(input: {
   itineraryId: string;
@@ -187,9 +189,18 @@ export async function addManualAnchor(input: {
   title: string;
   iso?: string | null;
   durationMinutes?: number | null;
+  address?: string | null; // a concrete address → geocoded to coords (so it routes)
 }): Promise<{ ok: boolean; error?: string }> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "Give it a name." };
+
+  // A specific place → make a geocoded location so the walk to/from it routes.
+  let locationId: string | null = null;
+  const address = input.address?.trim();
+  if (address) {
+    const loc = await createLocation({ name: title, type: "other", address });
+    if (loc.ok) locationId = loc.value.id;
+  }
 
   const created = await createStop({
     itinerary_id: input.itineraryId,
@@ -198,6 +209,7 @@ export async function addManualAnchor(input: {
     start_time: input.iso ?? null,
     duration_minutes: input.durationMinutes ?? null,
     is_time_fixed: Boolean(input.iso),
+    location_id: locationId,
   });
   if (!created.ok) {
     const msg = "message" in created.error ? created.error.message : "Couldn't add that.";
@@ -299,6 +311,88 @@ export async function deleteBookedRun(departureStopId: string): Promise<{ ok: bo
   await inferAndUpdateSpan(itineraryId);
   revalidatePath(`/plan/${itineraryId}`);
   revalidatePath("/plan");
+  revalidatePath("/wallet");
+  return { ok: true };
+}
+
+// Add transport as a STANDALONE fact (no fixed anchor required) — a booked train
+// (or flight/bus/…) from A to B at a time. Creates the transit_departure +
+// transit_arrival stops (with their station hubs + times) and a locked leg
+// between them, then re-sequences by time + re-solves. Shows as a docked Pass.
+export async function addTransport(input: {
+  itineraryId: string;
+  mode: "train" | "flight" | "bus" | "tube" | "taxi" | "drive";
+  fromHubId?: string | null;
+  fromLabel: string;
+  toHubId?: string | null;
+  toLabel: string;
+  date: string; // YYYY-MM-DD
+  departTime: string; // HH:MM
+  arriveTime: string; // HH:MM
+  operator?: string | null;
+  reference?: string | null;
+  seat?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const from = input.fromLabel.trim();
+  const to = input.toLabel.trim();
+  if (!from || !to) return { ok: false, error: "Where from, and where to?" };
+  const departIso = wallClockToIso(input.date, input.departTime);
+  const arriveIso = wallClockToIso(input.date, input.arriveTime);
+  if (!departIso || !arriveIso) return { ok: false, error: "Pick depart and arrive times." };
+
+  const meta: Record<string, unknown> = { transport_mode: input.mode };
+  if (input.operator?.trim()) meta.operator = input.operator.trim();
+  if (input.reference?.trim()) meta.booking_reference = input.reference.trim();
+  if (input.seat?.trim()) meta.seat = input.seat.trim();
+
+  const dep = await createStop({
+    itinerary_id: input.itineraryId,
+    type: "transit_departure",
+    title: from,
+    start_time: departIso,
+    is_time_fixed: true,
+    transport_hub_id: input.fromHubId ?? null,
+    metadata: meta,
+  });
+  const arr = await createStop({
+    itinerary_id: input.itineraryId,
+    type: "transit_arrival",
+    title: to,
+    start_time: arriveIso,
+    is_time_fixed: true,
+    transport_hub_id: input.toHubId ?? null,
+  });
+  if (!dep.ok || !arr.ok) return { ok: false, error: "Couldn't add the transport." };
+
+  await upsertTransition({
+    itinerary_id: input.itineraryId,
+    from_stop_id: dep.value.id,
+    to_stop_id: arr.value.id,
+    mode: input.mode,
+    is_locked: true,
+  });
+
+  // Re-sequence the whole spine by time, then re-solve + re-infer the span.
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, start_time")
+    .eq("itinerary_id", input.itineraryId)
+    .eq("workspace_id", ctx.workspaceId);
+  const ordered = (rows ?? [])
+    .slice()
+    .sort((a, b) => {
+      const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
+      const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
+      return ta - tb;
+    })
+    .map((r) => r.id as string);
+  if (ordered.length > 1) await reorderStops({ itinerary_id: input.itineraryId, stop_ids: ordered });
+  await resolveItineraryTimes(input.itineraryId);
+  await inferAndUpdateSpan(input.itineraryId);
+
+  revalidatePath(`/plan/${input.itineraryId}`);
   revalidatePath("/wallet");
   return { ok: true };
 }
