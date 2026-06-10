@@ -440,6 +440,20 @@ Newest at the bottom of each section.
     PlacePicker → geocoded coords) so a captured anchor with no address gets one (and thus routes).
     The brewery already had coords; a plain "meeting" with no place won't route until enriched.
 
+- **D35 — Booked-train delete + add-from-email + a real tomorrow example.**
+  - **Delete a booking, both surfaces.** `deleteBookedRun(departureStopId)` removes a transit run's
+    stops + transitions + any linked travel_booking/booking_intent, re-solves + re-infers span. Because
+    the Wallet and the docked Pass read the same stops, deleting from either clears **both**. Affordance
+    on the docked Pass (timeline) and each Wallet pass.
+  - **Add from email.** `PlanImport` surfaces the existing (working) Gmail import panel on the Event
+    detail — the "I can't bring it in from email" gap. On import the spine re-folds it into a docked
+    Pass + the Wallet picks it up. Panel is legacy-styled (DESIGN-PENDING for an Edition II pass).
+  - **A real example for tomorrow (data).** Cloned the real Dancing Duck booked day → a new Event for
+    tomorrow (stations, barcodes, hub/venue coords intact) so the Wallet/timeline/delete/routing flows
+    can be tested immediately. tsc clean, build green, 204 tests.
+  - **Next:** a manual structured **add-transport** (operator + from/to + times + ref) for when there's
+    no email; and an Edition II pass on the import panel.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
