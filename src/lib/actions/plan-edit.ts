@@ -189,8 +189,9 @@ export async function addManualAnchor(input: {
   itineraryId: string;
   kind: "appointment" | "place";
   title: string;
-  iso?: string | null;
-  durationMinutes?: number | null;
+  iso?: string | null; // arrive-by (start)
+  leaveIso?: string | null; // leave-by (end) — set both for a fixed window ("9 to 5")
+  durationMinutes?: number | null; // used only when no leave time given
   // The PlacePicker resolves a real, geocoded place (saved location or a Google
   // pin promoted into `locations`) and hands back its id — so the walk to/from
   // it routes. Prefer these over the raw-address fallback.
@@ -211,13 +212,23 @@ export async function addManualAnchor(input: {
     if (loc.ok) locationId = loc.value.id;
   }
 
+  // Arrive + leave → a fixed window; derive the duration. Arrive-only keeps the
+  // supplied duration. Either pinned time fixes the anchor for the solver.
+  const arriveIso = input.iso ?? null;
+  const leaveIso = input.leaveIso ?? null;
+  const duration =
+    arriveIso && leaveIso
+      ? Math.max(0, Math.round((new Date(leaveIso).getTime() - new Date(arriveIso).getTime()) / 60_000))
+      : input.durationMinutes ?? null;
+
   const created = await createStop({
     itinerary_id: input.itineraryId,
     type: input.kind === "appointment" ? "appointment" : "other",
     title,
-    start_time: input.iso ?? null,
-    duration_minutes: input.durationMinutes ?? null,
-    is_time_fixed: Boolean(input.iso),
+    start_time: arriveIso,
+    end_time: leaveIso,
+    duration_minutes: duration,
+    is_time_fixed: Boolean(arriveIso || leaveIso),
     location_id: locationId,
     customer_site_id: customerSiteId,
   });

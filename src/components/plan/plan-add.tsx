@@ -40,12 +40,11 @@ export function PlanAdd({
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<Kind>("appointment");
 
-  // anchor fields
+  // anchor fields — arrive + leave (a window, e.g. 09:00–17:00). Both optional.
   const [title, setTitle] = useState("");
   const [place, setPlace] = useState<PlaceSelection | null>(null);
-  const [time, setTime] = useState("");
-  const [hours, setHours] = useState(1);
-  const [mins, setMins] = useState(0);
+  const [arriveBy, setArriveBy] = useState("");
+  const [leaveBy, setLeaveBy] = useState("");
 
   // transport fields
   const [tmode, setTmode] = useState<TMode>("train");
@@ -60,7 +59,7 @@ export function PlanAdd({
   const [pending, setPending] = useState(false);
 
   function reset() {
-    setTitle(""); setPlace(null); setTime(""); setHours(1); setMins(0);
+    setTitle(""); setPlace(null); setArriveBy(""); setLeaveBy("");
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
     setError(null);
@@ -112,8 +111,8 @@ export function PlanAdd({
       return;
     }
     setPending(true);
-    const iso = time ? wallClockToIso(journeyDate, time) || null : null;
-    const durationMinutes = hours * 60 + mins || null;
+    const iso = arriveBy ? wallClockToIso(journeyDate, arriveBy) || null : null;
+    const leaveIso = leaveBy ? wallClockToIso(journeyDate, leaveBy) || null : null;
     void addManualAnchor({
       itineraryId: journeyId,
       kind: kind === "appointment" ? "appointment" : "place",
@@ -121,7 +120,7 @@ export function PlanAdd({
       locationId: place?.kind === "location" ? place.location_id : null,
       customerSiteId: place?.kind === "customer_site" ? place.customer_site_id : null,
       iso,
-      durationMinutes,
+      leaveIso,
     }).then(done);
   }
 
@@ -210,20 +209,21 @@ export function PlanAdd({
                     placeholder={kind === "appointment" ? "Search where it happens" : "Search a place, or type a new one"}
                   />
                 </div>
+                {/* Arrive + leave — set both for a window ("at the office 9 to 5"),
+                    or just one. The day solver fills the rest around it. */}
                 <div className="cc-dur-row">
                   <label>
-                    <span className="cc-var-label">{kind === "appointment" ? "Arrive by" : "Around"}</span>
-                    <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                    <span className="cc-var-label">Arrive by</span>
+                    <input type="time" value={arriveBy} onChange={(e) => setArriveBy(e.target.value)} />
                   </label>
                   <label>
-                    <span className="cc-var-label">For (h)</span>
-                    <input type="number" min={0} max={23} value={hours} onChange={(e) => setHours(clamp(+e.target.value, 0, 23))} />
-                  </label>
-                  <label>
-                    <span className="cc-var-label">m</span>
-                    <input type="number" min={0} max={59} step={5} value={mins} onChange={(e) => setMins(clamp(+e.target.value, 0, 59))} />
+                    <span className="cc-var-label">Leave by</span>
+                    <input type="time" value={leaveBy} onChange={(e) => setLeaveBy(e.target.value)} />
                   </label>
                 </div>
+                <p style={{ marginTop: "calc(-1 * var(--space-1))", fontSize: "var(--fs-micro)", color: "var(--ink-faint)" }}>
+                  Set both for a window, e.g. 09:00 to 17:00. Leave blank if it’s flexible.
+                </p>
               </>
             )}
 
@@ -242,8 +242,4 @@ export function PlanAdd({
       ) : null}
     </>
   );
-}
-
-function clamp(n: number, lo: number, hi: number): number {
-  return Number.isNaN(n) ? lo : Math.min(hi, Math.max(lo, n));
 }
