@@ -67,7 +67,7 @@ Weights: `--fw-regular` 400 · `--fw-medium` 500 · `--fw-semibold` 600. Trackin
 
 ## Spacing scale (4px base)
 `--space-0` 0 · `--space-0-5` 2 · `--space-1` 4 · `--space-1-5` 6 · `--space-2` 8 · `--space-2-5` 10
-· `--space-3` 12 · `--space-4` 16 · `--space-4-5` 18 · `--space-5` 20 · `--space-6` 24 · `--space-8`
+· `--space-3` 12 · `--space-3-5` 14 · `--space-4` 16 · `--space-4-5` 18 · `--space-5` 20 · `--space-6` 24 · `--space-8`
 32 · `--space-12` 48. (Tailwind's numeric `gap-2`/`p-3`… already resolve to these px values.)
 
 ## Radius scale

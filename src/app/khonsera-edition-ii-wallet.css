@@ -1,0 +1,134 @@
+/* ============================================================================
+ * KHONSERA · EDITION II — WALLET, first-class · Round 5b
+ * Elevates the Wallet from a flat list into a stacked-pass wallet with real
+ * ticket materiality: a hero pass (next-needed), perforation + barcode stub,
+ * and the day's remaining passes layered beneath with depth. Additive; import
+ * after khonsera-edition-ii-documents.css. Tokens only.
+ * ========================================================================== */
+
+.cc-wallet, .cc-wallet * { box-sizing: border-box; }
+
+/* the surface — calmer ground so the passes float */
+.cc-wallet--lux { background:
+    radial-gradient(120% 50% at 50% -10%, color-mix(in oklab, var(--gold-100) 18%, transparent), transparent 60%),
+    var(--paper-2);
+  padding: var(--space-5) var(--space-4) var(--space-12); gap: var(--space-6); }
+
+.cc-wallet--lux .cc-wallet-group { gap: var(--space-4); }
+.cc-wallet--lux .cc-wallet-group-head { font-size: 11px; letter-spacing: 0.22em; }
+.cc-wallet--lux .cc-wallet-group[data-when="today"] .cc-wallet-group-head { color: var(--gold-2); }
+
+/* ---------------------------------------------------------------------------
+ * THE PASS — a real issued ticket with anatomy + depth
+ * ------------------------------------------------------------------------- */
+.cc-pass { position: relative; border-radius: 16px; background: var(--card);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 18px 40px -24px rgba(27,19,8,0.45),
+    0 3px 10px -4px rgba(27,19,8,0.16);
+  border: 1px solid var(--rule); overflow: hidden; }
+
+/* operator band — a quiet header zone; a thin kind-accent seam at the very top */
+.cc-pass-band { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-3); position: relative; }
+.cc-pass-band::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--rule-2); }
+.cc-pass[data-kind="rail"] .cc-pass-band::before { background: var(--gold); }
+.cc-pass[data-kind="air"] .cc-pass-band::before { background: var(--slate, #5b6b7a); }
+.cc-pass[data-kind="stay"] .cc-pass-band::before { background: var(--sage); }
+.cc-pass-operator { display: flex; align-items: baseline; gap: var(--space-2-5); }
+.cc-pass-kind { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ink-faint); }
+.cc-pass-name { font-family: var(--display); font-weight: var(--fw-medium); font-size: 16px; letter-spacing: -0.01em; color: var(--ink); }
+.cc-pass-ref { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; color: var(--ink-dim);
+  border: 1px solid var(--rule); border-radius: 4px; padding: 3px 8px; background: var(--paper); }
+
+/* the journey — the big time-pair is the hero figure */
+.cc-pass-body { padding: var(--space-3) var(--space-5) var(--space-5); }
+.cc-pass-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-4); }
+.cc-pass-end { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cc-pass-end[data-role="to"] { text-align: right; align-items: flex-end; }
+.cc-pass-time { font-family: var(--mono); font-size: 34px; line-height: 1; letter-spacing: -0.01em; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.cc-pass-place { font-size: 13px; color: var(--ink-2); }
+.cc-pass-meta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--gold-2); }
+/* the connector — a drawn line with a mode node at centre */
+.cc-pass-link { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--ink-dim); }
+.cc-pass-link .ln { width: 54px; height: 1px; position: relative;
+  background: repeating-linear-gradient(90deg, var(--rule-2) 0 4px, transparent 4px 8px); }
+.cc-pass-link .ln::before, .cc-pass-link .ln::after { content: ""; position: absolute; top: 50%; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--rule-2); transform: translateY(-50%); }
+.cc-pass-link .ln::before { left: -1px; } .cc-pass-link .ln::after { right: -1px; }
+.cc-pass-link .ico { width: 18px; height: 18px; }
+.cc-pass-link .dur { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--ink-faint); }
+
+/* sub-line: status + a quiet seat/coach */
+.cc-pass-sub { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--rule); }
+.cc-pass-seat { font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); }
+
+/* the consequence — the one warm concierge line, when present */
+.cc-pass-consequence { font-family: var(--serif); font-style: italic; font-size: 13.5px; line-height: 1.45;
+  color: var(--ink); background: var(--gold-tint); border-radius: 8px; padding: var(--space-3) var(--space-3-5);
+  margin: var(--space-4) var(--space-5) 0; }
+
+/* the perforation + barcode stub — the tactile foot of a real ticket */
+.cc-pass-perf { position: relative; height: 1px; margin: var(--space-5) 0 0;
+  border-top: 2px dashed var(--rule-2); }
+.cc-pass-perf::before, .cc-pass-perf::after { content: ""; position: absolute; top: -10px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--paper-2); border: 1px solid var(--rule); }
+.cc-pass-perf::before { left: -11px; } .cc-pass-perf::after { right: -11px; }
+.cc-pass-stub { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5) var(--space-5); }
+.cc-pass-stub .cc-barcode { border: none; padding: 0; background: transparent; flex: none; }
+.cc-pass-stub .cc-barcode-quiet { padding: 8px; background: #fff; border-radius: 4px; }
+.cc-pass-stub .cc-barcode-code { width: 72px; height: 72px; }
+.cc-pass-stub-meta { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.cc-pass-stub-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-pass-stub-val { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+.cc-pass-show { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold-2); display: inline-flex; align-items: center; gap: 6px; margin-top: var(--space-1); cursor: pointer; }
+
+/* stay pass — no perforation/barcode, a calmer body */
+.cc-pass[data-kind="stay"] .cc-pass-time { font-size: 22px; }
+
+/* ---------------------------------------------------------------------------
+ * THE STACK — remaining passes layered beneath, peeking
+ * ------------------------------------------------------------------------- */
+.cc-pass-stack { position: relative; display: flex; flex-direction: column; }
+.cc-pass-stack > .cc-pass + .cc-pass { margin-top: calc(-1 * var(--space-3)); }
+/* a peek card: collapsed to its band, scaled a hair, dimmed by depth */
+.cc-pass--peek { cursor: pointer; }
+.cc-pass--peek .cc-pass-body, .cc-pass--peek .cc-pass-perf, .cc-pass--peek .cc-pass-stub,
+.cc-pass--peek .cc-pass-consequence { display: none; }
+.cc-pass--peek .cc-pass-band { padding-bottom: var(--space-4); }
+.cc-pass--peek { transform-origin: top center; }
+.cc-pass-stack > .cc-pass--peek:nth-of-type(2) { transform: scale(0.985); }
+.cc-pass-stack > .cc-pass--peek:nth-of-type(3) { transform: scale(0.97); }
+.cc-pass-stack > .cc-pass--peek:nth-of-type(4) { transform: scale(0.955); }
+/* peek shows a compact line: operator · time · status */
+.cc-pass-peekline { display: flex; align-items: baseline; gap: var(--space-3); margin-left: auto; }
+.cc-pass-peektime { font-family: var(--mono); font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------------
+ * THE PASS ON THE PLANNER SPINE — the same pass, docked on the timeline when a
+ * leg is booked. It threads onto the rail at the leg's position (replacing the
+ * unbooked LegCard). Slightly tightened; the rail node + connectors still read.
+ * Use: a `.cc-pass` inside a Round-1 spine node (`.cc-node` content slot), with
+ * `.cc-pass--docked`.
+ * ------------------------------------------------------------------------- */
+.cc-pass--docked { border-radius: 12px;
+  box-shadow: 0 10px 26px -18px rgba(27,19,8,0.4), 0 2px 6px -3px rgba(27,19,8,0.14); }
+.cc-pass--docked .cc-pass-band { padding: var(--space-3) var(--space-4) var(--space-2-5); }
+.cc-pass--docked .cc-pass-band::before { height: 2px; }
+.cc-pass--docked .cc-pass-body { padding: var(--space-2-5) var(--space-4) var(--space-4); }
+.cc-pass--docked .cc-pass-time { font-size: 24px; }   /* a touch smaller on the spine than the wallet hero */
+.cc-pass--docked .cc-pass-consequence { margin: var(--space-3) var(--space-4) 0; font-size: 13px; }
+/* on the spine the barcode collapses to a quiet "ticket ready" affordance —
+   the full code lives behind Show ticket / the Wallet, not inline on the plan */
+.cc-pass--docked .cc-pass-perf, .cc-pass--docked .cc-pass-stub { display: none; }
+.cc-pass--docked .cc-pass-ready { display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--rule); }
+.cc-pass-ready-tag { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sage); }
+.cc-pass-ready-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
+.cc-pass-show { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold-2); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+/* booking-pair on the spine: the return is a second docked pass at its own
+   position downstream — they are NOT stacked here (the timeline IS the order). */

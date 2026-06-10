@@ -9,12 +9,20 @@ import type {
 } from "./types";
 import { STATUS_LABEL, formatClock, formatMoney } from "./types";
 
-// Booked-document family (planner master brief §6). Placeholders now — Code owns
-// the names, the DOM contract (`.cc-*` + data-* states) and the data; Design
-// owns the look via an additive elevation layer. The single exception is
-// ScanView: function over finish — it must actually scan, so Design must not
-// "elevate" it into something unscannable (§6.3). These compose into the
+// Booked-document family (planner master brief §6). Code owns the names, the DOM
+// contract (`.cc-*` + data-* states) and the data; Design owns the look via the
+// additive elevation (`khonsera-edition-ii-documents.css`, Round 5). The single
+// exception is ScanView: function over finish — it must actually scan, so Design
+// must not "elevate" it into something unscannable (§6.3). These compose into the
 // planner's booked legs, Today's promoted document, and the Wallet.
+
+// The mono "kind tab" Design's elevation renders before the operator name.
+export const KIND_LABEL: Record<TicketVM["kind"], string> = {
+  rail: "Rail",
+  air: "Air",
+  stay: "Stay",
+  ground: "Travel",
+};
 
 /* ===========================================================================
  * StatusStrip — live status line (on-time / delayed / platform / cancelled).
@@ -102,7 +110,9 @@ export function ScanView({
         ) : null}
       </div>
 
-      {current ? <BarcodePresenter barcode={current} size="scan" /> : null}
+      <div className="cc-scanview-body">
+        {current ? <BarcodePresenter barcode={current} size="scan" /> : null}
+      </div>
 
       {many ? (
         <div className="cc-scanview-pager">
@@ -169,7 +179,7 @@ export function TicketCard({
       style={onSelect ? { cursor: "pointer" } : undefined}
     >
       <header className="cc-ticket-head">
-        <span className="cc-ticket-operator">
+        <span className="cc-ticket-operator" data-kind-label={KIND_LABEL[ticket.kind]}>
           {ticket.operator}
           {ticket.operatorSecondary ? ` · ${ticket.operatorSecondary}` : ""}
         </span>
@@ -338,7 +348,9 @@ function StayCard({
       style={onSelect ? { cursor: "pointer" } : undefined}
     >
       <header className="cc-ticket-head">
-        <span className="cc-ticket-operator">{ticket.operator}</span>
+        <span className="cc-ticket-operator" data-kind-label={KIND_LABEL.stay}>
+          {ticket.operator}
+        </span>
         {ticket.reference ? <span className="cc-ticket-ref">{ticket.reference}</span> : null}
       </header>
       {ticket.address ? <p className="cc-ticket-address">{ticket.address}</p> : null}

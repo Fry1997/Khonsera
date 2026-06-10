@@ -4,7 +4,9 @@ import "./globals.css";
 import "./khonsera-edition-ii.css"; // ← Edition II brand update (must load AFTER globals.css)
 import "./khonsera-edition-ii-screens.css"; // Round 1 screen components (.cc-*) — additive, after the brand layer
 import "./khonsera-edition-ii-shell.css"; // Round 2 shell + landing + auth + secondary (.cc-*)
-import "./khonsera-edition-ii-landing.css"; // Round 3 landing/waitlist elevation — must load LAST
+import "./khonsera-edition-ii-landing.css"; // Round 3 landing/waitlist elevation
+import "./khonsera-edition-ii-documents.css"; // Round 5 booked-document family elevation
+import "./khonsera-edition-ii-wallet.css"; // Round 5b first-class Wallet + docked-pass — LAST
 
 // Canonical Khonsera type stack, per the Visual Identity brand book
 // (Edition II · MMXXVI) — SANS-LED:

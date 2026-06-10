@@ -239,6 +239,32 @@ Newest at the bottom of each section.
     requests.** Next (post-Design): wire the family to real booked-document data + the engine, build
     the §4.2 manual structured add, and the §8 Today projection.
 
+- **D26 — Round 5 document elevation adopted (Design → Code, `Khonsera_16`) + the first-class Pass.**
+  Design returned the booked-document elevation and went further than a restyle: two additive layers,
+  both imported after the existing layers — `khonsera-edition-ii-documents.css` (elevates the live
+  `.cc-ticket`/`.cc-status`/`.cc-barcode`/`.cc-scanview`/`.cc-wallet` floor into issued documents) and
+  `khonsera-edition-ii-wallet.css` (a **first-class Wallet**: the `.cc-pass` stack — a hero pass +
+  peeking passes — and a `.cc-pass--docked` for the Planner spine).
+  - **Wired the thin documents hooks** per the class-data-map: `data-kind-label` on the operator (mono
+    kind tab), `.cc-scanview-body` wrapper, Wallet `data-when` + `.cc-wallet-archive`, the empty-state
+    emblem. No class renames; markup-compatible.
+  - **Built the `.cc-pass` rendering** (`concierge/pass.tsx`: `Pass` + `PassPeek`) from Design's
+    `Wallet.html` DOM and rewired the Wallet (`/wallet`) to the stacked-pass treatment
+    (`.cc-wallet--lux`, day groups → `.cc-pass-stack`, next-needed full + rest peeking, past → archive,
+    opens `ScanView`). Registered in `index.ts` + `component-contract.md`. The compact `TicketCard`
+    stays for non-stacked list contexts (e.g. Today's single promoted document).
+  - **Held the two correctness lines verbatim** (Design's, and ours): the BarcodePresenter frame
+    (literal `#fff` quiet zone, nothing overlaid) and ScanView (`#fff`/`#111`, brightness, big code) —
+    function over finish, not theme-tokened so they never drift.
+  - **One token added (`--space-3-5: 14px`)** to the globals spacing scale + manifest — Design used it
+    but the scale lacked the 14px step (they reported "no token requests"; flagged back). This is the
+    sanctioned token-request flow (scale token, not a brand-value hand-port), not a globals brand edit.
+  - **Deferred (CSS lands ready):** the `.cc-pass--docked` pass-on-the-spine renders when booked legs
+    are wired onto the Planner timeline (the §6 materialise slice) — no booked-document data layer yet.
+  - **Stale-clone recurred** (container re-cloned at D19 `eea9d23`); reset hard to origin `8ad85f4` —
+    no work lost. tsc clean (excluded `for-design/` reference copies from tsconfig), build green, 197
+    tests.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every

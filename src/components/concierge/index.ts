@@ -10,7 +10,9 @@ export {
   StatusStrip,
   BarcodePresenter,
   ScanView,
+  KIND_LABEL,
 } from "./document-cards";
+export { Pass, PassPeek } from "./pass";
 export { ContactChip, TaskRow, ExpenseRow } from "./people-ledger";
 export { NudgeCard, ReadinessPrompt } from "./feedback";
 export * from "./types";

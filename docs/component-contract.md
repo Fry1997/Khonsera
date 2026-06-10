@@ -95,6 +95,15 @@ scan. **States:** single · multi-passenger (pager) · per-format.
 > with no signal; StatusStrip shows last-known + the stale marker. A wallet that needs a connection
 > at the barrier has failed.
 
+### Pass — the first-class wallet rendering (Round 5b) — `concierge/pass.tsx`
+**Not a new contract member — a richer presentation of a booked document** (same `TicketVM`; reuses
+`StatusStrip` + `BarcodePresenter`). The materially-real issued ticket: operator band + kind seam,
+the big time-pair, a drawn connector, perforation + barcode stub. `Pass` (full, next-needed) +
+`PassPeek` (collapsed, in the day's `.cc-pass-stack`). **Docks on the Planner spine** when a leg is
+booked (`.cc-pass--docked`: tighter, barcode → a quiet "Ticket ready" line; a return is a second
+docked pass downstream, not a stack — the timeline carries order). The Wallet uses `Pass`; the
+compact `TicketCard` remains for non-stacked list contexts (e.g. Today's single promoted document).
+
 ### ModeSwitch — Work/Personal
 **Data:** `work | personal`. A **toggle, not a tab**; persisted; reachable from the shell.
 
