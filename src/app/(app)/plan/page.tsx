@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PlanCapture } from "@/components/plan/plan-capture";
 import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
@@ -24,20 +25,6 @@ const mapLegMode = (m: string): LegMode => (LEG_MODES.has(m) ? m : "mixed") as L
 
 type StopRow = { id: string; sequence: number; type: string; title: string | null; start_time: string | null; location: { name?: string } | null };
 type TransRow = { from_stop_id: string; to_stop_id: string; mode: string; is_locked: boolean | null; computed_duration_minutes: number | null };
-
-function Capture() {
-  return (
-    <div className="cc-capture">
-      <Link href={"/capture" as Route} className="cc-capture-field" style={{ textDecoration: "none" }}>
-        <span style={{ flex: 1, color: "var(--ink-faint)", fontSize: 15 }}>
-          Tell Khonsera in a sentence…
-        </span>
-        <span className="cc-mono" style={{ color: "var(--gold-2)", fontSize: 11 }}>ADD</span>
-      </Link>
-      <p className="cc-capture-hint">A train, a meeting, a place — in any order. I&apos;ll thread it.</p>
-    </div>
-  );
-}
 
 export default async function PlanPage() {
   const ctx = await requireUserContext();
@@ -143,7 +130,7 @@ export default async function PlanPage() {
         </>
       )}
 
-      <Capture />
+      <PlanCapture />
     </div>
   );
 }
