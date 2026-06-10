@@ -85,10 +85,12 @@ async function enrichTrainlineFromPdfs(
   const perPdf = await Promise.all(
     pdfBuffers.map(async (buf) => {
       if (!buf) return null;
-      const ab = new Uint8Array(buf).buffer;
       let ticket: ReturnType<typeof parseTrainlinePdfText> = null;
       try {
-        const result = await extractText(ab);
+        // FRESH buffer per consumer: unpdf/pdf.js TRANSFERS (detaches) the
+        // ArrayBuffer when it reads the text, so a shared buffer leaves the
+        // Aztec decode with zero bytes (silently no barcode). Give each its own.
+        const result = await extractText(new Uint8Array(buf).buffer);
         const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
         ticket = parseTrainlinePdfText(pdfText);
       } catch {
@@ -96,7 +98,7 @@ async function enrichTrainlineFromPdfs(
       }
       if (!ticket) return null;
       try {
-        const barcodeData = await decodeAztecFromPdf(ab);
+        const barcodeData = await decodeAztecFromPdf(new Uint8Array(buf).buffer);
         if (barcodeData) ticket.barcode_data = barcodeData;
       } catch {
         // Barcode decoding is best-effort — the ticket detail still imports.

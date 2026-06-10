@@ -157,10 +157,13 @@ export function mergeTrainlineGroup(group: ParsedBooking[]): ParsedBooking {
     };
   });
 
-  // Best price + booking ref across the group.
+  // Best price + booking ref across the group. Reject junk refs like "N" / "N/A"
+  // (a confirmation's "NRS Booking Reference N/A" mis-parses to these) in favour of
+  // a real reference from another email.
+  const validRef = (r: string | null): r is string => !!r && r.length > 2 && !/^N\/?A?$/i.test(r);
   const price = transport.map((b) => b.price).find((p) => p != null) ?? base.price;
   const booking_reference =
-    transport.map((b) => b.booking_reference).find((r) => r) ?? base.booking_reference;
+    transport.map((b) => b.booking_reference).find(validRef) ?? base.booking_reference;
 
   // Carry EVERY source email id, so importing the merged booking marks them all
   // (otherwise the un-marked eticket reappears alone — midnight — next scan).
