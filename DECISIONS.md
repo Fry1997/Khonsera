@@ -422,6 +422,24 @@ Newest at the bottom of each section.
     via **container queries**) + shipped `ticket-aztec.png`. DESIGN-PENDING for further elevation.
   - OG card unchanged (the existing `next/og` already matches). tsc clean, build green, 204 tests.
 
+- **D34 — Bug-fix batch from live testing (delete · timezone · routing/geography).**
+  - **Delete.** Clear a day/trip from the Plan index (`deleteEvent`, confirm) and remove a tile from
+    an Event (`removeStop`, re-solve + re-infer span) — unblocks stuck/bad demo data.
+  - **Timezone (BST/UTC).** `formatClock` now renders in **Europe/London** (`DISPLAY_TZ`); times showed
+    an hour early in BST (the 09:19→08:19 bug, which made the day read as temporally impossible).
+    `wallClockToIso` interprets typed/constructed times in London too (capture, manual add, editor).
+  - **Routing / "no geography".** Root cause: legs came back with **no duration** — `routeForTransition`
+    returned null for every walk/taxi when there's no Google Maps key, AND `setTransitionMode` didn't
+    select `transport_hub` coords so station legs couldn't route. Fixes: a **haversine straight-line
+    fallback** (per-mode speed + detour factor) so a leg always has a real door-to-door time + distance
+    from the endpoints' coords (locked/booked legs keep booked times); `setTransitionMode` selects hub
+    lat/lon; Event open **self-heals** by re-routing unbooked legs missing a duration. Restores the
+    point-to-point comparatives in the ComparisonMatrix too (it rides `previewRoute`). tsc clean, build
+    green, 204 tests.
+  - **Still to do (next focused slice):** **edit/enrich a tile** — a tile editor (title + place via the
+    PlacePicker → geocoded coords) so a captured anchor with no address gets one (and thus routes).
+    The brewery already had coords; a plain "meeting" with no place won't route until enriched.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
