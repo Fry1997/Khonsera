@@ -2,7 +2,7 @@
 // without a Gmail/Supabase harness. Imported by the scan action in
 // `src/lib/actions/gmail.ts`.
 
-import { type ParsedBooking } from "@/lib/gmail/types";
+import { type ParsedBooking, getTravelDate } from "@/lib/gmail/types";
 
 type TransportBooking = Extract<ParsedBooking, { type: "transport" }>;
 
@@ -20,44 +20,61 @@ export function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedB
 
   if (trainline.length <= 1) return bookings;
 
-  // Group by ROUTE (origin → destination of the whole journey), NOT by parsed
-  // travel date. The confirmation and the eticket of the same trip can parse
-  // slightly different dates (an anytime eticket has no real time, the
-  // confirmation reads the intended one), which used to split them into separate
-  // date-groups → the lone midnight eticket survived. Route is stable across both
-  // emails. Outbound (WEL→HAR) and return (HAR→WEL) have different route keys, so
-  // they correctly stay separate. (Callers filter to future trips BEFORE this, so
-  // a last-week trip on the same route can't collide with tomorrow's.)
-  const byRoute = new Map<string, ParsedBooking[]>();
+  // Group by travel DATE, then within a date cluster by SHARED STATION. The two
+  // emails of one trip (a round-trip confirmation WEL→…→WEL + an outbound eticket
+  // WEL→HAR) share stations, so they cluster and reconcile; two genuinely
+  // unrelated trips on the same day share no station and stay separate (the bug
+  // the Codex review flagged). Callers filter to future trips BEFORE this.
+  const byDate = new Map<string, TransportBooking[]>();
   for (const b of trainline) {
-    const key = b.type === "transport" ? routeKey(b as TransportBooking) : "unknown";
-    const group = byRoute.get(key) ?? [];
-    group.push(b);
-    byRoute.set(key, group);
+    const date = getTravelDate(b) ?? "unknown";
+    const group = byDate.get(date) ?? [];
+    group.push(b as TransportBooking);
+    byDate.set(date, group);
   }
 
   const kept: ParsedBooking[] = [];
-  for (const group of byRoute.values()) {
-    if (group.length === 1) {
-      kept.push(group[0]);
-      continue;
+  for (const group of byDate.values()) {
+    for (const cluster of clusterBySharedStation(group)) {
+      kept.push(cluster.length === 1 ? cluster[0] : mergeTrainlineGroup(cluster));
     }
-    kept.push(mergeTrainlineGroup(group));
   }
 
   return [...rest, ...kept];
 }
 
-// A direction-sensitive route key from the first segment's origin to the last
-// segment's destination. Prefers CRS codes, falls back to the first 3 letters of
-// the station name (so "Wellingborough" and code "WEL" agree).
-function routeKey(b: TransportBooking): string {
-  const first = b.segments[0];
-  const last = b.segments[b.segments.length - 1];
-  if (!first || !last) return "unknown";
-  const o = (first.from_station_code ?? first.from_station ?? "").slice(0, 3).toUpperCase();
-  const d = (last.to_station_code ?? last.to_station ?? "").slice(0, 3).toUpperCase();
-  return `${o}->${d}`;
+// Every station a booking touches (origin/destination of each leg), normalised to
+// a CRS code or the first 3 letters of the name so "Wellingborough" and "WEL" agree.
+function stationsOf(b: TransportBooking): Set<string> {
+  const out = new Set<string>();
+  for (const s of b.segments) {
+    if (s.from_station_code || s.from_station) out.add((s.from_station_code ?? s.from_station).slice(0, 3).toUpperCase());
+    if (s.to_station_code || s.to_station) out.add((s.to_station_code ?? s.to_station).slice(0, 3).toUpperCase());
+  }
+  return out;
+}
+
+// Union bookings that share at least one station into clusters (same trip).
+function clusterBySharedStation(group: TransportBooking[]): TransportBooking[][] {
+  const stations = group.map(stationsOf);
+  const parent = group.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const union = (a: number, b: number) => {
+    parent[find(a)] = find(b);
+  };
+  for (let i = 0; i < group.length; i++) {
+    for (let j = i + 1; j < group.length; j++) {
+      if ([...stations[i]].some((s) => stations[j].has(s))) union(i, j);
+    }
+  }
+  const byRoot = new Map<number, TransportBooking[]>();
+  for (let i = 0; i < group.length; i++) {
+    const r = find(i);
+    const c = byRoot.get(r) ?? [];
+    c.push(group[i]);
+    byRoot.set(r, c);
+  }
+  return [...byRoot.values()];
 }
 
 // Trainline sends two emails for one trip: a booking CONFIRMATION (carries the

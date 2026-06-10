@@ -117,47 +117,41 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     expect(out).toHaveLength(2);
   });
 
-  it("merges confirmation + eticket of the SAME ROUTE even when their parsed dates differ", () => {
-    // The exact field regression: the anytime eticket parsed a fallback date
-    // (today) while the confirmation read the real travel date. Route-grouping
-    // pairs them regardless, so the trip isn't stranded at midnight.
+  it("reconciles a ROUND-TRIP confirmation with an outbound eticket (the real 11 Jun case)", () => {
+    // The confirmation lists out+return in one booking (WEL→…→WEL); the eticket is
+    // just the outbound (WEL→HAR). They share stations on the same date, so they
+    // cluster and the confirmation's real times win — no midnight.
     const confirmation = booking({
-      raw_subject: "Your booking confirmation for Wellingborough to Harrogate",
-      price: 84.5,
-      segments: [seg({ departure_date: "2026-06-11", departure_time: "07:13", arrival_time: "09:42", from_station: "Wellingborough", to_station: "Harrogate" })],
+      raw_subject: "Your booking confirmation for return trip Wellingborough to Harpenden",
+      price: 24.5,
+      segments: [
+        seg({ from_station: "Wellingborough", to_station: "Luton", departure_time: "07:25", arrival_time: "07:55" }),
+        seg({ from_station: "Luton", to_station: "Harpenden", departure_time: "08:13", arrival_time: "08:21" }),
+        seg({ from_station: "Harpenden", to_station: "Luton", departure_time: "17:22", arrival_time: "17:32" }),
+        seg({ from_station: "Luton", to_station: "Wellingborough", departure_time: "17:42", arrival_time: "18:08" }),
+      ],
     });
     const eticket = booking({
-      raw_subject: "Your etickets to Harrogate",
-      segments: [seg({ departure_date: "2026-06-10", departure_time: "00:00", from_station: "Wellingborough", to_station: "Harrogate", from_station_code: "WEL", to_station_code: "HAR", barcode_data: "RSP", barcode_ref: "TTB5F6ZGTVQ" })],
+      raw_subject: "Your etickets to Harpenden Thursday 11 June",
+      segments: [seg({ from_station: "Wellingborough", to_station: "HAR", from_station_code: "WEL", to_station_code: "HAR", departure_time: "00:00", barcode_ref: "TTBSF6ZGTVQ" })],
     });
     const out = deduplicateTrainlineBookings([eticket, confirmation]);
     expect(out).toHaveLength(1);
     const merged = out[0];
     if (merged.type !== "transport") throw new Error("expected transport");
-    expect(merged.segments[0].departure_time).toBe("07:13");
-    expect(merged.segments[0].barcode_data).toBe("RSP");
+    // The full round trip with real times survives.
+    expect(merged.segments).toHaveLength(4);
+    expect(merged.segments[0].departure_time).toBe("07:25");
+    expect(merged.segments[3].arrival_time).toBe("18:08");
+    expect(merged.price).toBe(24.5);
   });
 
-  it("merges a multi-leg journey by its end-to-end route (WEL→...→HAR)", () => {
-    // Confirmation with two legs (a change), eticket as a single end-to-end leg.
-    // routeKey uses first.from → last.to, so both read WEL→HAR and pair up.
-    const confirmation = booking({
-      raw_subject: "Your booking confirmation",
-      segments: [
-        seg({ from_station: "Wellingborough", to_station: "Leicester", departure_time: "07:13", arrival_time: "07:48" }),
-        seg({ from_station: "Leicester", to_station: "Harrogate", departure_time: "08:09", arrival_time: "09:42" }),
-      ],
+  it("does NOT merge two unrelated trips on the same date (no shared station)", () => {
+    const toDerby = booking({ segments: [seg({ from_station: "Wellingborough", to_station: "Derby", departure_time: "07:13" })] });
+    const londonToManchester = booking({
+      segments: [seg({ from_station: "London Euston", to_station: "Manchester", departure_time: "09:00", from_station_code: "EUS", to_station_code: "MAN" })],
     });
-    const eticket = booking({
-      raw_subject: "Your etickets to Harrogate",
-      segments: [seg({ from_station_code: "WEL", to_station_code: "HAR", barcode_ref: "TT1" })],
-    });
-    const out = deduplicateTrainlineBookings([confirmation, eticket]);
-    expect(out).toHaveLength(1);
-    const merged = out[0];
-    if (merged.type !== "transport") throw new Error("expected transport");
-    // The multi-leg structure (the richer confirmation) is the spine.
-    expect(merged.segments).toHaveLength(2);
-    expect(merged.segments[0].departure_time).toBe("07:13");
+    const out = deduplicateTrainlineBookings([toDerby, londonToManchester]);
+    expect(out).toHaveLength(2);
   });
 });

@@ -530,82 +530,109 @@ export async function importBookingAsRun(input: {
 
   const segIso = (date: string, time: string | null) => (time ? wallClockToIso(date, time) : null);
 
-  // 1. Departure (first boarded leg).
-  const dep = await createStop({
-    itinerary_id: itineraryId,
-    type: "transit_departure",
-    title: segs[0].from_station,
-    start_time: segIso(segs[0].departure_date, segs[0].departure_time),
-    is_time_fixed: true,
-    transport_hub_id: hubFor(segs[0].from_station_code),
-    metadata: {
-      kind: "transit_departure",
-      transport_mode: booking.mode,
-      booking_reference: booking.booking_reference,
-      price: booking.price != null ? String(booking.price) : null,
-      operator: segs[0].operator,
-      ticket_type: segs[0].ticket_type,
-      route_restriction: segs[0].route_restriction,
-      service_number: segs[0].service_number,
-      seat: segs[0].seat,
-      barcode_ref: segs[0].barcode_ref,
-      barcode_data: segs[0].barcode_data,
-      gmail_message_id: booking.gmail_message_id ?? null,
-    },
-  });
-  if (!dep.ok) return { ok: false, error: "Couldn't add the booking." };
-  const runStopIds: string[] = [dep.value.id];
+  // Split into JOURNEYS. A return booking lists every leg in one email:
+  // out (WEL→Luton→Harpenden) then return (Harpenden→Luton→WEL). The hours you
+  // spend at the destination show up as a huge gap between two legs, whereas a
+  // real changeover is minutes. So a gap > 3h starts a new journey — each becomes
+  // its own Pass (outbound in the morning, return in the evening), with the day's
+  // activity sitting between them. Small gaps stay as changeovers within a run.
+  type Seg = (typeof segs)[number];
+  const journeys: Seg[][] = [];
+  let current: Seg[] = [];
+  for (let k = 0; k < segs.length; k++) {
+    if (k > 0) {
+      const prevArr = segIso(segs[k - 1].arrival_date, segs[k - 1].arrival_time);
+      const curDep = segIso(segs[k].departure_date, segs[k].departure_time);
+      const gapMin = prevArr && curDep ? (new Date(curDep).getTime() - new Date(prevArr).getTime()) / 60_000 : 0;
+      if (gapMin > 180) {
+        journeys.push(current);
+        current = [];
+      }
+    }
+    current.push(segs[k]);
+  }
+  if (current.length) journeys.push(current);
 
-  // 2. A changeover per onward leg (the station you change at = next leg's origin).
-  for (let k = 1; k < segs.length; k++) {
-    const prev = segs[k - 1];
-    const cur = segs[k];
-    const co = await createStop({
+  // Build one transit run (departure → changeover(s) → arrival + locked rides) per
+  // journey. Price lands on the first journey only (it's the whole-booking total);
+  // booking ref + source-email id land on every journey so deleting either Pass
+  // can release the email and the wallet shows the reference.
+  for (let j = 0; j < journeys.length; j++) {
+    const js = journeys[j];
+    const first = js[0];
+    const dep = await createStop({
       itinerary_id: itineraryId,
-      type: "transit_changeover",
-      title: cur.from_station,
-      start_time: segIso(prev.arrival_date, prev.arrival_time), // arrive at the change
-      end_time: segIso(cur.departure_date, cur.departure_time), // depart onward
+      type: "transit_departure",
+      title: first.from_station,
+      start_time: segIso(first.departure_date, first.departure_time),
       is_time_fixed: true,
-      transport_hub_id: hubFor(cur.from_station_code),
+      transport_hub_id: hubFor(first.from_station_code),
       metadata: {
-        kind: "transit_changeover",
+        kind: "transit_departure",
         transport_mode: booking.mode,
-        operator: cur.operator,
-        ticket_type: cur.ticket_type,
-        route_restriction: cur.route_restriction,
-        service_number: cur.service_number,
-        seat: cur.seat,
-        barcode_ref: cur.barcode_ref,
-        barcode_data: cur.barcode_data,
+        booking_reference: booking.booking_reference,
+        price: j === 0 && booking.price != null ? String(booking.price) : null,
+        operator: first.operator,
+        ticket_type: first.ticket_type,
+        route_restriction: first.route_restriction,
+        service_number: first.service_number,
+        seat: first.seat,
+        barcode_ref: first.barcode_ref,
+        barcode_data: first.barcode_data,
+        gmail_message_id: booking.gmail_message_id ?? null,
       },
     });
-    if (co.ok) runStopIds.push(co.value.id);
-  }
+    if (!dep.ok) return { ok: false, error: "Couldn't add the booking." };
+    const runStopIds: string[] = [dep.value.id];
 
-  // 3. Arrival (last leg's destination).
-  const lastSeg = segs[segs.length - 1];
-  const arr = await createStop({
-    itinerary_id: itineraryId,
-    type: "transit_arrival",
-    title: lastSeg.to_station,
-    start_time: segIso(lastSeg.arrival_date, lastSeg.arrival_time),
-    is_time_fixed: true,
-    transport_hub_id: hubFor(lastSeg.to_station_code),
-    metadata: { kind: "transit_arrival", transport_mode: booking.mode, service_number: lastSeg.service_number },
-  });
-  if (!arr.ok) return { ok: false, error: "Couldn't add the booking arrival." };
-  runStopIds.push(arr.value.id);
+    for (let k = 1; k < js.length; k++) {
+      const prev = js[k - 1];
+      const cur = js[k];
+      const co = await createStop({
+        itinerary_id: itineraryId,
+        type: "transit_changeover",
+        title: cur.from_station,
+        start_time: segIso(prev.arrival_date, prev.arrival_time), // arrive at the change
+        end_time: segIso(cur.departure_date, cur.departure_time), // depart onward
+        is_time_fixed: true,
+        transport_hub_id: hubFor(cur.from_station_code),
+        metadata: {
+          kind: "transit_changeover",
+          transport_mode: booking.mode,
+          operator: cur.operator,
+          ticket_type: cur.ticket_type,
+          route_restriction: cur.route_restriction,
+          service_number: cur.service_number,
+          seat: cur.seat,
+          barcode_ref: cur.barcode_ref,
+          barcode_data: cur.barcode_data,
+        },
+      });
+      if (co.ok) runStopIds.push(co.value.id);
+    }
 
-  // 4. Locked transitions between each adjacent run stop (the booked rides).
-  for (let k = 0; k + 1 < runStopIds.length; k++) {
-    await upsertTransition({
+    const lastSeg = js[js.length - 1];
+    const arr = await createStop({
       itinerary_id: itineraryId,
-      from_stop_id: runStopIds[k],
-      to_stop_id: runStopIds[k + 1],
-      mode: booking.mode as TransitionMode,
-      is_locked: true,
+      type: "transit_arrival",
+      title: lastSeg.to_station,
+      start_time: segIso(lastSeg.arrival_date, lastSeg.arrival_time),
+      is_time_fixed: true,
+      transport_hub_id: hubFor(lastSeg.to_station_code),
+      metadata: { kind: "transit_arrival", transport_mode: booking.mode, service_number: lastSeg.service_number },
     });
+    if (!arr.ok) return { ok: false, error: "Couldn't add the booking arrival." };
+    runStopIds.push(arr.value.id);
+
+    for (let k = 0; k + 1 < runStopIds.length; k++) {
+      await upsertTransition({
+        itinerary_id: itineraryId,
+        from_stop_id: runStopIds[k],
+        to_stop_id: runStopIds[k + 1],
+        mode: booking.mode as TransitionMode,
+        is_locked: true,
+      });
+    }
   }
 
   await resequenceAndSolve(itineraryId);
