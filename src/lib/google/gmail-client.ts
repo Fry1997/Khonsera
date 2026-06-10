@@ -51,6 +51,7 @@ export async function getValidGmailAccessToken(): Promise<{
 
   if (!conn.refresh_token) {
     console.warn("gmail: token expired and no refresh_token; user must reconnect");
+    await markConnectionExpired(conn.id);
     return null;
   }
 
@@ -71,6 +72,20 @@ export async function getValidGmailAccessToken(): Promise<{
     };
   } catch (e) {
     console.error("gmail: refresh failed", e);
+    // The refresh token is dead (revoked, or — common — the OAuth app is in
+    // "Testing" status, so Google expires refresh tokens after 7 days). Flip the
+    // connection to expired so the UI stops claiming "connected" and prompts a
+    // reconnect, instead of silently failing every scan.
+    await markConnectionExpired(conn.id);
     return null;
+  }
+}
+
+async function markConnectionExpired(id: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    await supabase.from("gmail_connections").update({ status: "expired" }).eq("id", id);
+  } catch {
+    // best-effort; the scan reports not-connected regardless
   }
 }
