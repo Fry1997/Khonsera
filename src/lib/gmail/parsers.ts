@@ -717,19 +717,28 @@ function parseTrainlineGeneric(
 function findTrainlinePrice(text: string): number | null {
   // Trainline footer contains "registered capital of 118 513.94 Euros"
   // which the generic findPrice matches. Strip the footer first.
-  const cutoff = text.search(/Terms\s+and\s+Conditions|Trainline\s+Group|registered\s+office/i);
+  const cutoff = text.search(/Terms\s+and\s+Conditions|Trainline\s+Group|registered\s+office|registered\s+capital/i);
   const body = cutoff > 0 ? text.slice(0, cutoff) : text;
   const price = findPrice(body);
   return price?.amount ?? null;
 }
 
 function findTrainlineBookingRef(text: string): string | null {
-  // Trainline booking refs are typically 10+ char alphanumeric tokens
-  // found near "order" or "booking" keywords, or in order URLs
+  // Trainline refs live in a few reliable places, in priority order. (Earlier
+  // versions could match the MSO "#outlook a {}" CSS token — guarded below.)
   const orderUrl = text.match(/order[/-](?:token|id)[#/]?\s*([A-Za-z0-9]{8,})/i);
   if (orderUrl) return orderUrl[1];
+  // deeplink ?orderid=<uuid>
+  const orderIdParam = text.match(/orderid=([A-Za-z0-9-]{8,})/i);
+  if (orderIdParam) return orderIdParam[1];
+  // my-account/bookings/<uuid>
+  const bookingsUrl = text.match(/\/bookings\/([0-9a-fA-F-]{8,})/);
+  if (bookingsUrl) return bookingsUrl[1];
+  // "Your Transaction ID: 150754115196"
+  const txn = text.match(/transaction\s*id\s*[:.]?\s*([0-9]{6,})/i);
+  if (txn) return txn[1];
   const refLine = text.match(/(?:order|booking)\s*(?:ref(?:erence)?|number|#|ID)\s*[:.]?\s*([A-Z0-9]{6,})/i);
-  if (refLine) return refLine[1];
+  if (refLine && refLine[1].toLowerCase() !== "outlook") return refLine[1];
   return null;
 }
 
