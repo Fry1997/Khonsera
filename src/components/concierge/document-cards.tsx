@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   BarcodeVM,
   StatusVM,
@@ -49,10 +49,53 @@ export function StatusStrip({ status }: { status: StatusVM }) {
 /* ===========================================================================
  * BarcodePresenter — renders the scannable code. The Aztec/PDF417/QR *is* the
  * ticket, so the frame matters: quiet zone, high contrast, nothing overlaid.
- * The actual symbology pixels are generated at wire-up (a pure-JS encoder);
- * this placeholder reserves the framed, correctly-proportioned surface and
- * carries `data-format` so Design styles per symbology.
+ * The symbology pixels are generated client-side with bwip-js (pure JS) into a
+ * canvas — black on white, no overlay. Renders from the cached payload, so it
+ * works offline at the barrier (§7.3). Falls back to an honest "pending" hatch
+ * if the payload can't be encoded.
  * ========================================================================= */
+
+// rail = Aztec · air = PDF417/QR · transit = QR (planner master brief §6.3)
+const BWIP_BCID: Record<BarcodeVM["format"], string> = {
+  aztec: "azteccode",
+  pdf417: "pdf417",
+  qr: "qrcode",
+};
+
+function BarcodeCanvas({ barcode }: { barcode: BarcodeVM }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const canvas = ref.current;
+    if (!canvas) return;
+    (async () => {
+      try {
+        const bwipjs = (await import("bwip-js/browser")).default;
+        if (cancelled) return;
+        bwipjs.toCanvas(canvas, {
+          bcid: BWIP_BCID[barcode.format],
+          text: barcode.value,
+          scale: barcode.format === "pdf417" ? 3 : 5,
+          backgroundcolor: "FFFFFF",
+        });
+        if (!cancelled) setFailed(false);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [barcode.format, barcode.value]);
+
+  if (failed) {
+    return <span className="cc-barcode-pending">code unavailable</span>;
+  }
+  // The canvas fills the framed code area; CSS owns the box dimensions.
+  return <canvas ref={ref} className="cc-barcode-canvas" aria-hidden />;
+}
 
 export function BarcodePresenter({
   barcode,
@@ -66,8 +109,7 @@ export function BarcodePresenter({
       {/* Quiet zone is part of the component, never encroached. */}
       <div className="cc-barcode-quiet">
         <div className="cc-barcode-code" aria-label={`${barcode.format} code`}>
-          {/* Symbology pixels injected here at wire-up. */}
-          <span className="cc-barcode-pending">{barcode.format.toUpperCase()}</span>
+          <BarcodeCanvas barcode={barcode} />
         </div>
       </div>
       {barcode.passengerLabel ? (

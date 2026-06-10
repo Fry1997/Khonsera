@@ -470,3 +470,8 @@
 .cc-wallet-empty-lead { font-family: var(--display); font-weight: var(--fw-medium); font-size: 20px;
   color: var(--ink); margin: 0; }
 .cc-wallet-empty-sub { font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); margin: var(--space-3) 0 0; }
+
+/* Barcode symbology canvas (bwip-js) — fills the framed code area, aspect kept,
+   pixels crisp. Black-on-white is enforced by the generator, never overlaid. */
+.cc-barcode-canvas { display: block; width: 100%; height: 100%; object-fit: contain;
+  image-rendering: pixelated; image-rendering: crisp-edges; }
