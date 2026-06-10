@@ -1,5 +1,7 @@
 import { PlanCapture } from "@/components/plan/plan-capture";
 import { PlanAdd } from "@/components/plan/plan-add";
+import { PlanConstraints } from "@/components/plan/plan-constraints";
+import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
@@ -160,6 +162,7 @@ export default async function PlanPage() {
     bookingStatus: t.is_locked ? "booked_in_app" : "manual",
   });
 
+  const constraints = await loadConstraints();
   const itineraryId = journey?.id as string;
   const nodes: SpineNode[] = stops.map((s, idx) => {
     const next = stops[idx + 1];
@@ -217,6 +220,8 @@ export default async function PlanPage() {
               ))}
             </section>
           ) : null}
+
+          <PlanConstraints initial={constraints} />
 
           <PlanSpine nodes={nodes} journeyDate={journey.date_start as string} />
 

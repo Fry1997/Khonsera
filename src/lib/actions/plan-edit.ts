@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { updateStop } from "@/lib/actions/stops";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
+import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
 import type { TransitionMode } from "@/lib/types/domain";
 import type { AnchorVariableKind, AnchorVariableSlot } from "@/components/concierge";
@@ -89,6 +90,11 @@ export async function compareLeg(input: {
   toStopId: string;
   exclude?: TransitionMode[];
 }): Promise<{ ok: boolean; options?: LegOption[]; error?: string }> {
+  // Global standing constraints always filter the matrix (§5.8: exclusions
+  // remove options entirely), merged with any caller-supplied exclusions.
+  const { excludedModes } = await loadConstraints();
+  const exclude = [...new Set([...(input.exclude ?? []), ...excludedModes])];
+
   const routed = await Promise.all(
     CANDIDATE_MODES.map(async (mode) => {
       const res = await previewRoute({
@@ -114,7 +120,7 @@ export async function compareLeg(input: {
     return { ok: false, error: "No routable options for this leg." };
   }
 
-  const ranked = topViable(options, 4, { exclude: input.exclude ?? [] });
+  const ranked = topViable(options, 4, { exclude });
   return {
     ok: true,
     options: ranked.map((o) => ({
