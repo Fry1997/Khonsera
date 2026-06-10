@@ -515,8 +515,10 @@ export async function importBookingAsRun(input: {
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Resolve station hubs by CRS code so the stops carry coordinates (the walk to/
-  // from the station then routes with real geography).
+  // Resolve station hubs so the stops carry coordinates (the walk to/from the
+  // station then routes with real geography). By CRS code where present (etickets),
+  // else by NAME — a confirmation's legs only carry station names, and without the
+  // coords the station→office walk can't route.
   const codes = [...new Set(segs.flatMap((s) => [s.from_station_code, s.to_station_code]).filter((c): c is string => !!c))];
   const hubByCode = new Map<string, string>();
   if (codes.length) {
@@ -526,7 +528,26 @@ export async function importBookingAsRun(input: {
       .in("code", codes.map((c) => c.toUpperCase()));
     for (const h of hubs ?? []) if (h.code) hubByCode.set((h.code as string).toUpperCase(), h.id as string);
   }
-  const hubFor = (code: string | null) => (code ? hubByCode.get(code.toUpperCase()) ?? null : null);
+
+  const names = [...new Set(segs.flatMap((s) => [s.from_station, s.to_station]).filter((n): n is string => !!n))];
+  const hubByName = new Map<string, string>();
+  if (names.length) {
+    const orFilter = names.map((n) => `name.ilike.${n.replace(/[(),]/g, " ").trim()}`).join(",");
+    const { data: hubs } = await supabase
+      .from("transport_hubs")
+      .select("id, name, kind")
+      .or(orFilter);
+    for (const n of names) {
+      // Prefer an exact rail-station name match (avoids "Luton Airport Parkway"
+      // matching "Luton"); fall back to any exact-name hub.
+      const matches = (hubs ?? []).filter((h) => (h.name as string)?.toLowerCase() === n.toLowerCase());
+      const rail = matches.find((h) => h.kind === "rail_station") ?? matches[0];
+      if (rail) hubByName.set(n.toLowerCase(), rail.id as string);
+    }
+  }
+
+  const hubFor = (code: string | null, name?: string | null) =>
+    (code ? hubByCode.get(code.toUpperCase()) : null) ?? (name ? hubByName.get(name.toLowerCase()) ?? null : null);
 
   const segIso = (date: string, time: string | null) => (time ? wallClockToIso(date, time) : null);
 
@@ -566,7 +587,7 @@ export async function importBookingAsRun(input: {
       title: first.from_station,
       start_time: segIso(first.departure_date, first.departure_time),
       is_time_fixed: true,
-      transport_hub_id: hubFor(first.from_station_code),
+      transport_hub_id: hubFor(first.from_station_code, first.from_station),
       metadata: {
         kind: "transit_departure",
         transport_mode: booking.mode,
@@ -595,7 +616,7 @@ export async function importBookingAsRun(input: {
         start_time: segIso(prev.arrival_date, prev.arrival_time), // arrive at the change
         end_time: segIso(cur.departure_date, cur.departure_time), // depart onward
         is_time_fixed: true,
-        transport_hub_id: hubFor(cur.from_station_code),
+        transport_hub_id: hubFor(cur.from_station_code, cur.from_station),
         metadata: {
           kind: "transit_changeover",
           transport_mode: booking.mode,
@@ -618,7 +639,7 @@ export async function importBookingAsRun(input: {
       title: lastSeg.to_station,
       start_time: segIso(lastSeg.arrival_date, lastSeg.arrival_time),
       is_time_fixed: true,
-      transport_hub_id: hubFor(lastSeg.to_station_code),
+      transport_hub_id: hubFor(lastSeg.to_station_code, lastSeg.to_station),
       metadata: { kind: "transit_arrival", transport_mode: booking.mode, service_number: lastSeg.service_number },
     });
     if (!arr.ok) return { ok: false, error: "Couldn't add the booking arrival." };
