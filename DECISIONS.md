@@ -373,6 +373,22 @@ Newest at the bottom of each section.
     in parallel the stop-metadata ticket reader + docked Pass + Wallet nav (E3-adjacent). A Reminders
     surface (to read back dateless intents) rides chunk 4/5.
 
+- **D31 — Ticket reader + docked Pass (real tickets reappear).** The integrity-review P0, unblocked
+  (it was never schema-blocked): real bookings live in **stop metadata** (a contiguous
+  transit_departure → changeover(s) → arrival run sharing a booking ref, each carrying
+  `barcode_data`), not the empty `travel_bookings` table the new Wallet read.
+  - `foldStopsToTickets` (`src/lib/tickets/from-stops.ts`) folds each run into a `TicketVM` with its
+    per-leg Aztec barcodes, operator, ref, ticket type, price, seat, route restriction.
+  - **Wallet** loaders now read stop-metadata tickets (real source) unioned with `travel_bookings`
+    (deduped by ref) → the user's real tickets show again with **scannable Aztec in ScanView**; **Wallet
+    nav entry** added (sidebar + mobile overflow — it had none).
+  - **Docked Pass on the spine:** `Pass` gains a `docked` variant (barcode → "Ticket ready · Show
+    ticket"); `SpineNode`/`PlanSpine` render pass nodes + host ScanView; `/plan/[id]` collapses each
+    transit run into one docked Pass (access/egress legs preserved, internal locked legs folded in; a
+    return is a second Pass downstream). tsc clean, build green, 204 tests.
+  - **Remaining:** chunk 3 span inference (E2) · chunk 4 Today lifecycle compose + Reminders surface
+    (E1) · chunk 5 day dividers.
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
