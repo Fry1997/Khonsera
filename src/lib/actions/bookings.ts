@@ -444,6 +444,11 @@ const attachTransportBookingSchema = z
     actual_price: z.number().nonnegative().nullable().optional(),
     currency: z.enum(["GBP", "EUR", "USD"]).optional(),
     seat_reservation: z.string().trim().max(120).nullable().optional(),
+    // When the booking came from a Gmail import, stamp the source message id on
+    // the departure stop so deleting the run can RELEASE the email (clear its
+    // gmail_imported_messages row) — otherwise a deleted import can never be
+    // re-scanned/re-imported.
+    gmail_message_id: z.string().trim().max(200).nullable().optional(),
     segments: z.array(transportSegmentSchema).min(1),
   })
   .refine(
@@ -649,6 +654,7 @@ export async function attachTransportBookingToStop(
         route_restriction: first.route_restriction ?? null,
         barcode_ref: first.barcode_ref ?? null,
         barcode_data: first.barcode_data ?? null,
+        gmail_message_id: parsed.value.gmail_message_id ?? null,
       },
     })
     .eq("id", parsed.value.from_stop_id)

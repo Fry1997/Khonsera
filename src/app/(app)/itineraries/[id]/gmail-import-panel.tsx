@@ -264,6 +264,7 @@ export function GmailImportPanel({
       actual_price: booking.price,
       currency: booking.currency,
       seat_reservation: first?.seat ?? null,
+      gmail_message_id: booking.gmail_message_id,
       segments,
     });
 

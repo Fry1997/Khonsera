@@ -190,7 +190,11 @@ export function PlanAdd({
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                     placeholder={kind === "appointment" ? "Client meeting" : "The office"} autoFocus />
                 </label>
-                <label className="cc-time-field">
+                {/* NOT a <label>: PlacePicker renders its own input plus a
+                    dropdown of <button> options. A wrapping <label> forwards
+                    clicks to its control, which swallowed the option click and
+                    left the selection unsaved. Use a plain div. */}
+                <div className="cc-time-field">
                   <span className="cc-var-label">{kind === "appointment" ? "Where (pins it on the map)" : "Place (pins it on the map)"}</span>
                   <PlacePicker
                     customers={customers}
@@ -200,7 +204,7 @@ export function PlanAdd({
                     onChange={setPlace}
                     placeholder="Search — your saved places pin to the top"
                   />
-                </label>
+                </div>
                 <div className="cc-dur-row">
                   <label>
                     <span className="cc-var-label">{kind === "appointment" ? "Arrive by" : "Around"}</span>

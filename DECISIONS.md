@@ -473,6 +473,21 @@ Newest at the bottom of each section.
   - **Still open (flagged by Connor):** a first-class "open/flexible ticket, valid all day" state
     (show the intended train but mark the ticket all-day) — a model/UI feature, not just a parse fix.
 
+- **D37 — Two regressions from D36's live test, fixed.**
+  - **PlacePicker selection wasn't sticking.** The picker (own input + a dropdown of `<button>`
+    options) was wrapped in a `<label>`; a label forwards clicks to its control, which swallowed the
+    option click — so the pick never landed and the anchor saved with only a title, no geocoded place.
+    Fix: unwrap to a plain `<div>`. (Footgun noted in a code comment so it doesn't recur.)
+  - **"Doesn't find my tickets at all."** Root cause was NOT the merge: once a Gmail message is in
+    `gmail_imported_messages`, the scan's `toFetch` filter skips it forever — so after importing the
+    broken midnight version and DELETING the Event, the email could never be re-found (delete didn't
+    release it). Durable fix: the import now stamps `gmail_message_id` onto the departure stop's
+    metadata, and `deleteBookedRun` releases the matching `gmail_imported_messages` row(s) on delete.
+    Immediate unblock: cleared the two stuck rows for the 11 Jun booking (confirmation + eticket) so a
+    re-scan re-surfaces it with the merge applied. (Verified the live connection is active; the null
+    `travel_booking_id` on old import rows is why a travel_booking-keyed release wouldn't have worked —
+    the stop-metadata link is the reliable one.)
+
 ## Plateau reached — Kickoff Definition of Done
 - [x] App runs; **all needed pages exist and are navigable** — Welcome · Home · Today · Timeline ·
       Comparison · Contacts · Tasks · Expenses · Workspace · Settings, with the Mode switch on every
