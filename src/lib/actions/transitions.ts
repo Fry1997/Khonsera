@@ -193,12 +193,14 @@ export async function setTransitionMode(
        from_stop:from_stop_id (
          id, start_time, end_time,
          location:locations(latitude, longitude),
-         customer_site:customer_sites(latitude, longitude)
+         customer_site:customer_sites(latitude, longitude),
+         transport_hub:transport_hubs(latitude, longitude)
        ),
        to_stop:to_stop_id (
          id, start_time,
          location:locations(latitude, longitude),
-         customer_site:customer_sites(latitude, longitude)
+         customer_site:customer_sites(latitude, longitude),
+         transport_hub:transport_hubs(latitude, longitude)
        )`,
     )
     .eq("id", parsed.value.id)

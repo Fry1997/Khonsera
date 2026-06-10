@@ -9,6 +9,7 @@ import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
+import { setTransitionMode } from "@/lib/actions/transitions";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
@@ -141,10 +142,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   let stops = (s ?? []) as unknown as StopRow[];
   let transitions = (t ?? []) as unknown as TransRow[];
 
-  // E3 — opening re-runs the solver (guarded) so legacy/stale plans don't show
-  // bare legs. Only when a transition lacks a computed duration.
-  const needsSolve = transitions.length > 0 && transitions.some((x) => x.computed_duration_minutes == null);
-  if (needsSolve) {
+  // E3 — opening heals stale plans (incl. legacy data routed before the
+  // transport-hub-coords fix / the distance fallback). Re-route any unbooked leg
+  // missing a duration so it gets a real door-to-door time, then re-solve.
+  const staleLegs = transitions.filter((x) => !x.is_locked && x.computed_duration_minutes == null);
+  if (staleLegs.length > 0) {
+    for (const leg of staleLegs) {
+      await setTransitionMode({ id: leg.id, mode: leg.mode as Parameters<typeof setTransitionMode>[0]["mode"] });
+    }
     await resolveItineraryTimes(id);
     [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
     stops = (s ?? []) as unknown as StopRow[];

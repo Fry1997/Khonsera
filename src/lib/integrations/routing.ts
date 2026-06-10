@@ -1,5 +1,6 @@
 import { features } from "@/lib/features";
 import { isDemoModeActive } from "@/lib/demo-mode";
+import { haversineMeters } from "@/lib/geo";
 import {
   getDirections,
   mapsApiKey,
@@ -205,9 +206,15 @@ export async function routeForTransition(args: {
   arriveBy?: Date;
   departAt?: Date;
 }): Promise<TransitionRoute | null> {
-  if (!mapsApiKey()) return null;
   const gmode = googleModeFor(args.mode);
-  if (!gmode) return null;
+
+  // No live routing provider (or an unroutable mode like flight) → fall back to
+  // a straight-line estimate from the coordinates, so a leg ALWAYS has a sensible
+  // door-to-door time + distance. Without this every walk/taxi came back null and
+  // the day read as "arrive immediately" with no geography between points.
+  if (!mapsApiKey() || !gmode) {
+    return haversineRoute(args.mode, args.origin, args.destination);
+  }
 
   const dir = await getDirections({
     origin: args.origin,
@@ -216,7 +223,7 @@ export async function routeForTransition(args: {
     arrivalTime: args.arriveBy,
     departureTime: args.departAt,
   });
-  if (!dir) return null;
+  if (!dir) return haversineRoute(args.mode, args.origin, args.destination);
 
   const totalMinutes = Math.round(dir.durationSeconds / 60);
   const totalMiles = dir.distanceMeters / 1609.344;
@@ -247,6 +254,53 @@ export async function routeForTransition(args: {
     totalDistanceMiles: gmode === "walking" || isTransit ? undefined : totalMiles,
     overviewPolyline: dir.overviewPolyline,
     steps,
+  };
+}
+
+// Straight-line door-to-door estimate when no live provider is available.
+// Conservative average speeds (km/h) + a detour factor (real paths are longer
+// than the crow flies). Locked/booked legs ignore this — they keep booked times.
+const MODE_KMH: Record<TransitionMode, number> = {
+  walk: 4.8,
+  taxi: 28,
+  drive: 32,
+  bus: 18,
+  tube: 26,
+  train: 90,
+  flight: 700,
+  mixed: 28,
+};
+const DETOUR_FACTOR = 1.3;
+
+function haversineRoute(mode: TransitionMode, origin: LatLng, destination: LatLng): TransitionRoute | null {
+  if (
+    origin == null || destination == null ||
+    !Number.isFinite(origin.lat) || !Number.isFinite(origin.lng) ||
+    !Number.isFinite(destination.lat) || !Number.isFinite(destination.lng)
+  ) {
+    return null;
+  }
+  const meters = haversineMeters(origin.lat, origin.lng, destination.lat, destination.lng) * DETOUR_FACTOR;
+  const miles = meters / 1609.344;
+  const kmh = MODE_KMH[mode] ?? 25;
+  const minutes = Math.max(1, Math.round((meters / 1000 / kmh) * 60));
+  const legType: LegType =
+    mode === "walk" ? "walk" : mode === "taxi" ? "taxi" : mode === "drive" ? "drive"
+      : mode === "train" ? "train" : mode === "bus" ? "bus" : "wait";
+  return {
+    totalDurationMinutes: minutes,
+    totalDistanceMiles: miles,
+    steps: [
+      {
+        sequence: 0,
+        legType,
+        startName: "",
+        endName: "",
+        durationMinutes: minutes,
+        distanceMiles: miles,
+        instructions: "Estimated from distance",
+      },
+    ],
   };
 }
 
