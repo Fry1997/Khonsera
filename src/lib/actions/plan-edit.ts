@@ -309,10 +309,18 @@ export async function deleteBookedRun(departureStopId: string): Promise<{ ok: bo
   // RELEASE the source email(s) so a deleted import can be re-scanned + re-imported.
   // The import stamps gmail_message_id onto the departure stop's metadata; without
   // clearing the gmail_imported_messages row, the scan permanently skips it.
-  const messageIds = (rows ?? [])
-    .filter((s) => ids.includes(s.id as string))
-    .map((s) => (s.metadata as Record<string, unknown> | null)?.gmail_message_id)
-    .filter((m): m is string => typeof m === "string" && m.length > 0);
+  const messageIds = [
+    ...new Set(
+      (rows ?? [])
+        .filter((s) => ids.includes(s.id as string))
+        .flatMap((s) => {
+          const meta = (s.metadata as Record<string, unknown> | null) ?? {};
+          const arr = Array.isArray(meta.gmail_message_ids) ? (meta.gmail_message_ids as unknown[]) : [];
+          return [meta.gmail_message_id, ...arr];
+        })
+        .filter((m): m is string => typeof m === "string" && m.length > 0),
+    ),
+  ];
   if (messageIds.length) {
     await supabase
       .from("gmail_imported_messages")
@@ -613,6 +621,7 @@ export async function importBookingAsRun(input: {
         barcode_ref: first.barcode_ref,
         barcode_data: first.barcode_data,
         gmail_message_id: booking.gmail_message_id ?? null,
+        gmail_message_ids: booking.source_message_ids ?? (booking.gmail_message_id ? [booking.gmail_message_id] : []),
       },
     });
     if (!dep.ok) return { ok: false, error: "Couldn't add the booking." };

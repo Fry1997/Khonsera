@@ -229,6 +229,27 @@ export function GmailImportPanel({
     });
   };
 
+  // Mark EVERY source email of a (possibly merged) booking as imported — not just
+  // the base id — so the un-marked sibling (the eticket) doesn't reappear alone
+  // next scan. Falls back to the single id for un-merged bookings.
+  const markAllSources = async (
+    booking: ParsedTransportBooking | ParsedAccommodationBooking,
+    booking_type: "transport" | "accommodation",
+    travel_booking_id: string | null,
+  ) => {
+    const ids = booking.source_message_ids?.length
+      ? booking.source_message_ids
+      : [booking.gmail_message_id];
+    for (const gmail_message_id of ids) {
+      await markBookingImported({ gmail_message_id, booking_type, travel_booking_id });
+    }
+    setImportedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+  };
+
   const doImportTransport = async (
     booking: ParsedTransportBooking,
     stopId: string,
@@ -240,12 +261,7 @@ export function GmailImportPanel({
         setError(res.error ?? "Couldn't import that booking.");
         return false;
       }
-      await markBookingImported({
-        gmail_message_id: booking.gmail_message_id,
-        booking_type: "transport",
-        travel_booking_id: null,
-      });
-      setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+      await markAllSources(booking, "transport", null);
       return true;
     }
 
@@ -295,13 +311,7 @@ export function GmailImportPanel({
       return false;
     }
 
-    await markBookingImported({
-      gmail_message_id: booking.gmail_message_id,
-      booking_type: "transport",
-      travel_booking_id: result.value.travel_booking_id,
-    });
-
-    setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+    await markAllSources(booking, "transport", result.value.travel_booking_id);
     return true;
   };
 
@@ -338,13 +348,7 @@ export function GmailImportPanel({
       return false;
     }
 
-    await markBookingImported({
-      gmail_message_id: booking.gmail_message_id,
-      booking_type: "accommodation",
-      travel_booking_id: result.value.travel_booking_id,
-    });
-
-    setImportedIds((prev) => new Set(prev).add(booking.gmail_message_id));
+    await markAllSources(booking, "accommodation", result.value.travel_booking_id);
     return true;
   };
 

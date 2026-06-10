@@ -32,6 +32,10 @@ export type ParsedTransportBooking = {
   is_amendment: boolean;
   raw_subject: string;
   gmail_message_id: string;
+  // When this booking was reconciled from several emails (confirmation + eticket),
+  // every source message id — so importing it marks them ALL as imported. Without
+  // this, the un-marked sibling reappears alone on the next scan (midnight eticket).
+  source_message_ids?: string[];
   email_date: string;
 };
 
@@ -50,6 +54,7 @@ export type ParsedAccommodationBooking = {
   is_amendment: boolean;
   raw_subject: string;
   gmail_message_id: string;
+  source_message_ids?: string[];
   email_date: string;
 };
 

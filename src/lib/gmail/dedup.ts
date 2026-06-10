@@ -158,5 +158,11 @@ export function mergeTrainlineGroup(group: ParsedBooking[]): ParsedBooking {
   const booking_reference =
     transport.map((b) => b.booking_reference).find((r) => r) ?? base.booking_reference;
 
-  return { ...base, segments: mergedSegments, price, booking_reference };
+  // Carry EVERY source email id, so importing the merged booking marks them all
+  // (otherwise the un-marked eticket reappears alone — midnight — next scan).
+  const source_message_ids = [
+    ...new Set(group.map((g) => g.gmail_message_id).filter((id): id is string => !!id)),
+  ];
+
+  return { ...base, segments: mergedSegments, price, booking_reference, source_message_ids };
 }

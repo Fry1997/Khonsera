@@ -122,6 +122,7 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     // cluster and the confirmation's real times win — no midnight.
     const confirmation = booking({
       raw_subject: "Your booking confirmation for return trip Wellingborough to Harpenden",
+      gmail_message_id: "conf-1",
       price: 24.5,
       segments: [
         seg({ from_station: "Wellingborough", to_station: "Luton", departure_time: "07:25", arrival_time: "07:55" }),
@@ -132,6 +133,7 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     });
     const eticket = booking({
       raw_subject: "Your etickets to Harpenden Thursday 11 June",
+      gmail_message_id: "etk-1",
       segments: [seg({ from_station: "Wellingborough", to_station: "HAR", from_station_code: "WEL", to_station_code: "HAR", departure_time: "00:00", barcode_ref: "TTBSF6ZGTVQ" })],
     });
     const out = deduplicateTrainlineBookings([eticket, confirmation]);
@@ -146,6 +148,10 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     // The outbound eticket's through-ticket barcode grafts onto the WEL boarding
     // leg (origin match), even though the confirmation splits WEL→Luton→Harpenden.
     expect(merged.segments[0].barcode_ref).toBe("TTBSF6ZGTVQ");
+    // BOTH source emails are recorded, so importing marks them both (otherwise the
+    // un-marked eticket reappears alone next scan).
+    if (merged.type !== "transport") throw new Error("expected transport");
+    expect(new Set(merged.source_message_ids)).toEqual(new Set(["conf-1", "etk-1"]));
   });
 
   it("does NOT merge two unrelated trips on the same date (no shared station)", () => {
