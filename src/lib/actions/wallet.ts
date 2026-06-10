@@ -72,6 +72,19 @@ export async function loadWalletTickets(): Promise<TicketVM[]> {
   const itinIds = (itins ?? []).map((r) => r.id as string);
   if (itinIds.length === 0) return [];
 
+  return ticketsForItineraries(itinIds);
+}
+
+// The booked documents for a single journey (used by Today's projection to
+// promote the next document at the moment of use, §8.3).
+export async function loadJourneyTickets(itineraryId: string): Promise<TicketVM[]> {
+  return ticketsForItineraries([itineraryId]);
+}
+
+async function ticketsForItineraries(itinIds: string[]): Promise<TicketVM[]> {
+  if (itinIds.length === 0) return [];
+  const supabase = await createClient();
+
   const { data: intents } = await supabase
     .from("booking_intents")
     .select("id")
