@@ -232,9 +232,30 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  // Day dividers on multi-day Events (proposal §5/chunk 5): label the first node
+  // of each calendar day "Day N · Wed 25 Jun".
+  const multiDay = dateStart !== dateEnd;
+  const dayOf = (u: Unit): string | null => {
+    const st = stopById.get(u.entryId);
+    return st?.start_time ? new Date(st.start_time).toISOString().slice(0, 10) : null;
+  };
+  const fmtDay = (d: string) =>
+    new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(new Date(`${d}T12:00:00`));
+  let lastDay: string | null = null;
+
   const nodes: SpineNode[] = units.map((u, idx) => {
     const next = units[idx + 1];
     let after: SpineNode["after"] = null;
+
+    let dayStart: string | undefined;
+    if (multiDay) {
+      const d = dayOf(u);
+      if (d && d !== lastDay) {
+        lastDay = d;
+        const dayNum = Math.round((new Date(`${d}T12:00:00`).getTime() - new Date(`${dateStart}T12:00:00`).getTime()) / 86_400_000) + 1;
+        dayStart = `Day ${dayNum} · ${fmtDay(d)}`;
+      }
+    }
     if (next) {
       const fromStop = stopById.get(u.exitId)!;
       const toStop = stopById.get(next.entryId)!;
@@ -255,7 +276,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             toStopId: next.entryId,
           };
     }
-    return { key: u.key, anchor: u.anchor, pass: u.pass, after };
+    return { key: u.key, anchor: u.anchor, pass: u.pass, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);

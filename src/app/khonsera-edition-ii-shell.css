@@ -586,3 +586,9 @@
 .cc-reminder-dismiss { width: 20px; height: 20px; border-radius: 50%; border: none; background: none;
   color: var(--ink-faint); font-size: 15px; line-height: 1; cursor: pointer; }
 .cc-reminder-dismiss:hover { color: var(--gold-2); }
+
+/* ---- Day dividers on multi-day Events (.cc-day-divider) — proposal §5 ------- */
+.cc-day-divider { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold-2); display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0 var(--space-3); }
+.cc-day-divider::before { content: ""; width: 11px; height: 1px; background: var(--gold); }
+.cc-day-divider::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--rule-2), transparent 80%); }

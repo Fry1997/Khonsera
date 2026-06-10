@@ -32,6 +32,7 @@ export type SpineNode = {
   key: string;
   anchor?: AnchorVM; // a normal anchor node
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8)
+  dayStart?: string; // a day divider label ("Day 2 · Thu 26 Jun") on multi-day Events
   after?:
     | ({ kind: "leg"; leg: LegVM } & LegBetween)
     | ({ kind: "gap"; gap: GapVM } & LegBetween)
@@ -67,6 +68,7 @@ export function PlanSpine({
         <span className="cc-spine-rail" />
         {nodes.map((n) => (
           <div key={n.key}>
+            {n.dayStart ? <div className="cc-day-divider">{n.dayStart}</div> : null}
             <div className="cc-node">
               <div className="cc-node-dot">
                 <span className={n.pass ? "cc-dot-leg" : "cc-dot-anchor"} />
