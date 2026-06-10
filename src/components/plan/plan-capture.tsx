@@ -2,27 +2,31 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { captureOnPlan } from "@/lib/actions/plan-capture";
+import { captureToEvent } from "@/lib/actions/plan-capture";
 
-// The Planner's always-reachable plain-language input (`.cc-capture`). Type a
-// fact → it lands on the spine. (Planner parity, slice 1.)
-export function PlanCapture() {
+// The Event's always-reachable plain-language input (`.cc-capture`). Type a fact
+// → it APPENDS to this Event, by time (proposal §4). Scoped to the Event in view
+// via `eventId` — never creates a stray new journey.
+export function PlanCapture({ eventId }: { eventId: string }) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function submit() {
     const t = text.trim();
     if (!t) return;
     setError(null);
+    setNote(null);
     startTransition(async () => {
-      const res = await captureOnPlan(t);
+      const res = await captureToEvent(eventId, t);
       if (!res.ok) {
         setError(res.error ?? "Couldn't add that.");
         return;
       }
       setText("");
+      setNote(res.note ?? null);
       router.refresh();
     });
   }
@@ -34,9 +38,9 @@ export function PlanCapture() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="Tell Khonsera — “London on the 18th, meeting at 9:30”"
+          placeholder="Tell Khonsera — “meeting at 9:30”, “lunch at 1”"
           disabled={pending}
-          aria-label="Add a fact"
+          aria-label="Add a fact to this day"
         />
         <button
           type="button"
@@ -50,8 +54,10 @@ export function PlanCapture() {
       </div>
       {error ? (
         <p className="cc-capture-hint" style={{ color: "var(--danger)" }}>{error}</p>
+      ) : note ? (
+        <p className="cc-capture-hint" style={{ color: "var(--gold-2)" }}>{note}</p>
       ) : (
-        <p className="cc-capture-hint">A train, a meeting, a place — in any order. I&apos;ll thread it.</p>
+        <p className="cc-capture-hint">A meeting, a place, a time — in any order. I&apos;ll thread it onto this day.</p>
       )}
     </div>
   );

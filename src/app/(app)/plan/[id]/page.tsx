@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
+import { PlanCapture } from "@/components/plan/plan-capture";
 import { PlanAdd } from "@/components/plan/plan-add";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
@@ -257,6 +258,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       )}
 
       <PlanAdd journeyId={id} journeyDate={journey.date_start as string} />
+
+      <PlanCapture eventId={id} />
     </div>
   );
 }
