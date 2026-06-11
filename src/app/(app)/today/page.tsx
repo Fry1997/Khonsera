@@ -14,7 +14,7 @@ import { TodayPasses } from "@/components/today/today-passes";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { NextMove } from "@/components/today/next-move";
 import { TodaySpine } from "@/components/today/today-spine";
-import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
+import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 
 const londonHHMM = (iso?: string | null) =>
@@ -38,6 +38,7 @@ function mapStopType(type: string): AnchorType {
 }
 
 type Geo = { name?: string; latitude?: number | null; longitude?: number | null } | null;
+type Hub = (Geo & { code?: string | null; kind?: string | null }) | null;
 type StopRow = {
   id: string;
   type: string;
@@ -46,7 +47,7 @@ type StopRow = {
   end_time: string | null;
   location: Geo;
   customer_site: Geo;
-  transport_hub: Geo;
+  transport_hub: Hub;
 };
 
 // First available coordinate — customer site, then saved location, then hub
@@ -112,7 +113,7 @@ export default async function TodayPage() {
       supabase
         .from("stops")
         .select(
-          "id, type, title, start_time, end_time, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(name, latitude, longitude)",
+          "id, type, title, start_time, end_time, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(name, code, kind, latitude, longitude)",
         )
         .eq("itinerary_id", ev.id)
         .order("sequence"),
@@ -148,18 +149,29 @@ export default async function TodayPage() {
   }));
 
   // Spine view-model: coordinates + planned leg time + nav mode per anchor.
+  // Station stops resolve to the HUB — you walk to Harpenden Station, not to the
+  // town centroid — so its coordinate is the nav target and its name the label.
   const spineAnchors: SpineAnchor[] = allStops.map((s) => {
     const leg = travelByToStop.get(s.id);
+    const hub = s.transport_hub;
+    const station =
+      hub?.name
+        ? { name: hub.name, code: hub.code ?? null, kind: (hub.kind === "airport" ? "airport" : "rail_station") as "airport" | "rail_station" }
+        : null;
+    const stationCoord =
+      station && hub?.latitude != null && hub?.longitude != null ? { lat: hub.latitude, lng: hub.longitude } : null;
     return {
       id: s.id,
       type: mapStopType(s.type),
-      title: s.title ?? placeOf(s) ?? "Stop",
-      place: placeOf(s),
+      title: station ? stationLabel(station.name, station.kind) : s.title ?? placeOf(s) ?? "Stop",
+      place: station ? undefined : placeOf(s),
       arriveByIso: s.start_time,
       endIso: s.end_time,
-      coord: coordOf(s),
+      coord: stationCoord ?? coordOf(s),
       plannedTravelMinutes: leg?.minutes ?? null,
       navMode: navModeForTransition(leg?.mode),
+      station,
+      role: roleOf(s.type),
     };
   });
 
