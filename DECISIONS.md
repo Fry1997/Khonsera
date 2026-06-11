@@ -672,3 +672,14 @@ Newest at the bottom of each section.
   to live GPS when permission is already granted — never an unsolicited location prompt on
   load. Graceful fallbacks throughout (offline/denied → planned time; no coords → ActiveTile
   keeps its old planned leave-by, no regression). 248 tests green, build clean.
+
+- **D47 — Nav guidance: street-level zoom + heading FOV cone.** The guidance map read as
+  primitive (flat dot, zoomed-out, no orientation). Upgraded NavMap follow mode to a proper
+  nav camera: zoom 17.5, pitch 55°, heading-up (map rotates so travel is "up"), dot kept low
+  via camera padding so the road ahead has room. Added a gold field-of-view cone — a canvas
+  image on a map-aligned symbol layer rotated to the live heading — so you can see which way
+  you face. Heading from a new compass hook (`use-heading.ts`): iOS `webkitCompassHeading`
+  and absolute `deviceorientation`, so orientation shows even standing still (GPS course is
+  null when stopped); falls back to GPS course; iOS permission requested on the Start gesture.
+  Decoupled the two update paths — the cone rotates every frame (cheap setData) while the
+  camera easeTo is throttled to ~3/s so the noisy compass can't thrash it. 257 tests green.

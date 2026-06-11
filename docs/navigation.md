@@ -48,6 +48,14 @@ the same `NavRoute` shape — the UI and guidance engine never see provider JSON
   codes, the user's saved places/client sites, then Photon for pubs/addresses/anything,
   all proximity-ranked when an anchor is known). Mode: Walk / Cycle / Drive. Route renders
   gold-on-paper with the full maneuver list and stroke glyphs (no emojis, ever).
+- **Guidance camera**: follow mode is a Google-Maps-style nav view — zoomed to the street
+  (17.5), pitched 55°, **heading-up** (the map rotates so travel direction is "up"), dot kept
+  low so the road ahead has room. A gold **FOV cone** (canvas image on a map-aligned symbol
+  layer, `nav-map.tsx`) shows which way you face. Heading comes from `use-heading.ts` — the
+  device **compass** (`webkitCompassHeading` / absolute `deviceorientation`), so orientation
+  shows even standing still; it falls back to GPS course. iOS gates the compass behind a
+  permission requested on the Start tap. The cone rotates every frame (cheap source update);
+  the camera is throttled to ~3/s so the compass can't thrash it.
 - **Guidance**: `watchPosition` → pure `guidanceTick` (snap to line with a no-rewind
   look-back, distance to next maneuver, remaining distance/time, arrival inside 25m).
   Spoken instructions via SpeechSynthesis (`en-GB`, muteable) as each maneuver comes

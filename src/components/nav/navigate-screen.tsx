@@ -14,6 +14,7 @@ import type { NavMode, NavPoint, NavRoute, SavedNavRoute, ManeuverKind } from "@
 import { EndpointSearch } from "./endpoint-search";
 import { NavMap } from "./nav-map";
 import { useGuidance, type GuidanceFix } from "./use-guidance";
+import { useHeading, requestHeadingPermission } from "./use-heading";
 
 // The Navigate surface — point-to-point door navigation on the open stack
 // (Valhalla routing, Photon geocoding, OSM/MapLibre rendering). Three states:
@@ -88,6 +89,18 @@ export function NavigateScreen({
 
   const { fix, state, geoError } = useGuidance(route, guiding, { voice, onReroute });
 
+  // Compass heading drives the FOV cone + heading-up camera. Prefer it over the
+  // GPS course (which is null when you stop walking); fall back to GPS course.
+  const compass = useHeading(guiding);
+  const navPosition = fix
+    ? { lat: fix.lat, lng: fix.lng, heading: compass ?? fix.heading }
+    : null;
+
+  function startGuidance() {
+    void requestHeadingPermission(); // iOS compass gate — needs this user gesture
+    setGuiding(true);
+  }
+
   async function saveForOffline() {
     if (!route) return;
     const id = crypto.randomUUID();
@@ -159,7 +172,7 @@ export function NavigateScreen({
           </div>
         </div>
 
-        <NavMap route={route} position={fix} follow height={420} />
+        <NavMap route={route} position={navPosition} follow height={420} />
 
         <div
           style={{
@@ -239,7 +252,7 @@ export function NavigateScreen({
               <button type="button" className="cc-btn" onClick={saveForOffline} disabled={!!saving}>
                 {saving ? `Saving ${saving.done}/${saving.total}…` : "Save offline"}
               </button>
-              <button type="button" className="cc-btn cc-btn-gold" onClick={() => setGuiding(true)}>
+              <button type="button" className="cc-btn cc-btn-gold" onClick={startGuidance}>
                 Start
               </button>
             </div>
@@ -248,7 +261,7 @@ export function NavigateScreen({
             <p style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{savedNote}</p>
           ) : null}
 
-          <NavMap route={route} position={fix} height={360} />
+          <NavMap route={route} position={navPosition} height={360} />
 
           <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
             {route.maneuvers.map((m, i) => (
