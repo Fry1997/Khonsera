@@ -124,3 +124,54 @@ function hhmmDiff(a: string, b: string): number {
   if ([ah, am, bh, bm].some((n) => Number.isNaN(n))) return 0;
   return bh * 60 + bm - (ah * 60 + am);
 }
+
+// Diagnostic — never returns the key (only whether one is set), plus the HTTP
+// status and what the board returned, so we can tell apart "key not loaded" vs
+// "endpoint wrong" vs "response shape differs" vs "no service at that time".
+export async function debugDeparture(
+  crs: string,
+  plannedHHMM: string,
+): Promise<Record<string, unknown>> {
+  const key = darwinKey();
+  if (!key) return { keyPresent: false };
+
+  const url = new URL(`${BASE}/GetDepartureBoard/${(crs || "").toUpperCase()}`);
+  url.searchParams.set("numRows", "15");
+  url.searchParams.set("timeWindow", "120");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { "x-apikey": key, accept: "application/json" },
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    let stds: string[] = [];
+    let topLevelKeys: string[] = [];
+    try {
+      const j = JSON.parse(text) as Record<string, unknown>;
+      topLevelKeys = Object.keys(j);
+      const svcs =
+        (j.trainServices as DarwinService[] | undefined) ??
+        ((j.GetStationBoardResult as { trainServices?: DarwinService[] })?.trainServices);
+      if (Array.isArray(svcs)) stds = svcs.map((s) => s.std ?? "").filter(Boolean);
+    } catch {
+      // body wasn't JSON
+    }
+    return {
+      keyPresent: true,
+      endpoint: url.toString(),
+      status: res.status,
+      ok: res.ok,
+      lookingFor: plannedHHMM,
+      stdsFound: stds,
+      topLevelKeys,
+      bodySnippet: text.slice(0, 500),
+    };
+  } catch (e) {
+    return { keyPresent: true, endpoint: url.toString(), error: String(e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
