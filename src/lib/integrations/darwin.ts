@@ -17,8 +17,10 @@ const BASE =
   process.env.DARWIN_LDBWS_ENDPOINT ??
   "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
 
+// Accept either name — earlier setup notes used DARWIN_LDBWS_TOKEN before the
+// consumer-key rename to DARWIN_LDBWS_KEY, so honour both to avoid a silent miss.
 export function darwinKey(): string | null {
-  return process.env.DARWIN_LDBWS_KEY ?? null;
+  return process.env.DARWIN_LDBWS_KEY ?? process.env.DARWIN_LDBWS_TOKEN ?? null;
 }
 
 export type LiveDeparture = {

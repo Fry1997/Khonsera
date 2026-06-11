@@ -12,22 +12,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ available: false }, { status: 401 });
   }
 
-  if (!darwinKey()) {
-    return NextResponse.json({ available: false });
-  }
-
   const url = new URL(request.url);
   const crs = url.searchParams.get("crs");
   const time = url.searchParams.get("time"); // planned departure HH:MM (London)
   const dest = url.searchParams.get("dest"); // optional destination CRS to disambiguate
-  if (!crs || !time) {
-    return NextResponse.json({ available: false });
-  }
 
   // ?debug=1 → reveal the cause (key-present boolean, HTTP status, board contents)
-  // without ever exposing the key.
+  // without ever exposing the key. Runs BEFORE the key gate so it can report
+  // keyPresent:false explicitly instead of a bare {available:false}.
   if (url.searchParams.get("debug")) {
-    return NextResponse.json(await debugDeparture(crs, time));
+    return NextResponse.json(await debugDeparture(crs ?? "", time ?? ""));
+  }
+
+  if (!darwinKey()) {
+    return NextResponse.json({ available: false });
+  }
+  if (!crs || !time) {
+    return NextResponse.json({ available: false });
   }
 
   const live = await liveDeparture(crs, time, dest);
