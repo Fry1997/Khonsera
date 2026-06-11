@@ -13,6 +13,7 @@ export {
   KIND_LABEL,
 } from "./document-cards";
 export { Pass, PassPeek } from "./pass";
+export type { BoardingVM } from "./pass";
 export { ContactChip, TaskRow, ExpenseRow } from "./people-ledger";
 export { NudgeCard, ReadinessPrompt } from "./feedback";
 export * from "./types";

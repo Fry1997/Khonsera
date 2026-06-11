@@ -36,9 +36,18 @@ function PassIco({ kind }: { kind: TicketVM["kind"] }) {
   );
 }
 
-function metaFor(stop: { code?: string; platform?: string }, kind: TicketVM["kind"]): string {
+// The loud day-of boarding callout: which platform, which train (by its final
+// destination, to match the station board), and a guard against an earlier
+// service on the same platform. Fed by LivePass; absent in static contexts.
+export type BoardingVM = {
+  platform?: string; // "2" — undefined means not announced yet
+  toward?: string; // the train's final destination — "Corby"
+  earlier?: string; // "Platform 2 also has the 17:25 to Bedford before yours"
+};
+
+function metaFor(stop: { code?: string; platform?: string }, kind: TicketVM["kind"], hidePlatform = false): string {
   const lab = kind === "air" ? "Gate" : "Plat";
-  return [stop.code, stop.platform ? `${lab} ${stop.platform}` : null].filter(Boolean).join(" · ");
+  return [stop.code, !hidePlatform && stop.platform ? `${lab} ${stop.platform}` : null].filter(Boolean).join(" · ");
 }
 
 function seatLine(t: TicketVM): string {
@@ -61,17 +70,20 @@ export function Pass({
   ticket,
   onShow,
   docked = false,
+  boarding,
 }: {
   ticket: TicketVM;
   onShow?: (ticket: TicketVM) => void;
   docked?: boolean; // on the Planner spine: barcode collapses to "Ticket ready"
+  boarding?: BoardingVM; // day-of: loud platform + train identity + wrong-train guard
 }) {
   const leg = ticket.legs[0];
   const isStay = ticket.kind === "stay";
+  const showBoarding = !!boarding && !isStay && (!!boarding.platform || !!boarding.toward || !!boarding.earlier);
 
   const from = isStay
     ? { time: ticket.checkIn, place: "Check in", meta: "" }
-    : { time: leg?.origin.time, place: leg?.origin.place ?? "", meta: leg ? metaFor(leg.origin, ticket.kind) : "" };
+    : { time: leg?.origin.time, place: leg?.origin.place ?? "", meta: leg ? metaFor(leg.origin, ticket.kind, showBoarding) : "" };
   const to = isStay
     ? { time: ticket.checkOut, place: "Check out", meta: ticket.roomType ?? "" }
     : { time: leg?.destination.time, place: leg?.destination.place ?? "", meta: leg ? metaFor(leg.destination, ticket.kind) : "" };
@@ -89,6 +101,25 @@ export function Pass({
       </div>
 
       <div className="cc-pass-body">
+        {showBoarding ? (
+          <div className="cc-pass-boarding" data-awaiting={boarding!.platform ? undefined : "true"}>
+            <span className="cc-pass-boarding-plat">
+              <span className="cc-pass-boarding-label">{ticket.kind === "air" ? "Gate" : "Platform"}</span>
+              <span className="cc-pass-boarding-num">{boarding!.platform ?? "—"}</span>
+            </span>
+            {boarding!.toward ? (
+              <span className="cc-pass-boarding-toward">
+                <span className="cc-pass-boarding-label">Your train</span>
+                <span className="cc-pass-boarding-dest">towards {boarding!.toward}</span>
+              </span>
+            ) : null}
+            {boarding!.earlier ? (
+              <p className="cc-pass-boarding-warn">{boarding!.earlier}</p>
+            ) : !boarding!.platform ? (
+              <p className="cc-pass-boarding-note">Platform not shown yet — watch the boards.</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="cc-pass-route">
           <span className="cc-pass-end" data-role="from">
             <span className="cc-pass-time">{formatClock(from.time)}</span>

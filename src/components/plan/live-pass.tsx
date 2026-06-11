@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Pass } from "@/components/concierge";
-import type { TicketVM, TravelStatus } from "@/components/concierge";
+import type { BoardingVM, TicketVM, TravelStatus } from "@/components/concierge";
 
 // A Pass for one booked rail hop, enriched with live Darwin status. Each
 // station-to-station leg renders its OWN card; this wrapper fetches the live
@@ -18,6 +18,8 @@ type Live = {
   label?: string;
   detail?: string;
   platform?: string | null;
+  destination?: string | null; // the train's final destination — "the Corby train"
+  earlierSamePlatform?: { std: string; destination?: string; platform: string } | null;
 };
 
 export function LivePass({
@@ -70,5 +72,22 @@ export function LivePass({
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
   }, [ticket, live]);
 
-  return <Pass ticket={enriched} docked={docked} onShow={onShow} />;
+  // The loud boarding callout. Platform falls back to the booked value (so it
+  // shows — and persists — even with no live signal); destination + wrong-train
+  // guard come only from a live board. Render only when there's something to say.
+  const boarding = useMemo<BoardingVM | undefined>(() => {
+    const leg0 = ticket.legs[0];
+    if (!leg0 || ticket.kind === "stay") return undefined;
+    const platform = live?.platform ?? leg0.origin.platform ?? undefined;
+    const toward = live?.destination ?? undefined;
+    const e = live?.earlierSamePlatform;
+    const lab = ticket.kind === "air" ? "Gate" : "Platform";
+    const earlier = e
+      ? `${lab} ${e.platform} also has the ${e.std}${e.destination ? ` to ${e.destination}` : ""} before yours — let that one go.`
+      : undefined;
+    if (!platform && !toward && !earlier) return undefined;
+    return { platform, toward, earlier };
+  }, [ticket, live]);
+
+  return <Pass ticket={enriched} boarding={boarding} docked={docked} onShow={onShow} />;
 }
