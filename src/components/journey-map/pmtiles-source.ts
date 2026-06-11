@@ -11,15 +11,24 @@ import type { TileCoord } from "@/lib/nav/tiles";
 // — `khnav://z/x/y` — that serves the on-device cache first (saved routes pin a
 // corridor there) then the network, so offline behaves the same in either mode.
 //
-// Production note: the default points at the Protomaps demo bucket, which is
-// fair-use/dev-only. Self-host a regional .pmtiles extract for real traffic and
-// set NEXT_PUBLIC_PMTILES_URL to it (env var only) — same posture as Valhalla.
+// Production note: third-party archives (incl. the Protomaps demo bucket) won't
+// serve cross-origin range requests to our origin — the browser CORS-blocks
+// them. So point NEXT_PUBLIC_PMTILES_URL at the same-origin proxy `/api/basemap`
+// (see src/app/api/basemap/route.ts), which forwards ranges to the real archive
+// server-side. The proxy's upstream is PMTILES_UPSTREAM_URL (server-only). For
+// real traffic self-host a regional .pmtiles extract — same posture as Valhalla.
 
 const PROTOCOL = "khnav";
 
 export function pmtilesUrl(): string | null {
   const u = process.env.NEXT_PUBLIC_PMTILES_URL;
-  return u && u.length > 0 ? u : null;
+  if (!u || u.length === 0) return null;
+  // A relative proxy path (`/api/basemap`) must be absolute for the PMTiles
+  // FetchSource; resolve against the page origin in the browser.
+  if (u.startsWith("/") && typeof window !== "undefined") {
+    return window.location.origin + u;
+  }
+  return u;
 }
 
 export function vectorEnabled(): boolean {
