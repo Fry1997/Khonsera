@@ -10,6 +10,7 @@ import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/plan
 import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
+import { LiveStatus } from "@/components/plan/live-status";
 
 // Today / Live — the day-of surface, rendered purely as a PROJECTION of the plan
 // (proposal §7 / brief §8). Today projects EVERY Event whose span covers today —
@@ -128,6 +129,23 @@ export default async function TodayPage() {
       .filter((x) => new Date(x.m).getTime() >= nowMs - 30 * 60000)
       .sort((a, b) => a.m.localeCompare(b.m))[0]?.tk ?? tickets[0];
 
+  // Live status seed for the surfaced ticket: the boarding station's CRS (its
+  // ticket id IS the departure stop id) + planned departure as London HH:MM.
+  let liveCrs: string | null = null;
+  let liveTime: string | null = null;
+  if (nextTicket) {
+    const { data: depStop } = await supabase
+      .from("stops")
+      .select("transport_hub:transport_hubs(code)")
+      .eq("id", nextTicket.id)
+      .maybeSingle();
+    liveCrs = (depStop as { transport_hub?: { code?: string | null } } | null)?.transport_hub?.code ?? null;
+    const iso = nextTicket.legs[0]?.origin?.time;
+    liveTime = iso
+      ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso))
+      : null;
+  }
+
   const sub =
     covering.length === 1
       ? covering[0].title ?? undefined
@@ -155,7 +173,10 @@ export default async function TodayPage() {
           />
 
           {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
-            <TodayDocument ticket={nextTicket} />
+            <>
+              <TodayDocument ticket={nextTicket} />
+              <LiveStatus crs={liveCrs} time={liveTime} />
+            </>
           ) : null}
 
           <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
