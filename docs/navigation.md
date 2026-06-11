@@ -92,6 +92,31 @@ Today consumes the router as the day-of brain (`src/app/(app)/today/page.tsx`):
 - Coordinates + leg travel times come from the existing stop joins
   (location/customer_site/transport_hub) and the plan's transitions — no new tables.
 
+## Premium basemap — Protomaps vector (optional, one env var)
+
+By default the basemap is raster OSM (always works, no key). Set
+`NEXT_PUBLIC_PMTILES_URL` to a Protomaps **v4** `.pmtiles` archive and the whole app
+(NavMap + JourneyMap) switches to a **vector** basemap — smooth zoom/rotation, crisp
+labels at any pitch, branded to the dusk/midnight/sahara palettes, with **3D buildings**
+and **terrain/hillshade**. Fully open-source, all self-hostable.
+
+- **Build**: `src/components/journey-map/map-style/build-vector-style.ts` uses
+  `protomaps-themes-base` (the maintained v4 layer set) themed by `brand-vector-theme.ts`
+  (the Khonsera palette mapped onto Protomaps' colour slots — one source of colour truth).
+  3D = a `fill-extrusion` on the `buildings` layer (`height`/`min_height`, small default).
+  Terrain = a free AWS terrarium DEM (`NEXT_PUBLIC_TERRAIN_URL`, `off` to disable).
+- **Tiles**: the `pmtiles` lib reads the archive by HTTP range; `PMTiles.getZxy` returns
+  decoded PBF. Both online and offline flow through the shared cache-aware `khnav://`
+  protocol (`pmtiles-source.ts`) — IndexedDB first, then the archive. Saved-route corridors
+  pin **vector PBF** tiles (separate `khonsera-nav-v` IndexedDB so it never mixes with raster
+  bytes). Protomaps tops out at z15; MapLibre overzooms beyond.
+- **Hosting**: the default URL is the Protomaps **demo bucket** — fair-use/dev only. For
+  production, self-host a regional `.pmtiles` extract (one file) + the glyph/sprite assets,
+  and point the env var at it. Same posture as Valhalla/Photon.
+- **Offline labels/terrain**: glyphs, sprites and the DEM are not corridor-cached, so a
+  saved route offline renders geometry + buildings but may drop labels/relief. The route
+  line and your position always draw.
+
 ## Limits / next steps
 
 - **Transit legs** (TfL first, then OTP/GTFS national) — the locked plan; the provider

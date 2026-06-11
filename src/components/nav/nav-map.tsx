@@ -6,35 +6,13 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { THEMES } from "@/components/journey-map/themes";
 import { buildMapStyle } from "@/components/journey-map/map-style/build-map-style";
-import { getTileBlob, osmTileUrl } from "@/lib/offline/nav-cache";
+import { registerBasemapProtocol, basemapProtocolUrl } from "@/components/journey-map/pmtiles-source";
 import type { NavRoute } from "@/lib/nav/types";
 
-// NavMap — the navigation rendering surface. Same MapLibre + theme treatment
-// as JourneyMap, but tiles flow through a custom `khnav://` protocol that
-// tries the on-device tile store first (saved routes pin their corridor
-// there), then the network. So a saved route paints its map with no signal,
-// and online browsing behaves exactly as before.
-
-const PROTOCOL = "khnav";
-let protocolRegistered = false;
-
-function registerOfflineTileProtocol() {
-  if (protocolRegistered) return;
-  protocolRegistered = true;
-  maplibregl.addProtocol(PROTOCOL, async (params) => {
-    // URL form: khnav://z/x/y
-    const m = /^khnav:\/\/(\d+)\/(\d+)\/(\d+)$/.exec(params.url);
-    if (!m) throw new Error("bad tile url");
-    const [z, x, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
-
-    const cached = await getTileBlob(`${z}/${x}/${y}`);
-    if (cached) return { data: await cached.arrayBuffer() };
-
-    const res = await fetch(osmTileUrl({ z, x, y }));
-    if (!res.ok) throw new Error(`tile ${res.status}`);
-    return { data: await res.arrayBuffer() };
-  });
-}
+// NavMap — the navigation rendering surface. Same MapLibre + theme treatment as
+// JourneyMap; the basemap (raster OSM or premium Protomaps vector) flows through
+// the shared cache-aware `khnav://` protocol, so saved routes paint offline and
+// online browsing is unchanged.
 
 export interface NavMapProps {
   route: NavRoute | null;
@@ -138,11 +116,11 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
 
   useEffect(() => {
     if (!containerRef.current) return;
-    registerOfflineTileProtocol();
+    registerBasemapProtocol();
 
     const m = new maplibregl.Map({
       container: containerRef.current,
-      style: buildMapStyle(theme, [`${PROTOCOL}://{z}/{x}/{y}`]),
+      style: buildMapStyle(theme, [basemapProtocolUrl()]),
       center: [-1.5, 52.5],
       zoom: 5,
       attributionControl: false,

@@ -11,6 +11,7 @@ import {
   prefetchTiles,
 } from "@/lib/offline/nav-cache";
 import type { NavMode, NavPoint, NavRoute, SavedNavRoute, ManeuverKind } from "@/lib/nav/types";
+import { fetchBasemapTile } from "@/components/journey-map/pmtiles-source";
 import { EndpointSearch } from "./endpoint-search";
 import { NavMap } from "./nav-map";
 import { useGuidance, type GuidanceFix } from "./use-guidance";
@@ -112,7 +113,7 @@ export function NavigateScreen({
       detailZoom: MANEUVER_ZOOM,
     });
     setSaving({ done: 0, total: tiles.length });
-    const stored = await prefetchTiles(tiles, id, (done, total) => setSaving({ done, total }));
+    const stored = await prefetchTiles(tiles, id, fetchBasemapTile, (done, total) => setSaving({ done, total }));
     await saveNavRoute({
       id,
       label: `${route.origin.name} → ${route.destination.name}`,

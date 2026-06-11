@@ -683,3 +683,22 @@ Newest at the bottom of each section.
   null when stopped); falls back to GPS course; iOS permission requested on the Start gesture.
   Decoupled the two update paths — the cone rotates every frame (cheap setData) while the
   camera easeTo is throttled to ~3/s so the noisy compass can't thrash it. 257 tests green.
+
+- **D48 — Premium vector basemap (Protomaps), opt-in and fully open.** Asked for a more
+  premium, Google/Waze-class look that's still free + open source. The lever was the basemap:
+  swapped from raster OSM to **Protomaps v4 vector tiles** via `protomaps-themes-base` (the
+  maintained, schema-correct layer set), branded to the existing dusk/midnight/sahara palettes
+  (`brand-vector-theme.ts` maps the JourneyTheme colours onto Protomaps' ~80 colour slots — one
+  source of colour truth). Added 3D buildings (`fill-extrusion` on the buildings layer) and free
+  AWS terrarium terrain/hillshade. Gated behind ONE env var `NEXT_PUBLIC_PMTILES_URL`: unset =
+  today's raster behaviour, byte-for-byte unchanged (verified — default build still raster);
+  set = vector everywhere (NavMap + JourneyMap). Tiles (raster PNG or vector PBF) flow through
+  one cache-aware `khnav://` MapLibre protocol (`pmtiles-source.ts`); `PMTiles.getZxy`
+  decompresses internally so cached + live bytes are identical; offline corridor pins vector PBF
+  in a separate `khonsera-nav-v` IndexedDB so it never mixes with raster bytes. Verified the
+  themes package API + decompression behaviour directly against the installed lib (no browser to
+  render), and confirmed both default and vector-enabled production builds compile; 257 tests
+  green. Honest gaps: live traffic / Waze rerouting has no good free source (the real paywall);
+  offline labels/terrain aren't corridor-cached (geometry + buildings still draw); the demo
+  PMTiles bucket is dev-only — production self-hosts the extract + glyph/sprite assets (same
+  posture as Valhalla/Photon). Needs a deploy + device to tune the look.

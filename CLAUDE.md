@@ -120,6 +120,13 @@ default FOSSGIS) + **Photon** geocoding (`PHOTON_URL`, default komoot) + MapLibr
 - Deep-link a destination: `/navigate?dlat=&dlng=&dname=` (the "take me there" seam).
 - Public instances are fair-use — **self-host both before real traffic** (env vars only).
 - Transit legs (TfL → OTP) are NOT built yet; the adapter seam beside `valhalla.ts` is ready.
+- **Premium vector basemap (opt-in via `NEXT_PUBLIC_PMTILES_URL`)** — Protomaps v4 vector
+  tiles via `protomaps-themes-base`, branded to dusk/midnight/sahara (`brand-vector-theme.ts`),
+  with 3D buildings + terrain (`build-vector-style.ts`). Default (unset) = raster OSM,
+  unchanged. Both basemaps flow through the shared cache-aware `khnav://` protocol in
+  `journey-map/pmtiles-source.ts` (vector PBF cached in a separate `khonsera-nav-v` IDB).
+  `NEXT_PUBLIC_TERRAIN_URL` (default AWS terrarium, `off` to disable). Self-host the
+  `.pmtiles` + glyph/sprite assets for production. See `docs/navigation.md`.
 
 ### Tell Khonsera capture substrate (migrations 0027/0028)
 Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.

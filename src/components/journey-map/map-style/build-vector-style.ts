@@ -1,0 +1,86 @@
+import { layersWithCustomTheme } from "protomaps-themes-base";
+import type { JourneyTheme } from "../themes/types";
+import { brandVectorTheme } from "./brand-vector-theme";
+import { basemapProtocolUrl, VECTOR_MAXZOOM } from "../pmtiles-source";
+
+// The premium basemap: Protomaps v4 vector tiles, branded to the Khonsera theme,
+// with 3D buildings and (optional) terrain. Tiles flow through the cache-aware
+// `khnav://` protocol so saved routes render offline. Everything open-source.
+
+function terrainUrl(): string | null {
+  const v = process.env.NEXT_PUBLIC_TERRAIN_URL;
+  if (v === "off") return null;
+  // AWS open "Terrain Tiles" (terrarium encoding) — free, no key.
+  return v && v.length > 0 ? v : "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+}
+
+export function buildVectorStyle(theme: JourneyTheme): maplibregl.StyleSpecification {
+  const t = brandVectorTheme(theme);
+  // Full Protomaps layer set (water/land/roads/buildings/boundaries/labels),
+  // coloured by the brand theme, English labels.
+  const layers = layersWithCustomTheme("protomaps", t, "en") as maplibregl.LayerSpecification[];
+
+  // 3D buildings — extrude the footprints near the ground. Protomaps carries
+  // `height`/`min_height` (metres) where OSM has them; a small default lifts the
+  // rest so the city still has texture. Inserted beneath the labels.
+  const extrusion: maplibregl.LayerSpecification = {
+    id: "buildings-3d",
+    type: "fill-extrusion",
+    source: "protomaps",
+    "source-layer": "buildings",
+    minzoom: 15,
+    filter: ["in", "kind", "building", "building_part"],
+    paint: {
+      "fill-extrusion-color": t.buildings,
+      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 15, 0, 16, ["coalesce", ["get", "height"], 6]],
+      "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
+      "fill-extrusion-opacity": 0.85,
+    },
+  };
+  const firstSymbol = layers.findIndex((l) => l.type === "symbol");
+  if (firstSymbol >= 0) layers.splice(firstSymbol, 0, extrusion);
+  else layers.push(extrusion);
+
+  const sources: Record<string, maplibregl.SourceSpecification> = {
+    protomaps: {
+      type: "vector",
+      tiles: [basemapProtocolUrl()],
+      maxzoom: VECTOR_MAXZOOM,
+      attribution: '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    },
+  };
+
+  const style: maplibregl.StyleSpecification = {
+    version: 8,
+    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+    sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+    sources,
+    layers: [
+      { id: "background", type: "background", paint: { "background-color": theme.colors.paper } },
+      ...layers,
+    ],
+  };
+
+  // Terrain / hillshade — subtle relief, free DEM. Degrades to flat offline (the
+  // DEM isn't corridor-cached). Opt out with NEXT_PUBLIC_TERRAIN_URL=off.
+  const dem = terrainUrl();
+  if (dem) {
+    sources.terrain = {
+      type: "raster-dem",
+      tiles: [dem],
+      encoding: "terrarium",
+      tileSize: 256,
+      maxzoom: 13,
+      attribution: "© AWS Terrain Tiles",
+    } as maplibregl.SourceSpecification;
+    style.layers.push({
+      id: "hillshade",
+      type: "hillshade",
+      source: "terrain",
+      paint: { "hillshade-exaggeration": 0.3, "hillshade-shadow-color": theme.colors.inkDim },
+    } as maplibregl.LayerSpecification);
+    style.terrain = { source: "terrain", exaggeration: 1.0 };
+  }
+
+  return style;
+}

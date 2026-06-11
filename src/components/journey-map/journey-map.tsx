@@ -8,6 +8,7 @@ import type { JourneyMapProps, Journey } from "./types";
 import { THEMES } from "./themes";
 import type { JourneyTheme } from "./themes/types";
 import { buildMapStyle } from "./map-style/build-map-style";
+import { registerBasemapProtocol } from "./pmtiles-source";
 import { computeBounds } from "./utils/compute-bounds";
 
 /**
@@ -51,6 +52,7 @@ export function JourneyMap({
   // Initialise map
   useEffect(() => {
     if (!containerRef.current) return;
+    registerBasemapProtocol(); // resolves khnav:// when the vector basemap is on
 
     const m = new maplibregl.Map({
       container: containerRef.current,

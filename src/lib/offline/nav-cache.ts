@@ -9,7 +9,10 @@
 import type { SavedNavRoute } from "@/lib/nav/types";
 import { tileKey, type TileCoord } from "@/lib/nav/tiles";
 
-const DB_NAME = "khonsera-nav";
+// Vector (PMTiles/PBF) and raster (OSM/PNG) tiles must never share a store —
+// they're different bytes for the same z/x/y. Key the DB by mode so flipping
+// NEXT_PUBLIC_PMTILES_URL starts a clean cache rather than serving stale bytes.
+const DB_NAME = process.env.NEXT_PUBLIC_PMTILES_URL ? "khonsera-nav-v" : "khonsera-nav";
 const DB_VERSION = 1;
 const ROUTES = "routes";
 const TILES = "tiles";
@@ -134,12 +137,14 @@ export function osmTileUrl(t: TileCoord): string {
   return `https://${sub}.tile.openstreetmap.org/${t.z}/${t.x}/${t.y}.png`;
 }
 
-// Fetch + pin the corridor tiles for a saved route. Modest concurrency, and
-// failures are skipped, not fatal — a saved route with 95% of its tiles still
-// navigates; the missing ones just show paper-coloured gaps.
+// Fetch + pin the corridor tiles for a saved route. The tile fetcher is injected
+// (vector PBF or raster PNG — see pmtiles-source) to keep this layer free of the
+// basemap source and avoid an import cycle. Modest concurrency; failures are
+// skipped, not fatal — a route missing a few tiles still navigates.
 export async function prefetchTiles(
   tiles: TileCoord[],
   routeId: string,
+  fetchTile: (t: TileCoord) => Promise<Blob | null>,
   onProgress?: (done: number, total: number) => void,
 ): Promise<number> {
   let done = 0;
@@ -153,9 +158,9 @@ export async function prefetchTiles(
       const t = queue.shift();
       if (!t) break;
       try {
-        const res = await fetch(osmTileUrl(t));
-        if (res.ok) {
-          batch.push({ key: tileKey(t), blob: await res.blob(), route_ids: [routeId] });
+        const blob = await fetchTile(t);
+        if (blob) {
+          batch.push({ key: tileKey(t), blob, route_ids: [routeId] });
           stored++;
         }
       } catch {

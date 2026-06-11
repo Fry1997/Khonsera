@@ -10,13 +10,19 @@
  * an API key — see §4 of the JourneyMap handover doc.
  */
 import type { JourneyTheme } from "../themes/types";
+import { vectorEnabled } from "../pmtiles-source";
+import { buildVectorStyle } from "./build-vector-style";
 
 export function buildMapStyle(
   theme: JourneyTheme,
-  // Optional tile URL override — the nav map routes tiles through a custom
-  // MapLibre protocol (IndexedDB-first for saved routes); default is OSM.
+  // Optional raster tile URL override (e.g. NavMap's offline `khnav://` raster).
+  // Ignored in vector mode, which builds its own Protomaps source.
   tileUrls?: string[],
 ): maplibregl.StyleSpecification {
+  // Premium path: Protomaps vector basemap when NEXT_PUBLIC_PMTILES_URL is set.
+  // Default (unset): the always-works raster OSM basemap below — unchanged.
+  if (vectorEnabled()) return buildVectorStyle(theme);
+
   return {
     version: 8,
     sources: {
