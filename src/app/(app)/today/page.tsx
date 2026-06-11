@@ -138,7 +138,7 @@ export default async function TodayPage() {
   // Per-leg rail cards for the surfaced journey: each booked hop (the ticket id IS
   // the run's departure stop id) as its own live card — boarding station CRS +
   // planned departure feed the live Darwin lookup on the card itself.
-  let legCards: Array<{ key: string; ticket: TicketVM; crs: string | null; time: string | null }> | undefined;
+  let legCards: Array<{ key: string; ticket: TicketVM; crs: string | null; time: string | null; dest: string | null }> | undefined;
   if (nextTicket) {
     const { data: depRow } = await supabase.from("stops").select("itinerary_id").eq("id", nextTicket.id).maybeSingle();
     if (depRow?.itinerary_id) {
@@ -159,7 +159,13 @@ export default async function TodayPage() {
         .map((lt) => {
           const o = byId.get(lt.originStopId);
           const iso = o?.type === "transit_changeover" ? o.end_time : o?.start_time;
-          return { key: lt.originStopId, ticket: lt.ticket, crs: o?.transport_hub?.code ?? null, time: londonHHMM(iso) };
+          return {
+            key: lt.originStopId,
+            ticket: lt.ticket,
+            crs: o?.transport_hub?.code ?? null,
+            time: londonHHMM(iso),
+            dest: lt.ticket.legs[0]?.destination.code ?? null,
+          };
         });
     }
   }

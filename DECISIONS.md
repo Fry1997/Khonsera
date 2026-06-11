@@ -615,3 +615,11 @@ Newest at the bottom of each section.
   Today both render per-hop; within one run the walk/gap card between contiguous hops is suppressed
   (`continuesRun`), and Remove stays on the first hop (clears the whole run via `deleteBookedRun`). The
   Wallet keeps the whole-run `foldStopsToTickets` (one document per booking). 220 tests.
+
+- **D43 — Darwin: disambiguate same-minute departures by destination.** At a busy interchange
+  (Luton) two services can share the scheduled minute on different platforms/directions; our matcher
+  took the first `std` hit and reported platform 3 (a northbound) instead of platform 1 (the
+  Harpenden-bound). Now every per-hop live lookup threads the hop's destination CRS, and the Darwin
+  query filters `filterCrs`/`filterType=to` (services calling at the destination) before matching the
+  scheduled time — so the 08:13 Luton→Harpenden train resolves to its own platform. The static card
+  stands if the filtered board has no match.

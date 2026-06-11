@@ -281,7 +281,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     exitId: string;
     anchor?: AnchorVM;
     pass?: TicketVM;
-    live?: { crs: string | null; time: string | null };
+    live?: { crs: string | null; time: string | null; dest: string | null };
     passDelete?: string | null; // run departure stop id, on the first leg only
     continuesRun?: boolean; // next unit is this run's next hop → suppress the leg/gap between
   };
@@ -300,7 +300,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           entryId: lt.originStopId,
           exitId: lt.destStopId,
           pass: lt.ticket,
-          live: { crs: originStop?.transport_hub?.code ?? null, time: londonHHMM(iso) },
+          // dest CRS disambiguates same-minute departures at a busy interchange
+          // (Luton can have two 07:50s on different platforms — match the one
+          // calling at this hop's destination, not just any train at that time).
+          live: {
+            crs: originStop?.transport_hub?.code ?? null,
+            time: londonHHMM(iso),
+            dest: lt.ticket.legs[0]?.destination.code ?? null,
+          },
           passDelete: lt.isFirstLeg ? lt.runDepartureStopId : null,
           continuesRun: idx < legs.length - 1,
         });

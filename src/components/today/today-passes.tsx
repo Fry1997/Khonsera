@@ -12,7 +12,7 @@ import type { TicketVM, BarcodeVM } from "@/components/concierge";
 export function TodayPasses({
   legs,
 }: {
-  legs: Array<{ key: string; ticket: TicketVM; crs: string | null; time: string | null }>;
+  legs: Array<{ key: string; ticket: TicketVM; crs: string | null; time: string | null; dest: string | null }>;
 }) {
   const [scan, setScan] = useState<{ summary: string; barcodes: BarcodeVM[] } | null>(null);
 
@@ -31,7 +31,7 @@ export function TodayPasses({
         Ready when you are
       </div>
       {legs.map((l) => (
-        <LivePass key={l.key} ticket={l.ticket} crs={l.crs} time={l.time} onShow={openScan} />
+        <LivePass key={l.key} ticket={l.ticket} crs={l.crs} time={l.time} dest={l.dest} onShow={openScan} />
       ))}
       {scan ? <ScanView summary={scan.summary} barcodes={scan.barcodes} onClose={() => setScan(null)} /> : null}
     </section>

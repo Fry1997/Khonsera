@@ -37,8 +37,9 @@ export type SpineNode = {
   anchor?: AnchorVM; // a normal anchor node
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8), ONE rail hop
   // Live status (Darwin) for this hop's boarding station: CRS + planned departure
-  // (London HH:MM). Fetched client-side; the static card stands without a token.
-  live?: { crs: string | null; time: string | null };
+  // (London HH:MM) + the hop's destination CRS (disambiguates same-minute
+  // departures). Fetched client-side; the static card stands without a token.
+  live?: { crs: string | null; time: string | null; dest: string | null };
   // Present only on the FIRST leg of a booked run — removing clears the whole run
   // (every hop) from the day + Wallet via the run's departure stop id.
   passDelete?: string | null;
@@ -103,7 +104,7 @@ export function PlanSpine({
               <div>
                 {n.pass ? (
                   <div className="cc-node-anchor">
-                    <LivePass ticket={n.pass} crs={n.live?.crs} time={n.live?.time} docked onShow={openScan} />
+                    <LivePass ticket={n.pass} crs={n.live?.crs} time={n.live?.time} dest={n.live?.dest} docked onShow={openScan} />
                     {n.passDelete ? (
                       <button
                         type="button"
