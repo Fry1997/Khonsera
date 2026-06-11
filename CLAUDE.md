@@ -84,6 +84,26 @@ After making changes to any itinerary page, the Gmail import pipeline, or the sh
 - Supabase project: `attbfwemjoslugvtfbrt` (EU West 1)
 - Vercel project: `prj_Dwmmyzk75AT0sJDchcJ52rU9ZTLz`, team `team_zK6YQHcoKN5rkpkCfohV4nXg`
 
+### Offline / PWA — day-of resilience (the Aztec must survive no-signal)
+The barrier is the test: off the train, no signal, you still need your Aztec. Two halves:
+- **Shell** — a hand-rolled service worker (`public/sw.js`, registered by
+  `src/components/pwa-register.tsx` in the root layout) + `public/manifest.webmanifest` (installable,
+  `start_url:/today`). Strategy is conservative (it ships to a real phone): `/_next/static` cache-first
+  (content-hashed = safe); navigations **network-first → cached snapshot → `/offline`** (fresh online,
+  last-known offline, never a stale app that can't update); cross-origin (Supabase/Darwin/fonts) is
+  **never** touched. Bump `VERSION` in sw.js to roll caches.
+- **Cached day** — `src/lib/offline/ticket-cache.ts` (IndexedDB, no dep) holds a `TicketVM[]` snapshot.
+  `OfflineTicketSync` (mounted on Today + Wallet) write-throughs it whenever those load online.
+  `/offline` (`src/app/offline/page.tsx`, top-level/static so it boots with zero server work →
+  precached) renders the saved passes + Aztec via the on-device `BarcodePresenter`.
+- **Barcodes draw on-device** (bwip-js `bwip-js/browser` → canvas) from the saved payload — the new
+  Pass/ScanView family always did; the legacy `TrainTicketCard` was migrated off the `/api/barcode`
+  server image (which needed signal exactly when absent). `/api/barcode` is now unused.
+- **Known limit:** runtime caching only covers chunks fetched while online — a route the user never
+  opened online may miss its page chunk offline. The primary guarantee (cached `/today`+`/wallet`
+  snapshots they DID visit + the `/offline` IndexedDB fallback) covers the real scenario. Upgrade path
+  for full precache: Serwist (`@serwist/next`) reading the build manifest.
+
 ### Tell Khonsera capture substrate (migrations 0027/0028)
 Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.
 - Facts (`stops`/`transitions`/`travel_bookings`) carry `confidence`, `source`,

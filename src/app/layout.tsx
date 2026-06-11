@@ -8,6 +8,7 @@ import "./khonsera-edition-ii-landing.css"; // Round 3 landing/waitlist elevatio
 import "./khonsera-edition-ii-landing-shot.css"; // Round 3 in-context app shot (Code-productionised)
 import "./khonsera-edition-ii-documents.css"; // Round 5 booked-document family elevation
 import "./khonsera-edition-ii-wallet.css"; // Round 5b first-class Wallet + docked-pass — LAST
+import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical Khonsera type stack, per the Visual Identity brand book
 // (Edition II · MMXXVI) — SANS-LED:
@@ -32,6 +33,13 @@ export const metadata: Metadata = {
   title: "Khonsera — travel days, considered.",
   description:
     "A quiet concierge for the slow blue hour. Plan the in-between hours of your travel — the train that might not be running, the taxi at dusk, the careful arithmetic of getting there.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Khonsera",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Khonsera" },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -65,7 +73,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <PwaRegister />
+      </body>
     </html>
   );
 }

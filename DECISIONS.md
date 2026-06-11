@@ -623,3 +623,17 @@ Newest at the bottom of each section.
   query filters `filterCrs`/`filterType=to` (services calling at the destination) before matching the
   scheduled time — so the 08:13 Luton→Harpenden train resolves to its own platform. The static card
   stands if the filtered board has no match.
+
+- **D44 — Offline tickets (PWA shell + cached day).** The acute day-of failure: off the train, no
+  signal, the app wouldn't even boot to show the Aztec. Built the offline spine, full depth (user's
+  call). **Shell:** a conservative hand-rolled service worker (`public/sw.js`) + web manifest —
+  `/_next/static` cache-first, navigations network-first→cached-snapshot→`/offline`, cross-origin
+  never touched; registered from the root layout. **Cached day:** IndexedDB snapshot of the wallet
+  (`src/lib/offline/ticket-cache.ts`), write-through from Today + Wallet (`OfflineTicketSync`), read
+  by a static top-level `/offline` route that renders the passes + Aztec with zero server work. Also
+  migrated the legacy `TrainTicketCard` barcode off the `/api/barcode` server image to the on-device
+  bwip-js canvas (it needed signal exactly when absent). Chose hand-rolled over Serwist/next-pwa to
+  avoid a build-integration dependency on the live app; documented the runtime-cache limitation +
+  Serwist as the full-precache upgrade path. 220 tests, build clean, `/offline` prerendered static.
+  **Next port of call (user-flagged):** in-app point-to-point navigation with save-map/route-ahead —
+  reuses this same offline cache for tiles + the saved route. Stage 6 of the build spine.

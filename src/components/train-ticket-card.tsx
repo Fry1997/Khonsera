@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type TicketSegment = {
   from_station: string;
@@ -30,16 +30,40 @@ function formatDate(iso: string): string {
   });
 }
 
+// Drawn on-device with bwip-js (pure JS) from the cached payload — NOT the server
+// `/api/barcode` image route, which needed signal exactly when you don't have it
+// (off the train, at the barrier). Falls back to an honest note if it can't encode.
 function AztecBarcode({ data, size = 140 }: { data: string; size?: number }) {
-  return (
-    <img
-      src={`/api/barcode?data=${encodeURIComponent(data)}&scale=4`}
-      alt="Train ticket barcode"
-      width={size}
-      height={size}
-      style={{ imageRendering: "pixelated" }}
-    />
-  );
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const canvas = ref.current;
+    if (!canvas) return;
+    (async () => {
+      try {
+        const bwipjs = (await import("bwip-js/browser")).default;
+        if (cancelled) return;
+        bwipjs.toCanvas(canvas, { bcid: "azteccode", text: data, scale: 4, backgroundcolor: "FFFFFF" });
+        if (!cancelled) setFailed(false);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data]);
+
+  if (failed) {
+    return (
+      <span style={{ fontSize: 11, color: "var(--ink-dim)", display: "inline-block", width: size, textAlign: "center" }}>
+        code unavailable
+      </span>
+    );
+  }
+  return <canvas ref={ref} aria-label="Train ticket barcode" style={{ width: size, height: size, imageRendering: "pixelated" }} />;
 }
 
 export function TrainTicketCard({

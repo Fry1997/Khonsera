@@ -1,5 +1,6 @@
 import { requireUserContext } from "@/lib/auth";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
+import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { loadWalletTickets } from "@/lib/actions/wallet";
 import { DEMO_TICKETS } from "@/components/concierge/fixtures";
 import type { TicketVM } from "@/components/concierge";
@@ -34,6 +35,8 @@ export default async function WalletPage({
       </header>
 
       <WalletScreen tickets={tickets} />
+      {/* Mirror the wallet to the device so /offline can show the Aztec with no signal. */}
+      {demo ? null : <OfflineTicketSync tickets={tickets} />}
     </div>
   );
 }

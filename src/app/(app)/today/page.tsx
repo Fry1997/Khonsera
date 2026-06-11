@@ -11,6 +11,7 @@ import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 import { TodayPasses } from "@/components/today/today-passes";
+import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 
 const londonHHMM = (iso?: string | null) =>
@@ -179,6 +180,8 @@ export default async function TodayPage() {
 
   return (
     <div className="cc-screen">
+      {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
+      <OfflineTicketSync tickets={tickets} />
       <header>
         <span className="cc-eyebrow">{ctx.activeMode === "work" ? "Work" : "Personal"} · Today</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
