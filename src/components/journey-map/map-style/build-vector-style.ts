@@ -56,10 +56,10 @@ export function buildVectorStyle(theme: JourneyTheme): maplibregl.StyleSpecifica
     glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
     sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
     sources,
-    layers: [
-      { id: "background", type: "background", paint: { "background-color": theme.colors.paper } },
-      ...layers,
-    ],
+    // Protomaps' layer list already starts with a `background` layer (themed via
+    // brandVectorTheme.background) — don't add a second or MapLibre rejects the
+    // whole style for a duplicate id.
+    layers,
   };
 
   // Terrain / hillshade — subtle relief, free DEM. Degrades to flat offline (the
