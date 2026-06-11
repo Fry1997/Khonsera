@@ -1,24 +1,24 @@
-// Darwin live rail status (National Rail) via OpenLDBWS — the request/response
-// "Live Departure Board" web service. Powered by the same Darwin engine as the
-// streaming Push Port feed, but query-on-demand, so it fits serverless: ask for
-// a station's departures, match the booked service by time, read its live status.
+// Darwin live rail status (National Rail) via the Rail Data Marketplace
+// "Live Departure Board" REST product (RDGMyles1 / 1010-live-departure-board).
+// Query-on-demand, so it fits serverless: ask for a station's departures, match
+// the booked service by scheduled time, read its live status + platform.
 //
-// GATED: returns `null` (no-op) unless DARWIN_LDBWS_TOKEN is set, so this is
-// completely inert until a token is configured — zero cost on every page.
+// AUTH: the product's consumer KEY passed as the `x-apikey` header (per its docs —
+// no OAuth token exchange needed; the consumer secret is unused here).
 //
-// This is a tiny hand-built SOAP call (no heavy SOAP lib → Vercel-safe) and the
-// response is parsed namespace-prefix-agnostically (the prefixes vary by row).
+// GATED: returns `null` (no-op) unless DARWIN_LDBWS_KEY is set, so this is
+// completely inert until a key is configured — zero cost on every page.
 
 import type { TravelStatus } from "@/components/concierge";
 
-const LDBWS_ENDPOINT =
+// Override the base if RDM bumps the product slug/version; default is the path
+// shown on the product's API page.
+const BASE =
   process.env.DARWIN_LDBWS_ENDPOINT ??
-  "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx";
-const LDB_NS = "http://thales.com/RTTI/2021-11-01/ldb/";
-const TOKEN_NS = "http://thalesgroup.com/RTTI/2013-11-28/Token/types";
+  "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
 
-export function darwinToken(): string | null {
-  return process.env.DARWIN_LDBWS_TOKEN ?? null;
+export function darwinKey(): string | null {
+  return process.env.DARWIN_LDBWS_KEY ?? null;
 }
 
 export type LiveDeparture = {
@@ -27,110 +27,95 @@ export type LiveDeparture = {
   detail?: string; // "+13 min" · "Platform 2"
   platform?: string;
   std: string; // scheduled departure HH:MM
-  etd: string; // raw estimate from Darwin ("On time" | "07:38" | "Cancelled" | "Delayed")
+  etd: string; // raw estimate from Darwin
   destination?: string;
 };
 
-// Local-name regex (ignores the lt/lt4/lt7… prefixes Darwin uses per element).
-function tag(name: string): RegExp {
-  return new RegExp(`<(?:\\w+:)?${name}>([\\s\\S]*?)<\\/(?:\\w+:)?${name}>`);
-}
-function first(xml: string, name: string): string | undefined {
-  return xml.match(tag(name))?.[1]?.trim() || undefined;
-}
+// One service from the LDBWS JSON board — the ServiceItem schema (GetDepartureBoard).
+type DarwinService = {
+  std?: string; // scheduled time of departure
+  etd?: string; // estimated ("On time" | "HH:MM" | "Delayed" | "Cancelled")
+  platform?: string;
+  isCancelled?: boolean;
+  cancelReason?: string;
+  delayReason?: string;
+  destination?: Array<{ locationName?: string; crs?: string }>;
+};
 
 // Fetch the live departure board for `crs` and return the service whose scheduled
-// departure matches `plannedHHMM` (London 24h). null on any failure / no token /
-// no match — the caller falls back to the static badge.
+// departure matches `plannedHHMM` (London 24h). Optionally narrow to services
+// heading toward `destCrs`. null on any failure / no key / no match — the caller
+// keeps the static badge.
 export async function liveDeparture(
   crs: string,
   plannedHHMM: string,
+  destCrs?: string | null,
 ): Promise<LiveDeparture | null> {
-  const token = darwinToken();
-  if (!token || !crs || !plannedHHMM) return null;
+  const key = darwinKey();
+  if (!key || !crs || !plannedHHMM) return null;
 
-  const body =
-    `<?xml version="1.0" encoding="utf-8"?>` +
-    `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:typ="${TOKEN_NS}" xmlns:ldb="${LDB_NS}">` +
-    `<soap:Header><typ:AccessToken><typ:TokenValue>${token}</typ:TokenValue></typ:AccessToken></soap:Header>` +
-    `<soap:Body><ldb:GetDepartureBoardRequest><ldb:numRows>15</ldb:numRows><ldb:crs>${crs.toUpperCase()}</ldb:crs></ldb:GetDepartureBoardRequest></soap:Body>` +
-    `</soap:Envelope>`;
+  const url = new URL(`${BASE}/GetDepartureBoard/${crs.toUpperCase()}`);
+  url.searchParams.set("numRows", "15");
+  url.searchParams.set("timeWindow", "120"); // look up to 2h ahead
+  if (destCrs) {
+    url.searchParams.set("filterCrs", destCrs.toUpperCase());
+    url.searchParams.set("filterType", "to");
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
-  let xml: string;
+  let json: unknown;
   try {
-    const res = await fetch(LDBWS_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        SOAPAction: `${LDB_NS}GetDepartureBoard`,
-      },
-      body,
+    const res = await fetch(url.toString(), {
+      headers: { "x-apikey": key, accept: "application/json" },
       signal: controller.signal,
     });
     if (!res.ok) return null;
-    xml = await res.text();
+    json = await res.json();
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
   }
 
-  // Each <service>…</service> is one departure. Find the one whose <std> matches.
-  const services = xml.split(/<(?:\w+:)?service>/).slice(1);
-  for (const raw of services) {
-    const svc = raw.split(/<\/(?:\w+:)?service>/)[0];
-    const std = first(svc, "std");
-    if (std !== plannedHHMM) continue;
+  // The StationBoard object — top-level, or under a SOAP-style wrapper.
+  const data = json as { trainServices?: DarwinService[]; GetStationBoardResult?: { trainServices?: DarwinService[] } };
+  const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
+  if (!Array.isArray(services)) return null;
 
-    const etd = first(svc, "etd") ?? "On time";
-    const platform = first(svc, "platform");
-    // destination station name (first <location> inside <destination>)
-    const destBlock = svc.match(/<(?:\w+:)?destination>([\s\S]*?)<\/(?:\w+:)?destination>/)?.[1] ?? "";
-    const destination = first(destBlock, "locationName");
-
-    return toLiveDeparture(std, etd, platform, destination);
+  for (const svc of services) {
+    if (svc?.std !== plannedHHMM) continue;
+    return toLiveDeparture(svc);
   }
   return null;
 }
 
-function toLiveDeparture(
-  std: string,
-  etd: string,
-  platform: string | undefined,
-  destination: string | undefined,
-): LiveDeparture {
+function toLiveDeparture(svc: DarwinService): LiveDeparture {
+  const std = svc.std ?? "";
+  const etd = typeof svc.etd === "string" && svc.etd ? svc.etd : "On time";
+  const platform = typeof svc.platform === "string" ? svc.platform : undefined;
+  const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
   const base = { std, etd, platform, destination } as const;
+  const plat = platform ? `Platform ${platform}` : undefined;
 
-  if (/cancel/i.test(etd)) {
-    return { ...base, status: "cancelled", label: "Cancelled" };
+  if (svc.isCancelled === true || /cancel/i.test(etd)) {
+    return { ...base, status: "cancelled", label: "Cancelled", detail: svc.cancelReason || undefined };
   }
   if (/^on time$/i.test(etd)) {
-    return {
-      ...base,
-      status: "on_time",
-      label: "On time",
-      detail: platform ? `Platform ${platform}` : undefined,
-    };
+    return { ...base, status: "on_time", label: "On time", detail: plat };
   }
   // A revised HH:MM, or the word "Delayed".
-  const revised = etd.match(/^(\d{1,2}):(\d{2})$/);
-  if (revised) {
+  if (/^\d{1,2}:\d{2}$/.test(etd)) {
     const mins = hhmmDiff(std, etd);
+    const delay = mins > 0 ? `+${mins} min` : null;
     return {
       ...base,
       status: "delayed",
       label: `Now ${etd}`,
-      detail: mins > 0 ? `+${mins} min${platform ? ` · Platform ${platform}` : ""}` : platform ? `Platform ${platform}` : undefined,
+      detail: [delay, plat].filter(Boolean).join(" · ") || undefined,
     };
   }
-  return {
-    ...base,
-    status: "delayed",
-    label: "Delayed",
-    detail: platform ? `Platform ${platform}` : undefined,
-  };
+  return { ...base, status: "delayed", label: "Delayed", detail: svc.delayReason || plat };
 }
 
 function hhmmDiff(a: string, b: string): number {

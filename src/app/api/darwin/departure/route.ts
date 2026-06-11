@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireUserContext } from "@/lib/auth";
-import { darwinToken, liveDeparture } from "@/lib/integrations/darwin";
+import { darwinKey, liveDeparture } from "@/lib/integrations/darwin";
 
 // Live departure status for a booked Pass. Client-side fetch (so the page render
-// is never blocked). Returns { available: false } when no token is configured —
-// the caller just keeps the static badge. Auth-gated so it isn't an open proxy.
+// is never blocked). Returns { available: false } when no key is configured — the
+// caller just keeps the static badge. Auth-gated so it isn't an open proxy.
 export async function GET(request: Request) {
   try {
     await requireUserContext();
@@ -12,18 +12,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ available: false }, { status: 401 });
   }
 
-  if (!darwinToken()) {
+  if (!darwinKey()) {
     return NextResponse.json({ available: false });
   }
 
   const url = new URL(request.url);
   const crs = url.searchParams.get("crs");
   const time = url.searchParams.get("time"); // planned departure HH:MM (London)
+  const dest = url.searchParams.get("dest"); // optional destination CRS to disambiguate
   if (!crs || !time) {
     return NextResponse.json({ available: false });
   }
 
-  const live = await liveDeparture(crs, time);
+  const live = await liveDeparture(crs, time, dest);
   if (!live) return NextResponse.json({ available: false });
 
   return NextResponse.json(
