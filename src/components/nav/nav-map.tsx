@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { THEMES } from "@/components/journey-map/themes";
 import { buildMapStyle } from "@/components/journey-map/map-style/build-map-style";
-import { registerBasemapProtocol, basemapProtocolUrl } from "@/components/journey-map/pmtiles-source";
+import { registerBasemapProtocol, basemapProtocolUrl, vectorEnabled, probePmtiles } from "@/components/journey-map/pmtiles-source";
 import type { NavRoute } from "@/lib/nav/types";
 
 // NavMap — the navigation rendering surface. Same MapLibre + theme treatment as
@@ -137,10 +137,17 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
     }
     m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
-    // Surface the first hard error (style/source/tile) rather than failing silent.
+    // Surface the first hard error (style/source/tile) rather than failing
+    // silent. A generic tile "Load failed" in vector mode gets a one-shot probe
+    // that names the real cause (404 / CORS-blocked / reachable).
+    let probed = false;
     m.on("error", (e) => {
       const msg = (e as { error?: { message?: string } })?.error?.message;
       if (msg) setMapError((prev) => prev ?? msg);
+      if (vectorEnabled() && !probed) {
+        probed = true;
+        void probePmtiles().then((detail) => setMapError(`tiles: ${detail}`));
+      }
     });
 
     // The classic MapLibre blank cause: the container measured 0 at construct

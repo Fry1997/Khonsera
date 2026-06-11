@@ -88,3 +88,19 @@ export async function fetchBasemapTile(t: TileCoord): Promise<Blob | null> {
   if (!r.ok) return null;
   return await r.blob();
 }
+
+// Diagnose why vector tiles aren't loading: is the archive reachable at all?
+// Distinguishes a wrong URL (404) from a CORS/network block (the usual cause
+// when a third-party bucket doesn't allow this origin's range requests).
+export async function probePmtiles(): Promise<string> {
+  const url = pmtilesUrl();
+  if (!url) return "no NEXT_PUBLIC_PMTILES_URL set";
+  try {
+    const res = await fetch(url, { headers: { Range: "bytes=0-15" } });
+    if (res.ok || res.status === 206) return `archive reachable (HTTP ${res.status}) — tile/CORS detail issue`;
+    return `archive HTTP ${res.status} at ${url} — check the URL`;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "fetch failed";
+    return `blocked (CORS or network): ${msg} — ${url}`;
+  }
+}
