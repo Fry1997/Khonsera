@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchNavRoute } from "@/lib/actions/nav";
-import { formatNavDistance, formatNavDuration } from "@/lib/nav/guidance";
+import { formatNavDistance, formatNavDuration, OFF_ROUTE_M } from "@/lib/nav/guidance";
 import { tilesForCorridor, MANEUVER_ZOOM } from "@/lib/nav/tiles";
 import {
   saveNavRoute,
@@ -162,7 +162,7 @@ export function NavigateScreen({
               {state ? formatNavDistance(state.to_maneuver_m) : "…"}
             </div>
             <div style={{ marginTop: 2 }}>{maneuver?.instruction ?? "Waiting for a location fix…"}</div>
-            {state && state.off_route_m > 50 ? (
+            {state && route && state.off_route_m > OFF_ROUTE_M[route.mode] ? (
               <div style={{ marginTop: 4, fontSize: "var(--fs-label)", color: "var(--gold-2)" }}>
                 Off the line by {formatNavDistance(state.off_route_m)} — rejoining or re-routing.
               </div>

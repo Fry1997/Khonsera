@@ -112,7 +112,7 @@ default FOSSGIS) + **Photon** geocoding (`PHOTON_URL`, default komoot) + MapLibr
 - **Valhalla shapes are polyline precision 6**, not 5 — `nav/shape.ts` takes a precision arg;
   the journey-map decoder stays 5.
 - Live guidance: pure `guidanceTick` engine + `use-guidance.ts` (watchPosition, SpeechSynthesis
-  voice, off-route 50/75/100m walk/cycle/drive sustained 12s → auto re-route when online).
+  voice, off-route 25/50/80m walk/cycle/drive sustained 8s → auto re-route when online).
 - **Offline routes**: `src/lib/offline/nav-cache.ts` (IndexedDB `khonsera-nav`, separate DB from
   the ticket cache so versions never conflict) stores route JSON + corridor tiles (z13/z15 ribbon
   + z16 at maneuvers, capped 400, refcounted per route). NavMap serves tiles via a custom

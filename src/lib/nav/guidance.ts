@@ -18,12 +18,15 @@ export interface GuidanceState {
   arrived: boolean;
 }
 
-// Off-route thresholds — GPS in a street canyon wobbles 20–30m, so walking
-// tolerates 50m; faster modes get more slack before we call it.
+// Off-route thresholds. Tight so a wrong turn is caught within a few paces;
+// the floor for walking is the centreline/pavement offset (~10–20m) — below
+// ~20m you'd reroute just for walking the correct side of the street. The
+// accuracy gate (use-guidance) only trusts the call when GPS is precise to
+// within the threshold, which filters street-canyon wobble.
 export const OFF_ROUTE_M: Record<NavRoute["mode"], number> = {
-  walk: 50,
-  cycle: 75,
-  drive: 100,
+  walk: 25,
+  cycle: 50,
+  drive: 80,
 };
 
 const ARRIVE_M = 25;

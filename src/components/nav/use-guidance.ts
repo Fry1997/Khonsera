@@ -95,12 +95,12 @@ export function useGuidance(
           speak("You have arrived.");
         }
 
-        // Off-route: sustained for 12s and online → ask the screen to
+        // Off-route: sustained for 8s and online → ask the screen to
         // re-route from where we actually are. Min 30s between re-routes.
         const threshold = OFF_ROUTE_M[route.mode];
         if (tick.off_route_m > threshold && f.accuracy < threshold) {
           offRouteSince.current ??= Date.now();
-          const sustained = Date.now() - (offRouteSince.current ?? 0) > 12_000;
+          const sustained = Date.now() - (offRouteSince.current ?? 0) > 8_000;
           const cooled = Date.now() - rerouteAt.current > 30_000;
           if (sustained && cooled && navigator.onLine && opts.onReroute) {
             rerouteAt.current = Date.now();
