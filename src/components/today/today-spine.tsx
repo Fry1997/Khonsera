@@ -26,8 +26,11 @@ type Row =
   | { kind: "anchor"; anchor: SpineAnchor; state: "past" | "next" | "future" }
   | { kind: "now" };
 
+type AnchorRow = Extract<Row, { kind: "anchor" }>;
+
 export function TodaySpine({ anchors, nextId }: { anchors: SpineAnchor[]; nextId?: string | null }) {
   const [now, setNow] = useState(() => Date.now());
+  const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
@@ -55,14 +58,25 @@ export function TodaySpine({ anchors, nextId }: { anchors: SpineAnchor[]; nextId
 
   if (anchors.length === 0) return null;
 
+  // Done anchors reel off the top: collapse them behind one "Earlier" line so
+  // NOW and what's ahead lead the spine. They're the oldest, so lifting them to
+  // a top cluster keeps the day in order; tap to bring them back.
+  const pastRows = rows.filter((r): r is AnchorRow => r.kind === "anchor" && r.state === "past");
+  const liveRows = rows.filter((r) => !(r.kind === "anchor" && r.state === "past"));
+
   return (
     <section>
       <div className="cc-eyebrow" style={{ marginBottom: "var(--space-3)" }}>
-        Today · {anchors.length}
+        Today · {liveRows.filter((r) => r.kind === "anchor").length || anchors.length}
+        {pastRows.length > 0 ? ` · ${pastRows.length} done` : ""}
       </div>
       <div className="cc-spine">
         <div className="cc-spine-rail" />
-        {rows.map((row, i) =>
+        {pastRows.length > 0 ? (
+          <PastToggle count={pastRows.length} open={showPast} onToggle={() => setShowPast((v) => !v)} />
+        ) : null}
+        {showPast ? pastRows.map((row) => <AnchorNode key={row.anchor.id} anchor={row.anchor} state="past" />) : null}
+        {liveRows.map((row, i) =>
           row.kind === "now" ? (
             <div className="cc-node" key={`now-${i}`}>
               <div className="cc-node-dot">
@@ -80,6 +94,42 @@ export function TodaySpine({ anchors, nextId }: { anchors: SpineAnchor[]; nextId
         )}
       </div>
     </section>
+  );
+}
+
+// The collapsed "earlier today" line — a quiet spine node that folds the day's
+// done anchors away by default and reveals them on tap.
+function PastToggle({ count, open, onToggle }: { count: number; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="cc-node">
+      <div className="cc-node-dot">
+        <span className="cc-dot-leg" />
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          alignSelf: "center",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "var(--space-2)",
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          fontSize: "var(--fs-micro)",
+          textTransform: "uppercase",
+          letterSpacing: "var(--ls-uc)",
+          color: "var(--ink-dim)",
+        }}
+        aria-expanded={open}
+      >
+        {open ? "Hide" : "Earlier"} · {count} done
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 120ms" }}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
