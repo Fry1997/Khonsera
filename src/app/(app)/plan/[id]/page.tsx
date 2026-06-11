@@ -310,18 +310,29 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             toStopId: next.entryId,
           };
     }
-    // Live status seed for a booked Pass: boarding station CRS + planned
-    // departure as London HH:MM (matches Darwin's <std>).
-    let liveCrs: string | null = null;
-    let liveTime: string | null = null;
+    // Live status seed for a booked Pass: one boarding per departure + changeover
+    // (where you board a train), each with its station CRS + the onward departure
+    // as London HH:MM (matches Darwin's <std>).
+    let liveBoardings: Array<{ crs: string | null; time: string | null; label: string }> | undefined;
     if (u.pass) {
-      const dep = stopById.get(u.entryId);
-      liveCrs = dep?.transport_hub?.code ?? null;
-      liveTime = dep?.start_time
-        ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(dep.start_time))
-        : null;
+      const run = runByDeparture.get(u.entryId);
+      liveBoardings = (run?.stopIds ?? [u.entryId])
+        .map((sid) => stopById.get(sid))
+        .filter((st): st is StopRow => Boolean(st) && st!.type !== "transit_arrival")
+        .map((st) => {
+          // You board a train at the changeover when it DEPARTS (end_time); at the
+          // origin it's the start_time.
+          const iso = st.type === "transit_changeover" ? st.end_time : st.start_time;
+          return {
+            crs: st.transport_hub?.code ?? null,
+            time: iso
+              ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso))
+              : null,
+            label: st.title ?? "",
+          };
+        });
     }
-    return { key: u.key, anchor: u.anchor, pass: u.pass, liveCrs, liveTime, dayStart, after };
+    return { key: u.key, anchor: u.anchor, pass: u.pass, liveBoardings, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);

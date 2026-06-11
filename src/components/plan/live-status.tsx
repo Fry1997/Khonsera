@@ -22,7 +22,15 @@ const DOT: Record<string, string> = {
   cancelled: "var(--rust)",
 };
 
-export function LiveStatus({ crs, time }: { crs?: string | null; time?: string | null }) {
+export function LiveStatus({
+  crs,
+  time,
+  label,
+}: {
+  crs?: string | null;
+  time?: string | null;
+  label?: string | null; // station name — shown for changeovers ("Luton · On time")
+}) {
   const [live, setLive] = useState<Live | null>(null);
 
   useEffect(() => {
@@ -72,7 +80,7 @@ export function LiveStatus({ crs, time }: { crs?: string | null; time?: string |
           flexShrink: 0,
         }}
       />
-      <span>Live · {live.label}</span>
+      <span>{label ? `${label} · ` : "Live · "}{live.label}</span>
       {live.detail ? <span style={{ color: "var(--ink-faint)" }}>{live.detail}</span> : null}
     </p>
   );

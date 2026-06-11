@@ -36,10 +36,10 @@ export type SpineNode = {
   key: string;
   anchor?: AnchorVM; // a normal anchor node
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8)
-  // Live status (Darwin) for a booked Pass: boarding station CRS + planned
-  // departure (London HH:MM). Fetched client-side; renders nothing without a token.
-  liveCrs?: string | null;
-  liveTime?: string | null;
+  // Live status (Darwin) for a booked Pass — one entry per BOARDING point (the
+  // departure + each changeover): station CRS + planned departure (London HH:MM).
+  // Fetched client-side; renders nothing without a token.
+  liveBoardings?: Array<{ crs: string | null; time: string | null; label: string }>;
   dayStart?: string; // a day divider label ("Day 2 · Thu 26 Jun") on multi-day Events
   after?:
     | ({ kind: "leg"; leg: LegVM } & LegBetween)
@@ -102,7 +102,9 @@ export function PlanSpine({
                 {n.pass ? (
                   <div className="cc-node-anchor">
                     <Pass ticket={n.pass} docked onShow={openScan} />
-                    <LiveStatus crs={n.liveCrs} time={n.liveTime} />
+                    {n.liveBoardings?.map((b, i) => (
+                      <LiveStatus key={i} crs={b.crs} time={b.time} label={i === 0 ? null : b.label} />
+                    ))}
                     <button
                       type="button"
                       className="cc-node-remove"
