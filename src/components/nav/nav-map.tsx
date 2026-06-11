@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -112,24 +112,46 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
   const readyRef = useRef(false);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const lastCameraRef = useRef(0);
+  const [mapError, setMapError] = useState<string | null>(null);
   const theme = THEMES[themeName] ?? THEMES.dusk;
 
   useEffect(() => {
     if (!containerRef.current) return;
     registerBasemapProtocol();
 
-    const m = new maplibregl.Map({
-      container: containerRef.current,
-      style: buildMapStyle(theme, [basemapProtocolUrl()]),
-      center: [-1.5, 52.5],
-      zoom: 5,
-      attributionControl: false,
-      maxZoom: 18,
-      minZoom: 3,
-    });
+    let m: maplibregl.Map;
+    try {
+      m = new maplibregl.Map({
+        container: containerRef.current,
+        style: buildMapStyle(theme, [basemapProtocolUrl()]),
+        center: [-1.5, 52.5],
+        zoom: 5,
+        attributionControl: false,
+        maxZoom: 18,
+        minZoom: 3,
+      });
+    } catch (e) {
+      // Invalid style / WebGL unavailable — surface it instead of a blank panel.
+      setMapError(e instanceof Error ? e.message : "Map failed to initialise");
+      return;
+    }
     m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
+    // Surface the first hard error (style/source/tile) rather than failing silent.
+    m.on("error", (e) => {
+      const msg = (e as { error?: { message?: string } })?.error?.message;
+      if (msg) setMapError((prev) => prev ?? msg);
+    });
+
+    // The classic MapLibre blank cause: the container measured 0 at construct
+    // time (flex/layout timing on mobile). Force a resize on load and whenever
+    // the box changes size.
+    const ro = new ResizeObserver(() => m.resize());
+    if (containerRef.current) ro.observe(containerRef.current);
+
     m.on("load", () => {
+      m.resize();
+      setMapError(null);
       m.addSource(ROUTE_SOURCE, { type: "geojson", data: routeGeoJSON(route) });
       m.addSource(POSITION_SOURCE, { type: "geojson", data: positionGeoJSON(position) });
 
@@ -200,6 +222,7 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
 
     mapRef.current = m;
     return () => {
+      ro.disconnect();
       markersRef.current.forEach((mk) => mk.remove());
       markersRef.current = [];
       m.remove();
@@ -277,6 +300,25 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
       }}
     >
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
+      {mapError ? (
+        <div
+          style={{
+            position: "absolute",
+            left: "var(--space-2)",
+            right: "var(--space-2)",
+            bottom: "var(--space-2)",
+            padding: "var(--space-2) var(--space-3)",
+            background: "var(--card)",
+            border: "1px solid var(--rule)",
+            borderRadius: "var(--radius-md)",
+            fontSize: "var(--fs-micro)",
+            color: "var(--ink-dim)",
+            zIndex: 2,
+          }}
+        >
+          Map couldn&apos;t load: {mapError}
+        </div>
+      ) : null}
     </div>
   );
 }

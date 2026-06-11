@@ -125,8 +125,9 @@ default FOSSGIS) + **Photon** geocoding (`PHOTON_URL`, default komoot) + MapLibr
   with 3D buildings + terrain (`build-vector-style.ts`). Default (unset) = raster OSM,
   unchanged. Both basemaps flow through the shared cache-aware `khnav://` protocol in
   `journey-map/pmtiles-source.ts` (vector PBF cached in a separate `khonsera-nav-v` IDB).
-  `NEXT_PUBLIC_TERRAIN_URL` (default AWS terrarium, `off` to disable). Self-host the
-  `.pmtiles` + glyph/sprite assets for production. See `docs/navigation.md`.
+  Terrain is opt-in via `NEXT_PUBLIC_TERRAIN_URL` (a terrarium DEM; off by default). Self-host
+  the `.pmtiles` + glyph/sprite assets for production. NavMap surfaces any map init/tile error
+  inline (not a silent blank) and force-resizes on load. See `docs/navigation.md`.
 
 ### Tell Khonsera capture substrate (migrations 0027/0028)
 Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.

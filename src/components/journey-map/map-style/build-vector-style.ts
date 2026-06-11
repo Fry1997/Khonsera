@@ -7,11 +7,12 @@ import { basemapProtocolUrl, VECTOR_MAXZOOM } from "../pmtiles-source";
 // with 3D buildings and (optional) terrain. Tiles flow through the cache-aware
 // `khnav://` protocol so saved routes render offline. Everything open-source.
 
+// Terrain is opt-in: set NEXT_PUBLIC_TERRAIN_URL to a terrarium DEM (e.g. the
+// free AWS one: https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png).
+// Off by default so a flaky DEM can't compromise the basemap.
 function terrainUrl(): string | null {
   const v = process.env.NEXT_PUBLIC_TERRAIN_URL;
-  if (v === "off") return null;
-  // AWS open "Terrain Tiles" (terrarium encoding) — free, no key.
-  return v && v.length > 0 ? v : "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+  return v && v.length > 0 && v !== "off" ? v : null;
 }
 
 export function buildVectorStyle(theme: JourneyTheme): maplibregl.StyleSpecification {
