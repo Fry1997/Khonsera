@@ -15,7 +15,7 @@ import { setTransitionMode } from "@/lib/actions/transitions";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { ensureHomeBookend } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
-import { foldStopsToTickets } from "@/lib/tickets/from-stops";
+import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import { IntentionCard } from "@/components/concierge";
 import {
   formatClock,
@@ -46,6 +46,11 @@ function mapStopType(t: string): AnchorType {
 }
 const LEG_MODES = new Set(["walk", "drive", "taxi", "bus", "tube", "train", "flight", "mixed"]);
 const mapLegMode = (m: string): LegMode => (LEG_MODES.has(m) ? m : "mixed") as LegMode;
+
+const londonHHMM = (iso?: string | null): string | null =>
+  iso
+    ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso))
+    : null;
 
 type StopRow = {
   id: string;
@@ -244,26 +249,65 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
   ]);
 
-  // Collapse each booked transit run (departure → changeover(s) → arrival) into a
-  // single docked Pass node (proposal §8); the internal locked legs fold into the
-  // ticket. A return is a second Pass downstream — the timeline carries the order.
-  const folded = foldStopsToTickets(
-    stops.map((st) => ({ id: st.id, type: st.type, title: st.title, start_time: st.start_time, metadata: st.metadata })),
+  // Render each booked rail hop (departure→change, change→arrival, …) as its OWN
+  // docked Pass card with that hop's stations, times, platform + live status (user
+  // request). The internal locked legs surface AS cards, not folded away; a return
+  // is just the next run downstream — the timeline carries the order.
+  const legTickets = foldStopsToLegTickets(
+    stops.map((st) => ({
+      id: st.id,
+      type: st.type,
+      title: st.title,
+      start_time: st.start_time,
+      end_time: st.end_time,
+      code: st.transport_hub?.code ?? null,
+      metadata: st.metadata,
+    })),
   );
-  const runByDeparture = new Map(folded.map((f) => [f.departureStopId, f]));
+  // All stops belonging to a run are represented inside the leg cards.
+  const runLegs = new Map<string, typeof legTickets>();
   const consumed = new Set<string>();
-  for (const f of folded) for (const sid of f.stopIds) if (sid !== f.departureStopId) consumed.add(sid);
+  for (const lt of legTickets) {
+    consumed.add(lt.originStopId);
+    consumed.add(lt.destStopId);
+    const arr = runLegs.get(lt.runDepartureStopId) ?? [];
+    arr.push(lt);
+    runLegs.set(lt.runDepartureStopId, arr);
+  }
 
-  type Unit = { key: string; entryId: string; exitId: string; anchor?: AnchorVM; pass?: TicketVM };
+  type Unit = {
+    key: string;
+    entryId: string;
+    exitId: string;
+    anchor?: AnchorVM;
+    pass?: TicketVM;
+    live?: { crs: string | null; time: string | null };
+    passDelete?: string | null; // run departure stop id, on the first leg only
+    continuesRun?: boolean; // next unit is this run's next hop → suppress the leg/gap between
+  };
   const units: Unit[] = [];
   for (const st of stops) {
-    if (consumed.has(st.id)) continue;
-    const run = runByDeparture.get(st.id);
-    if (run) {
-      units.push({ key: `pass-${st.id}`, entryId: st.id, exitId: run.arrivalStopId, pass: run.ticket });
-    } else {
-      units.push({ key: `anchor-${st.id}`, entryId: st.id, exitId: st.id, anchor: anchorOf(st) });
+    if (consumed.has(st.id)) {
+      // Emit the run's hop cards once — when we reach its departure stop. Change /
+      // arrival stops are part of a hop already, so we skip them here.
+      const legs = runLegs.get(st.id);
+      if (!legs) continue;
+      legs.forEach((lt, idx) => {
+        const originStop = stopById.get(lt.originStopId);
+        const iso = originStop?.type === "transit_changeover" ? originStop.end_time : originStop?.start_time;
+        units.push({
+          key: `legpass-${lt.originStopId}`,
+          entryId: lt.originStopId,
+          exitId: lt.destStopId,
+          pass: lt.ticket,
+          live: { crs: originStop?.transport_hub?.code ?? null, time: londonHHMM(iso) },
+          passDelete: lt.isFirstLeg ? lt.runDepartureStopId : null,
+          continuesRun: idx < legs.length - 1,
+        });
+      });
+      continue;
     }
+    units.push({ key: `anchor-${st.id}`, entryId: st.id, exitId: st.id, anchor: anchorOf(st) });
   }
 
   // Day dividers on multi-day Events (proposal §5/chunk 5): label the first node
@@ -290,7 +334,9 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         dayStart = `Day ${dayNum} · ${fmtDay(d)}`;
       }
     }
-    if (next) {
+    // Within a single run, consecutive hops share the change station — no walk/gap
+    // card belongs between them (the train carries straight through the change).
+    if (next && !u.continuesRun) {
       const fromStop = stopById.get(u.exitId)!;
       const toStop = stopById.get(next.entryId)!;
       const tr = transByPair.get(`${u.exitId}->${next.entryId}`);
@@ -310,29 +356,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             toStopId: next.entryId,
           };
     }
-    // Live status seed for a booked Pass: one boarding per departure + changeover
-    // (where you board a train), each with its station CRS + the onward departure
-    // as London HH:MM (matches Darwin's <std>).
-    let liveBoardings: Array<{ crs: string | null; time: string | null; label: string }> | undefined;
-    if (u.pass) {
-      const run = runByDeparture.get(u.entryId);
-      liveBoardings = (run?.stopIds ?? [u.entryId])
-        .map((sid) => stopById.get(sid))
-        .filter((st): st is StopRow => Boolean(st) && st!.type !== "transit_arrival")
-        .map((st) => {
-          // You board a train at the changeover when it DEPARTS (end_time); at the
-          // origin it's the start_time.
-          const iso = st.type === "transit_changeover" ? st.end_time : st.start_time;
-          return {
-            crs: st.transport_hub?.code ?? null,
-            time: iso
-              ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso))
-              : null,
-            label: st.title ?? "",
-          };
-        });
-    }
-    return { key: u.key, anchor: u.anchor, pass: u.pass, liveBoardings, dayStart, after };
+    return { key: u.key, anchor: u.anchor, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);

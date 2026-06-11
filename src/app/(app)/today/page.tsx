@@ -10,8 +10,8 @@ import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/plan
 import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
-import { LiveStatus } from "@/components/plan/live-status";
-import { foldStopsToTickets } from "@/lib/tickets/from-stops";
+import { TodayPasses } from "@/components/today/today-passes";
+import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 
 const londonHHMM = (iso?: string | null) =>
   iso
@@ -135,10 +135,10 @@ export default async function TodayPage() {
       .filter((x) => new Date(x.m).getTime() >= nowMs - 30 * 60000)
       .sort((a, b) => a.m.localeCompare(b.m))[0]?.tk ?? tickets[0];
 
-  // Live status seed for the surfaced ticket: one boarding per departure +
-  // changeover (the ticket id IS the departure stop id). Resolve the run's stops
-  // to get each boarding station's CRS + onward time.
-  let liveBoardings: Array<{ crs: string | null; time: string | null; label: string }> | undefined;
+  // Per-leg rail cards for the surfaced journey: each booked hop (the ticket id IS
+  // the run's departure stop id) as its own live card — boarding station CRS +
+  // planned departure feed the live Darwin lookup on the card itself.
+  let legCards: Array<{ key: string; ticket: TicketVM; crs: string | null; time: string | null }> | undefined;
   if (nextTicket) {
     const { data: depRow } = await supabase.from("stops").select("itinerary_id").eq("id", nextTicket.id).maybeSingle();
     if (depRow?.itinerary_id) {
@@ -152,18 +152,15 @@ export default async function TodayPage() {
         metadata: Record<string, unknown> | null; transport_hub: { code?: string | null } | null;
       }>;
       const byId = new Map(rows.map((s) => [s.id, s]));
-      const run = foldStopsToTickets(rows.map((s) => ({ id: s.id, type: s.type, title: s.title, start_time: s.start_time, metadata: s.metadata })))
-        .find((f) => f.departureStopId === nextTicket.id);
-      if (run) {
-        liveBoardings = run.stopIds
-          .map((sid) => byId.get(sid))
-          .filter((st): st is NonNullable<typeof st> => Boolean(st) && st!.type !== "transit_arrival")
-          .map((st) => ({
-            crs: st.transport_hub?.code ?? null,
-            time: londonHHMM(st.type === "transit_changeover" ? st.end_time : st.start_time),
-            label: st.title ?? "",
-          }));
-      }
+      legCards = foldStopsToLegTickets(
+        rows.map((s) => ({ id: s.id, type: s.type, title: s.title, start_time: s.start_time, end_time: s.end_time, code: s.transport_hub?.code ?? null, metadata: s.metadata })),
+      )
+        .filter((lt) => lt.runDepartureStopId === nextTicket.id)
+        .map((lt) => {
+          const o = byId.get(lt.originStopId);
+          const iso = o?.type === "transit_changeover" ? o.end_time : o?.start_time;
+          return { key: lt.originStopId, ticket: lt.ticket, crs: o?.transport_hub?.code ?? null, time: londonHHMM(iso) };
+        });
     }
   }
 
@@ -194,12 +191,11 @@ export default async function TodayPage() {
           />
 
           {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
-            <>
+            legCards?.length ? (
+              <TodayPasses legs={legCards} />
+            ) : (
               <TodayDocument ticket={nextTicket} />
-              {liveBoardings?.map((b, i) => (
-                <LiveStatus key={i} crs={b.crs} time={b.time} label={i === 0 ? null : b.label} />
-              ))}
-            </>
+            )
           ) : null}
 
           <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>

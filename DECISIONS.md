@@ -603,3 +603,15 @@ Newest at the bottom of each section.
     the walk keeps its real length and the buffer reads as slack, not an inflated "54m in a 39m
     window".
   - Removed the temporary `/plan/debug-scan` diagnostic. 217 tests.
+
+- **D42 — Per-leg rail cards + Darwin live status on the card.** A booked run that changes trains
+  (e.g. WEL→Luton→Harpenden) no longer folds into one Pass with a separate live-status line per
+  boarding. Each station-to-station HOP is now its own properly-formed rail card (`foldStopsToLegTickets`
+  in `src/lib/tickets/from-stops.ts`): own origin/destination CRS, departure/arrival times, duration,
+  and barcode (the change station's own barcode for split tickets, else the through-ticket Aztec from
+  the departure reused). A new `LivePass` wrapper (`src/components/plan/live-pass.tsx`) fetches the
+  Darwin board for that hop's boarding station + planned time and folds the live **platform** + status
+  straight onto the card (so "WEL · Plat 2" + on-time/delayed/cancelled paint in place). Plan spine and
+  Today both render per-hop; within one run the walk/gap card between contiguous hops is suppressed
+  (`continuesRun`), and Remove stays on the first hop (clears the whole run via `deleteBookedRun`). The
+  Wallet keeps the whole-run `foldStopsToTickets` (one document per booking). 220 tests.

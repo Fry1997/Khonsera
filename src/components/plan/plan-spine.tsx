@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AnchorCard, LegCard, GapCard, Pass, ScanView } from "@/components/concierge";
-import { LiveStatus } from "@/components/plan/live-status";
+import { AnchorCard, LegCard, GapCard, ScanView } from "@/components/concierge";
+import { LivePass } from "@/components/plan/live-pass";
 import type {
   AnchorVM,
   AnchorVariableKind,
@@ -35,11 +35,13 @@ type LegBetween = { transitionId?: string; itineraryId: string; fromStopId: stri
 export type SpineNode = {
   key: string;
   anchor?: AnchorVM; // a normal anchor node
-  pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8)
-  // Live status (Darwin) for a booked Pass — one entry per BOARDING point (the
-  // departure + each changeover): station CRS + planned departure (London HH:MM).
-  // Fetched client-side; renders nothing without a token.
-  liveBoardings?: Array<{ crs: string | null; time: string | null; label: string }>;
+  pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8), ONE rail hop
+  // Live status (Darwin) for this hop's boarding station: CRS + planned departure
+  // (London HH:MM). Fetched client-side; the static card stands without a token.
+  live?: { crs: string | null; time: string | null };
+  // Present only on the FIRST leg of a booked run — removing clears the whole run
+  // (every hop) from the day + Wallet via the run's departure stop id.
+  passDelete?: string | null;
   dayStart?: string; // a day divider label ("Day 2 · Thu 26 Jun") on multi-day Events
   after?:
     | ({ kind: "leg"; leg: LegVM } & LegBetween)
@@ -74,9 +76,9 @@ export function PlanSpine({
     });
   }
 
-  function removeBooking(ticket: TicketVM) {
-    if (!window.confirm(`Remove the ${ticket.operator} booking from this day? It clears from the Wallet too.`)) return;
-    void deleteBookedRun(ticket.id).then((res) => {
+  function removeBooking(operator: string, runDepartureStopId: string) {
+    if (!window.confirm(`Remove the ${operator} booking from this day? It clears from the Wallet too.`)) return;
+    void deleteBookedRun(runDepartureStopId).then((res) => {
       if (res.ok) router.refresh();
     });
   }
@@ -101,19 +103,18 @@ export function PlanSpine({
               <div>
                 {n.pass ? (
                   <div className="cc-node-anchor">
-                    <Pass ticket={n.pass} docked onShow={openScan} />
-                    {n.liveBoardings?.map((b, i) => (
-                      <LiveStatus key={i} crs={b.crs} time={b.time} label={i === 0 ? null : b.label} />
-                    ))}
-                    <button
-                      type="button"
-                      className="cc-node-remove"
-                      onClick={() => removeBooking(n.pass!)}
-                      aria-label="Remove booking"
-                      title="Remove booking"
-                    >
-                      ×
-                    </button>
+                    <LivePass ticket={n.pass} crs={n.live?.crs} time={n.live?.time} docked onShow={openScan} />
+                    {n.passDelete ? (
+                      <button
+                        type="button"
+                        className="cc-node-remove"
+                        onClick={() => removeBooking(n.pass!.operator, n.passDelete!)}
+                        aria-label="Remove booking"
+                        title="Remove booking"
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
                 ) : n.anchor ? (
                   <div className="cc-node-anchor">
