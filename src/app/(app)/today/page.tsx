@@ -218,6 +218,9 @@ export default async function TodayPage() {
             <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">
               Open the plan
             </Link>
+            <Link href={"/navigate" as Route} className="cc-btn">
+              Navigate
+            </Link>
           </div>
         </>
       ) : (

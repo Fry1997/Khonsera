@@ -104,6 +104,23 @@ The barrier is the test: off the train, no signal, you still need your Aztec. Tw
   snapshots they DID visit + the `/offline` IndexedDB fallback) covers the real scenario. Upgrade path
   for full precache: Serwist (`@serwist/next`) reading the build manifest.
 
+### Point-to-point navigation (`/navigate`) — see `docs/navigation.md`
+Build spine §6, fully open-source and self-hostable: **Valhalla** routing (`VALHALLA_URL`,
+default FOSSGIS) + **Photon** geocoding (`PHOTON_URL`, default komoot) + MapLibre/OSM render.
+- Provider-agnostic core in `src/lib/nav/` (types/valhalla/shape/guidance/tiles — pure,
+  unit-tested). Server actions in `src/lib/actions/nav.ts`. UI in `src/components/nav/`.
+- **Valhalla shapes are polyline precision 6**, not 5 — `nav/shape.ts` takes a precision arg;
+  the journey-map decoder stays 5.
+- Live guidance: pure `guidanceTick` engine + `use-guidance.ts` (watchPosition, SpeechSynthesis
+  voice, off-route 50/75/100m walk/cycle/drive sustained 12s → auto re-route when online).
+- **Offline routes**: `src/lib/offline/nav-cache.ts` (IndexedDB `khonsera-nav`, separate DB from
+  the ticket cache so versions never conflict) stores route JSON + corridor tiles (z13/z15 ribbon
+  + z16 at maneuvers, capped 400, refcounted per route). NavMap serves tiles via a custom
+  `khnav://` MapLibre protocol — IDB first, network fallback. The SW stays out of tile caching.
+- Deep-link a destination: `/navigate?dlat=&dlng=&dname=` (the "take me there" seam).
+- Public instances are fair-use — **self-host both before real traffic** (env vars only).
+- Transit legs (TfL → OTP) are NOT built yet; the adapter seam beside `valhalla.ts` is ready.
+
 ### Tell Khonsera capture substrate (migrations 0027/0028)
 Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.
 - Facts (`stops`/`transitions`/`travel_bookings`) carry `confidence`, `source`,

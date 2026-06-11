@@ -11,13 +11,18 @@
  */
 import type { JourneyTheme } from "../themes/types";
 
-export function buildMapStyle(theme: JourneyTheme): maplibregl.StyleSpecification {
+export function buildMapStyle(
+  theme: JourneyTheme,
+  // Optional tile URL override — the nav map routes tiles through a custom
+  // MapLibre protocol (IndexedDB-first for saved routes); default is OSM.
+  tileUrls?: string[],
+): maplibregl.StyleSpecification {
   return {
     version: 8,
     sources: {
       osm: {
         type: "raster",
-        tiles: [
+        tiles: tileUrls ?? [
           "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
           "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
           "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",

@@ -637,3 +637,23 @@ Newest at the bottom of each section.
   Serwist as the full-precache upgrade path. 220 tests, build clean, `/offline` prerendered static.
   **Next port of call (user-flagged):** in-app point-to-point navigation with save-map/route-ahead —
   reuses this same offline cache for tiles + the saved route. Stage 6 of the build spine.
+
+- **D45 — Point-to-point navigation (spine §6), open-source stack.** Built the navigation
+  system on the locked open stack, every endpoint self-hostable by env var: Valhalla routing
+  (`VALHALLA_URL`, default FOSSGIS community instance) for walk/cycle/drive, Photon geocoding
+  (`PHOTON_URL`) for free-text places, MapLibre/OSM rendering. Provider-agnostic core in
+  `src/lib/nav/` (NavRoute/NavManeuver shapes; Valhalla maps in via a pure fixture-tested
+  adapter — polyline precision 6, not 5); transit (TfL→OTP) slots in beside it later, same
+  shapes. Live guidance is a pure engine (snap-to-route with no-rewind look-back, maneuver
+  progression, arrival, off-route 50/75/100m by mode) wrapped by a hook owning watchPosition,
+  en-GB voice (muteable), and auto re-route (12s sustained off-route + online + 30s cooldown).
+  Offline = the differentiator: "Save offline" pins route JSON + a corridor tile ribbon
+  (z13/z15 along the line, z16 at maneuvers, 250m buffer, hard cap 400, refcounted per route)
+  into a new `khonsera-nav` IndexedDB (separate from the ticket cache — no version coupling);
+  NavMap reads tiles through a custom `khnav://` MapLibre protocol, IDB-first → network. The
+  corridor cap is deliberate OSM-tile-policy respect: a ribbon, never an area scrape. Endpoint
+  search fans out GPS / transport hubs (rail+air) / saved places / Photon in parallel,
+  proximity-ranked. Surface at `/navigate` (sidebar item + Today link + `?dlat&dlng&dname`
+  deep-link seam for "take me there"). Sandbox network policy blocked live endpoint probes —
+  adapter verified against fixtures; first deploy should smoke-test one real route. 243 tests
+  green, build clean.
