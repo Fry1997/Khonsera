@@ -657,3 +657,18 @@ Newest at the bottom of each section.
   deep-link seam for "take me there"). Sandbox network policy blocked live endpoint probes —
   adapter verified against fixtures; first deploy should smoke-test one real route. 243 tests
   green, build clean.
+
+- **D46 — Today as the day-of brain: spine, true leave-by, built-in Navigate.** Reworked
+  Today to (1) thread the whole day on the `.cc-spine` rail with a live NOW pulse that ticks
+  every 30s — done anchors recede dimmed above the line, the next is lifted, the rest wait
+  below (the "events move up the page" feel, no reload); (2) replace the fake leave-by (which
+  was just the next stop's start time) with a true one, `leaveBy = arriveBy − travel − buffer`,
+  in a pure tested helper (`lib/planning/leave-by.ts`); the `NextMove` hero routes from live
+  GPS to the next anchor via the Valhalla layer and back-calculates the door time with a live
+  countdown + urgency; (3) put a Navigate link on every located anchor → the point-to-point
+  router via the `?dlat&dlng&dname` deep link. Coordinates + leg times reuse existing stop
+  joins (location/customer_site/transport_hub) + the plan's transitions — no schema change.
+  Respect for the user: Today shows the plan's computed leg time immediately and only upgrades
+  to live GPS when permission is already granted — never an unsolicited location prompt on
+  load. Graceful fallbacks throughout (offline/denied → planned time; no coords → ActiveTile
+  keeps its old planned leave-by, no regression). 248 tests green, build clean.

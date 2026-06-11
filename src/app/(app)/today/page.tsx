@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { isWelcomed } from "@/lib/welcome";
-import { ActiveTile, AnchorCard } from "@/components/concierge";
+import { ActiveTile } from "@/components/concierge";
 import type { AnchorVM, AnchorType, TicketVM } from "@/components/concierge";
 import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/planning/today";
 import { loadJourneyTickets } from "@/lib/actions/wallet";
@@ -12,6 +12,9 @@ import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 import { TodayPasses } from "@/components/today/today-passes";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
+import { NextMove } from "@/components/today/next-move";
+import { TodaySpine } from "@/components/today/today-spine";
+import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 
 const londonHHMM = (iso?: string | null) =>
@@ -34,14 +37,29 @@ function mapStopType(type: string): AnchorType {
   return "custom";
 }
 
+type Geo = { name?: string; latitude?: number | null; longitude?: number | null } | null;
 type StopRow = {
   id: string;
   type: string;
   title: string | null;
   start_time: string | null;
   end_time: string | null;
-  location: { name?: string } | null;
+  location: Geo;
+  customer_site: Geo;
+  transport_hub: Geo;
 };
+
+// First available coordinate — customer site, then saved location, then hub
+// (mirrors pickPoint in transitions.ts). Drives true leave-by + Navigate.
+function coordOf(s: StopRow): { lat: number; lng: number } | null {
+  for (const c of [s.customer_site, s.location, s.transport_hub]) {
+    if (c && c.latitude != null && c.longitude != null) return { lat: c.latitude, lng: c.longitude };
+  }
+  return null;
+}
+function placeOf(s: StopRow): string | undefined {
+  return s.location?.name ?? s.customer_site?.name ?? s.transport_hub?.name ?? undefined;
+}
 
 const STATE_HEADLINE: Record<string, string> = {
   dormant: "Nothing in motion right now",
@@ -85,21 +103,32 @@ export default async function TodayPage() {
   // Compose today's slice across all covering Events (E1).
   const allStops: StopRow[] = [];
   const legFromStops = new Set<string>();
+  // The plan's leg leading INTO a stop: travel minutes + mode, the offline
+  // fallback for true leave-by and the default Navigate mode.
+  const travelByToStop = new Map<string, { minutes: number | null; mode: string | null }>();
   let tickets: TicketVM[] = [];
   for (const ev of covering) {
     const [{ data: s }, { data: t }, jt] = await Promise.all([
       supabase
         .from("stops")
-        .select("id, type, title, start_time, end_time, location:locations(name)")
+        .select(
+          "id, type, title, start_time, end_time, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(name, latitude, longitude)",
+        )
         .eq("itinerary_id", ev.id)
         .order("sequence"),
-      supabase.from("transitions").select("from_stop_id").eq("itinerary_id", ev.id),
+      supabase
+        .from("transitions")
+        .select("from_stop_id, to_stop_id, mode, computed_duration_minutes")
+        .eq("itinerary_id", ev.id),
       loadJourneyTickets(ev.id),
     ]);
     for (const st of (s ?? []) as unknown as StopRow[]) {
       if (isToday(st.start_time, today)) allStops.push(st);
     }
-    for (const tr of t ?? []) legFromStops.add(tr.from_stop_id as string);
+    for (const tr of (t ?? []) as Array<{ from_stop_id: string; to_stop_id: string; mode: string | null; computed_duration_minutes: number | null }>) {
+      legFromStops.add(tr.from_stop_id);
+      if (tr.to_stop_id) travelByToStop.set(tr.to_stop_id, { minutes: tr.computed_duration_minutes, mode: tr.mode });
+    }
     tickets = tickets.concat(jt);
   }
 
@@ -112,11 +141,27 @@ export default async function TodayPage() {
   const anchors: AnchorVM[] = allStops.map((s) => ({
     id: s.id,
     type: mapStopType(s.type),
-    title: s.title ?? s.location?.name ?? "Stop",
-    place: s.location?.name ?? undefined,
+    title: s.title ?? placeOf(s) ?? "Stop",
+    place: placeOf(s),
     time: s.start_time ? { from: s.start_time, to: s.end_time ?? undefined } : undefined,
     fixed: true,
   }));
+
+  // Spine view-model: coordinates + planned leg time + nav mode per anchor.
+  const spineAnchors: SpineAnchor[] = allStops.map((s) => {
+    const leg = travelByToStop.get(s.id);
+    return {
+      id: s.id,
+      type: mapStopType(s.type),
+      title: s.title ?? placeOf(s) ?? "Stop",
+      place: placeOf(s),
+      arriveByIso: s.start_time,
+      endIso: s.end_time,
+      coord: coordOf(s),
+      plannedTravelMinutes: leg?.minutes ?? null,
+      navMode: navModeForTransition(leg?.mode),
+    };
+  });
 
   const projStops: ProjectionStop[] = allStops.map((s) => ({
     id: s.id,
@@ -127,6 +172,12 @@ export default async function TodayPage() {
   }));
   const proj = projectToday(projStops, now.getTime());
   const nextAnchor = proj.nextIndex != null ? anchors[proj.nextIndex] : undefined;
+
+  // True leave-by takes over the hero when the next anchor has the data to back
+  // it (a location to route to, or a planned leg time). Otherwise the ActiveTile
+  // keeps its planned leave-by so there's no regression on coordinate-less plans.
+  const nextSpine = proj.nextIndex != null ? spineAnchors[proj.nextIndex] : null;
+  const canLeaveBy = !!(nextSpine?.arriveByIso && (nextSpine.coord || nextSpine.plannedTravelMinutes != null));
 
   const nowMs = now.getTime();
   const nextTicket =
@@ -195,9 +246,11 @@ export default async function TodayPage() {
             headline={STATE_HEADLINE[proj.state] ?? "Your day"}
             sub={sub}
             nextAnchor={nextAnchor}
-            leaveBy={proj.leaveByIso ?? undefined}
+            leaveBy={canLeaveBy ? undefined : proj.leaveByIso ?? undefined}
             urgency={proj.urgency as TodayUrgency}
           />
+
+          {canLeaveBy && nextSpine ? <NextMove anchor={nextSpine} /> : null}
 
           {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
             legCards?.length ? (
@@ -207,12 +260,7 @@ export default async function TodayPage() {
             )
           ) : null}
 
-          <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            <div className="cc-eyebrow">Today · {anchors.length}</div>
-            {anchors.map((a) => (
-              <AnchorCard key={a.id} anchor={a} />
-            ))}
-          </section>
+          <TodaySpine anchors={spineAnchors} nextId={nextSpine?.id ?? null} />
 
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
             <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">

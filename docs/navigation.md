@@ -68,11 +68,28 @@ the same `NavRoute` shape — the UI and guidance engine never see provider JSON
 - **Deep link**: `/navigate?dlat=…&dlng=…&dname=…` pre-fills the destination — the seam
   for "take me there" buttons on anchors/legs.
 
+## Today integration — true leave-by + Navigate
+
+Today consumes the router as the day-of brain (`src/app/(app)/today/page.tsx`):
+- **True leave-by** (`src/lib/planning/leave-by.ts`, pure + tested): `leaveBy = arriveBy −
+  travel − buffer`. The `NextMove` hero card (`src/components/today/next-move.tsx`) routes
+  from the device's live GPS to the next anchor via `fetchNavRoute` and back-calculates the
+  door time, with a live countdown + urgency. It shows the plan's computed leg time
+  immediately and only upgrades to live GPS when permission is **already** granted — Today
+  never pops a location prompt on load; consent lives behind a Recheck/Navigate tap.
+- **The spine** (`src/components/today/today-spine.tsx`): the whole day threaded on the
+  `.cc-spine` rail with a live NOW pulse that ticks every 30s — done anchors recede (dimmed,
+  above the line), the next is lifted, the rest wait below. Every anchor with coordinates
+  carries a **Navigate** link → `/navigate?dlat&dlng&dname`.
+- Coordinates + leg travel times come from the existing stop joins
+  (location/customer_site/transport_hub) and the plan's transitions — no new tables.
+
 ## Limits / next steps
 
 - **Transit legs** (TfL first, then OTP/GTFS national) — the locked plan; the provider
-  seam is ready.
+  seam is ready. Today's leave-by treats transit hops as a walk fallback until then.
 - The FOSSGIS Valhalla instance has no SLA; production wants the self-hosted pair above.
 - Re-routing requires signal (routing is server-side by design); the offline fallback is
   the saved line, which covers the planned-ahead scenario.
-- Wire "take me there" deep links from AnchorCard / leg views.
+- The per-anchor buffer is a flat default (`DEFAULT_BUFFER_MIN`); readiness back-calc
+  (spine §4) can make it anchor-specific later.
