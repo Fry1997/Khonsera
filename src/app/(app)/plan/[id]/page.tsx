@@ -58,6 +58,7 @@ type StopRow = {
   is_time_fixed: boolean | null;
   metadata: Record<string, unknown> | null;
   location: { name?: string } | null;
+  transport_hub: { code?: string | null } | null;
 };
 type TransRow = {
   id: string;
@@ -122,7 +123,7 @@ async function loadSpine(itineraryId: string) {
   return Promise.all([
     supabase
       .from("stops")
-      .select("id, sequence, type, title, start_time, end_time, duration_minutes, is_time_fixed, metadata, location:locations(name)")
+      .select("id, sequence, type, title, start_time, end_time, duration_minutes, is_time_fixed, metadata, location:locations(name), transport_hub:transport_hubs(code)")
       .eq("itinerary_id", itineraryId)
       .order("sequence"),
     supabase
@@ -309,7 +310,18 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             toStopId: next.entryId,
           };
     }
-    return { key: u.key, anchor: u.anchor, pass: u.pass, dayStart, after };
+    // Live status seed for a booked Pass: boarding station CRS + planned
+    // departure as London HH:MM (matches Darwin's <std>).
+    let liveCrs: string | null = null;
+    let liveTime: string | null = null;
+    if (u.pass) {
+      const dep = stopById.get(u.entryId);
+      liveCrs = dep?.transport_hub?.code ?? null;
+      liveTime = dep?.start_time
+        ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(dep.start_time))
+        : null;
+    }
+    return { key: u.key, anchor: u.anchor, pass: u.pass, liveCrs, liveTime, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnchorCard, LegCard, GapCard, Pass, ScanView } from "@/components/concierge";
+import { LiveStatus } from "@/components/plan/live-status";
 import type {
   AnchorVM,
   AnchorVariableKind,
@@ -35,6 +36,10 @@ export type SpineNode = {
   key: string;
   anchor?: AnchorVM; // a normal anchor node
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8)
+  // Live status (Darwin) for a booked Pass: boarding station CRS + planned
+  // departure (London HH:MM). Fetched client-side; renders nothing without a token.
+  liveCrs?: string | null;
+  liveTime?: string | null;
   dayStart?: string; // a day divider label ("Day 2 · Thu 26 Jun") on multi-day Events
   after?:
     | ({ kind: "leg"; leg: LegVM } & LegBetween)
@@ -97,6 +102,7 @@ export function PlanSpine({
                 {n.pass ? (
                   <div className="cc-node-anchor">
                     <Pass ticket={n.pass} docked onShow={openScan} />
+                    <LiveStatus crs={n.liveCrs} time={n.liveTime} />
                     <button
                       type="button"
                       className="cc-node-remove"
