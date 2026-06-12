@@ -16,6 +16,7 @@ import { NextMove } from "@/components/today/next-move";
 import { TodaySpine } from "@/components/today/today-spine";
 import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
+import { TodayDemo } from "@/components/today/today-demo";
 
 const londonHHMM = (iso?: string | null) =>
   iso
@@ -77,8 +78,18 @@ function isToday(iso: string | null, today: string): boolean {
   return new Date(iso).toISOString().slice(0, 10) === today || ymd(new Date(iso)) === today;
 }
 
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ demo?: string }>;
+}) {
   const ctx = await requireUserContext();
+
+  // Staff day-of preview: a representative fixture so the live components can be
+  // reviewed without a real plan in the DB (mirrors /wallet?demo=1).
+  const sp = await searchParams;
+  if (ctx.isStaff && sp?.demo === "1") return <TodayDemo />;
+
   const supabase = await createClient();
 
   if (!(await isWelcomed())) {
