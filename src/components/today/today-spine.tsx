@@ -24,7 +24,7 @@ const TYPE_LABEL: Record<SpineAnchor["type"], string> = {
 };
 
 type Row =
-  | { kind: "anchor"; anchor: SpineAnchor; state: "past" | "next" | "future" }
+  | { kind: "anchor"; anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean }
   | { kind: "now" };
 
 type AnchorRow = Extract<Row, { kind: "anchor" }>;
@@ -59,18 +59,23 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
 
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];
+    const nextIdx = anchors.findIndex((a) => a.id === activeNextId);
     let nowPlaced = false;
-    for (const a of anchors) {
+    for (let i = 0; i < anchors.length; i++) {
+      const a = anchors[i];
       const startMs = a.arriveByIso ? new Date(a.arriveByIso).getTime() : null;
       const endMs = a.endIso ? new Date(a.endIso).getTime() : startMs;
-      // The NOW marker drops in just before the first anchor still ahead of us.
-      if (!nowPlaced && startMs != null && startMs > now) {
+      // NOW drops in right before the active obligation — so an obligation you're
+      // late to (its clock time already passed) sits in FRONT of now, where
+      // you're still headed, not reeled behind it.
+      if (!nowPlaced && nextIdx >= 0 && i === nextIdx) {
         out.push({ kind: "now" });
         nowPlaced = true;
       }
-      const isPast = endMs != null && endMs < now && a.id !== activeNextId;
-      const state: "past" | "next" | "future" = a.id === activeNextId ? "next" : isPast ? "past" : "future";
-      out.push({ kind: "anchor", anchor: a, state });
+      const state: "past" | "next" | "future" =
+        a.id === activeNextId ? "next" : nextIdx < 0 ? "past" : i < nextIdx ? "past" : "future";
+      const late = a.id === activeNextId && endMs != null && endMs < now;
+      out.push({ kind: "anchor", anchor: a, state, late });
     }
     if (!nowPlaced) out.push({ kind: "now" }); // whole day is behind us
     return out;
@@ -109,7 +114,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
               </div>
             </div>
           ) : (
-            <AnchorNode key={row.anchor.id} anchor={row.anchor} state={row.state} />
+            <AnchorNode key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} />
           ),
         )}
       </div>
@@ -153,7 +158,7 @@ function PastToggle({ count, open, onToggle }: { count: number; open: boolean; o
   );
 }
 
-function AnchorNode({ anchor, state }: { anchor: SpineAnchor; state: "past" | "next" | "future" }) {
+function AnchorNode({ anchor, state, late }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean }) {
   const href = navigateHref(anchor);
   const arrive = londonClock(anchor.arriveByIso);
   const past = state === "past";
@@ -194,9 +199,14 @@ function AnchorNode({ anchor, state }: { anchor: SpineAnchor; state: "past" | "n
             {past ? "Done · " : ""}
             {eyebrow}
           </span>
-          {arrive ? (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-label)", color: "var(--ink)" }}>{arrive}</span>
-          ) : null}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+            {late ? (
+              <span style={{ fontSize: "var(--fs-micro)", textTransform: "uppercase", letterSpacing: "var(--ls-uc)", color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: "var(--radius-xs)", padding: "1px 5px" }}>
+                Running late
+              </span>
+            ) : null}
+            {arrive ? <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-label)", color: "var(--ink)" }}>{arrive}</span> : null}
+          </span>
         </div>
 
         <h3 style={{ margin: "var(--space-1) 0 0", fontSize: "var(--fs-h3)", lineHeight: "var(--lh-h3)", display: "flex", alignItems: "baseline", gap: "var(--space-2)" }}>

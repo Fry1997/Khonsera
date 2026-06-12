@@ -12,13 +12,13 @@ import { FullLeg } from "./next-leg-map";
 import { useLivePosition } from "./use-live-position";
 import type { NavMode, NavRoute } from "@/lib/nav/types";
 
-// The live next-move — timing-first, and reactive. It threads the plan, picks
-// the next obligation, predicts the leave-by from where you ACTUALLY are (live
-// GPS, falling back to your home base), and bands it honestly (reads the buffer
-// so it never cries "overdue" while you can still make it). No inline map — you
-// get the timing here and the map full-screen on Navigate. When you're late it
-// keeps the obligation in front of you and shows planned → new ETA; a reversible
-// Walk/Taxi toggle lets you see a faster way; "Tell" shares your real ETA.
+// The live next-move — timing-first and reactive. Threads the plan, picks the
+// next obligation, predicts the leave-by from where you ACTUALLY are (live GPS
+// is the point of the thing, so it's always on; home base is the silent fallback
+// until a fix lands). No inline map — timing here, the map full-screen on
+// Navigate. A late obligation stays in front of you with planned → ETA; you can
+// say "not going" to drop it and recalc; a reversible Walk/Taxi toggle shows a
+// faster way; "Tell them" shares your real ETA.
 
 const HHMM = (ms: number) => londonClock(new Date(ms).toISOString());
 
@@ -27,51 +27,34 @@ const MODE_LABEL: Record<NavMode, string> = { walk: "Walk", cycle: "Cycle", driv
 export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: string; base?: { lat: number; lng: number } | null }) {
   const [now, setNow] = useState(() => Date.now());
   const [modeOverride, setModeOverride] = useState<NavMode | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [route, setRoute] = useState<NavRoute | null>(null);
   const [navOpen, setNavOpen] = useState(false);
-  const [locEnabled, setLocEnabled] = useState(false);
-  const { fix, status } = useLivePosition(locEnabled);
+  // Live location is the core function — always watch; fall back to home base
+  // silently until a fix arrives (or if it's blocked). No on/off toggle.
+  const { fix } = useLivePosition(true);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
 
-  // Upgrade to live position only if already granted — never prompt on load.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
-        if (perms?.query) {
-          const s = await perms.query({ name: "geolocation" as PermissionName });
-          if (!cancelled && s.state === "granted") setLocEnabled(true);
-        }
-      } catch {
-        /* no Permissions API — wait for a tap */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const liveAnchors = useMemo(() => anchors.filter((a) => !dismissed.has(a.id)), [anchors, dismissed]);
 
   const engineAnchors: EngineAnchor[] = useMemo(
     () =>
-      anchors.map((a) => ({
+      liveAnchors.map((a) => ({
         id: a.id,
         startMs: a.arriveByIso ? Date.parse(a.arriveByIso) : null,
         endMs: a.endIso ? Date.parse(a.endIso) : null,
         plannedTravelMinutes: a.plannedTravelMinutes,
         isStation: !!a.station,
       })),
-    [anchors],
+    [liveAnchors],
   );
 
-  // Pick the next obligation first (time-only), so the route fetch + mode toggle
-  // hang off a stable target.
   const preState = computeDayState({ anchors: engineAnchors, nowMs: now });
-  const next = preState.nextIndex != null ? anchors[preState.nextIndex] : null;
+  const next = preState.nextIndex != null ? liveAnchors[preState.nextIndex] : null;
   const mode: NavMode = modeOverride ?? next?.navMode ?? "walk";
   const origin = fix ? { lat: fix.lat, lng: fix.lng, name: "Your location" } : base ? { lat: base.lat, lng: base.lng, name: "Home" } : null;
   const fromHome = !fix && !!base;
@@ -87,8 +70,8 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
     }
   }, [nextId]);
 
-  // Fetch the route for the active mode (for the leave-by maths AND Navigate) —
-  // but never show it inline. From your live position, else your home base.
+  // Fetch the route for the active mode (for the leave-by maths AND Navigate),
+  // never shown inline. From your live position, else your home base.
   const oLat = origin?.lat;
   const oLng = origin?.lng;
   const dLat = next?.coord?.lat;
@@ -128,7 +111,7 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
   const arrivalMs = feas ? now + feas.travelMinutes * 60_000 : null;
   const lateMin = arrivalMs != null && arriveByMs != null ? Math.round((arrivalMs - arriveByMs) / 60_000) : null;
   const isMeeting = !next.station;
-  const isLate = (feas?.band === "cliff") || (lateMin != null && lateMin > 0);
+  const isLate = feas?.band === "cliff" || (lateMin != null && lateMin > 0);
 
   const modeOptions = Array.from(new Set<NavMode>([next.navMode, "drive"]));
 
@@ -149,7 +132,6 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
         {next.place && next.place !== next.title ? ` · ${next.place}` : ""}
       </p>
 
-      {/* Timing — the part you actually want. Late shows planned → new ETA. */}
       {arrivalMs != null ? (
         <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: "var(--fs-label)", color: isLate ? "var(--amber)" : "var(--ink-dim)" }}>
           {isLate && arriveByMs != null
@@ -161,16 +143,25 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
         <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>Working out the time…</p>
       )}
 
-      {/* Reversible mode toggle — see a faster way and switch straight back. */}
+      {/* Reversible mode toggle — a proper segmented control (rounded selection). */}
       {origin && next.coord && modeOptions.length > 1 ? (
-        <div style={{ display: "inline-flex", gap: 4, alignSelf: "flex-start", border: "1px solid var(--rule)", borderRadius: "var(--radius-pill, 999px)", padding: 2 }}>
+        <div style={{ display: "inline-flex", alignSelf: "flex-start", gap: 2, padding: 3, background: "var(--card-2, var(--card))", border: "1px solid var(--rule)", borderRadius: 999 }}>
           {modeOptions.map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setModeOverride(m)}
-              className={m === mode ? "cc-btn cc-btn-gold" : "cc-btn"}
-              style={{ fontSize: "var(--fs-label)", padding: "3px 12px", border: "none", background: m === mode ? undefined : "transparent" }}
+              style={{
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-label)",
+                fontWeight: m === mode ? 600 : 400,
+                padding: "4px 14px",
+                borderRadius: 999,
+                background: m === mode ? "var(--gold)" : "transparent",
+                color: m === mode ? "#fffdf7" : "var(--ink-dim)",
+              }}
             >
               {MODE_LABEL[m]}
             </button>
@@ -192,17 +183,15 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
             {route ? "Navigate" : "Finding route…"}
           </button>
         ) : null}
-        {isLate && isMeeting && arrivalMs != null ? <NotifyButton who={next.title} arrivalMs={arrivalMs} /> : null}
-        {fromHome && next.coord ? (
-          <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)" }} onClick={() => setLocEnabled(true)}>
-            {status === "denied" ? "Location blocked" : "Use live location"}
-          </button>
-        ) : null}
-        {!origin && next.coord ? (
-          <button type="button" className="cc-btn cc-btn-gold" onClick={() => setLocEnabled(true)}>
-            {status === "denied" ? "Location is blocked" : "Use live location"}
-          </button>
-        ) : null}
+        {isLate && isMeeting && arrivalMs != null ? <NotifyButton arrivalMs={arrivalMs} /> : null}
+        <button
+          type="button"
+          className="cc-btn"
+          style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}
+          onClick={() => setDismissed((s) => new Set(s).add(next.id))}
+        >
+          Not going
+        </button>
       </div>
 
       {spare >= 15 && !isLate ? (
@@ -215,8 +204,9 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
 }
 
 // Tell whoever's waiting your real ETA — Share where available, else copy.
-// (WhatsApp / contacts integration to come.)
-function NotifyButton({ who, arrivalMs }: { who: string; arrivalMs: number }) {
+// (WhatsApp / contacts integration to come; until then it's a generic ETA, no
+// guessed names.)
+function NotifyButton({ arrivalMs }: { arrivalMs: number }) {
   const [done, setDone] = useState(false);
   const msg = `Running a little late — I'll be there around ${HHMM(arrivalMs)}.`;
   const send = async () => {
@@ -229,10 +219,9 @@ function NotifyButton({ who, arrivalMs }: { who: string; arrivalMs: number }) {
       /* dismissed */
     }
   };
-  const first = who.split(/[ —-]/)[0];
   return (
     <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)" }} onClick={send}>
-      {done ? "ETA sent" : `Tell ${first || "them"}`}
+      {done ? "ETA sent" : "Tell them"}
     </button>
   );
 }
