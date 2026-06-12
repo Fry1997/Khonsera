@@ -28,14 +28,17 @@ type Row =
 
 type AnchorRow = Extract<Row, { kind: "anchor" }>;
 
-export function TodaySpine({ anchors, nextId }: { anchors: SpineAnchor[]; nextId?: string | null }) {
-  const [now, setNow] = useState(() => Date.now());
+export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnchor[]; nextId?: string | null; nowOverride?: number | null }) {
+  const [internalNow, setInternalNow] = useState(() => Date.now());
   const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30_000);
+    if (nowOverride != null) return; // driven externally (demo time-travel)
+    const t = setInterval(() => setInternalNow(Date.now()), 30_000);
     return () => clearInterval(t);
-  }, []);
+  }, [nowOverride]);
+
+  const now = nowOverride ?? internalNow;
 
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];

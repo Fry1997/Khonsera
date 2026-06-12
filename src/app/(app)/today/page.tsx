@@ -17,6 +17,7 @@ import { TodaySpine } from "@/components/today/today-spine";
 import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import { TodayDemo } from "@/components/today/today-demo";
+import { isDemoModeActive } from "@/lib/demo-mode";
 
 const londonHHMM = (iso?: string | null) =>
   iso
@@ -86,9 +87,10 @@ export default async function TodayPage({
   const ctx = await requireUserContext();
 
   // Staff day-of preview: a representative fixture so the live components can be
-  // reviewed without a real plan in the DB (mirrors /wallet?demo=1).
+  // reviewed without a real plan in the DB. Reached via the Settings demo toggle
+  // (global demo mode) or an explicit ?demo=1 (mirrors /wallet?demo=1).
   const sp = await searchParams;
-  if (ctx.isStaff && sp?.demo === "1") return <TodayDemo />;
+  if ((ctx.isStaff && sp?.demo === "1") || (await isDemoModeActive())) return <TodayDemo />;
 
   const supabase = await createClient();
 

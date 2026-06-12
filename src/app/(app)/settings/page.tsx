@@ -6,6 +6,7 @@ import { TravelProfileForm } from "./travel-profile-form";
 import { CalendarSection } from "./calendar-section";
 import { GmailSection } from "./gmail-section";
 import { ThemePicker } from "@/components/theme-picker";
+import { DemoModeIndicator } from "@/components/demo-mode-indicator";
 
 export default async function SettingsPage({
   searchParams,
@@ -105,13 +106,18 @@ export default async function SettingsPage({
           <h2 className="h3 mb-2">Account</h2>
           <p className="small">{ctx.email}</p>
           {ctx.isAdmin ? (
-            <p className="mt-1 text-xs text-terra">
-              Admin account
-            </p>
+            <p className="mt-1 text-xs text-terra">Admin account</p>
           ) : ctx.isStaff ? (
-            <p className="mt-1 text-xs text-terra">
-              Staff account · demo mode available
-            </p>
+            <p className="mt-1 text-xs text-terra">Staff account</p>
+          ) : null}
+          {ctx.isStaff ? (
+            <div className="mt-3">
+              <p className="small mb-2">
+                Demo mode swaps integration stubs for realistic mock data and shows a sample day-of
+                preview on Today (with a time-travel scrubber).
+              </p>
+              <DemoModeIndicator />
+            </div>
           ) : null}
         </div>
 
