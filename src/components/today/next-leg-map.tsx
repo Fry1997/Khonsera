@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavMap } from "@/components/nav/nav-map";
 import { useGuidance } from "@/components/nav/use-guidance";
+import { useHeading, requestHeadingPermission } from "@/components/nav/use-heading";
+import { ManeuverGlyph } from "@/components/nav/maneuver-glyph";
 import { fetchNavRoute } from "@/lib/actions/nav";
 import { formatNavDuration, formatNavDistance } from "@/lib/nav/guidance";
 import type { NavRoute, NavMode } from "@/lib/nav/types";
@@ -92,7 +94,15 @@ export function NextLegMap({
         <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>
           {route ? `${formatNavDuration(route.duration_s)} · ${formatNavDistance(route.distance_m)}` : " "}
         </span>
-        <button type="button" className="cc-btn cc-btn-gold" disabled={!route} onClick={() => setFull(true)}>
+        <button
+          type="button"
+          className="cc-btn cc-btn-gold"
+          disabled={!route}
+          onClick={() => {
+            void requestHeadingPermission(); // iOS compass gate — needs this user gesture
+            setFull(true);
+          }}
+        >
           Start — turn by turn
         </button>
       </div>
@@ -111,11 +121,17 @@ function bearing(a: [number, number], b: [number, number]): number {
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
-// Full-screen guidance overlaying Today, returning to it on close. The same 3D
-// heading-up FOV nav view as /navigate (follow camera + cone). Live GPS + voice
-// when real; a simulated moving dot in the demo so the bench shows that view.
+const clock = (ms: number) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(ms));
+
+// Full-screen guidance overlaying Today, returning to it on close. The premium
+// nav view: the screen becomes the map (3D heading-up, follow camera), a FOV
+// cone driven by the COMPASS (so it shows which way you face even standing
+// still), a top maneuver banner with the turn after it, and an ETA / time /-
+// distance-remaining strip. Live GPS + voice when real; a simulated moving dot
+// in the demo so the bench shows the same view.
 function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolean; onClose: () => void }) {
   const { fix, state } = useGuidance(route, !preview, { voice: !preview });
+  const compass = useHeading(!preview);
   const [simIdx, setSimIdx] = useState(0);
 
   useEffect(() => {
@@ -129,6 +145,9 @@ function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolea
 
   let position: { lat: number; lng: number; heading?: number | null } | null;
   let maneuverIdx: number;
+  let remainingS: number;
+  let remainingM: number;
+  let toManeuverM: number;
   if (preview) {
     const pts = route.geometry;
     const a = pts[simIdx];
@@ -136,11 +155,26 @@ function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolea
     position = { lat: a[0], lng: a[1], heading: bearing(a, b) };
     const found = route.maneuvers.findIndex((mn) => mn.begin_shape_index > simIdx) - 1;
     maneuverIdx = found < 0 ? Math.max(0, route.maneuvers.length - 1) : found;
+    const frac = pts.length > 1 ? 1 - simIdx / (pts.length - 1) : 0;
+    remainingS = Math.round(route.duration_s * frac);
+    remainingM = Math.round(route.distance_m * frac);
+    toManeuverM = route.maneuvers[maneuverIdx]?.distance_m ?? 0;
   } else {
-    position = fix ? { lat: fix.lat, lng: fix.lng, heading: fix.heading } : route.geometry[0] ? { lat: route.geometry[0][0], lng: route.geometry[0][1], heading: null } : null;
+    // Compass heading drives the cone + heading-up camera; GPS course is the
+    // fallback (usually null on foot — which is the whole reason for the compass).
+    position = fix
+      ? { lat: fix.lat, lng: fix.lng, heading: compass ?? fix.heading }
+      : route.geometry[0]
+        ? { lat: route.geometry[0][0], lng: route.geometry[0][1], heading: compass }
+        : null;
     maneuverIdx = state?.maneuver_index ?? 0;
+    remainingS = state?.remaining_s ?? route.duration_s;
+    remainingM = state?.remaining_m ?? route.distance_m;
+    toManeuverM = state?.to_maneuver_m ?? route.maneuvers[maneuverIdx]?.distance_m ?? 0;
   }
   const maneuver = route.maneuvers[maneuverIdx];
+  const following = route.maneuvers[maneuverIdx + 1];
+  const etaMs = Date.now() + remainingS * 1000;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "var(--paper)", display: "flex", flexDirection: "column" }}>
@@ -153,20 +187,50 @@ function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolea
         </span>
       </header>
 
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
         <NavMap route={route} position={position} follow />
+
+        {/* The maneuver banner — the turn now, and the one after it. */}
+        <div
+          style={{
+            position: "absolute",
+            top: "var(--space-3)",
+            left: "var(--space-3)",
+            right: "var(--space-3)",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-3)",
+            padding: "var(--space-3) var(--space-4)",
+            background: "var(--card)",
+            border: "1px solid var(--rule)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "0 6px 20px rgba(0,0,0,.16)",
+          }}
+        >
+          <ManeuverGlyph kind={maneuver?.kind ?? "straight"} size={36} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h2)", lineHeight: 1, color: "var(--ink)" }}>{formatNavDistance(toManeuverM)}</div>
+            <div style={{ marginTop: 3 }}>{maneuver?.instruction ?? "Head toward your destination."}</div>
+            {following ? (
+              <div style={{ marginTop: 4, fontSize: "var(--fs-label)", color: "var(--ink-dim)", display: "flex", alignItems: "center", gap: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                then
+                <ManeuverGlyph kind={following.kind} size={14} color="var(--ink-dim)" />
+                {following.instruction}
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
 
-      <div style={{ padding: "var(--space-4)", borderTop: "1px solid var(--rule)", display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>
-          {state ? formatNavDistance(state.to_maneuver_m) : formatNavDistance(maneuver?.distance_m ?? route.distance_m)}
+      {/* ETA · time · distance remaining. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "var(--space-3) var(--space-4)", borderTop: "1px solid var(--rule)" }}>
+        <span style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>{clock(etaMs)}</span>
+          <span style={{ fontSize: "var(--fs-micro)", textTransform: "uppercase", letterSpacing: "var(--ls-uc)", color: "var(--ink-dim)" }}>Arrival</span>
         </span>
-        <p style={{ margin: 0 }}>{maneuver?.instruction ?? "Head toward your destination."}</p>
-        {preview ? (
-          <p style={{ margin: "var(--space-1) 0 0", fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>
-            Simulated drive-through — on a real journey this follows your live position with spoken guidance.
-          </p>
-        ) : null}
+        <span style={{ fontSize: "var(--fs-body)", color: "var(--ink-dim)" }}>
+          {formatNavDuration(remainingS)} · {formatNavDistance(remainingM)}
+        </span>
       </div>
     </div>
   );
