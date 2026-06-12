@@ -808,7 +808,9 @@ export function NewItineraryBrief({
         setFeedback(feedbackFromError(result.error));
         return;
       }
-      router.push(`/itineraries/${result.value.id}`);
+      // Land on the built plan in the canonical Edition II view — show the
+      // result (the threaded spine), not the legacy editor.
+      router.push(`/plan/${result.value.id}`);
       router.refresh();
     });
   };

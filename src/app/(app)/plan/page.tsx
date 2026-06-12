@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
+import Link from "next/link";
+import type { Route } from "next";
 import { PlanCreate } from "@/components/plan/plan-create";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
 import { DeleteEventButton } from "@/components/plan/delete-event-button";
@@ -106,8 +108,14 @@ export default async function PlanIndexPage() {
         <div className="cc-plan-empty">
           <p className="cc-plan-empty-lead">Nothing planned yet.</p>
           <p className="cc-plan-empty-sub">
-            Start a day or a trip above — give it a date, and Khonsera threads the rest.
+            The fastest way: just tell Khonsera what&apos;s coming up — &ldquo;train to Derby at 9,
+            meet Sarah at 2&rdquo; — and watch it thread the day.
           </p>
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <Link href={"/capture" as Route} className="cc-btn cc-btn-gold">
+              Tell Khonsera your day
+            </Link>
+          </div>
         </div>
       ) : (
         <>

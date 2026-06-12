@@ -288,6 +288,23 @@ export function CaptureScreen({ slotSchemas, pickerData, initialDraft }: Capture
         />
       ) : null}
 
+      {!text.trim() ? (
+        <button
+          type="button"
+          className="cc-btn cc-btn-gold"
+          style={{ alignSelf: "flex-start" }}
+          onClick={() => {
+            setText("Train to Derby tomorrow at 9:15, meeting with Sarah at 2pm, home by 6");
+            requestAnimationFrame(() => {
+              taRef.current?.focus();
+              autoGrow();
+            });
+          }}
+        >
+          Try an example
+        </button>
+      ) : null}
+
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {CHIPS.map((c) => {
           const ChipGlyph = c.icon;

@@ -289,13 +289,16 @@ export default async function TodayPage({
             <span className="cc-at-dot" />
             At rest
           </span>
-          <h2 className="cc-at-headline">Nothing on today</h2>
+          <h2 className="cc-at-headline">Let&apos;s set up your day</h2>
           <p className="cc-at-sub">
-            When a day you&apos;ve planned arrives, Khonsera brings it here — the next move, the
-            leave-by, and the chain ahead.
+            Tell Khonsera what&apos;s coming up — &ldquo;train to Derby at 9, meet Sarah at 2&rdquo; —
+            and it threads the day: the next move, the leave-by, and the chain ahead.
           </p>
-          <div style={{ marginTop: "var(--space-4)" }}>
-            <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">
+          <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            <Link href={"/capture" as Route} className="cc-btn cc-btn-gold">
+              Tell Khonsera your day
+            </Link>
+            <Link href={"/plan" as Route} className="cc-btn">
               Open the plan
             </Link>
           </div>
