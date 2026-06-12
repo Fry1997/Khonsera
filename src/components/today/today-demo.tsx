@@ -1,26 +1,35 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ActiveTile } from "@/components/concierge";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActiveTile, Pass } from "@/components/concierge";
 import type { ActiveUrgency } from "@/components/concierge/active-tile";
-import type { AnchorVM } from "@/components/concierge";
+import type { AnchorVM, BoardingVM, TicketVM } from "@/components/concierge";
+import { TodaySpine } from "@/components/today/today-spine";
 import { NextLegMap } from "@/components/today/next-leg-map";
-import { navModeForTransition } from "@/components/today/spine-model";
+import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
 import { fetchNavRoute } from "@/lib/actions/nav";
-import { searchTransportHubs } from "@/lib/actions/travel-profile";
 import { checkPickup } from "@/lib/planning/leave-by";
-import { haversineMeters, formatMiles } from "@/lib/geo";
 
-// Staff-only feasibility TESTER (demo mode, or /today?demo=1). The point the
-// user made: your ACTUAL location is the truth for the next event. So this runs
-// the real engine off your live GPS → the nearest real station, routed live for
-// your chosen mode. The ONLY simulated thing is the train's departure time
-// (there's no real booking to point at) — exposed as a slider so the radius can
-// be made to shrink on demand. NEVER on the product path.
+// Staff-only day-of PREVIEW (demo mode, or /today?demo=1). This is the TODAY
+// view — your plan for the day, the next-needed pass, the spine — with
+// feasibility woven in QUIETLY: on track we just say "leave by HH:MM, start
+// navigation"; as the window closes we diminish the buffer, then offer a faster
+// mode, then the next train. It never reads as a "feasibility test".
+//
+// Real geography (Harpenden → Luton routed by Valhalla) drives the numbers; the
+// TIME slider stands in for the day passing so the behaviour is reviewable from
+// a desk. NEVER on the product path.
+
+const HARPENDEN = { lat: 51.8176, lng: -0.354, name: "Home, Harpenden" };
+const LUTON = { lat: 51.8821, lng: -0.4147 };
+const WELLINGBOROUGH = { lat: 52.2962, lng: -0.6896 };
 
 type Pt = { lat: number; lng: number; name?: string };
 
-const STATION_BUFFER = 8; // minutes at the station before the train
+const DEP = 45; // train departs Luton (minutes from base)
+const ARR = 70;
+const REVIEW = 95;
+const STATION_BUFFER = 8; // minutes at the station before the train = the buffer
 
 const MODES = [
   { key: "walk", label: "Walk", verb: "walk it" },
@@ -33,166 +42,154 @@ type ModeKey = (typeof MODES)[number]["key"];
 const londonClock = (ms: number) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(ms));
 
-type Station = { name: string; code: string | null; lat: number; lng: number };
-
 export function TodayDemo() {
-  const [fix, setFix] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
-  const [geo, setGeo] = useState<"idle" | "locating" | "granted" | "denied" | "unavailable">("idle");
-  const [station, setStation] = useState<Station | null>(null);
+  const [base] = useState(() => Date.now());
+  const [offset, setOffset] = useState(0); // minutes added to NOW by the time slider
   const [mode, setMode] = useState<ModeKey>("walk");
   const [routeSeconds, setRouteSeconds] = useState<number | null>(null);
-  const [departsIn, setDepartsIn] = useState(30); // simulated minutes until the train
 
-  const watchRef = useRef<number | null>(null);
-  const lastFix = useRef<{ lat: number; lng: number } | null>(null);
-  const stationFetched = useRef(false);
+  const now = base + offset * 60_000;
+  const at = useMemo(() => (min: number) => new Date(base + min * 60_000).toISOString(), [base]);
 
-  const useMyLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setGeo("unavailable");
-      return;
-    }
-    setGeo("locating");
-    watchRef.current = navigator.geolocation.watchPosition(
-      (p) => {
-        const next = { lat: p.coords.latitude, lng: p.coords.longitude };
-        // Only update on meaningful movement (>15 m) so GPS jitter doesn't
-        // re-route every second.
-        if (!lastFix.current || haversineMeters(lastFix.current.lat, lastFix.current.lng, next.lat, next.lng) > 15) {
-          lastFix.current = next;
-          setFix({ ...next, accuracy: p.coords.accuracy });
-        }
-        setGeo("granted");
-      },
-      (e) => setGeo(e.code === e.PERMISSION_DENIED ? "denied" : "unavailable"),
-      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
-    );
-  };
+  const depMs = base + DEP * 60_000;
+  const arrMs = base + ARR * 60_000;
+  const reviewMs = base + REVIEW * 60_000;
 
-  useEffect(() => {
-    return () => {
-      if (watchRef.current != null && typeof navigator !== "undefined") navigator.geolocation.clearWatch(watchRef.current);
-    };
-  }, []);
-
-  // Nearest real station to where you are (once).
-  useEffect(() => {
-    if (!fix || stationFetched.current) return;
-    stationFetched.current = true;
-    let active = true;
-    void searchTransportHubs({ query: "", kind: "rail_station", near: { lat: fix.lat, lng: fix.lng } }).then((r) => {
-      if (!active || !r.ok) return;
-      const h = r.value.find((x) => x.latitude != null && x.longitude != null);
-      if (h) setStation({ name: h.name, code: h.code, lat: h.latitude as number, lng: h.longitude as number });
-    });
-    return () => {
-      active = false;
-    };
-  }, [fix]);
-
-  const now = Date.now();
-  const depMs = now + departsIn * 60_000;
-  const mustArriveByMs = depMs - STATION_BUFFER * 60_000;
+  // Leave-by from the live route for the preferred mode. The buffer is the
+  // station readiness; as you slip past leave-by it's the buffer that erodes.
   const travelMin = routeSeconds != null ? Math.max(1, Math.round(routeSeconds / 60)) : null;
   const leaveByMs = travelMin != null ? depMs - (travelMin + STATION_BUFFER) * 60_000 : null;
   const slackMin = leaveByMs != null ? Math.round((leaveByMs - now) / 60_000) : null;
+  const bufferLeft = slackMin != null ? slackMin + STATION_BUFFER : null; // buffer remaining if you left now
+
+  const ticket: TicketVM = useMemo(
+    () => ({
+      id: "demo-luton",
+      kind: "rail",
+      operator: "East Midlands Railway",
+      reference: "AB12CD34",
+      source: "forwarded",
+      consequence: "The Corby train drops you a short walk from the review.",
+      legs: [
+        {
+          id: "demo-luton-leg",
+          origin: { place: "Luton", code: "LUT", time: at(DEP), platform: "2" },
+          destination: { place: "Wellingborough", code: "WEL", time: at(ARR) },
+          durationMinutes: 25,
+          travelClass: "Standard",
+          ticketType: "Off-Peak Day Single",
+          coach: "B",
+          seat: "24 (table)",
+          barcodes: [{ format: "aztec", value: "RSP-DEMO-AZTEC-PAYLOAD", passengerLabel: "Adult 1" }],
+          status: { status: "on_time" },
+        },
+      ],
+    }),
+    [at],
+  );
+
+  const boarding: BoardingVM = {
+    platform: "2",
+    toward: "Corby",
+    earlier: "Platform 2 also has the 16:58 to Bedford before yours — let that one go.",
+  };
+
+  // Home is the base (no clock); the spine is the timed commitments.
+  const walk = navModeForTransition("walk");
+  const spineAnchors: SpineAnchor[] = useMemo(
+    () => [
+      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: travelMin ?? 16, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure" },
+      { id: "demo-welly", type: "transport_arrival", title: "Wellingborough Station", arriveByIso: at(ARR), endIso: at(ARR), coord: WELLINGBOROUGH, plannedTravelMinutes: 25, navMode: walk, station: { name: "Wellingborough", code: "WEL", kind: "rail_station" }, role: "arrival" },
+      { id: "demo-review", type: "appointment", title: "Project review", place: "Wellingborough", arriveByIso: at(REVIEW), endIso: at(REVIEW + 60), coord: WELLINGBOROUGH, plannedTravelMinutes: 8, navMode: walk, station: null, role: "stop" },
+    ],
+    [at, walk, travelMin, mode],
+  );
+
+  const nextSpine = spineAnchors.find((a) => a.arriveByIso && new Date(a.arriveByIso).getTime() > now) ?? null;
+  const nextAnchor: AnchorVM | undefined = nextSpine
+    ? { id: nextSpine.id, type: nextSpine.type, title: nextSpine.title, place: nextSpine.place, time: nextSpine.arriveByIso ? { from: nextSpine.arriveByIso } : undefined, fixed: true }
+    : undefined;
+
+  const beforeDeparture = now < depMs;
+  const headline = now >= reviewMs ? "You're here" : now >= depMs && now < arrMs ? "On your way" : "Getting you ready";
 
   let urgency: ActiveUrgency = "comfortable";
-  if (slackMin != null) {
-    if (slackMin <= 5) urgency = "breach";
+  if (beforeDeparture && slackMin != null) {
+    if (bufferLeft != null && bufferLeft <= 0) urgency = "breach";
     else if (slackMin <= 20) urgency = "urgent";
   }
-
-  const distance = fix && station ? haversineMeters(fix.lat, fix.lng, station.lat, station.lng) : null;
-  const nextAnchor: AnchorVM | undefined = station
-    ? { id: "station", type: "transport_arrival", title: station.name, time: { from: new Date(depMs).toISOString() }, fixed: true }
-    : undefined;
 
   return (
     <div className="cc-screen">
       <header>
         <span className="cc-eyebrow" style={{ color: "var(--gold-2)" }}>
-          Feasibility tester · from your location
+          Personal · Today · Preview
         </span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           Right now
         </h1>
       </header>
 
-      {geo !== "granted" ? (
-        <section className="cc-active-tile" data-urgency="comfortable" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-          <span className="cc-eyebrow">Your location is the truth</span>
-          <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--ink)" }}>
-            This tester predicts your leave-by from where you actually are to the nearest station.
-            Grant location to try it for real — move around and the timings change with you.
-          </p>
-          <div>
-            <button type="button" className="cc-btn cc-btn-gold" onClick={useMyLocation}>
-              {geo === "locating" ? "Locating…" : "Use my location"}
-            </button>
-          </div>
-          {geo === "denied" ? <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>Location was declined — allow it in the browser to test.</p> : null}
-          {geo === "unavailable" ? <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>Location isn&apos;t available on this device.</p> : null}
-        </section>
-      ) : (
+      <TimeTravel now={now} offset={offset} onOffset={setOffset} />
+
+      <ActiveTile
+        headline={headline}
+        sub="Project review · from home, Harpenden"
+        nextAnchor={nextAnchor}
+        leaveBy={beforeDeparture && leaveByMs != null ? new Date(leaveByMs).toISOString() : undefined}
+        urgency={urgency}
+      />
+
+      {beforeDeparture ? (
         <>
-          <section style={{ display: "flex", flexDirection: "column", gap: 4, padding: "var(--space-2) var(--space-4)", background: "var(--card-2, var(--card))", border: "1px dashed var(--rule)", borderRadius: "var(--radius-md)" }}>
-            <span className="cc-eyebrow">
-              You are here{fix ? ` · ±${Math.round(fix.accuracy)} m` : ""}
-            </span>
-            <span style={{ fontSize: "var(--fs-body)", color: "var(--ink)" }}>
-              {station ? <>Nearest station: <strong>{station.name}</strong>{station.code ? ` (${station.code})` : ""}{distance != null ? ` · ${formatMiles(distance)} away` : ""}</> : "Finding the nearest station…"}
-            </span>
-          </section>
-
-          <section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-3) var(--space-4)", background: "var(--card-2, var(--card))", border: "1px dashed var(--rule)", borderRadius: "var(--radius-md)" }}>
-            <span className="cc-eyebrow">Simulated train</span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>departs {londonClock(depMs)}</span>
-            <input type="range" min={5} max={120} step={5} value={departsIn} onChange={(e) => setDepartsIn(Number(e.target.value))} style={{ flex: 1, minWidth: 140, accentColor: "var(--gold)" }} aria-label="Minutes until the simulated train" />
-            <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>in {departsIn} min</span>
-          </section>
-
-          <ActiveTile headline="Getting you ready" sub={station ? `Make the ${londonClock(depMs)} from ${station.name}` : "Finding your station…"} nextAnchor={nextAnchor} leaveBy={leaveByMs != null ? new Date(leaveByMs).toISOString() : undefined} urgency={urgency} />
-
-          {station && fix ? (
-            <MovePicker mode={mode} onMode={setMode} slackMin={slackMin} leaveByMs={leaveByMs} depMs={depMs} stationName={station.name}>
-              <NextLegMap origin={{ lat: fix.lat, lng: fix.lng, name: "Your location" }} destination={{ lat: station.lat, lng: station.lng, name: station.name }} mode={navModeForTransition(mode)} onRoute={(r) => setRouteSeconds(r.duration_s)} />
-            </MovePicker>
-          ) : null}
-
-          {station && fix ? (
-            <LiftCard origin={{ lat: fix.lat, lng: fix.lng, name: "Your location" }} destination={{ lat: station.lat, lng: station.lng, name: station.name }} mustArriveByMs={mustArriveByMs} depMs={depMs} contact="a friend" />
-          ) : null}
+          <NextMove mode={mode} onMode={setMode} slackMin={slackMin} bufferLeft={bufferLeft} leaveByMs={leaveByMs} depMs={depMs}>
+            <NextLegMap origin={HARPENDEN} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview onRoute={(r) => setRouteSeconds(r.duration_s)} />
+          </NextMove>
+          <LiftCard origin={HARPENDEN} destination={{ ...LUTON, name: "Luton Station" }} mustArriveByMs={depMs - STATION_BUFFER * 60_000} depMs={depMs} contact="Dave" />
         </>
-      )}
+      ) : null}
+
+      {now < arrMs ? (
+        <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+          <span className="cc-eyebrow" style={{ color: "var(--gold-2)" }}>
+            Ready when you are
+          </span>
+          <Pass ticket={ticket} boarding={boarding} />
+        </section>
+      ) : null}
+
+      <TodaySpine anchors={spineAnchors} nextId={nextSpine?.id ?? null} nowOverride={now} />
 
       <p style={{ fontSize: "var(--fs-micro)", color: "var(--ink-dim)", marginTop: "var(--space-2)" }}>
-        Real: your location, the nearest station, the route and every timing. Simulated: the train&apos;s
-        departure (there&apos;s no real booking to read) — slide it to make the window tighten.
+        Sample day for design review. On the real Today, this is your actual plan — leave-by predicts
+        from your live GPS, and the platform/train come from National Rail.
       </p>
     </div>
   );
 }
 
-// The preferred-mode feasibility line: from where you are, leave in X — banded
-// from quiet → leave-now, then escalation when the preferred mode runs out of road.
-function MovePicker({ mode, onMode, slackMin, leaveByMs, depMs, stationName, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; slackMin: number | null; leaveByMs: number | null; depMs: number; stationName: string; children?: ReactNode }) {
+// The next move — feasibility woven in, not a test. Quiet "leave by, start
+// navigation" on track; as the window closes the buffer diminishes, then a
+// faster mode is offered, then the next train.
+function NextMove({ mode, onMode, slackMin, bufferLeft, leaveByMs, depMs, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; slackMin: number | null; bufferLeft: number | null; leaveByMs: number | null; depMs: number; children?: ReactNode }) {
   const m = MODES.find((x) => x.key === mode)!;
   let line: string;
-  if (slackMin == null || leaveByMs == null) {
-    line = "Working out the time from where you are…";
-  } else if (slackMin < 0) {
-    line = `Too tight to ${m.verb} from here — switch to a faster option above, or catch the next train.`;
-  } else if (slackMin <= 5) {
-    line = `Leave now to ${m.verb} to ${stationName} — ${londonClock(leaveByMs)} at the latest for the ${londonClock(depMs)}.`;
-  } else if (slackMin <= 20) {
-    line = `Time to head off — leave by ${londonClock(leaveByMs)} (${slackMin} min) to ${m.verb} for the ${londonClock(depMs)}.`;
+  if (slackMin == null || leaveByMs == null || bufferLeft == null) {
+    line = "Working out the time from home…";
+  } else if (slackMin > 20) {
+    line = `Leave by ${londonClock(leaveByMs)} to make the ${londonClock(depMs)} from Luton — start navigation when you're ready.`;
+  } else if (slackMin > 0) {
+    line = `Time to head off — leave by ${londonClock(leaveByMs)} (${slackMin} min) to ${m.verb}.`;
+  } else if (bufferLeft > 0) {
+    line = `Leave now — only ${bufferLeft} min of buffer left to ${m.verb} and still catch the ${londonClock(depMs)}.`;
   } else {
-    line = `No rush — leave by ${londonClock(leaveByMs)} (${slackMin} min) to ${m.verb} for the ${londonClock(depMs)}.`;
+    line = `You won't make the ${londonClock(depMs)} on foot from here. A faster option above still might — or catch the next train.`;
   }
+  const urgency: ActiveUrgency = bufferLeft != null && bufferLeft <= 0 ? "breach" : slackMin != null && slackMin <= 20 ? "urgent" : "comfortable";
   return (
-    <section className="cc-active-tile" data-urgency={slackMin != null && slackMin <= 5 ? "breach" : slackMin != null && slackMin <= 20 ? "urgent" : "comfortable"} style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-      <span className="cc-eyebrow">Getting to {stationName}</span>
+    <section className="cc-active-tile" data-urgency={urgency} style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+      <span className="cc-eyebrow">Getting to Luton</span>
+      <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>{line}</p>
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
         {MODES.map((x) => (
           <button key={x.key} type="button" className={x.key === mode ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onMode(x.key)}>
@@ -200,7 +197,6 @@ function MovePicker({ mode, onMode, slackMin, leaveByMs, depMs, stationName, chi
           </button>
         ))}
       </div>
-      <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>{line}</p>
       {children}
     </section>
   );
@@ -236,13 +232,13 @@ function LiftSetter({ origin, destination, mustArriveByMs, depMs, contact }: { o
   useEffect(() => {
     let active = true;
     void fetchNavRoute({
-      origin: { lat: origin.lat, lng: origin.lng, name: origin.name ?? "You" },
+      origin: { lat: origin.lat, lng: origin.lng, name: origin.name ?? "Home" },
       destination: { lat: destination.lat, lng: destination.lng, name: destination.name ?? "Station" },
       mode: "drive",
     }).then((r) => {
       if (!active || !r.ok) return;
       setDriveSeconds(r.value.duration_s);
-      setPickupMs((prev) => prev ?? mustArriveByMs - r.value.duration_s * 1000 - 5 * 60_000); // default: 5 min spare
+      setPickupMs((prev) => prev ?? mustArriveByMs - r.value.duration_s * 1000 - 5 * 60_000);
     });
     return () => {
       active = false;
@@ -279,5 +275,27 @@ function LiftSetter({ origin, destination, mustArriveByMs, depMs, contact }: { o
         </p>
       )}
     </div>
+  );
+}
+
+// Demo-only: scrub synthetic NOW across the day to watch the spine reel and the
+// leave-by tighten through its bands.
+function TimeTravel({ now, offset, onOffset }: { now: number; offset: number; onOffset: (n: number) => void }) {
+  return (
+    <section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-3) var(--space-4)", background: "var(--card-2, var(--card))", border: "1px dashed var(--rule)", borderRadius: "var(--radius-md)" }}>
+      <span className="cc-eyebrow">Demo time</span>
+      <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-h3)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{londonClock(now)}</span>
+      <input type="range" min={-180} max={240} step={5} value={offset} onChange={(e) => onOffset(Number(e.target.value))} style={{ flex: 1, minWidth: 140, accentColor: "var(--gold)" }} aria-label="Move the demo clock" />
+      <span style={{ display: "inline-flex", gap: 4 }}>
+        {[-30, -5, 5, 30].map((d) => (
+          <button key={d} type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => onOffset(offset + d)}>
+            {d > 0 ? `+${d}` : d}
+          </button>
+        ))}
+        <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => onOffset(0)}>
+          Now
+        </button>
+      </span>
+    </section>
   );
 }

@@ -242,14 +242,13 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
   function addEndpointMarkers(m: maplibregl.Map, r: NavRoute) {
     markersRef.current.forEach((mk) => mk.remove());
     markersRef.current = [];
-    const mk = (lat: number, lng: number, fill: string) => {
-      const el = document.createElement("div");
-      el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${fill};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)`;
-      const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(m);
-      markersRef.current.push(marker);
-    };
-    mk(r.origin.lat, r.origin.lng, "transparent");
-    mk(r.destination.lat, r.destination.lng, theme.colors.gold);
+    // Only the destination gets a pin. The origin is either obvious (the route
+    // line starts there) or, in guidance, your live position dot sits on it —
+    // a second origin marker just reads as a stray dot beside the dot.
+    const el = document.createElement("div");
+    el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${theme.colors.gold};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)`;
+    const marker = new maplibregl.Marker({ element: el }).setLngLat([r.destination.lng, r.destination.lat]).addTo(m);
+    markersRef.current.push(marker);
   }
 
   // Route updates
