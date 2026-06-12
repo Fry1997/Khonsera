@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { SpineAnchor } from "./spine-model";
 import { navigateHref, londonClock, roleLabel } from "./spine-model";
+import { pickNextIndex, type EngineAnchor } from "@/lib/today/engine";
 
 // Today's spine — the whole day threaded on the gold rail (reusing the planning
 // spine's `.cc-spine` vocabulary). A live NOW pulse sits at the current time;
@@ -40,6 +41,22 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
 
   const now = nowOverride ?? internalNow;
 
+  // Pick the next obligation with the SAME engine logic the live card uses, so a
+  // late-but-unreached obligation stays in front here too rather than reeling
+  // into the past behind NOW. Falls back to the server-provided nextId.
+  const engineNextId = useMemo(() => {
+    const ea: EngineAnchor[] = anchors.map((a) => ({
+      id: a.id,
+      startMs: a.arriveByIso ? Date.parse(a.arriveByIso) : null,
+      endMs: a.endIso ? Date.parse(a.endIso) : null,
+      plannedTravelMinutes: a.plannedTravelMinutes,
+      isStation: !!a.station,
+    }));
+    const idx = pickNextIndex(ea, now);
+    return idx != null ? anchors[idx].id : null;
+  }, [anchors, now]);
+  const activeNextId = engineNextId ?? nextId;
+
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];
     let nowPlaced = false;
@@ -51,13 +68,13 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
         out.push({ kind: "now" });
         nowPlaced = true;
       }
-      const isPast = endMs != null && endMs < now && a.id !== nextId;
-      const state: "past" | "next" | "future" = a.id === nextId ? "next" : isPast ? "past" : "future";
+      const isPast = endMs != null && endMs < now && a.id !== activeNextId;
+      const state: "past" | "next" | "future" = a.id === activeNextId ? "next" : isPast ? "past" : "future";
       out.push({ kind: "anchor", anchor: a, state });
     }
     if (!nowPlaced) out.push({ kind: "now" }); // whole day is behind us
     return out;
-  }, [anchors, now, nextId]);
+  }, [anchors, now, activeNextId]);
 
   if (anchors.length === 0) return null;
 
