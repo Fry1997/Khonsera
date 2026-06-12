@@ -20,7 +20,7 @@ import { useLivePosition } from "./use-live-position";
 
 const HHMM = (ms: number) => londonClock(new Date(ms).toISOString());
 
-export function LiveDay({ anchors, sub }: { anchors: SpineAnchor[]; sub?: string }) {
+export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: string; base?: { lat: number; lng: number } | null }) {
   const [now, setNow] = useState(() => Date.now());
   const [liveTravelSeconds, setLiveTravelSeconds] = useState<number | null>(null);
   const [modeOverride, setModeOverride] = useState<NavMode | null>(null);
@@ -97,6 +97,10 @@ export function LiveDay({ anchors, sub }: { anchors: SpineAnchor[]; sub?: string
 
   const feas = state.feasibility;
   const mode = modeOverride ?? next.navMode;
+  // The "from" is always present: where you actually are, else your home base —
+  // never a missing start point. Live GPS, when granted, takes over.
+  const origin = fix ? { lat: fix.lat, lng: fix.lng, name: "Your location" } : base ? { lat: base.lat, lng: base.lng, name: "Home" } : null;
+  const fromHome = !fix && !!base;
   const arriveByMs = next.arriveByIso ? Date.parse(next.arriveByIso) : null;
   const arrivalMs = feas ? now + feas.travelMinutes * 60_000 : null;
   const lateMin = arrivalMs != null && arriveByMs != null ? Math.round((arrivalMs - arriveByMs) / 60_000) : null;
@@ -126,14 +130,21 @@ export function LiveDay({ anchors, sub }: { anchors: SpineAnchor[]; sub?: string
         {modeOverride ? ` · via ${modeWord(mode)}` : ""}
       </p>
 
-      {next.coord && fix ? (
-        <NextLegMap origin={{ lat: fix.lat, lng: fix.lng, name: "Your location" }} destination={{ lat: next.coord.lat, lng: next.coord.lng, name: next.title }} mode={mode} onRoute={(r) => setLiveTravelSeconds(r.duration_s)} />
+      {next.coord && origin ? (
+        <>
+          <NextLegMap origin={origin} destination={{ lat: next.coord.lat, lng: next.coord.lng, name: next.title }} mode={mode} onRoute={(r) => setLiveTravelSeconds(r.duration_s)} />
+          {fromHome ? (
+            <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", alignSelf: "flex-start" }} onClick={() => setLocEnabled(true)}>
+              {status === "denied" ? "Location blocked — showing from home" : "Use my live location"}
+            </button>
+          ) : null}
+        </>
       ) : next.coord ? (
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
           <button type="button" className="cc-btn cc-btn-gold" onClick={() => setLocEnabled(true)}>
             {status === "denied" ? "Location is blocked" : "Use live location"}
           </button>
-          <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{feas?.source === "planned" ? "Using your plan's estimate for now" : ""}</span>
+          <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{feas?.source === "planned" ? "Using your plan's estimate" : ""}</span>
         </div>
       ) : null}
 

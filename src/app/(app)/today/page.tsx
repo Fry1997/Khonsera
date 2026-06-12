@@ -113,6 +113,11 @@ export default async function TodayPage({
   // The plan's leg leading INTO a stop: travel minutes + mode, the offline
   // fallback for true leave-by and the default Navigate mode.
   const travelByToStop = new Map<string, { minutes: number | null; mode: string | null }>();
+  // The day's base — your home/office origin (the `start` stop carries no time;
+  // it's where you leave FROM, not a thing you arrive at). It's the fallback
+  // "from" for the first leave-by when live location isn't granted, so the day
+  // never loses its start point.
+  let baseCoord: { lat: number; lng: number } | null = null;
   let tickets: TicketVM[] = [];
   for (const ev of covering) {
     const [{ data: s }, { data: t }, jt] = await Promise.all([
@@ -130,6 +135,7 @@ export default async function TodayPage({
       loadJourneyTickets(ev.id),
     ]);
     for (const st of (s ?? []) as unknown as StopRow[]) {
+      if (st.type === "start" && !baseCoord) baseCoord = coordOf(st);
       if (isToday(st.start_time, today)) allStops.push(st);
     }
     for (const tr of (t ?? []) as Array<{ from_stop_id: string; to_stop_id: string; mode: string | null; computed_duration_minutes: number | null }>) {
@@ -256,7 +262,7 @@ export default async function TodayPage({
 
       {anchors.length ? (
         <>
-          <LiveDay anchors={spineAnchors} sub={sub} />
+          <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
 
           {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
             legCards?.length ? (
