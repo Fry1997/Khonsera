@@ -12,7 +12,7 @@ import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 import { TodayPasses } from "@/components/today/today-passes";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
-import { NextMove } from "@/components/today/next-move";
+import { LiveDay } from "@/components/today/live-day";
 import { TodaySpine } from "@/components/today/today-spine";
 import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
@@ -275,7 +275,7 @@ export default async function TodayPage({
             urgency={proj.urgency as TodayUrgency}
           />
 
-          {canLeaveBy && nextSpine ? <NextMove anchor={nextSpine} /> : null}
+          <LiveDay anchors={spineAnchors} />
 
           {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
             legCards?.length ? (

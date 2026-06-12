@@ -1,0 +1,110 @@
+// The day-of engine — the pure brain behind the live Today (docs/today-live-engine.md).
+//
+// Input: the threaded plan (fixed points in time order) + the live travel time
+// from where you ARE to the next obligation + now. Output: one DayState the view
+// renders thinly. Pure / deterministic — no GPS, no network, no IO — so the whole
+// thing unit-tests. Position is reduced to one number by the caller (the live
+// route seconds from current location to the next fixed point), keeping this
+// layer free of geo + routing.
+
+import { computeGaps, type Gap, type GapStop } from "@/lib/planning/gaps";
+
+export type DayPhase = "at_rest" | "readiness" | "in_transit" | "arrived";
+
+// The notification band for the next obligation — quiet → leave-now → cliff
+// (the feasibility cliff, where the preferred mode no longer makes it).
+export type FeasBand = "comfortable" | "heads_up" | "leave_now" | "cliff";
+
+// A fixed point as the engine needs it. The view maps its richer SpineAnchor
+// onto this; the engine stays free of UI types.
+export interface EngineAnchor {
+  id: string;
+  startMs: number | null; // arrive-by
+  endMs: number | null; // leave / end (defaults to startMs)
+  plannedTravelMinutes: number | null; // planned travel INTO this anchor (fallback for leave-by)
+  isStation?: boolean; // station boarding buffer vs a readiness buffer
+}
+
+export interface Feasibility {
+  leaveByMs: number;
+  slackMin: number; // minutes until you must leave (negative = overdue)
+  bufferLeftMin: number; // buffer remaining if you left now (erodes past leave-by)
+  band: FeasBand;
+  travelMinutes: number;
+  source: "live" | "planned"; // live route from your position, or the plan's estimate
+}
+
+export interface DayState {
+  phase: DayPhase;
+  nextIndex: number | null; // index into the input anchors of the next obligation
+  feasibility: Feasibility | null;
+  gaps: Gap[];
+}
+
+// Station boarding readiness vs a light get-ready buffer.
+export const STATION_BUFFER_MIN = 8;
+export const READINESS_BUFFER_MIN = 5;
+
+function bufferFor(a: EngineAnchor): number {
+  return a.isStation ? STATION_BUFFER_MIN : READINESS_BUFFER_MIN;
+}
+
+function endOf(a: EngineAnchor): number | null {
+  return a.endMs ?? a.startMs;
+}
+
+// The next obligation: the earliest fixed point not yet behind us. Conservative
+// by design — position-based skip/arrival reconciliation is a separate, careful
+// concern (the forks); here we never silently drop a point, we just find the
+// next one still ahead by time.
+export function pickNextIndex(anchors: EngineAnchor[], nowMs: number): number | null {
+  for (let i = 0; i < anchors.length; i++) {
+    const end = endOf(anchors[i]);
+    if (end != null && end >= nowMs) return i;
+  }
+  return null;
+}
+
+export function bandFor(slackMin: number, bufferLeftMin: number): FeasBand {
+  if (bufferLeftMin <= 0) return "cliff";
+  if (slackMin <= 0) return "leave_now";
+  if (slackMin <= 20) return "heads_up";
+  return "comfortable";
+}
+
+export function computeDayState(input: { anchors: EngineAnchor[]; nowMs: number; liveTravelSeconds?: number | null }): DayState {
+  const { anchors, nowMs } = input;
+
+  // Gaps across the whole threaded chain. legMinutes[i] = travel stops[i]→[i+1],
+  // which is the travel INTO anchor i+1.
+  const gapStops: GapStop[] = anchors.map((a) => ({ id: a.id, startMs: a.startMs, endMs: endOf(a) }));
+  const legMinutes = anchors.slice(1).map((a) => a.plannedTravelMinutes);
+  const gaps = computeGaps(gapStops, legMinutes);
+
+  const nextIndex = pickNextIndex(anchors, nowMs);
+  if (nextIndex == null) {
+    return { phase: anchors.length ? "arrived" : "at_rest", nextIndex: null, feasibility: null, gaps };
+  }
+
+  const next = anchors[nextIndex];
+  const arriveByMs = next.startMs;
+  const liveMin = input.liveTravelSeconds != null ? Math.max(1, Math.round(input.liveTravelSeconds / 60)) : null;
+  const travelMin = liveMin ?? next.plannedTravelMinutes;
+
+  if (arriveByMs == null || travelMin == null) {
+    return { phase: "readiness", nextIndex, feasibility: null, gaps };
+  }
+
+  const buffer = bufferFor(next);
+  const leaveByMs = arriveByMs - (travelMin + buffer) * 60_000;
+  const slackMin = Math.round((leaveByMs - nowMs) / 60_000);
+  const bufferLeftMin = slackMin + buffer;
+  const band = bandFor(slackMin, bufferLeftMin);
+
+  return {
+    phase: nowMs >= leaveByMs ? "in_transit" : "readiness",
+    nextIndex,
+    feasibility: { leaveByMs, slackMin, bufferLeftMin, band, travelMinutes: travelMin, source: liveMin != null ? "live" : "planned" },
+    gaps,
+  };
+}
