@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { ActiveTile, Pass } from "@/components/concierge";
 import type { ActiveUrgency } from "@/components/concierge/active-tile";
 import type { AnchorVM, BoardingVM, TicketVM } from "@/components/concierge";
 import { TodaySpine } from "@/components/today/today-spine";
+import { NextLegMap } from "@/components/today/next-leg-map";
 import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
+
+const HARPENDEN = { lat: 51.8176, lng: -0.354, name: "Home, Harpenden" };
 
 // Staff-only day-of PREVIEW (demo mode, or /today?demo=1). The real Today
 // projects the DB and is empty without a live plan, so this renders the same
@@ -132,7 +135,9 @@ export function TodayDemo() {
       />
 
       {beforeDeparture ? (
-        <MovePicker mode={mode} onMode={setMode} travelMin={travelMin} leaveByMs={leaveByMs} depMs={depMs} />
+        <MovePicker mode={mode} onMode={setMode} travelMin={travelMin} leaveByMs={leaveByMs} depMs={depMs}>
+          <NextLegMap origin={HARPENDEN} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview />
+        </MovePicker>
       ) : null}
 
       {now < arrMs ? (
@@ -156,7 +161,7 @@ export function TodayDemo() {
 
 // Swap the inter-point travel mode and watch the leave-by move — faster mode,
 // later you can leave. This is the day-of "alter my plan" the live page lacked.
-function MovePicker({ mode, onMode, travelMin, leaveByMs, depMs }: { mode: ModeKey; onMode: (m: ModeKey) => void; travelMin: number; leaveByMs: number; depMs: number }) {
+function MovePicker({ mode, onMode, travelMin, leaveByMs, depMs, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; travelMin: number; leaveByMs: number; depMs: number; children?: ReactNode }) {
   return (
     <section className="cc-active-tile" data-urgency="comfortable" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
       <span className="cc-eyebrow">Getting to Luton</span>
@@ -178,6 +183,7 @@ function MovePicker({ mode, onMode, travelMin, leaveByMs, depMs }: { mode: ModeK
         <span style={{ fontFamily: "var(--mono)", fontStyle: "normal", color: "var(--gold-2)" }}>{londonClock(leaveByMs)}</span> for the{" "}
         {londonClock(depMs)}.
       </p>
+      {children}
     </section>
   );
 }
