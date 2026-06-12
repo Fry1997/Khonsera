@@ -128,8 +128,9 @@ const clock = (ms: number) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit"
 // cone driven by the COMPASS (so it shows which way you face even standing
 // still), a top maneuver banner with the turn after it, and an ETA / time /-
 // distance-remaining strip. Live GPS + voice when real; a simulated moving dot
-// in the demo so the bench shows the same view.
-function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolean; onClose: () => void }) {
+// in the demo so the bench shows the same view. Exported so the day-of card can
+// open it directly on Navigate (no inline map needed).
+export function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolean; onClose: () => void }) {
   const { fix, state } = useGuidance(route, !preview, { voice: !preview });
   const compass = useHeading(!preview);
   const [simIdx, setSimIdx] = useState(0);

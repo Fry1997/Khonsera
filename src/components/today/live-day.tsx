@@ -6,25 +6,29 @@ import { londonClock } from "./spine-model";
 import { computeDayState, type EngineAnchor, type Feasibility } from "@/lib/today/engine";
 import { totalSpareMinutes } from "@/lib/planning/gaps";
 import { leaveByCountdown } from "@/lib/planning/leave-by";
-import type { NavMode } from "@/lib/nav/types";
-import { NextLegMap } from "./next-leg-map";
+import { fetchNavRoute } from "@/lib/actions/nav";
+import { requestHeadingPermission } from "@/components/nav/use-heading";
+import { FullLeg } from "./next-leg-map";
 import { useLivePosition } from "./use-live-position";
+import type { NavMode, NavRoute } from "@/lib/nav/types";
 
-// The live next-move — the engine made visible, and REACTIVE. It threads the
-// plan, picks the next obligation, predicts the leave-by from where you ACTUALLY
-// are, and bands it honestly (it reads the buffer, so it never cries "overdue"
-// while you can still make it). At the cliff it stops merely stating the problem
-// and offers the fork: take a faster way (recomputes live), accept being late
-// (with the real arrival), or tell whoever's waiting. Degrades cleanly with no
-// location / no coordinates; renders an "all done" line once the day's behind you.
+// The live next-move — timing-first, and reactive. It threads the plan, picks
+// the next obligation, predicts the leave-by from where you ACTUALLY are (live
+// GPS, falling back to your home base), and bands it honestly (reads the buffer
+// so it never cries "overdue" while you can still make it). No inline map — you
+// get the timing here and the map full-screen on Navigate. When you're late it
+// keeps the obligation in front of you and shows planned → new ETA; a reversible
+// Walk/Taxi toggle lets you see a faster way; "Tell" shares your real ETA.
 
 const HHMM = (ms: number) => londonClock(new Date(ms).toISOString());
 
+const MODE_LABEL: Record<NavMode, string> = { walk: "Walk", cycle: "Cycle", drive: "Taxi" };
+
 export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: string; base?: { lat: number; lng: number } | null }) {
   const [now, setNow] = useState(() => Date.now());
-  const [liveTravelSeconds, setLiveTravelSeconds] = useState<number | null>(null);
   const [modeOverride, setModeOverride] = useState<NavMode | null>(null);
-  const [acceptedLate, setAcceptedLate] = useState(false);
+  const [route, setRoute] = useState<NavRoute | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
   const [locEnabled, setLocEnabled] = useState(false);
   const { fix, status } = useLivePosition(locEnabled);
 
@@ -64,24 +68,48 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
     [anchors],
   );
 
-  const state = computeDayState({ anchors: engineAnchors, nowMs: now, liveTravelSeconds });
-  const next = state.nextIndex != null ? anchors[state.nextIndex] : null;
+  // Pick the next obligation first (time-only), so the route fetch + mode toggle
+  // hang off a stable target.
+  const preState = computeDayState({ anchors: engineAnchors, nowMs: now });
+  const next = preState.nextIndex != null ? anchors[preState.nextIndex] : null;
+  const mode: NavMode = modeOverride ?? next?.navMode ?? "walk";
+  const origin = fix ? { lat: fix.lat, lng: fix.lng, name: "Your location" } : base ? { lat: base.lat, lng: base.lng, name: "Home" } : null;
+  const fromHome = !fix && !!base;
 
-  // Reset per-leg choices when the next obligation changes.
+  // Reset per-leg choices when the obligation changes.
   const nextId = next?.id ?? null;
   const prevNextId = useRef<string | null>(null);
   useEffect(() => {
     if (prevNextId.current !== nextId) {
       prevNextId.current = nextId;
-      setLiveTravelSeconds(null);
       setModeOverride(null);
-      setAcceptedLate(false);
+      setRoute(null);
     }
   }, [nextId]);
 
+  // Fetch the route for the active mode (for the leave-by maths AND Navigate) —
+  // but never show it inline. From your live position, else your home base.
+  const oLat = origin?.lat;
+  const oLng = origin?.lng;
+  const dLat = next?.coord?.lat;
+  const dLng = next?.coord?.lng;
+  useEffect(() => {
+    if (oLat == null || oLng == null || dLat == null || dLng == null) {
+      setRoute(null);
+      return;
+    }
+    let active = true;
+    void fetchNavRoute({ origin: { lat: oLat, lng: oLng, name: "Start" }, destination: { lat: dLat, lng: dLng, name: "Destination" }, mode }).then((r) => {
+      if (active && r.ok) setRoute(r.value);
+    });
+    return () => {
+      active = false;
+    };
+  }, [oLat, oLng, dLat, dLng, mode]);
+
+  const state = computeDayState({ anchors: engineAnchors, nowMs: now, liveTravelSeconds: route?.duration_s ?? null });
   const spare = totalSpareMinutes(state.gaps);
 
-  // Day's behind you — quiet "all done".
   if (!next) {
     return (
       <section className="cc-active-tile" data-urgency="comfortable">
@@ -96,106 +124,98 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
   }
 
   const feas = state.feasibility;
-  const mode = modeOverride ?? next.navMode;
-  // The "from" is always present: where you actually are, else your home base —
-  // never a missing start point. Live GPS, when granted, takes over.
-  const origin = fix ? { lat: fix.lat, lng: fix.lng, name: "Your location" } : base ? { lat: base.lat, lng: base.lng, name: "Home" } : null;
-  const fromHome = !fix && !!base;
   const arriveByMs = next.arriveByIso ? Date.parse(next.arriveByIso) : null;
   const arrivalMs = feas ? now + feas.travelMinutes * 60_000 : null;
   const lateMin = arrivalMs != null && arriveByMs != null ? Math.round((arrivalMs - arriveByMs) / 60_000) : null;
-  const atCliff = feas?.band === "cliff" && !acceptedLate;
-  const isMeeting = !next.station; // a person/place obligation can be told you're late
+  const isMeeting = !next.station;
+  const isLate = (feas?.band === "cliff") || (lateMin != null && lateMin > 0);
 
-  const urgency = acceptedLate ? "urgent" : urgencyOf(feas);
+  const modeOptions = Array.from(new Set<NavMode>([next.navMode, "drive"]));
 
   return (
-    <section className="cc-active-tile" data-urgency={urgency} style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+    <section className="cc-active-tile" data-urgency={urgencyOf(feas)} style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       <span className="cc-at-status">
         <span className="cc-at-dot" />
-        {phaseLabel(state.phase, acceptedLate)}
+        {state.phase === "in_transit" || isLate ? "On your way" : "Next move"}
       </span>
 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-3)" }}>
-        <h2 className="cc-at-headline" style={{ margin: 0 }}>
-          {headline(feas, acceptedLate)}
-        </h2>
-        {feas && !atCliff ? <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>{HHMM(feas.leaveByMs)}</span> : null}
+        <h2 className="cc-at-headline" style={{ margin: 0 }}>{headline(feas)}</h2>
+        {feas && feas.band !== "cliff" ? <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>{HHMM(feas.leaveByMs)}</span> : null}
       </div>
 
       <p className="cc-at-sub" style={{ margin: 0 }}>
         To {next.title}
         {next.place && next.place !== next.title ? ` · ${next.place}` : ""}
-        {arrivalMs != null ? ` · ${arrivalLine(arrivalMs, lateMin)}` : ""}
-        {modeOverride ? ` · via ${modeWord(mode)}` : ""}
       </p>
 
-      {next.coord && origin ? (
-        <>
-          <NextLegMap origin={origin} destination={{ lat: next.coord.lat, lng: next.coord.lng, name: next.title }} mode={mode} onRoute={(r) => setLiveTravelSeconds(r.duration_s)} />
-          {fromHome ? (
-            <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", alignSelf: "flex-start" }} onClick={() => setLocEnabled(true)}>
-              {status === "denied" ? "Location blocked — showing from home" : "Use my live location"}
+      {/* Timing — the part you actually want. Late shows planned → new ETA. */}
+      {arrivalMs != null ? (
+        <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: "var(--fs-label)", color: isLate ? "var(--amber)" : "var(--ink-dim)" }}>
+          {isLate && arriveByMs != null
+            ? `Planned ${HHMM(arriveByMs)} → arriving ~${HHMM(arrivalMs)}${lateMin != null && lateMin > 0 ? ` · ${lateMin} min late` : ""}`
+            : `Arrive ~${HHMM(arrivalMs)}${lateMin != null && lateMin < -1 ? ` · ${-lateMin} min to spare` : ""}`}
+          {fromHome ? " · from home" : ""}
+        </p>
+      ) : (
+        <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>Working out the time…</p>
+      )}
+
+      {/* Reversible mode toggle — see a faster way and switch straight back. */}
+      {origin && next.coord && modeOptions.length > 1 ? (
+        <div style={{ display: "inline-flex", gap: 4, alignSelf: "flex-start", border: "1px solid var(--rule)", borderRadius: "var(--radius-pill, 999px)", padding: 2 }}>
+          {modeOptions.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setModeOverride(m)}
+              className={m === mode ? "cc-btn cc-btn-gold" : "cc-btn"}
+              style={{ fontSize: "var(--fs-label)", padding: "3px 12px", border: "none", background: m === mode ? undefined : "transparent" }}
+            >
+              {MODE_LABEL[m]}
             </button>
-          ) : null}
-        </>
-      ) : next.coord ? (
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+          ))}
+        </div>
+      ) : null}
+
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center", marginTop: "var(--space-1)" }}>
+        {next.coord && origin ? (
+          <button
+            type="button"
+            className="cc-btn cc-btn-gold"
+            disabled={!route}
+            onClick={() => {
+              void requestHeadingPermission();
+              setNavOpen(true);
+            }}
+          >
+            {route ? "Navigate" : "Finding route…"}
+          </button>
+        ) : null}
+        {isLate && isMeeting && arrivalMs != null ? <NotifyButton who={next.title} arrivalMs={arrivalMs} /> : null}
+        {fromHome && next.coord ? (
+          <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)" }} onClick={() => setLocEnabled(true)}>
+            {status === "denied" ? "Location blocked" : "Use live location"}
+          </button>
+        ) : null}
+        {!origin && next.coord ? (
           <button type="button" className="cc-btn cc-btn-gold" onClick={() => setLocEnabled(true)}>
             {status === "denied" ? "Location is blocked" : "Use live location"}
           </button>
-          <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{feas?.source === "planned" ? "Using your plan's estimate" : ""}</span>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
-      {atCliff ? (
-        <CliffFork
-          mode={mode}
-          arrivalMs={arrivalMs}
-          lateMin={lateMin}
-          isMeeting={isMeeting}
-          who={next.title}
-          onFaster={() => setModeOverride("drive")}
-          onAccept={() => setAcceptedLate(true)}
-        />
-      ) : acceptedLate && arrivalMs != null ? (
-        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
-          {isMeeting ? <NotifyButton who={next.title} arrivalMs={arrivalMs} /> : null}
-          <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)" }} onClick={() => setAcceptedLate(false)}>
-            Rethink
-          </button>
-        </div>
-      ) : spare >= 15 ? (
+      {spare >= 15 && !isLate ? (
         <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{spare} min of free time across your day — room to fit something in.</p>
       ) : null}
+
+      {navOpen && route ? <FullLeg route={route} preview={false} onClose={() => setNavOpen(false)} /> : null}
     </section>
   );
 }
 
-// The cliff fork — real options, not a dead end.
-function CliffFork({ mode, arrivalMs, lateMin, isMeeting, who, onFaster, onAccept }: { mode: NavMode; arrivalMs: number | null; lateMin: number | null; isMeeting: boolean; who: string; onFaster: () => void; onAccept: () => void }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-      <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>
-        {mode === "walk" ? "Walking" : modeWord(mode)} from here you&apos;d arrive {arrivalMs != null ? HHMM(arrivalMs) : "late"}
-        {lateMin != null && lateMin > 0 ? ` — ${lateMin} min late.` : "."} Your call:
-      </p>
-      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-        {mode !== "drive" ? (
-          <button type="button" className="cc-btn cc-btn-gold" style={{ fontSize: "var(--fs-label)" }} onClick={onFaster}>
-            Take a taxi
-          </button>
-        ) : null}
-        <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)" }} onClick={onAccept}>
-          {mode === "walk" ? "Walk it anyway" : "Go anyway"}
-        </button>
-        {isMeeting && arrivalMs != null ? <NotifyButton who={who} arrivalMs={arrivalMs} /> : null}
-      </div>
-    </div>
-  );
-}
-
 // Tell whoever's waiting your real ETA — Share where available, else copy.
+// (WhatsApp / contacts integration to come.)
 function NotifyButton({ who, arrivalMs }: { who: string; arrivalMs: number }) {
   const [done, setDone] = useState(false);
   const msg = `Running a little late — I'll be there around ${HHMM(arrivalMs)}.`;
@@ -224,30 +244,9 @@ function urgencyOf(feas: Feasibility | null): "comfortable" | "urgent" | "breach
   return "comfortable";
 }
 
-function phaseLabel(phase: string, acceptedLate: boolean): string {
-  if (acceptedLate) return "On your way";
-  if (phase === "in_transit") return "On your way";
-  return "Next move";
-}
-
-function headline(feas: Feasibility | null, acceptedLate: boolean): string {
+function headline(feas: Feasibility | null): string {
   if (!feas) return "Working out your leave time…";
-  if (acceptedLate) return "On your way";
-  // Buffer-honest: only call it lost when the buffer's gone; otherwise it's just
-  // "leave now", even a touch past the nominal leave-by.
-  if (feas.band === "cliff") return "Won't make it on foot";
+  if (feas.band === "cliff") return "Running late";
   if (feas.band === "leave_now") return feas.bufferLeftMin > 0 ? `Leave now · ${feas.bufferLeftMin} min buffer` : "Leave now";
   return leaveByCountdown(feas.slackMin);
-}
-
-function arrivalLine(arrivalMs: number, lateMin: number | null): string {
-  const at = `arrive ~${HHMM(arrivalMs)}`;
-  if (lateMin == null) return at;
-  if (lateMin > 0) return `${at}, ${lateMin} min late`;
-  if (lateMin < -1) return `${at}, ${-lateMin} min to spare`;
-  return `${at}, on time`;
-}
-
-function modeWord(mode: NavMode): string {
-  return mode === "drive" ? "taxi" : mode === "cycle" ? "cycle" : "walk";
 }

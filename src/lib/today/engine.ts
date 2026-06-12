@@ -53,14 +53,28 @@ function endOf(a: EngineAnchor): number | null {
   return a.endMs ?? a.startMs;
 }
 
+// How long an obligation stays your "next" after its time passes. You don't
+// silently "finish" something by the clock — if you haven't reached it you're
+// just late TO it, and it should stay in front of you, not reel into the past.
+// (Proper arrival-by-dwell / the skip fork supersede this heuristic later.)
+export const LATE_GRACE_MIN = 60;
+
 // The next obligation: the earliest fixed point not yet behind us. Conservative
 // by design — position-based skip/arrival reconciliation is a separate, careful
-// concern (the forks); here we never silently drop a point, we just find the
-// next one still ahead by time.
+// concern (the forks); here we keep an obligation as next until well past its
+// time (you may still be heading there, late), never silently dropping it.
 export function pickNextIndex(anchors: EngineAnchor[], nowMs: number): number | null {
+  // Prefer the earliest obligation still ahead of you by time.
   for (let i = 0; i < anchors.length; i++) {
     const end = endOf(anchors[i]);
     if (end != null && end >= nowMs) return i;
+  }
+  // Nothing ahead — but you may be running late to the most recent one (within
+  // the grace), so keep it in front rather than calling the day done.
+  const grace = LATE_GRACE_MIN * 60_000;
+  for (let i = anchors.length - 1; i >= 0; i--) {
+    const end = endOf(anchors[i]);
+    if (end != null && end + grace >= nowMs) return i;
   }
   return null;
 }

@@ -14,7 +14,8 @@ describe("pickNextIndex", () => {
   it("is the earliest fixed point still ahead", () => {
     expect(pickNextIndex(anchors, T("09:00"))).toBe(0);
     expect(pickNextIndex(anchors, T("10:30"))).toBe(1);
-    expect(pickNextIndex(anchors, T("13:00"))).toBe(null); // whole day behind us
+    expect(pickNextIndex(anchors, T("13:00"))).toBe(2); // review (12:30) still in front within the late grace
+    expect(pickNextIndex(anchors, T("14:00"))).toBe(null); // past the grace → whole day behind us
   });
 });
 
@@ -50,8 +51,8 @@ describe("computeDayState — leave-by + bands", () => {
   });
 
   it("is arrived when the day is behind you, at_rest when there's no plan", () => {
-    expect(computeDayState({ anchors, nowMs: T("13:00") }).phase).toBe("arrived");
-    expect(computeDayState({ anchors: [], nowMs: T("13:00") }).phase).toBe("at_rest");
+    expect(computeDayState({ anchors, nowMs: T("14:00") }).phase).toBe("arrived");
+    expect(computeDayState({ anchors: [], nowMs: T("14:00") }).phase).toBe("at_rest");
   });
 
   it("surfaces the day's gaps alongside the next obligation", () => {
