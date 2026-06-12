@@ -125,11 +125,35 @@ Poll the next service's live status.
 - **Knock-on propagation** — a slip on leg N shifts its arrival → re-test legs
   N+1… and the terminal obligation; surface the *worst* consequence and the options.
 
-### C. You go wrong (deviation)
-The buffer → mode → next-service cascade: the buffer erodes (*"4 min left"*) →
-preferred mode infeasible → next-fastest **available** mode (resource-aware) → no
-mode → *"catch the next train?"* (rail) / *"tell them you're running late?"*
-(a meeting). Lifts only appear if you set one.
+### C. You go wrong (running late / deviation)
+
+As the window closes the engine narrows the buffer quietly. At the **feasibility
+cliff** — the preferred mode no longer makes it — it stops deciding *for* you and
+lays out the choice, because nothing is secured until you say so:
+
+- **A faster mode is a proposal, not a switch.** *"Walking won't make the 16:56.
+  A taxi will — it would need to leave by 16:22. Want us to arrange it?"* You can
+  **accept** (we secure it — the booking seam — with its own leave-by) or
+  **reject** it. Resource-aware: only modes you actually have (taxi / your car / a
+  lift you set), never a bike you don't own.
+- **Being late is a legitimate choice, not a failure.** If you'd rather just walk
+  and be late, that's your call — we don't force a modality on you. The only
+  question is *how* late and whether that's OK; a couple of minutes usually is.
+  *"Walk it and you're ~8 min late — happy with that?"* (Some events carry an
+  acceptable-lateness tolerance; within it we may not even ask.)
+- **Event-aware help once you accept lateness:**
+  - *Dinner / reservation* → surface the venue's number to call ahead (or offer to
+    message), with the revised arrival.
+  - *Meeting with someone* → offer to send them the updated ETA.
+  - *Train* → the next service, with the ticket-eligibility check riding along
+    (Anytime hops on; Advance may need a new/excess fare).
+  - *Flight* → its own hard case (cut-offs) — escalated, not casually re-timed.
+- **Override is always available.** Any automated feasibility call can be
+  rejected; we re-evaluate from what's left. The engine proposes; you decide.
+
+So the cliff is a **fork of real options** — arrange a faster mode, accept a known
+lateness (helped), or take the next service — never a silent auto-decision. Lifts
+only ever appear if you set one.
 
 ### D. Smooth sailing (the point of the product)
 Quiet and delightful: cards stacked (now / next / ticket), scan and board,
