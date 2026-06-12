@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavMap } from "@/components/nav/nav-map";
 import { useGuidance } from "@/components/nav/use-guidance";
 import { fetchNavRoute } from "@/lib/actions/nav";
@@ -9,9 +9,10 @@ import type { NavRoute, NavMode } from "@/lib/nav/types";
 
 // Inline next-leg navigation, embedded in the day-of surface (the chosen
 // direction: navigation lives ON the live page, not a detached tool). Shows a
-// compact route map for the next leg; "Start" expands to a full-screen guidance
-// view that returns you to Today on close. `preview` (demo) skips live GPS so the
-// bench shows the flow without watchPosition fighting a fixture route.
+// compact route map for the next leg and reports the route up (so leave-by can
+// be predicted from the real path); "Start" expands to the full 3D FOV guidance
+// view that returns you to Today on close. `preview` (demo) drives a simulated
+// moving dot so the bench shows the real nav view without a live journey.
 
 type Pt = { lat: number; lng: number; name?: string };
 
@@ -20,15 +21,21 @@ export function NextLegMap({
   mode,
   origin,
   preview = false,
+  onRoute,
 }: {
   destination: Pt;
   mode: NavMode;
   origin?: Pt; // omitted → current GPS (real day-of); provided → fixed (demo)
   preview?: boolean;
+  onRoute?: (route: NavRoute) => void;
 }) {
   const [route, setRoute] = useState<NavRoute | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [full, setFull] = useState(false);
+  const onRouteRef = useRef(onRoute);
+  useEffect(() => {
+    onRouteRef.current = onRoute;
+  });
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -48,6 +55,7 @@ export function NextLegMap({
       if (r.ok) {
         setRoute(r.value);
         setStatus("ready");
+        onRouteRef.current?.(r.value);
       } else setStatus("error");
     } catch {
       setStatus("error");
@@ -82,7 +90,7 @@ export function NextLegMap({
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
         <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>
-          {route ? `${formatNavDuration(route.duration_s)} · ${formatNavDistance(route.distance_m)}` : " "}
+          {route ? `${formatNavDuration(route.duration_s)} · ${formatNavDistance(route.distance_m)}` : " "}
         </span>
         <button type="button" className="cc-btn cc-btn-gold" disabled={!route} onClick={() => setFull(true)}>
           Start — turn by turn
@@ -94,17 +102,45 @@ export function NextLegMap({
   );
 }
 
-// Full-screen guidance that overlays Today and returns to it on close. Live GPS +
-// voice when real; a static route preview in the demo bench.
+function bearing(a: [number, number], b: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toDeg = (r: number) => (r * 180) / Math.PI;
+  const dLng = toRad(b[1] - a[1]);
+  const y = Math.sin(dLng) * Math.cos(toRad(b[0]));
+  const x = Math.cos(toRad(a[0])) * Math.sin(toRad(b[0])) - Math.sin(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+// Full-screen guidance overlaying Today, returning to it on close. The same 3D
+// heading-up FOV nav view as /navigate (follow camera + cone). Live GPS + voice
+// when real; a simulated moving dot in the demo so the bench shows that view.
 function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolean; onClose: () => void }) {
   const { fix, state } = useGuidance(route, !preview, { voice: !preview });
-  const start = route.geometry[0];
-  const position = fix
-    ? { lat: fix.lat, lng: fix.lng, heading: fix.heading }
-    : start
-      ? { lat: start[0], lng: start[1] }
-      : null;
-  const maneuver = route.maneuvers[state?.maneuver_index ?? 0];
+  const [simIdx, setSimIdx] = useState(0);
+
+  useEffect(() => {
+    if (!preview || route.geometry.length < 2) return;
+    const stride = Math.max(1, Math.floor(route.geometry.length / 40));
+    const id = setInterval(() => {
+      setSimIdx((i) => (i + stride >= route.geometry.length - 1 ? 0 : i + stride));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [preview, route]);
+
+  let position: { lat: number; lng: number; heading?: number | null } | null;
+  let maneuverIdx: number;
+  if (preview) {
+    const pts = route.geometry;
+    const a = pts[simIdx];
+    const b = pts[Math.min(simIdx + 1, pts.length - 1)];
+    position = { lat: a[0], lng: a[1], heading: bearing(a, b) };
+    const found = route.maneuvers.findIndex((mn) => mn.begin_shape_index > simIdx) - 1;
+    maneuverIdx = found < 0 ? Math.max(0, route.maneuvers.length - 1) : found;
+  } else {
+    position = fix ? { lat: fix.lat, lng: fix.lng, heading: fix.heading } : route.geometry[0] ? { lat: route.geometry[0][0], lng: route.geometry[0][1], heading: null } : null;
+    maneuverIdx = state?.maneuver_index ?? 0;
+  }
+  const maneuver = route.maneuvers[maneuverIdx];
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "var(--paper)", display: "flex", flexDirection: "column" }}>
@@ -118,17 +154,17 @@ function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolea
       </header>
 
       <div style={{ flex: 1, minHeight: 0 }}>
-        <NavMap route={route} position={position} follow={!preview} />
+        <NavMap route={route} position={position} follow />
       </div>
 
       <div style={{ padding: "var(--space-4)", borderTop: "1px solid var(--rule)", display: "flex", flexDirection: "column", gap: 4 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>
-          {state ? formatNavDistance(state.to_maneuver_m) : formatNavDistance(route.distance_m)}
+          {state ? formatNavDistance(state.to_maneuver_m) : formatNavDistance(maneuver?.distance_m ?? route.distance_m)}
         </span>
         <p style={{ margin: 0 }}>{maneuver?.instruction ?? "Head toward your destination."}</p>
         {preview ? (
           <p style={{ margin: "var(--space-1) 0 0", fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>
-            Live turn-by-turn with spoken guidance starts here on a real journey.
+            Simulated drive-through — on a real journey this follows your live position with spoken guidance.
           </p>
         ) : null}
       </div>

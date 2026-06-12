@@ -1,38 +1,37 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
-import type { Route } from "next";
 import { ActiveTile, Pass } from "@/components/concierge";
 import type { ActiveUrgency } from "@/components/concierge/active-tile";
 import type { AnchorVM, BoardingVM, TicketVM } from "@/components/concierge";
 import { TodaySpine } from "@/components/today/today-spine";
 import { NextLegMap } from "@/components/today/next-leg-map";
 import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
+import { haversineMeters, formatMiles } from "@/lib/geo";
 
-const HARPENDEN = { lat: 51.8176, lng: -0.354, name: "Home, Harpenden" };
-
-// Staff-only day-of PREVIEW (demo mode, or /today?demo=1). The real Today
-// projects the DB and is empty without a live plan, so this renders the same
+// Staff-only day-of PREVIEW (demo mode, or /today?demo=1). Renders the real
 // day-of components against a representative fixture — home (a base, no clock) →
 // Luton → Wellingborough on the Corby train → a review — so the boarding
-// callout, the leave-by back-calc, mode-swap and reeling spine can be reviewed
-// without a real journey.
+// callout, leave-by, mode-swap, off-plan detection and inline nav can be
+// reviewed without a real journey.
 //
-// Time-travel: event times are pinned to a fixed `base`; the slider slides a
-// synthetic NOW across the day so the spine reels and urgency changes live.
-// NEVER on the product path.
+// Two simulators stand in for sensors: a TIME slider (synthetic NOW) and a
+// LOCATION toggle (on-plan vs wandered off) — because the real value is "predict
+// from where you actually are", which we can't feel from a desk. NEVER on the
+// product path.
 
-const WELLINGBOROUGH = { lat: 52.2962, lng: -0.6896 };
+const HARPENDEN = { lat: 51.8176, lng: -0.354, name: "Home, Harpenden" }; // base / expected
+const WANDERED = { lat: 51.7505, lng: -0.336, name: "Where you are" }; // ~5 km off, "walked off"
 const LUTON = { lat: 51.8821, lng: -0.4147 };
+const WELLINGBOROUGH = { lat: 52.2962, lng: -0.6896 };
 
-// Fixed event offsets (minutes from base).
-const DEP = 35; // train departs Luton
-const ARR = 60; // arrives Wellingborough
-const REVIEW = 85; // project review
-const STATION_BUFFER = 8; // minutes at the station before the train
+const DEP = 35; // train departs Luton (minutes from base)
+const ARR = 60;
+const REVIEW = 85;
+const STATION_BUFFER = 8;
 
-// Door-to-door options for home → Luton station (the swappable inter-point leg).
+// The PLAN's door-to-door assumption from home (minutes) — what leave-by was
+// built on. The live route from your actual location overrides it on the day.
 const MODES = [
   { key: "walk", label: "Walk", minutes: 95 },
   { key: "cycle", label: "Cycle", minutes: 32 },
@@ -46,8 +45,11 @@ const londonClock = (ms: number) =>
 
 export function TodayDemo() {
   const [base] = useState(() => Date.now());
-  const [offset, setOffset] = useState(0); // minutes added to NOW by the slider
+  const [offset, setOffset] = useState(0); // minutes added to NOW by the time slider
   const [mode, setMode] = useState<ModeKey>("taxi");
+  const [where, setWhere] = useState<"home" | "away">("home");
+  const [routeSeconds, setRouteSeconds] = useState<number | null>(null); // live route from actual location
+
   const now = base + offset * 60_000;
   const at = useMemo(() => (min: number) => new Date(base + min * 60_000).toISOString(), [base]);
 
@@ -55,9 +57,18 @@ export function TodayDemo() {
   const arrMs = base + ARR * 60_000;
   const reviewMs = base + REVIEW * 60_000;
 
-  // Leave-by back-calculated from the train: departure − true travel − buffer.
-  const travelMin = MODES.find((m) => m.key === mode)!.minutes;
-  const leaveByMs = depMs - (travelMin + STATION_BUFFER) * 60_000;
+  const origin = where === "home" ? HARPENDEN : WANDERED;
+  const deviationM = haversineMeters(origin.lat, origin.lng, HARPENDEN.lat, HARPENDEN.lng);
+  const offPlan = deviationM > 200;
+
+  // Leave-by is predicted from where you ACTUALLY are: the live route duration
+  // wins; the plan's assumption is the fallback (and the comparison baseline).
+  const plannedMin = MODES.find((m) => m.key === mode)!.minutes;
+  const liveMin = routeSeconds != null ? Math.max(1, Math.round(routeSeconds / 60)) : null;
+  const effectiveMin = liveMin ?? plannedMin;
+  const leaveByMs = depMs - (effectiveMin + STATION_BUFFER) * 60_000;
+  const plannedLeaveByMs = depMs - (plannedMin + STATION_BUFFER) * 60_000;
+  const deltaMin = Math.round((plannedLeaveByMs - leaveByMs) / 60_000); // +ve → must leave earlier
 
   const ticket: TicketVM = useMemo(
     () => ({
@@ -91,16 +102,14 @@ export function TodayDemo() {
     earlier: "Platform 2 also has the 16:58 to Bedford before yours — let that one go.",
   };
 
-  // Home is the BASE — no clock, it only carries the leave-by. The spine is the
-  // chain of timed commitments: station → arrival → review.
   const walk = navModeForTransition("walk");
   const spineAnchors: SpineAnchor[] = useMemo(
     () => [
-      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: travelMin, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure" },
+      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: effectiveMin, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure" },
       { id: "demo-welly", type: "transport_arrival", title: "Wellingborough Station", arriveByIso: at(ARR), endIso: at(ARR), coord: WELLINGBOROUGH, plannedTravelMinutes: 25, navMode: walk, station: { name: "Wellingborough", code: "WEL", kind: "rail_station" }, role: "arrival" },
       { id: "demo-review", type: "appointment", title: "Project review", place: "Wellingborough", arriveByIso: at(REVIEW), endIso: at(REVIEW + 60), coord: WELLINGBOROUGH, plannedTravelMinutes: 8, navMode: walk, station: null, role: "stop" },
     ],
-    [at, walk, travelMin, mode],
+    [at, walk, effectiveMin, mode],
   );
 
   const nextSpine = spineAnchors.find((a) => a.arriveByIso && new Date(a.arriveByIso).getTime() > now) ?? null;
@@ -111,7 +120,7 @@ export function TodayDemo() {
   const beforeDeparture = now < depMs;
   const headline = now >= reviewMs ? "You're here" : now >= depMs && now < arrMs ? "On your way" : "Getting you ready";
   const minsToNext = nextSpine?.arriveByIso ? Math.round((new Date(nextSpine.arriveByIso).getTime() - now) / 60_000) : null;
-  const urgency: ActiveUrgency = minsToNext != null && minsToNext >= 0 && minsToNext <= 20 ? "urgent" : "comfortable";
+  const urgency: ActiveUrgency = offPlan && beforeDeparture ? "breach" : minsToNext != null && minsToNext >= 0 && minsToNext <= 20 ? "urgent" : "comfortable";
 
   return (
     <div className="cc-screen">
@@ -124,7 +133,7 @@ export function TodayDemo() {
         </h1>
       </header>
 
-      <TimeTravel now={now} offset={offset} onOffset={setOffset} />
+      <Simulators now={now} offset={offset} onOffset={setOffset} where={where} onWhere={setWhere} />
 
       <ActiveTile
         headline={headline}
@@ -134,9 +143,34 @@ export function TodayDemo() {
         urgency={urgency}
       />
 
+      {offPlan && beforeDeparture ? (
+        <section
+          style={{
+            padding: "var(--space-3) var(--space-4)",
+            background: "var(--amber-soft)",
+            borderLeft: "3px solid var(--amber)",
+            borderRadius: "var(--radius-md)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <span className="cc-eyebrow" style={{ color: "var(--amber)" }}>
+            You&apos;ve moved off plan
+          </span>
+          <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--ink)" }}>
+            You&apos;re {formatMiles(deviationM)} from where your plan expects you. From here you need to
+            leave by{" "}
+            <span style={{ fontFamily: "var(--mono)", color: "var(--ink)" }}>{londonClock(leaveByMs)}</span> for the{" "}
+            {londonClock(depMs)}
+            {deltaMin > 0 ? ` — ${deltaMin} min earlier than planned (${londonClock(plannedLeaveByMs)}).` : "."}
+          </p>
+        </section>
+      ) : null}
+
       {beforeDeparture ? (
-        <MovePicker mode={mode} onMode={setMode} travelMin={travelMin} leaveByMs={leaveByMs} depMs={depMs}>
-          <NextLegMap origin={HARPENDEN} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview />
+        <MovePicker mode={mode} onMode={setMode} travelMin={effectiveMin} live={liveMin != null} leaveByMs={leaveByMs} depMs={depMs}>
+          <NextLegMap origin={origin} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview onRoute={(r) => setRouteSeconds(r.duration_s)} />
         </MovePicker>
       ) : null}
 
@@ -152,82 +186,66 @@ export function TodayDemo() {
       <TodaySpine anchors={spineAnchors} nextId={nextSpine?.id ?? null} nowOverride={now} />
 
       <p style={{ fontSize: "var(--fs-micro)", color: "var(--ink-dim)", marginTop: "var(--space-2)" }}>
-        Sample day for design review — not your real plan. Live platform, the named train and the
-        wrong-train guard populate from National Rail on a real journey.
+        Sample day for design review — not your real plan. On the day, leave-by predicts from your
+        live GPS and the platform/train come from National Rail.
       </p>
     </div>
   );
 }
 
-// Swap the inter-point travel mode and watch the leave-by move — faster mode,
-// later you can leave. This is the day-of "alter my plan" the live page lacked.
-function MovePicker({ mode, onMode, travelMin, leaveByMs, depMs, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; travelMin: number; leaveByMs: number; depMs: number; children?: ReactNode }) {
+// Swap the inter-point travel mode and watch the leave-by move. The minutes are
+// the live route from your actual location when available, the plan's estimate
+// otherwise.
+function MovePicker({ mode, onMode, travelMin, live, leaveByMs, depMs, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; travelMin: number; live: boolean; leaveByMs: number; depMs: number; children?: ReactNode }) {
   return (
     <section className="cc-active-tile" data-urgency="comfortable" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
       <span className="cc-eyebrow">Getting to Luton</span>
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
         {MODES.map((m) => (
-          <button
-            key={m.key}
-            type="button"
-            className={m.key === mode ? "cc-btn cc-btn-gold" : "cc-btn"}
-            style={{ fontSize: "var(--fs-label)" }}
-            onClick={() => onMode(m.key)}
-          >
+          <button key={m.key} type="button" className={m.key === mode ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onMode(m.key)}>
             {m.label}
           </button>
         ))}
       </div>
       <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>
-        {travelMin} min door-to-door + {STATION_BUFFER} min at the platform → leave by{" "}
-        <span style={{ fontFamily: "var(--mono)", fontStyle: "normal", color: "var(--gold-2)" }}>{londonClock(leaveByMs)}</span> for the{" "}
-        {londonClock(depMs)}.
+        {travelMin} min {live ? "from where you are" : "door-to-door"} + {STATION_BUFFER} min at the platform → leave by{" "}
+        <span style={{ fontFamily: "var(--mono)", fontStyle: "normal", color: "var(--gold-2)" }}>{londonClock(leaveByMs)}</span> for the {londonClock(depMs)}.
       </p>
       {children}
     </section>
   );
 }
 
-// The demo-only scrubber: move synthetic NOW across the day to watch the spine
-// reel, the next-highlight advance and urgency change.
-function TimeTravel({ now, offset, onOffset }: { now: number; offset: number; onOffset: (n: number) => void }) {
+// Demo-only sensor stand-ins: scrub synthetic NOW across the day, and toggle
+// whether you're on-plan (at home) or wandered off — so the off-plan leave-by
+// behaviour is reviewable from a desk.
+function Simulators({ now, offset, onOffset, where, onWhere }: { now: number; offset: number; onOffset: (n: number) => void; where: "home" | "away"; onWhere: (w: "home" | "away") => void }) {
   return (
-    <section
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: "var(--space-3)",
-        padding: "var(--space-3) var(--space-4)",
-        background: "var(--card-2, var(--card))",
-        border: "1px dashed var(--rule)",
-        borderRadius: "var(--radius-md)",
-      }}
-    >
-      <span className="cc-eyebrow">Demo time</span>
-      <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-h3)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
-        {londonClock(now)}
-      </span>
-      <input
-        type="range"
-        min={-180}
-        max={240}
-        step={5}
-        value={offset}
-        onChange={(e) => onOffset(Number(e.target.value))}
-        style={{ flex: 1, minWidth: 140, accentColor: "var(--gold)" }}
-        aria-label="Move the demo clock"
-      />
-      <span style={{ display: "inline-flex", gap: 4 }}>
-        {[-30, -5, 5, 30].map((d) => (
-          <button key={d} type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => onOffset(offset + d)}>
-            {d > 0 ? `+${d}` : d}
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", padding: "var(--space-3) var(--space-4)", background: "var(--card-2, var(--card))", border: "1px dashed var(--rule)", borderRadius: "var(--radius-md)" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-3)" }}>
+        <span className="cc-eyebrow">Demo time</span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-h3)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{londonClock(now)}</span>
+        <input type="range" min={-180} max={240} step={5} value={offset} onChange={(e) => onOffset(Number(e.target.value))} style={{ flex: 1, minWidth: 120, accentColor: "var(--gold)" }} aria-label="Move the demo clock" />
+        <span style={{ display: "inline-flex", gap: 4 }}>
+          {[-30, -5, 5, 30].map((d) => (
+            <button key={d} type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => onOffset(offset + d)}>
+              {d > 0 ? `+${d}` : d}
+            </button>
+          ))}
+          <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => onOffset(0)}>
+            Now
           </button>
-        ))}
-        <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => onOffset(0)}>
-          Now
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <span className="cc-eyebrow">You are</span>
+        <button type="button" className={where === "home" ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onWhere("home")}>
+          On plan (home)
         </button>
-      </span>
+        <button type="button" className={where === "away" ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onWhere("away")}>
+          Wandered off
+        </button>
+      </div>
     </section>
   );
 }
