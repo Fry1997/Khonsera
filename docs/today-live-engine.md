@@ -50,19 +50,47 @@ Each tick the engine emits a `DayState`:
 The Today view is a **thin renderer** of `DayState`. No logic in the view — that
 is what ends the patching.
 
-## 3. The next-obligation resolver (the heart)
+## 3. Reconciling the plan with where you are (the careful bit)
 
-Picking "what matters now" is not "next anchor by clock". It reconciles
-plan-time with live position:
+The hard part is deciding "what matters now" from live position **without
+guessing wrong**. Proximity is not commitment, and we must never silently
+abandon something you might still intend to do. So reconciliation is
+confidence-gated.
 
-- Walk fixed points in time order; the candidate is the earliest not yet satisfied.
-- **Arrival** is confirmed by *dwelling* within a radius of an anchor, not by the
-  clock passing — so we know you actually got there.
-- **Skip detection** — if you're well past an anchor's time **and** far from it
-  **and** closer to a *later* anchor, assume you've moved on: ask "skipped the
-  museum?" and advance. We never nag about an abandoned stop while you're standing
-  at the next one.
-- The **from** is always current GPS.
+**Act silently only on high-confidence transitions:**
+
+- **Arrived** — you *dwell* within an anchor's radius (not merely pass its
+  time). Satisfied.
+- **Effectively there** — you're within trivial reach of the next anchor (a
+  short walk). The planned *method* stops mattering: we don't tell you to take
+  the tube one block, or to "go back to go forward". Collapse the leg.
+- **Boarding** — at the platform around departure, then moving with the
+  service. On service.
+- **On track** — moving along the planned route toward the next point. Stay
+  quiet.
+
+**Everything else is ambiguous — never guess; offer a fork:**
+
+- **"Closer" is not progress.** Fifty miles out, you drive three miles to a
+  shop — you're nearer the destination, but the station is back the other way
+  and the train is still the method. The engine keeps computing the leave-by
+  *from where you actually are, by the right method*; it never reads
+  distance-reduction as commitment, nor as a skip.
+- **Running late is not abandonment** — least of all for an appointment. It is
+  not ours to assume you're not going. The buffer / feasibility cascade still
+  runs (you may now need a taxi, or you'll be *N* late), but the obligation
+  stands.
+- When the engine genuinely can't reconcile where you are with the plan — you've
+  persisted off-pattern, or you're between two plausible obligations — it asks a
+  **fork**, not a guess: *"Still heading to the museum, or moving on to the
+  station?"* **Persistence triggers it**: a quiet state first, and only if it
+  continues do we put the decision to you. We can't know without you, so we ask —
+  we never silently drop or reorder an obligation.
+
+**Net:** feasibility (the from-here leave-by) is always live and
+direction-agnostic; obligation *resolution* is conservative — silent only when
+certain, a fork when not, and never an assumed abandonment. The **from** is
+always current GPS.
 
 ## 4. The day as a state machine (what each phase shows)
 
@@ -83,8 +111,10 @@ plan-time with live position:
 ## 5. The four reactions
 
 ### A. You move (live position)
-Recompute leave-by from where you are; detect arrival (dwell) and skip (past +
-far + nearer a later point); during nav, off-route → reroute.
+Recompute leave-by from where you are; confirm arrival by *dwell*; collapse the
+next leg when you're effectively there; during nav, off-route → reroute. Where
+position can't be reconciled with the plan, raise a **fork** (§3) — never an
+assumed skip, never an assumed abandonment.
 
 ### B. Things go wrong (external)
 Poll the next service's live status.
