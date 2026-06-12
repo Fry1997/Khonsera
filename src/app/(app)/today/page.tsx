@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { isWelcomed } from "@/lib/welcome";
-import { ActiveTile } from "@/components/concierge";
 import type { AnchorVM, AnchorType, TicketVM } from "@/components/concierge";
 import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/planning/today";
 import { loadJourneyTickets } from "@/lib/actions/wallet";
@@ -64,12 +63,6 @@ function placeOf(s: StopRow): string | undefined {
   return s.location?.name ?? s.customer_site?.name ?? s.transport_hub?.name ?? undefined;
 }
 
-const STATE_HEADLINE: Record<string, string> = {
-  dormant: "Nothing in motion right now",
-  readiness: "Getting you ready",
-  "in-transit": "On your way",
-  arrived: "You're here",
-};
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -196,13 +189,9 @@ export default async function TodayPage({
     hasLegAfter: legFromStops.has(s.id),
   }));
   const proj = projectToday(projStops, now.getTime());
-  const nextAnchor = proj.nextIndex != null ? anchors[proj.nextIndex] : undefined;
 
-  // True leave-by takes over the hero when the next anchor has the data to back
-  // it (a location to route to, or a planned leg time). Otherwise the ActiveTile
-  // keeps its planned leave-by so there's no regression on coordinate-less plans.
+  // The next obligation for the spine highlight + the ticket-surfacing window.
   const nextSpine = proj.nextIndex != null ? spineAnchors[proj.nextIndex] : null;
-  const canLeaveBy = !!(nextSpine?.arriveByIso && (nextSpine.coord || nextSpine.plannedTravelMinutes != null));
 
   const nowMs = now.getTime();
   const nextTicket =
@@ -267,15 +256,7 @@ export default async function TodayPage({
 
       {anchors.length ? (
         <>
-          <ActiveTile
-            headline={STATE_HEADLINE[proj.state] ?? "Your day"}
-            sub={sub}
-            nextAnchor={nextAnchor}
-            leaveBy={canLeaveBy ? undefined : proj.leaveByIso ?? undefined}
-            urgency={proj.urgency as TodayUrgency}
-          />
-
-          <LiveDay anchors={spineAnchors} />
+          <LiveDay anchors={spineAnchors} sub={sub} />
 
           {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
             legCards?.length ? (
