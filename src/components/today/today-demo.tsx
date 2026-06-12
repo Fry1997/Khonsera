@@ -7,21 +7,26 @@ import type { AnchorVM, BoardingVM, TicketVM } from "@/components/concierge";
 import { TodaySpine } from "@/components/today/today-spine";
 import { NextLegMap } from "@/components/today/next-leg-map";
 import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
-import { haversineMeters, formatMiles } from "@/lib/geo";
 
 // Staff-only day-of PREVIEW (demo mode, or /today?demo=1). Renders the real
 // day-of components against a representative fixture — home (a base, no clock) →
-// Luton → Wellingborough on the Corby train → a review — so the boarding
-// callout, leave-by, mode-swap, off-plan detection and inline nav can be
-// reviewed without a real journey.
+// Luton → Wellingborough on the Corby train → a review.
 //
-// Two simulators stand in for sensors: a TIME slider (synthetic NOW) and a
-// LOCATION toggle (on-plan vs wandered off) — because the real value is "predict
-// from where you actually are", which we can't feel from a desk. NEVER on the
-// product path.
+// Feasibility model: leave-by is predicted forward from where you ACTUALLY are
+// (the live route from your position to the next fixed point) for your preferred
+// mode, and escalates through notification bands as the slack shrinks — never
+// "you deviated", just "from here, leave in X". Two simulators stand in for
+// sensors: a TIME slider (synthetic NOW) and a POSITION picker (sample places).
+// NEVER on the product path.
 
-const HARPENDEN = { lat: 51.8176, lng: -0.354, name: "Home, Harpenden" }; // base / expected
-const WANDERED = { lat: 51.7505, lng: -0.336, name: "Where you are" }; // ~5 km off, "walked off"
+// Neutral sample positions — no judgement, just "where you happen to be".
+const POSITIONS = {
+  home: { lat: 51.8176, lng: -0.354, name: "Home, Harpenden", label: "Home" },
+  town: { lat: 51.7505, lng: -0.336, name: "In town, St Albans", label: "In town" },
+  near: { lat: 51.879, lng: -0.41, name: "Near Luton station", label: "By the station" },
+} as const;
+type PosKey = keyof typeof POSITIONS;
+
 const LUTON = { lat: 51.8821, lng: -0.4147 };
 const WELLINGBOROUGH = { lat: 52.2962, lng: -0.6896 };
 
@@ -30,13 +35,12 @@ const ARR = 60;
 const REVIEW = 85;
 const STATION_BUFFER = 8;
 
-// The PLAN's door-to-door assumption from home (minutes) — what leave-by was
-// built on. The live route from your actual location overrides it on the day.
+// Preferred-mode options for the inter-point leg, in intention order.
 const MODES = [
-  { key: "walk", label: "Walk", minutes: 95 },
-  { key: "cycle", label: "Cycle", minutes: 32 },
-  { key: "taxi", label: "Taxi", minutes: 16 },
-  { key: "drive", label: "Drive", minutes: 14 },
+  { key: "walk", label: "Walk", verb: "walk it" },
+  { key: "cycle", label: "Cycle", verb: "cycle it" },
+  { key: "taxi", label: "Taxi", verb: "taxi it" },
+  { key: "drive", label: "Drive", verb: "drive it" },
 ] as const;
 type ModeKey = (typeof MODES)[number]["key"];
 
@@ -47,8 +51,8 @@ export function TodayDemo() {
   const [base] = useState(() => Date.now());
   const [offset, setOffset] = useState(0); // minutes added to NOW by the time slider
   const [mode, setMode] = useState<ModeKey>("taxi");
-  const [where, setWhere] = useState<"home" | "away">("home");
-  const [routeSeconds, setRouteSeconds] = useState<number | null>(null); // live route from actual location
+  const [pos, setPos] = useState<PosKey>("home");
+  const [routeSeconds, setRouteSeconds] = useState<number | null>(null); // live route from actual position
 
   const now = base + offset * 60_000;
   const at = useMemo(() => (min: number) => new Date(base + min * 60_000).toISOString(), [base]);
@@ -57,18 +61,13 @@ export function TodayDemo() {
   const arrMs = base + ARR * 60_000;
   const reviewMs = base + REVIEW * 60_000;
 
-  const origin = where === "home" ? HARPENDEN : WANDERED;
-  const deviationM = haversineMeters(origin.lat, origin.lng, HARPENDEN.lat, HARPENDEN.lng);
-  const offPlan = deviationM > 200;
+  const origin = POSITIONS[pos];
 
   // Leave-by is predicted from where you ACTUALLY are: the live route duration
-  // wins; the plan's assumption is the fallback (and the comparison baseline).
-  const plannedMin = MODES.find((m) => m.key === mode)!.minutes;
+  // for the preferred mode → latest-leave → slack.
   const liveMin = routeSeconds != null ? Math.max(1, Math.round(routeSeconds / 60)) : null;
-  const effectiveMin = liveMin ?? plannedMin;
-  const leaveByMs = depMs - (effectiveMin + STATION_BUFFER) * 60_000;
-  const plannedLeaveByMs = depMs - (plannedMin + STATION_BUFFER) * 60_000;
-  const deltaMin = Math.round((plannedLeaveByMs - leaveByMs) / 60_000); // +ve → must leave earlier
+  const leaveByMs = liveMin != null ? depMs - (liveMin + STATION_BUFFER) * 60_000 : null;
+  const slackMin = leaveByMs != null ? Math.round((leaveByMs - now) / 60_000) : null;
 
   const ticket: TicketVM = useMemo(
     () => ({
@@ -105,11 +104,11 @@ export function TodayDemo() {
   const walk = navModeForTransition("walk");
   const spineAnchors: SpineAnchor[] = useMemo(
     () => [
-      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: effectiveMin, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure" },
+      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: liveMin ?? 16, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure" },
       { id: "demo-welly", type: "transport_arrival", title: "Wellingborough Station", arriveByIso: at(ARR), endIso: at(ARR), coord: WELLINGBOROUGH, plannedTravelMinutes: 25, navMode: walk, station: { name: "Wellingborough", code: "WEL", kind: "rail_station" }, role: "arrival" },
       { id: "demo-review", type: "appointment", title: "Project review", place: "Wellingborough", arriveByIso: at(REVIEW), endIso: at(REVIEW + 60), coord: WELLINGBOROUGH, plannedTravelMinutes: 8, navMode: walk, station: null, role: "stop" },
     ],
-    [at, walk, effectiveMin, mode],
+    [at, walk, liveMin, mode],
   );
 
   const nextSpine = spineAnchors.find((a) => a.arriveByIso && new Date(a.arriveByIso).getTime() > now) ?? null;
@@ -119,8 +118,13 @@ export function TodayDemo() {
 
   const beforeDeparture = now < depMs;
   const headline = now >= reviewMs ? "You're here" : now >= depMs && now < arrMs ? "On your way" : "Getting you ready";
-  const minsToNext = nextSpine?.arriveByIso ? Math.round((new Date(nextSpine.arriveByIso).getTime() - now) / 60_000) : null;
-  const urgency: ActiveUrgency = offPlan && beforeDeparture ? "breach" : minsToNext != null && minsToNext >= 0 && minsToNext <= 20 ? "urgent" : "comfortable";
+
+  // Urgency is the feasibility band for the preferred mode.
+  let urgency: ActiveUrgency = "comfortable";
+  if (beforeDeparture && slackMin != null) {
+    if (slackMin <= 5) urgency = "breach";
+    else if (slackMin <= 20) urgency = "urgent";
+  }
 
   return (
     <div className="cc-screen">
@@ -133,43 +137,18 @@ export function TodayDemo() {
         </h1>
       </header>
 
-      <Simulators now={now} offset={offset} onOffset={setOffset} where={where} onWhere={setWhere} />
+      <Simulators now={now} offset={offset} onOffset={setOffset} pos={pos} onPos={setPos} />
 
       <ActiveTile
         headline={headline}
         sub="Project review · from home, Harpenden"
         nextAnchor={nextAnchor}
-        leaveBy={beforeDeparture ? new Date(leaveByMs).toISOString() : undefined}
+        leaveBy={beforeDeparture && leaveByMs != null ? new Date(leaveByMs).toISOString() : undefined}
         urgency={urgency}
       />
 
-      {offPlan && beforeDeparture ? (
-        <section
-          style={{
-            padding: "var(--space-3) var(--space-4)",
-            background: "var(--amber-soft)",
-            borderLeft: "3px solid var(--amber)",
-            borderRadius: "var(--radius-md)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-          }}
-        >
-          <span className="cc-eyebrow" style={{ color: "var(--amber)" }}>
-            You&apos;ve moved off plan
-          </span>
-          <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--ink)" }}>
-            You&apos;re {formatMiles(deviationM)} from where your plan expects you. From here you need to
-            leave by{" "}
-            <span style={{ fontFamily: "var(--mono)", color: "var(--ink)" }}>{londonClock(leaveByMs)}</span> for the{" "}
-            {londonClock(depMs)}
-            {deltaMin > 0 ? ` — ${deltaMin} min earlier than planned (${londonClock(plannedLeaveByMs)}).` : "."}
-          </p>
-        </section>
-      ) : null}
-
       {beforeDeparture ? (
-        <MovePicker mode={mode} onMode={setMode} travelMin={effectiveMin} live={liveMin != null} leaveByMs={leaveByMs} depMs={depMs}>
+        <MovePicker mode={mode} onMode={setMode} slackMin={slackMin} leaveByMs={leaveByMs} depMs={depMs}>
           <NextLegMap origin={origin} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview onRoute={(r) => setRouteSeconds(r.duration_s)} />
         </MovePicker>
       ) : null}
@@ -193,33 +172,42 @@ export function TodayDemo() {
   );
 }
 
-// Swap the inter-point travel mode and watch the leave-by move. The minutes are
-// the live route from your actual location when available, the plan's estimate
-// otherwise.
-function MovePicker({ mode, onMode, travelMin, live, leaveByMs, depMs, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; travelMin: number; live: boolean; leaveByMs: number; depMs: number; children?: ReactNode }) {
+// The preferred-mode feasibility line: from where you are, leave in X — banded
+// from quiet → leave-now, then escalation when the preferred mode runs out of
+// road. Swapping mode re-routes and re-times.
+function MovePicker({ mode, onMode, slackMin, leaveByMs, depMs, children }: { mode: ModeKey; onMode: (m: ModeKey) => void; slackMin: number | null; leaveByMs: number | null; depMs: number; children?: ReactNode }) {
+  const m = MODES.find((x) => x.key === mode)!;
+  let line: string;
+  if (slackMin == null || leaveByMs == null) {
+    line = "Working out the time from where you are…";
+  } else if (slackMin < 0) {
+    line = `Too tight to ${m.verb} from here — switch to a faster option above, or catch the next train.`;
+  } else if (slackMin <= 5) {
+    line = `Leave now to ${m.verb} — ${londonClock(leaveByMs)} at the latest for the ${londonClock(depMs)}.`;
+  } else if (slackMin <= 20) {
+    line = `Time to head off — leave by ${londonClock(leaveByMs)} (${slackMin} min) to ${m.verb} for the ${londonClock(depMs)}.`;
+  } else {
+    line = `No rush — leave by ${londonClock(leaveByMs)} (${slackMin} min) to ${m.verb} for the ${londonClock(depMs)}.`;
+  }
   return (
-    <section className="cc-active-tile" data-urgency="comfortable" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+    <section className="cc-active-tile" data-urgency={slackMin != null && slackMin <= 5 ? "breach" : slackMin != null && slackMin <= 20 ? "urgent" : "comfortable"} style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
       <span className="cc-eyebrow">Getting to Luton</span>
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-        {MODES.map((m) => (
-          <button key={m.key} type="button" className={m.key === mode ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onMode(m.key)}>
-            {m.label}
+        {MODES.map((x) => (
+          <button key={x.key} type="button" className={x.key === mode ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onMode(x.key)}>
+            {x.label}
           </button>
         ))}
       </div>
-      <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>
-        {travelMin} min {live ? "from where you are" : "door-to-door"} + {STATION_BUFFER} min at the platform → leave by{" "}
-        <span style={{ fontFamily: "var(--mono)", fontStyle: "normal", color: "var(--gold-2)" }}>{londonClock(leaveByMs)}</span> for the {londonClock(depMs)}.
-      </p>
+      <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>{line}</p>
       {children}
     </section>
   );
 }
 
-// Demo-only sensor stand-ins: scrub synthetic NOW across the day, and toggle
-// whether you're on-plan (at home) or wandered off — so the off-plan leave-by
-// behaviour is reviewable from a desk.
-function Simulators({ now, offset, onOffset, where, onWhere }: { now: number; offset: number; onOffset: (n: number) => void; where: "home" | "away"; onWhere: (w: "home" | "away") => void }) {
+// Demo-only sensor stand-ins: scrub synthetic NOW across the day, and choose
+// where you happen to be — so the feasibility behaviour is reviewable from a desk.
+function Simulators({ now, offset, onOffset, pos, onPos }: { now: number; offset: number; onOffset: (n: number) => void; pos: PosKey; onPos: (p: PosKey) => void }) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", padding: "var(--space-3) var(--space-4)", background: "var(--card-2, var(--card))", border: "1px dashed var(--rule)", borderRadius: "var(--radius-md)" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-3)" }}>
@@ -237,14 +225,13 @@ function Simulators({ now, offset, onOffset, where, onWhere }: { now: number; of
           </button>
         </span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-        <span className="cc-eyebrow">You are</span>
-        <button type="button" className={where === "home" ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onWhere("home")}>
-          On plan (home)
-        </button>
-        <button type="button" className={where === "away" ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onWhere("away")}>
-          Wandered off
-        </button>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-2)" }}>
+        <span className="cc-eyebrow">Your position</span>
+        {(Object.keys(POSITIONS) as PosKey[]).map((k) => (
+          <button key={k} type="button" className={k === pos ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }} onClick={() => onPos(k)}>
+            {POSITIONS[k].label}
+          </button>
+        ))}
       </div>
     </section>
   );
