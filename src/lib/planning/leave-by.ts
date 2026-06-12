@@ -48,6 +48,31 @@ export function computeLeaveBy(
   };
 }
 
+// A fixed-departure mode (a lift collecting you at a set time) flips the
+// question: not "when do I leave" but "is this pickup workable". Same arithmetic
+// the other way round — used in PLANNING as you set the pickup (validate live)
+// and in LIVE to show the arranged lift's standing. `mustArriveByMs` already
+// folds in any platform/check-in readiness at the destination.
+export interface PickupCheck {
+  arrivalMs: number; // when this pickup gets you to the fixed point
+  slackMin: number; // minutes spare on arrival (negative = late)
+  feasible: boolean;
+  latestPickupMs: number; // the latest pickup that still makes it
+  minutesLate: number; // 0 when feasible, else how late you'd be
+}
+
+export function checkPickup(pickupMs: number, travelSeconds: number, mustArriveByMs: number): PickupCheck {
+  const arrivalMs = pickupMs + travelSeconds * 1000;
+  const slackMin = Math.round((mustArriveByMs - arrivalMs) / 60_000);
+  return {
+    arrivalMs,
+    slackMin,
+    feasible: arrivalMs <= mustArriveByMs,
+    latestPickupMs: mustArriveByMs - travelSeconds * 1000,
+    minutesLate: slackMin < 0 ? -slackMin : 0,
+  };
+}
+
 // "Leave now" / "Leave in 8 min" / "Left 3 min ago" — the human countdown.
 export function leaveByCountdown(minutesUntilLeave: number): string {
   if (minutesUntilLeave <= 0 && minutesUntilLeave > -1) return "Leave now";

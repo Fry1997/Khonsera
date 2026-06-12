@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeLeaveBy, leaveByCountdown, leaveByUrgency, DEFAULT_BUFFER_MIN } from "./leave-by";
+import { computeLeaveBy, leaveByCountdown, leaveByUrgency, checkPickup, DEFAULT_BUFFER_MIN } from "./leave-by";
 
 const T = (hhmm: string) => new Date(`2026-06-11T${hhmm}:00Z`).getTime();
 
@@ -37,6 +37,34 @@ describe("leaveByUrgency thresholds", () => {
     expect(leaveByUrgency(15)).toBe("urgent");
     expect(leaveByUrgency(0)).toBe("urgent");
     expect(leaveByUrgency(-1)).toBe("breach");
+  });
+});
+
+describe("checkPickup", () => {
+  // Must be at the platform by 09:48 (the 09:56 train, less an 8-min buffer
+  // folded into mustArriveBy). A 16-min drive.
+  const mustArriveBy = T("09:48");
+  const drive = 16 * 60;
+
+  it("passes a pickup with time to spare and reports the slack", () => {
+    const r = checkPickup(T("09:25"), drive, mustArriveBy); // arrive 09:41
+    expect(r.feasible).toBe(true);
+    expect(r.slackMin).toBe(7);
+    expect(r.minutesLate).toBe(0);
+    expect(new Date(r.latestPickupMs).toISOString()).toBe("2026-06-11T09:32:00.000Z");
+  });
+
+  it("fails a pickup that lands you late and says how late", () => {
+    const r = checkPickup(T("09:40"), drive, mustArriveBy); // arrive 09:56
+    expect(r.feasible).toBe(false);
+    expect(r.minutesLate).toBe(8);
+    expect(r.slackMin).toBe(-8);
+  });
+
+  it("the latest workable pickup lands you exactly on time", () => {
+    const r = checkPickup(T("09:32"), drive, mustArriveBy); // arrive 09:48
+    expect(r.feasible).toBe(true);
+    expect(r.slackMin).toBe(0);
   });
 });
 

@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActiveTile, Pass } from "@/components/concierge";
 import type { ActiveUrgency } from "@/components/concierge/active-tile";
 import type { AnchorVM, BoardingVM, TicketVM } from "@/components/concierge";
 import { TodaySpine } from "@/components/today/today-spine";
 import { NextLegMap } from "@/components/today/next-leg-map";
 import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
+import { fetchNavRoute } from "@/lib/actions/nav";
+import { checkPickup } from "@/lib/planning/leave-by";
 
 // Staff-only day-of PREVIEW (demo mode, or /today?demo=1). Renders the real
 // day-of components against a representative fixture — home (a base, no clock) →
@@ -29,6 +31,8 @@ type PosKey = keyof typeof POSITIONS;
 
 const LUTON = { lat: 51.8821, lng: -0.4147 };
 const WELLINGBOROUGH = { lat: 52.2962, lng: -0.6896 };
+
+type Pt = { lat: number; lng: number; name?: string };
 
 const DEP = 35; // train departs Luton (minutes from base)
 const ARR = 60;
@@ -148,9 +152,12 @@ export function TodayDemo() {
       />
 
       {beforeDeparture ? (
-        <MovePicker mode={mode} onMode={setMode} slackMin={slackMin} leaveByMs={leaveByMs} depMs={depMs}>
-          <NextLegMap origin={origin} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview onRoute={(r) => setRouteSeconds(r.duration_s)} />
-        </MovePicker>
+        <>
+          <MovePicker mode={mode} onMode={setMode} slackMin={slackMin} leaveByMs={leaveByMs} depMs={depMs}>
+            <NextLegMap origin={origin} destination={{ ...LUTON, name: "Luton Station" }} mode={navModeForTransition(mode)} preview onRoute={(r) => setRouteSeconds(r.duration_s)} />
+          </MovePicker>
+          <LiftCard origin={POSITIONS.home} destination={{ ...LUTON, name: "Luton Station" }} mustArriveByMs={depMs - STATION_BUFFER * 60_000} depMs={depMs} contact="Dave" />
+        </>
       ) : null}
 
       {now < arrMs ? (
@@ -202,6 +209,93 @@ function MovePicker({ mode, onMode, slackMin, leaveByMs, depMs, children }: { mo
       <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>{line}</p>
       {children}
     </section>
+  );
+}
+
+// A lift is USER-SET — Khonsera never suggests one. You arrange it and set a
+// pickup time; the time is feasibility-checked against the train as you set it
+// (planning), and the arranged lift then shows on the day (live). Same engine.
+function LiftCard({ origin, destination, mustArriveByMs, depMs, contact }: { origin: Pt; destination: Pt; mustArriveByMs: number; depMs: number; contact: string }) {
+  const [on, setOn] = useState(false);
+  return (
+    <section className="cc-active-tile" data-urgency="comfortable" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+        <span className="cc-eyebrow">Lift</span>
+        <button type="button" className={on ? "cc-btn" : "cc-btn cc-btn-gold"} style={{ fontSize: "var(--fs-label)" }} onClick={() => setOn((v) => !v)}>
+          {on ? "Remove lift" : "Arrange a lift"}
+        </button>
+      </div>
+      {on ? (
+        <LiftSetter origin={origin} destination={destination} mustArriveByMs={mustArriveByMs} depMs={depMs} contact={contact} />
+      ) : (
+        <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink-dim)" }}>
+          A lift is yours to set — Khonsera never offers one. Add a pickup time and it&apos;s checked against your train as you set it.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function LiftSetter({ origin, destination, mustArriveByMs, depMs, contact }: { origin: Pt; destination: Pt; mustArriveByMs: number; depMs: number; contact: string }) {
+  const [driveSeconds, setDriveSeconds] = useState<number | null>(null);
+  const [pickupMs, setPickupMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetchNavRoute({
+      origin: { lat: origin.lat, lng: origin.lng, name: origin.name ?? "Home" },
+      destination: { lat: destination.lat, lng: destination.lng, name: destination.name ?? "Station" },
+      mode: "drive",
+    }).then((r) => {
+      if (!active || !r.ok) return;
+      setDriveSeconds(r.value.duration_s);
+      setPickupMs((prev) => prev ?? mustArriveByMs - r.value.duration_s * 1000 - 5 * 60_000); // default: 5 min spare
+    });
+    return () => {
+      active = false;
+    };
+  }, [origin.lat, origin.lng, destination.lat, destination.lng, origin.name, destination.name, mustArriveByMs]);
+
+  if (driveSeconds == null || pickupMs == null) {
+    return <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>Working out the drive…</p>;
+  }
+
+  const check = checkPickup(pickupMs, driveSeconds, mustArriveByMs);
+  const step = (mins: number) => setPickupMs((p) => (p ?? 0) + mins * 60_000);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <span style={{ fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{contact} collects you at</span>
+        <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => step(-5)}>
+          −5
+        </button>
+        <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-h3)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{londonClock(pickupMs)}</span>
+        <button type="button" className="cc-btn" style={{ fontSize: "var(--fs-label)", padding: "2px 8px" }} onClick={() => step(5)}>
+          +5
+        </button>
+      </div>
+      {check.feasible ? (
+        <p style={{ margin: 0, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--ink)" }}>
+          Arrives {londonClock(check.arrivalMs)} — {check.slackMin} min before the {londonClock(depMs)}.{check.slackMin <= 5 ? " Cutting it fine." : ""}
+        </p>
+      ) : (
+        <p
+          style={{
+            margin: 0,
+            padding: "var(--space-2) var(--space-3)",
+            background: "var(--amber-soft)",
+            borderLeft: "3px solid var(--amber)",
+            borderRadius: "var(--radius-sm, 4px)",
+            fontSize: "var(--fs-body)",
+            color: "var(--ink)",
+          }}
+        >
+          That pickup misses the {londonClock(depMs)} by {check.minutesLate} min — latest that works is{" "}
+          <span style={{ fontFamily: "var(--mono)" }}>{londonClock(check.latestPickupMs)}</span>.
+        </p>
+      )}
+    </div>
   );
 }
 
