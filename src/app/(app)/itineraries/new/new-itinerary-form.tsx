@@ -808,7 +808,9 @@ export function NewItineraryBrief({
         setFeedback(feedbackFromError(result.error));
         return;
       }
-      router.push(`/itineraries/${result.value.id}`);
+      // Land on the built plan in the canonical view (threaded spine + map, home
+      // as a base). /plan/[id] is now the single itinerary surface.
+      router.push(`/plan/${result.value.id}`);
       router.refresh();
     });
   };

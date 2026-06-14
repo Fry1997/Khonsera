@@ -277,6 +277,22 @@ Without this, typing "wel" returns "Abbey Well" above "Wellingborough".
 ### Debounce
 The TransportHubPicker debounce is 350ms (not 200ms). The 11k+ hub table with ilike queries needs the extra pause to avoid hammering the server.
 
+## Canonical surface (Edition III P0, 2026-06-14)
+
+The product is being driven to a finished Edition III per **`docs/edition-iii-build-plan.md`** (the
+phase-by-phase tracker — drive it with "push") against **`docs/edition-iii-master.md`** (the spec),
+maximising each API per **`docs/edition-iii-api-capability-map.md`**.
+
+- **`/plan/[id]` is the single canonical itinerary detail surface** (threaded spine + door-to-door
+  JourneyMap + home-as-base). The Brief (`/itineraries/new`) lands there after build.
+- The **legacy `/itineraries/[id]` editor is retired** — its route redirects to `/plan/[id]`;
+  `itinerary-editor.tsx` stays **dormant** in the tree. Don't add features there.
+- **Orphans redirect** to canonical: `/dashboard`→`/today`, `/bookings`→`/wallet`,
+  `/itineraries`(list)→`/plan`, `/flights`→`/itineraries/new`. Originals dormant, not deleted.
+- The **JourneyMap** is built from stops+transitions by the shared `journey-map/from-stops.ts`
+  (`buildJourneyFromStops`), rendered on `/plan/[id]` via the client wrapper `plan/plan-map.tsx`.
+- Home (`start`/`end` stops) renders as a **base** card via `isBase` on `SpineNode`, never an anchor.
+
 ## Brief Page Structure (`/itineraries/new`)
 
 ### Layout (top to bottom)

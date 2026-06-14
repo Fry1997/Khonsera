@@ -38,6 +38,10 @@ logged in the Progress Log.
   TfL, DragonPass, Collinson, Parkopedia/Arrive, Duffel, Booking.com, Airalo, Xero/QuickBooks) are
   each reached through a clean adapter seam with a deterministic mock. Real adapters drop in via env
   vars. See the Procurement table at the foot of this doc.
+- **Max scope per API.** When a phase integrates a provider, build to its **full useful capability
+  surface**, not a thin slice — the integration cost is paid once. Each API phase's Done includes
+  ticking that provider's **Max scope** list in `docs/edition-iii-api-capability-map.md` (or logging
+  why a capability is deferred and which phase claims it).
 - **No mass rename.** Edition III's product vocabulary (Day/Commitment/AnchorCard/Place/Ticket/Note)
   is the *UX* language; the internal model names (`itineraries`/`stops`/`transitions`/`intentions`/
   `gaps`/`resource_states`/`tasks`) and the contract component names stay as-is. Map names in docs,
@@ -78,23 +82,23 @@ rural orchestration.
 
 ## The phases
 
-### Phase 0 — Coherence & the canonical surface  `[ ]`
+### Phase 0 — Coherence & the canonical surface  `[x]` DONE 2026-06-14
 *Make it feel like one product, not three. This is the consolidation discussed before the plan.*
 **Depends on:** nothing. **Do this first.**
-- [ ] Fix the `/plan/[id]` **home-as-base** bug: the `start` stop must render as a base (home card),
-      not a timeless anchor in the spine (matches Today + the legacy editor).
-- [ ] Make **`/plan`** the canonical itinerary surface. Point the Brief's post-build redirect to
-      `/plan/[id]` (now that home renders correctly there).
-- [ ] **Redirect orphans** to their canonical equivalent (reversible — no deletes this phase):
-      `/dashboard`→`/today`, `/bookings`→`/wallet`, `/itineraries`(list)→`/plan`,
-      `/itineraries/[id]`(legacy editor)→`/plan/[id]` after a field-parity check,
-      `/itineraries/[id]/timeline`→`/plan/[id]`, `/flights`→manual capture. Keep
-      `/customers`,`/locations`,`/contacts`,`/tasks`,`/expenses`,`/settings`,`/workspace`,`/wallet`,
-      `/navigate`,`/compare` (wire `/compare` into the decision layer later, P11/P14).
-- [ ] Complete **mobile nav**: surface Wallet + Navigate; ensure every canonical surface is reachable
-      on mobile and desktop with one coherent map.
+- [x] Fix the `/plan/[id]` **home-as-base** bug: `start`/`end` stops now render as a fixed home base
+      card (`isBase` on `SpineNode` + `.cc-base-node`), not an editable/removable anchor.
+- [x] Make **`/plan`** the canonical itinerary surface. Brief's post-build redirect → `/plan/[id]`.
+- [x] **Parity work:** ported the JourneyMap to `/plan/[id]` via a shared builder
+      (`journey-map/from-stops.ts` + client `plan/plan-map.tsx`) so the canonical view is not a
+      downgrade from the legacy editor (door-to-door map + spine + add + import + constraints).
+- [x] **Redirect orphans** (reversible stubs, originals kept dormant): `/dashboard`→`/today`,
+      `/bookings`→`/wallet`, `/itineraries`(list)→`/plan`, `/itineraries/[id]`→`/plan/[id]`,
+      `/itineraries/[id]/timeline`→`/plan/[id]`, `/flights`→`/itineraries/new`. Lingering links
+      (expenses row, week-calendar) repointed to `/plan/[id]`.
+- [x] **Mobile nav**: added Navigate to the mobile overflow (Wallet was already there); desktop
+      sidebar already carried both and none of the orphans.
 **Done when:** one coherent navigation; no duplicate/orphan screens reachable; Brief → built plan
-lands on `/plan/[id]` with home as a base.
+lands on `/plan/[id]` with home as a base. ✓
 
 ### Phase 1 — One unified day + privacy tag (Mode reconciliation)  `[ ]`
 *Edition III D1: there is no work/personal toggle — one blended day; the tag is a privacy boundary.*
@@ -335,4 +339,10 @@ flips its feature from mock to live with no code change.
 
 *(append one line per push: date · phase · what shipped · build/tests state)*
 
-- 2026-06-14 · Plan authored. Inventory complete; Tell/Ask benched (prior push). Next: **Phase 0**.
+- 2026-06-14 · Plan authored. Inventory complete; Tell/Ask benched (prior push).
+- 2026-06-14 · **Phase 0 shipped.** `/plan` is the single canonical itinerary surface: home renders
+  as a base, the JourneyMap is ported onto `/plan/[id]`, the Brief lands there, and
+  `/dashboard·/bookings·/itineraries·/itineraries/[id](+timeline)·/flights` redirect to their
+  canonical equivalents (originals dormant). Navigate added to mobile. Build green · 272 tests pass.
+  Next: **Phase 1** (one unified day + privacy tag). Also: API-capability map added — every API phase
+  must build to *max scope* (see `docs/edition-iii-api-capability-map.md`).

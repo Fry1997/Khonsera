@@ -94,7 +94,7 @@ export function ExpensesRow({
         </div>
         {expense.itinerary ? (
           <Link
-            href={`/itineraries/${expense.itinerary.id}`}
+            href={`/plan/${expense.itinerary.id}`}
             className="small truncate hover:underline"
           >
             {expense.itinerary.label}

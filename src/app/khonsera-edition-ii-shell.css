@@ -607,6 +607,14 @@
 .cc-node-anchor:hover .cc-node-remove, .cc-node-remove:focus-visible { opacity: 1; }
 .cc-node-remove:hover { color: var(--rust); }
 
+/* ---- Base node — the day's home origin / return (not an editable anchor) --- */
+.cc-base-node { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-2) 0; }
+.cc-base-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 11px); letter-spacing: .04em;
+  text-transform: uppercase; color: var(--gold-2); }
+.cc-base-title { font-size: var(--fs-body); color: var(--ink); font-weight: 500; }
+.cc-base-time { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-faint); }
+
 /* ---- Wallet pass delete affordance ---------------------------------------- */
 .cc-pass-wrap { position: relative; }
 .cc-pass-del { position: absolute; top: 10px; right: 10px; z-index: 3; width: 26px; height: 26px;

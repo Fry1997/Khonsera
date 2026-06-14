@@ -20,6 +20,7 @@ const I = {
   case: "M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18",
   tell: "M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4z",
+  navigate: "M3 11l19-9-9 19-2-8-8-2z",
   exit: "M16 17l5-5-5-5M21 12H9M12 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6",
 } as const;
 
@@ -91,6 +92,9 @@ export function MobileAppbar({
 
             <Link href={"/wallet" as Route} className="cc-overflow-row" onClick={() => setOpen(false)}>
               <span className="ic"><Ico d={I.ticket} /></span>Wallet
+            </Link>
+            <Link href={"/navigate" as Route} className="cc-overflow-row" onClick={() => setOpen(false)}>
+              <span className="ic"><Ico d={I.navigate} /></span>Navigate
             </Link>
             <Link href={"/expenses" as Route} className="cc-overflow-row" onClick={() => setOpen(false)}>
               <span className="ic"><Ico d={I.receipt} /></span>Expenses

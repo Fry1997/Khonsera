@@ -199,7 +199,7 @@ export async function WeekCalendar({
                     </span>
                     {r.kind === "stop" ? (
                       <Link
-                        href={`/itineraries/${r.itineraryId}`}
+                        href={`/plan/${r.itineraryId}`}
                         className="truncate text-terra-deep hover:underline"
                         title={r.title}
                       >

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnchorCard, LegCard, GapCard, ScanView } from "@/components/concierge";
+import { formatClock } from "@/components/concierge/types";
 import { LivePass } from "@/components/plan/live-pass";
 import type {
   AnchorVM,
@@ -35,6 +36,8 @@ type LegBetween = { transitionId?: string; itineraryId: string; fromStopId: stri
 export type SpineNode = {
   key: string;
   anchor?: AnchorVM; // a normal anchor node
+  isBase?: boolean; // a home/base node (the `start`/`end` stop) — the day's origin or
+  // return-home. Renders as a fixed home card, not an editable, removable anchor.
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8), ONE rail hop
   // Live status (Darwin) for this hop's boarding station: CRS + planned departure
   // (London HH:MM) + the hop's destination CRS (disambiguates same-minute
@@ -102,7 +105,15 @@ export function PlanSpine({
                 <span className={n.pass ? "cc-dot-leg" : "cc-dot-anchor"} />
               </div>
               <div>
-                {n.pass ? (
+                {n.isBase && n.anchor ? (
+                  <div className="cc-node-anchor cc-base-node">
+                    <span className="cc-base-eyebrow">{n.after ? "Home · start" : "Home"}</span>
+                    <span className="cc-base-title">{n.anchor.place ?? n.anchor.title}</span>
+                    {n.anchor.time ? (
+                      <span className="cc-base-time">by {formatClock(n.anchor.time.from)}</span>
+                    ) : null}
+                  </div>
+                ) : n.pass ? (
                   <div className="cc-node-anchor">
                     <LivePass ticket={n.pass} crs={n.live?.crs} time={n.live?.time} dest={n.live?.dest} docked onShow={openScan} />
                     {n.passDelete ? (

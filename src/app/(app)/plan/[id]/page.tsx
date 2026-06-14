@@ -7,6 +7,8 @@ import { PlanImport } from "@/components/plan/plan-import";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
+import { PlanMap } from "@/components/plan/plan-map";
+import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -61,8 +63,9 @@ type StopRow = {
   duration_minutes: number | null;
   is_time_fixed: boolean | null;
   metadata: Record<string, unknown> | null;
-  location: { name?: string } | null;
-  transport_hub: { code?: string | null } | null;
+  location: { name?: string | null; latitude?: number | null; longitude?: number | null } | null;
+  customer_site: { name?: string | null; latitude?: number | null; longitude?: number | null } | null;
+  transport_hub: { code?: string | null; name?: string | null; latitude?: number | null; longitude?: number | null } | null;
 };
 type TransRow = {
   id: string;
@@ -127,12 +130,12 @@ async function loadSpine(itineraryId: string) {
   return Promise.all([
     supabase
       .from("stops")
-      .select("id, sequence, type, title, start_time, end_time, duration_minutes, is_time_fixed, metadata, location:locations(name), transport_hub:transport_hubs(code)")
+      .select("id, sequence, type, title, start_time, end_time, duration_minutes, is_time_fixed, metadata, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(code, name, latitude, longitude)")
       .eq("itinerary_id", itineraryId)
       .order("sequence"),
     supabase
       .from("transitions")
-      .select("id, from_stop_id, to_stop_id, mode, is_locked, computed_duration_minutes")
+      .select("id, from_stop_id, to_stop_id, mode, is_locked, computed_duration_minutes, overview_polyline")
       .eq("itinerary_id", itineraryId),
     supabase
       .from("intentions")
@@ -362,7 +365,11 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             toStopId: next.entryId,
           };
     }
-    return { key: u.key, anchor: u.anchor, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
+    // Home `start`/`end` stops are the day's base (origin / return-home), not
+    // editable anchors. Flag them so the spine renders a fixed home card.
+    const entryType = stopById.get(u.entryId)?.type;
+    const isBase = entryType === "start" || entryType === "end";
+    return { key: u.key, anchor: u.anchor, isBase, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);
@@ -370,6 +377,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     stops.length === 0 ? "empty" : anyAtRisk ? "at-risk" : stops.length <= 2 ? "sparse" : "threaded";
 
   const title = journey.title || spanLabel(dateStart, dateStart);
+
+  // Door-to-door map — the canonical plan view carries the same JourneyMap the
+  // legacy editor did, built from the (coord-bearing) stops + transition polylines.
+  const journeyMap = buildJourneyFromStops(
+    stops as unknown as StopForMap[],
+    transitions as unknown as TransitionForMap[],
+    { id, eyebrow: `${spanLabel(dateStart, dateStart)} · DOOR TO DOOR`.toUpperCase() },
+  );
 
   return (
     <div className="cc-screen" data-plan-state={planState} style={{ minHeight: "100%" }}>
@@ -397,6 +412,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
               ))}
             </section>
           ) : null}
+
+          {journeyMap ? <PlanMap journey={journeyMap} /> : null}
 
           <PlanConstraints initial={constraints} />
 
