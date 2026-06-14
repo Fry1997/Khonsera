@@ -282,16 +282,26 @@ exists) tracks you on the running service. ✓ for everything buildable now; on-
 **Done when:** the day flags fragility, enters a true disruption state on a break, and tracks you on
 the running service.
 
-### Phase 11 — Recovery / disruption (L3)  `[ ]`
-**Depends on:** P10. **Decision-gate:** *protect-target* (founder's call) + RTJP licence — until set,
-show the **trade-off**, don't rank. **Procurement:** RTJP via RDM (mock until licensed).
-- [ ] Re-planning fires **only on a genuine break**; generate viable alternatives (exclusions
-      filtered).
-- [ ] **Consequence band** showing the outbound+return pair as one unit, with each alternative's live
-      impact as you step through.
-- [ ] Trade-off display now; ranking once protect-target is locked.
-**Done when:** a cancellation yields alternatives with live consequence and the outbound/return pair
-handled as a unit.
+### Phase 11 — Recovery / disruption (L3)  `[~]` in progress (core DONE 2026-06-14)
+**Depends on:** P10. **Routing tools (RTJP dropped):** **Darwin** destination-filtered board (next
+services — live in prod) + **TfL** journey planner (London, free) + **Valhalla** (taxi/drive fallback).
+**RTJP is OUT** — effectively deprecated (the OJP SOAP feed is licence-only/de-listed on RDM) and
+**mission-critical disruption must not hang on a bespoke paid licence**. Deep *route-alternative*
+re-planning → a free self-hosted **OTP/GTFS** task (not RTJP). **Decision-gate:** *protect-target*
+(founder's call) — until set, show the **trade-off**, don't rank.
+- [x] **Re-planning fires only on a genuine break** — a cancelled / severely-delayed (≥16 min) booked
+      train. Pure recovery engine (`src/lib/recovery/engine.ts`, unit-tested ×3): `buildRecoveryOptions`
+      (each alternative's consequence on the next commitment) + `rankFor` (ready for protect-target).
+- [x] **Viable alternatives** — `nextRailServices` (Darwin's destination-filtered board, live in prod;
+      deterministic mock until the key). **Consequence band** = the `RecoveryCard` on `/plan/[id]` under
+      the broken leg: each way-out + "makes your 2pm, 12 min spare" / "reaches it 18 min late".
+- [x] **Trade-off display now** (soonest-first, no silent ranking) — honours the open protect-target.
+- [→ decision] **Ranking** — `rankFor(target)` is built; switches on when the founder sets protect-target.
+- [ ] **Outbound+return pair as one unit** — *(P11, remaining; buildable)* surface the return booking's
+      impact alongside the outbound recovery.
+**Done when:** a cancellation yields alternatives with live consequence + the trade-off; the
+outbound/return pair handled as a unit. ✓ for the core recovery; return-pairing + protect-target
+ranking remain. Build green · 286 tests pass.
 
 ### Phase 12 — Contextual engine core + Weather + running-late (L4 ⭐)  `[ ]`
 **Depends on:** P9 (+P10). **Procurement:** DragonPass (mock); Open-Meteo (free, real).
@@ -565,3 +575,12 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   inline placeholder styles on those surfaces (inline overrides a stylesheet). Tone rule held: calm
   caution carrying consequence, never alarm. Redlines + class-map saved to `docs/design/`. Build green
   · 283 tests pass.
+- 2026-06-14 · **Phase 11 core shipped — recovery on Darwin, NOT RTJP.** RTJP confirmed effectively
+  deprecated (OJP SOAP, licence-only/de-listed on RDM); mission-critical disruption must not hang on a
+  bespoke paid licence, so it's dropped. Built the way-out on tools we have: pure recovery engine
+  (`recovery/engine.ts`, ×3 tests; trade-off + `rankFor` ready), `nextRailServices` via Darwin's
+  destination-filtered board (live in prod + mock), and the `RecoveryCard` consequence band on
+  `/plan/[id]` under a cancelled/severe leg. Trade-off display (no ranking) honours the open
+  protect-target. Design handoff added. **Remaining in P11:** outbound+return pairing (buildable);
+  protect-target ranking (founder decision; `rankFor` ready). Deep route-alternative → free OTP/GTFS
+  later, never RTJP. Build green · 286 tests pass.

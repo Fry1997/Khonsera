@@ -129,6 +129,42 @@ export async function liveDeparture(
   return live;
 }
 
+// Recovery (Phase 11): the next services from `originCrs` heading TO `destCrs` —
+// the ways out when a booked train is cancelled or badly delayed. Uses LDBWS's
+// destination filter; returns scheduled + estimated departure + cancellation, so
+// the recovery engine can build alternatives. Gated (null without the key).
+export type NextService = { std: string; etd: string; isCancelled: boolean; platform?: string };
+
+export async function nextServicesTo(originCrs: string, destCrs: string, count = 6): Promise<NextService[] | null> {
+  const key = darwinKey();
+  if (!key || !originCrs || !destCrs) return null;
+  const url = new URL(`${BASE}/GetDepartureBoard/${originCrs.toUpperCase()}`);
+  url.searchParams.set("numRows", String(Math.max(count, 10)));
+  url.searchParams.set("timeWindow", "240"); // look up to 4h ahead for recovery
+  url.searchParams.set("filterCrs", destCrs.toUpperCase());
+  url.searchParams.set("filterType", "to");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  let json: unknown;
+  try {
+    const res = await fetch(url.toString(), { headers: { "x-apikey": key, accept: "application/json" }, signal: controller.signal });
+    if (!res.ok) return null;
+    json = await res.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+  const data = json as { trainServices?: DarwinService[]; GetStationBoardResult?: { trainServices?: DarwinService[] } };
+  const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
+  if (!Array.isArray(services)) return null;
+  return services
+    .filter((s) => s?.std)
+    .slice(0, count)
+    .map((s) => ({ std: s.std!, etd: s.etd ?? "On time", isCancelled: Boolean(s.isCancelled), platform: s.platform }));
+}
+
 function hhmmToMin(s: string): number {
   const [h, m] = s.split(":").map(Number);
   return Number.isNaN(h) || Number.isNaN(m) ? -1 : h * 60 + m;

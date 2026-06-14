@@ -18,6 +18,8 @@ import { ReadinessPanel } from "@/components/plan/readiness-panel";
 import { tflLegPlan, tflLineStatus, inGreaterLondon, type LatLng, type TflLine } from "@/lib/integrations/tfl";
 import { liveDeparture } from "@/lib/integrations/darwin";
 import { delayConsequence, fragility, cascade } from "@/lib/live/engine";
+import { nextRailServices } from "@/lib/recovery/provider";
+import { buildRecoveryOptions } from "@/lib/recovery/engine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -439,7 +441,20 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
                   delayMin === 999 ? 60 : delayMin,
                 ).text
               : live.label;
-            n.after.liveAlert = { title: live.label, text, state: delayMin >= 16 || delayMin === 999 ? "severe" : "minor" };
+            const severe = delayMin >= 16 || delayMin === 999;
+            n.after.liveAlert = { title: live.label, text, state: severe ? "severe" : "minor" };
+
+            // Recovery (P11) — a cancelled/severely-delayed booked train → the way
+            // out: the next services to your destination + each one's consequence.
+            const destCrs = to?.transport_hub?.code ?? null;
+            if (severe && destCrs && to?.start_time && fromStop.start_time) {
+              const durationMin = Math.round((new Date(to.start_time).getTime() - new Date(fromStop.start_time).getTime()) / 60_000);
+              const { candidates, sample } = await nextRailServices({ originCrs: crs, destCrs, destName: to.title ?? destCrs, afterIso: fromStop.start_time, durationMin });
+              const nextC = stops.find((s) => s.start_time && new Date(s.start_time).getTime() > new Date(to.start_time!).getTime() && s.type !== "start" && s.type !== "end" && s.type !== "accommodation");
+              const commitment = nextC?.start_time ? { name: nextC.title ?? "your next commitment", byIso: nextC.start_time } : null;
+              const options = buildRecoveryOptions(candidates, commitment);
+              if (options.length) n.after.recovery = { options, sample };
+            }
           }
         }
       }

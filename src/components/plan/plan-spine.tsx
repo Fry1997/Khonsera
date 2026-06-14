@@ -18,6 +18,8 @@ import { wallClockToIso } from "@/lib/time-zone";
 import { AccommodationCard } from "@/components/plan/accommodation-card";
 import { NotesPanel } from "@/components/plan/notes-panel";
 import { TflLegPlan } from "@/components/plan/tfl-leg-plan";
+import { RecoveryCard } from "@/components/plan/recovery-card";
+import type { RecoveryOption } from "@/lib/recovery/engine";
 import type { TflLegPlanVM } from "@/lib/integrations/tfl";
 import type { NoteVM } from "@/lib/actions/notes";
 import type { AccommodationDetails } from "@/lib/accommodation/types";
@@ -57,7 +59,7 @@ export type SpineNode = {
   passDelete?: string | null;
   dayStart?: string; // a day divider label ("Day 2 · Thu 26 Jun") on multi-day Events
   after?:
-    | ({ kind: "leg"; leg: LegVM; tflPlan?: TflLegPlanVM; liveAlert?: { title: string; text: string; state: "minor" | "severe" } } & LegBetween)
+    | ({ kind: "leg"; leg: LegVM; tflPlan?: TflLegPlanVM; liveAlert?: { title: string; text: string; state: "minor" | "severe" }; recovery?: { options: RecoveryOption[]; sample: boolean } } & LegBetween)
     | ({ kind: "gap"; gap: GapVM } & LegBetween)
     | null;
 };
@@ -188,6 +190,7 @@ export function PlanSpine({
                           <span className="cc-live-alert-conseq">{n.after.liveAlert.text}</span>
                         </div>
                       ) : null}
+                      {n.after.recovery ? <RecoveryCard options={n.after.recovery.options} sample={n.after.recovery.sample} /> : null}
                       {n.after.tflPlan ? <TflLegPlan data={n.after.tflPlan} /> : null}
                     </>
                   ) : (

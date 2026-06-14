@@ -154,3 +154,13 @@ Open `/plan/[id]` (a built day) and `/today` (with a plan starting tomorrow) —
 live there with real data. Skin against the tokens in `docs/design-tokens.md`; if a value is missing,
 it's a **token request** (add to `globals.css` + the tokens doc), never a one-off hardcode. Hand back
 via the export pack mapped to these names.
+
+## P11 · Recovery (the way out)
+
+- **`RecoveryCard`** 🟡 — `src/components/plan/recovery-card.tsx`, `.cc-recovery` (+ `-head/-eyebrow/`
+  `-note/-list/-opt/-label/-conseq`). Beneath a **cancelled / severely-delayed booked train** on
+  `/plan/[id]`: the consequence band — each viable alternative (`.cc-recovery-opt[data-makes]`) with its
+  label (mono) + impact ("makes your 2pm, 12 min spare" / "reaches it 18 min late"). The "· sample"
+  cue on mock; "the trade-off — choose your priority" until protect-target is set. *Placeholder inline
+  token styles; Design owns `.cc-recovery`* — this is the calm "here's the way out" moment when the day
+  breaks: options legible at a glance, `data-makes="true"` reassuring (sage), the misses quiet not red.
