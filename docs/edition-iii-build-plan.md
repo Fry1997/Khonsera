@@ -558,3 +558,10 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   column isn't populated by the import; no RTT client for live position) → positioned as a
   calling-points-population task + an RTT adapter. Build green · 283 tests pass. Next: **Phase 11
   (Recovery)** — gated on the protect-target + RTJP-licence founder decisions (mock first).
+- 2026-06-14 · **Design round 7 integrated.** Live-spine brand pass over P8–P10 (`for-code-r7`):
+  `khonsera-edition-iii-live.css` (additive, imported last) + the markup reworked to its contract
+  (TfL line board + leg plan, decision-clock `.label/.figure/.for`, rail/tube live-alerts, fragility,
+  day ripple, the Today disruption takeover with `.cc-screen[data-disrupted]` recede). Removed all my
+  inline placeholder styles on those surfaces (inline overrides a stylesheet). Tone rule held: calm
+  caution carrying consequence, never alarm. Redlines + class-map saved to `docs/design/`. Build green
+  · 283 tests pass.

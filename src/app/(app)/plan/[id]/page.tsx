@@ -549,20 +549,22 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           ) : null}
 
           {leaveByIso ? (
-            <p className="cc-decision-clock" style={{ margin: 0, fontFamily: "var(--mono)", fontSize: "var(--fs-label)", color: "var(--gold-2)", letterSpacing: "0.04em" }}>
-              Set off by {londonHHMM(leaveByIso)}{firstDest ? ` for ${firstDest}` : ""}
-            </p>
+            <div className="cc-decision-clock">
+              <span className="label">Set off by</span>
+              <span className="figure">{londonHHMM(leaveByIso)}</span>
+              {firstDest ? <span className="for">for {firstDest}</span> : null}
+            </div>
           ) : null}
 
           {ripple ? (
-            <p className="cc-day-ripple" style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--rust)", fontWeight: 500 }}>
-              {ripple}
-            </p>
+            <div className="cc-day-ripple">
+              <span className="text">{ripple}</span>
+            </div>
           ) : null}
 
           {frag.fragile ? (
-            <p className="cc-fragility" style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--rust)" }}>
-              Tight plan — only {Math.max(0, frag.weakestSlackMin ?? 0)} min into {weakestInto ?? "a connection"}. One delay and the day breaks; add a buffer while you can.
+            <p className="cc-fragility">
+              <strong>Tight plan</strong> — only {Math.max(0, frag.weakestSlackMin ?? 0)} min into {weakestInto ?? "a connection"}. One delay and the day breaks; add a buffer while you can.
             </p>
           ) : null}
 

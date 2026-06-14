@@ -183,10 +183,9 @@ export function PlanSpine({
                         }
                       />
                       {n.after.liveAlert ? (
-                        <div className="cc-live-alert" data-state={n.after.liveAlert.state}
-                          style={{ marginTop: "var(--space-2)", padding: "var(--space-2) var(--space-3)", borderRadius: 6, background: "var(--card)", border: `1px solid ${n.after.liveAlert.state === "severe" ? "var(--rust)" : "var(--rule)"}`, display: "flex", flexDirection: "column", gap: 2 }}>
-                          <span className="cc-eyebrow" style={{ color: n.after.liveAlert.state === "severe" ? "var(--rust)" : "var(--gold-2)" }}>{n.after.liveAlert.title}</span>
-                          <span style={{ fontSize: "var(--fs-label)", color: "var(--ink)" }}>{n.after.liveAlert.text}</span>
+                        <div className="cc-live-alert" data-state={n.after.liveAlert.state}>
+                          <span className="cc-live-alert-title">{n.after.liveAlert.title}</span>
+                          <span className="cc-live-alert-conseq">{n.after.liveAlert.text}</span>
                         </div>
                       ) : null}
                       {n.after.tflPlan ? <TflLegPlan data={n.after.tflPlan} /> : null}

@@ -21,6 +21,16 @@ don't rename. No emojis anywhere (hard rule).
 > look outright. Reference: `docs/design/edition-iii-r6-redlines.md` + `-class-data-map.md`. Build
 > green · 276 tests pass. Status below flips 🟡→✅ for round 6; future phases append new 🟡 entries.
 
+> **Round 7 applied (2026-06-14).** Design's live-spine pass (`for-code-r7`) is **integrated**:
+> `src/app/khonsera-edition-iii-live.css` (additive, imported last). The **P8/P9/P10 surfaces below are
+> now skinned** — markup reworked to the live contract (TfL `-head/-eyebrow` + `.cc-tfl-line[data-state]`
+> dot ramp; TflLegPlan route `.sep`/`.min` + `.cc-tflleg[data-disrupted=state]` + `-alert-status/-conseq`;
+> decision-clock `.label/.figure/.for`; rail `.cc-live-alert -title/-conseq`; fragility `<strong>`; day
+> ripple `.text`; Today `-eyebrow/-title/-item.what` + the `.cc-screen[data-disrupted]` recede). **All my
+> inline placeholder styles on these surfaces were removed** (inline would override the skin). Governing
+> rule held: calm caution that carries consequence, never alarm. Saved redlines + class-map to
+> `docs/design/`. Build green · 283 tests pass.
+
 ---
 
 ## P0 · Coherence

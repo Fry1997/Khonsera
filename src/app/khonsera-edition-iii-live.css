@@ -1,0 +1,190 @@
+/* ============================================================================
+ * KHONSERA · EDITION III — LIVE SPINE & DISRUPTION  ·  P8 · P9 · P10
+ * ----------------------------------------------------------------------------
+ * ADDITIVE. Import LAST, after khonsera-edition-iii.css:
+ *
+ *   …
+ *   import "./khonsera-edition-iii.css";
+ *   import "./khonsera-edition-iii-live.css";   // ← THIS FILE
+ *
+ * Skins the live-data layer (TfL, rail Darwin, the decision-clock and the
+ * disruption cascade) by contract name. No markup/JS/class-name changes;
+ * tokens only; globals.css untouched.
+ *
+ * GOVERNING RULE for the whole family — calm caution that carries consequence,
+ * NEVER alarm. The concierge stays the steady chief-of-staff exactly when
+ * reality isn't. Tone scale (one ramp across every component):
+ *     good/info → sage   ·  minor/late/advise → gold  ·  warn → amber
+ *     severe/suspended → rust (the one alert salt; no pulse, no red-alert)
+ * Consequence ("you'll be 6 min late for X") always reads in ink — the FACT is
+ * calm; only the small status chip carries the colour.
+ * ========================================================================== */
+
+/* shared status-dot ramp ---------------------------------------------------- */
+.cc-tfl-dot, .cc-livedot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+[data-state="good"]   > .cc-tfl-dot, .cc-tfl-line[data-state="good"]   .cc-tfl-dot { background: var(--sage); }
+[data-state="info"]   > .cc-tfl-dot, .cc-tfl-line[data-state="info"]   .cc-tfl-dot { background: var(--ink-faint); }
+[data-state="minor"]  > .cc-tfl-dot, .cc-tfl-line[data-state="minor"]  .cc-tfl-dot { background: var(--gold); }
+[data-state="severe"] > .cc-tfl-dot, .cc-tfl-line[data-state="severe"] .cc-tfl-dot { background: var(--rust); }
+[data-state="suspended"] > .cc-tfl-dot, .cc-tfl-line[data-state="suspended"] .cc-tfl-dot { background: var(--rust); }
+
+/* the "· sample" honesty cue — keep it legible but quiet wherever it appears */
+.cc-sample, .cc-tfl-sample { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-faint); }
+
+/* ---------------------------------------------------------------------------
+ * P8 · TflLineStatus — tfl-line-status.tsx · .cc-tfl · /today (London days)
+ * A quiet board, not an alarm panel. Disrupted lines lead with weight; the
+ * rest are withheld to one calm line.
+ * ------------------------------------------------------------------------- */
+.cc-tfl { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+  padding: var(--space-4-5) var(--space-5); }
+.cc-tfl-head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-3); }
+.cc-tfl-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-dim); }
+/* disrupted lines — the weight sits here */
+.cc-tfl-line { display: grid; grid-template-columns: 14px 1fr auto; align-items: baseline;
+  gap: var(--space-2) var(--space-3); padding: var(--space-2-5) 0; border-top: 1px solid var(--rule); }
+.cc-tfl-line:first-of-type { border-top: none; }
+.cc-tfl-line .cc-tfl-dot { margin-top: 5px; }
+.cc-tfl-name { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15px;
+  letter-spacing: -0.015em; color: var(--ink); }
+.cc-tfl-status { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  grid-column: 3; text-align: right; }
+.cc-tfl-line[data-state="minor"] .cc-tfl-status { color: var(--gold-2); }
+.cc-tfl-line[data-state="severe"] .cc-tfl-status, .cc-tfl-line[data-state="suspended"] .cc-tfl-status { color: var(--rust); }
+.cc-tfl-line[data-state="good"] .cc-tfl-status { color: var(--sage); }
+.cc-tfl-reason { grid-column: 2 / -1; font-size: 13px; line-height: 1.45; color: var(--ink-2);
+  margin-top: 2px; }                                   /* the reason is a calm fact, in ink */
+/* the withheld remainder — one quiet line */
+.cc-tfl-rest { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-dim);
+  padding-top: var(--space-3); margin-top: var(--space-2); border-top: 1px solid var(--rule); }
+/* all-clear — a single calm line, sage tick, no list */
+.cc-tfl-allgood { display: flex; align-items: center; gap: var(--space-2-5); font-size: 14.5px; color: var(--ink-2); }
+.cc-tfl-allgood::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sage); flex: none; }
+
+/* ---------------------------------------------------------------------------
+ * P8 · TflLegPlan — tfl-leg-plan.tsx · .cc-tflleg · /plan/[id] (London legs)
+ * The multimodal route + a quiet live arrivals ticker beneath a transit leg.
+ * ------------------------------------------------------------------------- */
+.cc-tflleg { border-left: 1px solid var(--rule-2); padding: var(--space-1) 0 var(--space-2) var(--space-4);
+  margin-top: var(--space-3); }
+.cc-tflleg-eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: var(--space-2); display: flex; gap: var(--space-2); align-items: baseline; }
+/* the route — walk → line → walk, steps reading as a sequence */
+.cc-tflleg-route { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1-5) var(--space-2); }
+.cc-tflleg-step { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.cc-tflleg-step .min { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.cc-tflleg-route .cc-tflleg-sep { color: var(--ink-faint); }
+/* arrivals — a quiet live ticker */
+.cc-tflleg-arrivals { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2-5);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.cc-tflleg-arrivals .lbl { letter-spacing: 0.1em; text-transform: uppercase; font-size: 9px; color: var(--ink-faint); }
+.cc-tflleg-arr { padding: 2px 8px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.cc-tflleg-arr:first-of-type { border-color: var(--gold-soft); color: var(--gold-2); }   /* the next train */
+
+/* P9 · TfL disruption + consequence on a leg ------------------------------- */
+.cc-tflleg[data-disrupted] { border-left-color: var(--gold); }
+.cc-tflleg[data-disrupted="severe"], .cc-tflleg[data-disrupted="suspended"] { border-left-color: var(--rust); }
+.cc-tflleg-alert { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-3-5); border-radius: 6px; background: var(--gold-tint); }
+.cc-tflleg-alert[data-state="severe"], .cc-tflleg-alert[data-state="suspended"] { background: var(--rust-2); }
+.cc-tflleg-alert-status { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-2); }
+.cc-tflleg-alert[data-state="severe"] .cc-tflleg-alert-status, .cc-tflleg-alert[data-state="suspended"] .cc-tflleg-alert-status { color: var(--rust); }
+.cc-tflleg-alert-status::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.cc-tflleg-alert-conseq { font-size: 13.5px; line-height: 1.45; color: var(--ink); }   /* consequence in ink */
+/* the reroute offer — understated way out */
+.cc-tflleg-reroute { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-2); margin-top: var(--space-1); display: inline-flex; align-items: center; gap: 6px; }
+.cc-tflleg-reroute a, .cc-tflleg-reroute button { color: var(--gold-2); text-decoration: none;
+  border-bottom: 1px solid var(--gold-soft); background: none; border-top: none; border-left: none; border-right: none;
+  padding: 0 0 1px; cursor: pointer; font: inherit; }
+
+/* ---------------------------------------------------------------------------
+ * P9 · Decision-clock — .cc-decision-clock · /plan/[id] (page-level)
+ * The day's single reassuring number. Calm, NOT an alarm — a quiet line with
+ * a mono gold figure.
+ * ------------------------------------------------------------------------- */
+.cc-decision-clock { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-4) var(--space-4-5); background: var(--sand); border: 1px solid var(--rule);
+  border-radius: 8px; }
+.cc-decision-clock .label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--ink-dim); }
+.cc-decision-clock .figure { font-family: var(--mono); font-size: 26px; color: var(--gold-2);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.cc-decision-clock .for { font-size: 14px; color: var(--ink-2); }
+
+/* ---------------------------------------------------------------------------
+ * P9 · Rail live-alert — .cc-live-alert[data-state] · under a booked train leg
+ * Calm caution that carries consequence. minor = gold, severe = rust.
+ * ------------------------------------------------------------------------- */
+.cc-live-alert { display: flex; flex-direction: column; gap: var(--space-1-5);
+  padding: var(--space-3-5) var(--space-4); border-radius: 6px; margin-top: var(--space-2);
+  background: var(--gold-tint); border-left: 2px solid var(--gold); }
+.cc-live-alert[data-state="severe"] { background: var(--rust-2); border-left-color: var(--rust); }
+.cc-live-alert-title { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-2); }
+.cc-live-alert[data-state="severe"] .cc-live-alert-title { color: var(--rust); }
+.cc-live-alert-title::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.cc-live-alert-conseq { font-size: 14px; line-height: 1.45; color: var(--ink); }      /* the act-by, in ink */
+.cc-live-alert-conseq .actby { font-family: var(--mono); color: var(--ink); border-bottom: 1px solid var(--rule-2); }
+
+/* ---------------------------------------------------------------------------
+ * P10 · Fragility line — .cc-fragility · /plan/[id] (near the clock)
+ * The foresight that lets you fix it before it breaks. Calm caution, rust text,
+ * never alarm — no fill, just the steady warning + the offer to add a buffer.
+ * ------------------------------------------------------------------------- */
+.cc-fragility { display: flex; align-items: flex-start; gap: var(--space-2-5);
+  padding: var(--space-3) var(--space-1); font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.cc-fragility::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--rust);
+  flex: none; margin-top: 7px; }
+.cc-fragility strong { color: var(--rust); font-weight: var(--fw-medium); }
+.cc-fragility a, .cc-fragility button { color: var(--gold-2); text-decoration: none;
+  border-bottom: 1px solid var(--gold-soft); background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  border-bottom: 1px solid var(--gold-soft); }
+
+/* ---------------------------------------------------------------------------
+ * P10 · Day ripple — .cc-day-ripple · /plan/[id] (above per-leg alerts)
+ * The whole-day cascade at a glance. Present, a touch of weight, still calm —
+ * it sits above the per-leg alerts as the day-level summary.
+ * ------------------------------------------------------------------------- */
+.cc-day-ripple { display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3-5) var(--space-4-5); border-radius: 8px; background: var(--rust-2);
+  border: 1px solid color-mix(in oklab, var(--rust) 22%, transparent); }
+.cc-day-ripple::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--rust); flex: none; }
+.cc-day-ripple .text { font-size: 14px; line-height: 1.4; color: var(--ink); }       /* the cascade fact, in ink */
+.cc-day-ripple .text strong { color: var(--rust); font-weight: var(--fw-medium); }
+.cc-day-ripple .mins { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------------
+ * P10 · Today disruption banner — today-disruption.tsx · .cc-today-disruption
+ * The day's whole character shifting. It commands the screen (the rest
+ * recedes via .cc-screen[data-disrupted]) yet stays the calm chief-of-staff.
+ * severe = rust, late = gold.
+ * ------------------------------------------------------------------------- */
+.cc-today-disruption { border-radius: 10px; padding: var(--space-5) var(--space-5) var(--space-4);
+  background: var(--card); border: 1px solid var(--gold); border-top: 3px solid var(--gold);
+  box-shadow: var(--shadow); }
+.cc-today-disruption[data-severe] { border-color: var(--rust); border-top-color: var(--rust); }
+.cc-today-disruption-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--gold-2); display: inline-flex; align-items: center; gap: 7px; }
+.cc-today-disruption[data-severe] .cc-today-disruption-eyebrow { color: var(--rust); }
+.cc-today-disruption-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.cc-today-disruption-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 21px;
+  letter-spacing: -0.025em; color: var(--ink); margin-top: var(--space-2); line-height: 1.15; }
+.cc-today-disruption-item { display: flex; align-items: baseline; gap: var(--space-3);
+  margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--rule); }
+.cc-today-disruption-item .when { font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+  font-variant-numeric: tabular-nums; flex: none; }
+.cc-today-disruption-item .what { font-size: 14px; line-height: 1.45; color: var(--ink); }
+.cc-today-disruption-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
+.cc-today-disruption-actions .cc-btn-gold { background: var(--gold); color: #fff; border: 1px solid var(--gold);
+  border-radius: 5px; padding: 11px 18px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13px; }
+.cc-today-disruption[data-severe] .cc-today-disruption-actions .cc-btn-gold { background: var(--rust); border-color: var(--rust); }
+.cc-today-disruption-actions .cc-btn-quiet { background: none; border: none; color: var(--ink-dim);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 11px 6px; cursor: pointer; }
+
+/* when the day is disrupted, the rest of /today recedes — the banner leads */
+.cc-screen[data-disrupted] > *:not(.cc-today-disruption):not(.cc-appbar):not(.cc-tabbar) { opacity: 0.62; }
