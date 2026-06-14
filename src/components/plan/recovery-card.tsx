@@ -22,7 +22,10 @@ export function RecoveryCard({ options, sample }: { options: RecoveryOption[]; s
         {options.map((o) => (
           <li key={o.id} className="cc-recovery-opt" data-makes={o.makesIt ? "true" : "false"} data-return={o.returnNote ? "at-risk" : undefined}
             style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "var(--space-3)", alignItems: "baseline" }}>
-            <span className="cc-recovery-label" style={{ fontFamily: "var(--mono)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{o.label}</span>
+            <span className="cc-recovery-label" style={{ fontFamily: "var(--mono)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+              {o.label}
+              {o.note ? <span className="cc-recovery-via" style={{ display: "block", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-faint)" }}>{o.note}</span> : null}
+            </span>
             <span style={{ display: "flex", flexDirection: "column", gap: "var(--space-0-5)" }}>
               <span className="cc-recovery-conseq" style={{ fontSize: "var(--fs-label)", color: o.makesIt ? "var(--sage, var(--ink))" : "var(--ink)" }}>{o.consequence}</span>
               {o.returnNote ? (

@@ -297,11 +297,20 @@ re-planning → a free self-hosted **OTP/GTFS** task (not RTJP). **Decision-gate
       the broken leg: each way-out + "makes your 2pm, 12 min spare" / "reaches it 18 min late".
 - [x] **Trade-off display now** (soonest-first, no silent ranking) — honours the open protect-target.
 - [→ decision] **Ranking** — `rankFor(target)` is built; switches on when the founder sets protect-target.
-- [ ] **Outbound+return pair as one unit** — *(P11, remaining; buildable)* surface the return booking's
-      impact alongside the outbound recovery.
-**Done when:** a cancellation yields alternatives with live consequence + the trade-off; the
-outbound/return pair handled as a unit. ✓ for the core recovery; return-pairing + protect-target
-ranking remain. Build green · 286 tests pass.
+- [x] **Outbound+return pair as one unit** — the booked return (next locked rail departure downstream)
+      is surfaced on every way-out: a service that lands after it strands you ("the trip's lost"); a
+      tight turnaround is flagged. `bookedReturnDeparture` + engine `returnNote` (+test).
+- [x] **Alternative routes (cross-network detour)** — `src/lib/integrations/otp.ts` (OpenTripPlanner2
+      adapter: pure `planConnection` build + itinerary→`RecoveryCandidate` map, +tests) merged into the
+      band via `nextRailServices`, deduped vs Darwin same-route. Surfaces "11:25 · via Coventry · 1
+      change". **Gated on `OTP_URL`** (a self-hosted JVM — runbook in `docs/otp-self-hosting.md`),
+      inert until stood up; the band degrades to Darwin same-route. *(Infra step, not code: same posture
+      as self-hosting Valhalla/Photon — see capability map. Live GTFS-RT rail replanning via a
+      Darwin→GTFS-RT bridge is a later sub-task; OTP plans the scheduled timetable until then.)*
+**Done when:** a cancellation yields alternatives (same-route + cross-network detours) with live
+consequence + the trade-off; the outbound/return pair handled as a unit. ✓ — code-complete; the OTP
+detours light up the moment the self-hosted instance is pointed at by `OTP_URL`. Protect-target ranking
+remains a founder decision (`rankFor` ready). Build green · 291 tests pass.
 
 ### Phase 12 — Contextual engine core + Weather + running-late (L4 ⭐)  `[ ]`
 **Depends on:** P9 (+P10). **Procurement:** DragonPass (mock); Open-Meteo (free, real).
@@ -440,7 +449,8 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
 
 | Provider | For | Phase | Cost | Lead time |
 |---|---|---|---|---|
-| **Rail Data Marketplace** (Darwin·RTT·RTJP·fares) | live rail, recovery | P9–P11 | free / RTJP paid+licence | start now |
+| **Rail Data Marketplace** (Darwin·RTT·fares) | live rail, recovery | P9–P11 | free (Darwin) | start now |
+| **OpenTripPlanner (self-hosted)** | route-alternative recovery | P11 | free OSS + hosting | infra: stand up a JVM (`docs/otp-self-hosting.md`) — RTJP dropped, replaced by this |
 | **TfL Unified API** | city mobility | P8 | free | minutes (self-serve) |
 | **Open-Meteo** | weather rule | P12, P20 | free | none (keyless) |
 | **DragonPass** | fast-track + lounge | P12–P13 | revenue | apply early |
@@ -454,7 +464,8 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
 ## Open founder decisions (don't block the build — defaults noted)
 
 - **Protect-target** (gates L3 ranking, P11) — until set, recovery shows the trade-off, no ranking.
-- **RTJP no-retailing licence** (P11) — raise through the RDM licence process.
+- ~~RTJP no-retailing licence (P11)~~ **DROPPED** — RTJP/OJP effectively deprecated; route-alternatives
+  now via self-hosted **OTP** (code-complete, gated on `OTP_URL`; `docs/otp-self-hosting.md`).
 - **Barcode reproduction comfort** (already buildable, P2) — a contractual/operational policy call.
 - **eSIM commercial model** (P19) — net-pricing vs pure affiliate (merchant-of-record check).
 
@@ -584,3 +595,13 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   protect-target. Design handoff added. **Remaining in P11:** outbound+return pairing (buildable);
   protect-target ranking (founder decision; `rankFor` ready). Deep route-alternative → free OTP/GTFS
   later, never RTJP. Build green · 286 tests pass.
+- 2026-06-14 · **Phase 11 closed out — return-pairing + OTP alternative-routes (code-complete).**
+  (1) Outbound+return as one unit: `bookedReturnDeparture` finds the next locked rail departure
+  downstream; the engine adds a `returnNote` to every way-out ("lands after your 17:42 return — the
+  trip's lost" / tight-turnaround). (2) Cross-network detours: built the **OpenTripPlanner2** adapter
+  (`integrations/otp.ts` — pure `planConnection` build + itinerary→candidate map, ×4 tests), merged
+  into `nextRailServices` (deduped vs Darwin same-route), surfaced as "via Coventry · 1 change" in the
+  band. Gated on `OTP_URL`; **runbook `docs/otp-self-hosting.md`** (OTP 2.9/Java 25, GB GTFS +
+  Geofabrik, `-Xmx8G`, Caddy → `/otp/gtfs/v1`) — same self-host posture as Valhalla/Photon, inert until
+  stood up. RTJP formally struck from the provider table + founder decisions. Build green · 295 tests
+  pass. Standing infra ask: deploy the OTP instance + set `OTP_URL`.

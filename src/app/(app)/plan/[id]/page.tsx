@@ -471,7 +471,17 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             const destCrs = to?.transport_hub?.code ?? null;
             if (severe && destCrs && to?.start_time && fromStop.start_time) {
               const durationMin = Math.round((new Date(to.start_time).getTime() - new Date(fromStop.start_time).getTime()) / 60_000);
-              const { candidates, sample } = await nextRailServices({ originCrs: crs, destCrs, destName: to.title ?? destCrs, afterIso: fromStop.start_time, durationMin });
+              const { candidates, sample } = await nextRailServices({
+                originCrs: crs,
+                destCrs,
+                destName: to.title ?? destCrs,
+                afterIso: fromStop.start_time,
+                durationMin,
+                // Coords unlock OTP cross-network detours; null-safe so the band
+                // degrades to Darwin same-route when coords/OTP are absent.
+                originCoord: coordOfStop(fromStop),
+                destCoord: coordOfStop(to),
+              });
               const nextC = stops.find((s) => s.start_time && new Date(s.start_time).getTime() > new Date(to.start_time!).getTime() && s.type !== "start" && s.type !== "end" && s.type !== "accommodation");
               const commitment = nextC?.start_time ? { name: nextC.title ?? "your next commitment", byIso: nextC.start_time } : null;
               // Outbound+return as one unit (P11): the booked return is the next
