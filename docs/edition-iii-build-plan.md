@@ -42,6 +42,14 @@ logged in the Progress Log.
   surface**, not a thin slice — the integration cost is paid once. Each API phase's Done includes
   ticking that provider's **Max scope** list in `docs/edition-iii-api-capability-map.md` (or logging
   why a capability is deferred and which phase claims it).
+- **Entity depth — replace the operator's app.** For every entry type (flight, hotel, car hire,
+  parking, dining, meeting…), the bar is: **service the travel-day need so completely the operator's
+  own app becomes redundant** — no opening the Virgin app for the flight or the Hilton app for the
+  stay. As each field is added, the test is "does leaving this out send the user elsewhere?" An entity
+  is not "handled" until it meets its depth in `docs/edition-iii-entity-catalogue.md` (operate /
+  refer-purchase / honest-limit marked for every row of its operator-app-replacement checklist).
+  *Capture flowing ≠ the entity serviced* — thin cards (e.g. P2 accommodation) are placeholders with a
+  depth phase behind them.
 - **No mass rename.** Edition III's product vocabulary (Day/Commitment/AnchorCard/Place/Ticket/Note)
   is the *UX* language; the internal model names (`itineraries`/`stops`/`transitions`/`intentions`/
   `gaps`/`resource_states`/`tasks`) and the contract component names stay as-is. Map names in docs,
@@ -323,7 +331,28 @@ flips its feature from mock to live with no code change.
 
 ---
 
-## Procurement table (start these in parallel with the build — never block on them)
+## Entity-depth track (ED) — replace the operator's app, one entity at a time
+
+Runs **parallel to the capability phases** (it needs the day-object + capture, not the live engine).
+Each ED phase takes one entry type to its full depth in `docs/edition-iii-entity-catalogue.md` — the
+operator-app-replacement checklist answered (operate / refer-purchase / honest-limit per row), the
+structured schema built (no free-text dumping grounds), day-object hooks + readiness items wired, and
+the max-scope APIs connected (or mocked). **Done when:** the user would have no reason to open the
+operator's own app for that entity's travel-day needs.
+
+- [ ] **ED1 — Accommodation** (replace Hilton/Booking). Structured `accommodation_bookings` (retire
+      `room_details: string`), cancellation/free-cancel-until, board + breakfast window → leave-by,
+      true entrance, parking, folio→expenses, loyalty, compose-to-hotel. *Deepens the P2 placeholder.*
+- [ ] **ED2 — Flight** (replace Virgin/BA). PNR, boarding pass reproduced (PDF417/BCBP), terminal/gate
+      + bag-drop/boarding/gate-close → decision-clock, seat, baggage, status/gate-change → reroute.
+      Couples to L4 (fast-track/lounge) + AeroDataBox.
+- [ ] **ED3 — Car hire** · [ ] **ED4 — Parking** · [ ] **ED5 — Dining** · [ ] **ED6 — Meeting depth**
+      (attendees + materials, on top of P3 notes) · [ ] **ED7 — Lounge/fast-track, eSIM, coach, ferry**.
+
+Sequencing note: **ED1 (Accommodation) is the next build action** once the doc pass is locked —
+it corrects the thinnest, highest-traffic entity and sets the template all other ED phases follow.
+
+---
 
 | Provider | For | Phase | Cost | Lead time |
 |---|---|---|---|---|
@@ -367,4 +396,10 @@ flips its feature from mock to live with no code change.
   captured + geocoded, `PlanCalendarImport` on `/plan/[id]`). **Barcode byte-identity verification
   deferred** — principled: pipeline stores `.text` not `.bytes`, no raster decoder, a blind gate
   risks rejecting working tickets; core verbatim-reproduce integrity already holds. Build green ·
-  272 tests pass. Next: **Phase 3** (notes as a first-class entity).
+  272 tests pass.
+- 2026-06-14 · **Entity-depth rule adopted** (founder). Only trains had real domain depth; everything
+  else (esp. accommodation) was a thin wrapper. Added `docs/edition-iii-entity-catalogue.md` (the
+  "replace the operator's app" rule + accommodation fully worked + flight/car/parking/dining stubs),
+  bound the rule into Standing Rules, and added the **Entity-depth track (ED1–ED7)**. Next build
+  action: **ED1 — deepen Accommodation** (structured model replacing `room_details`), then resume
+  Phase 3.

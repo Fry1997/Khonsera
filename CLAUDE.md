@@ -281,7 +281,15 @@ The TransportHubPicker debounce is 350ms (not 200ms). The 11k+ hub table with il
 
 The product is being driven to a finished Edition III per **`docs/edition-iii-build-plan.md`** (the
 phase-by-phase tracker — drive it with "push") against **`docs/edition-iii-master.md`** (the spec),
-maximising each API per **`docs/edition-iii-api-capability-map.md`**.
+maximising each API per **`docs/edition-iii-api-capability-map.md`** and taking each entity to full
+depth per **`docs/edition-iii-entity-catalogue.md`**.
+
+**The entity-depth rule:** for every entry type (flight, hotel, car hire, parking, dining…), service
+the travel-day need so completely the **operator's own app becomes redundant** — never open the Virgin
+app for the flight or the Hilton app for the stay. Operate everything; refer only the purchase;
+reproduce legitimately-held credentials (the barcode rule), and be honest about what's locked. An
+entity is **not "handled" until it meets its catalogue depth** — capture *flowing* ≠ the entity
+*serviced* (the P2 accommodation card is a thin placeholder; ED1 deepens it next).
 
 - **`/plan/[id]` is the single canonical itinerary detail surface** (threaded spine + door-to-door
   JourneyMap + home-as-base). The Brief (`/itineraries/new`) lands there after build.
