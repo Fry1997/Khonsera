@@ -26,6 +26,10 @@ logged in the Progress Log.
   adapter is **env-gated** and the build NEVER blocks on a key (the "booking is the one stub"
   doctrine, generalised — see Standing Rules).
 - **Persistence survives refresh/navigation**; **personal-mode data never leaves the RLS boundary**.
+- **Any phase that adds UI ships a Design handoff entry** in `docs/design-handoff-edition-iii.md`
+  (component · where · states · data · what Design owns). Code authors functional + on-token +
+  contract-named; **Design is the front-end team** and takes it to brand finish — Code never calls UI
+  "done" in the visual sense.
 - Commit + push to the working branch; tick this file's boxes; append to the Progress Log; update
   `CLAUDE.md` if institutional knowledge changed.
 - State the user-visible increment plainly (what can a person now do that they couldn't before).
@@ -187,14 +191,16 @@ sorted/missing state and actionable gaps. ✓ Build green · 276 tests pass.
 **Done when:** the day before a trip, a single review surfaces leave-by + route + buffers + fragility
 in one calm view. ✓ Build green · 276 tests pass.
 
-### Phase 6 — Timing made visible (L1 finish)  `[ ]`
+### Phase 6 — Timing made visible (L1 finish)  `[~]` partial 2026-06-14
 **Depends on:** P0.
-- [ ] **Buffer badges on the spine**: surface the existing feasibility classification
-      (comfortable/tight/insufficient) on each leg/commitment.
-- [ ] **Transition-pattern inference** (Direct / Drop-and-go / Hub-to-hub) from geometry + timing,
-      surfaced as a **confirmable proposal** (never silently assumed).
-- [ ] **True-door precision**: resolve real entrances (station entrance/platform, office door, car
-      park) so the final leg is honest — extend hub/place coords beyond centroid where data allows.
+- [x] **Buffer badges on the spine**: every leg now shows its feasibility classification —
+      `.cc-leg-buffer` on `LegCard` (Comfortable / Tight · Xm / Insufficient), fed from
+      `checkLegFeasibility` via `LegVM.buffer`. (Design handoff logged.)
+- [ ] **Transition-pattern inference** (Direct / Drop-and-go / Hub-to-hub) — *deferred.* The UI slot
+      exists (`.cc-leg-pattern`, hardcoded "Direct"); the classifier (geometry + timing → confirmable
+      proposal) is a focused follow-on.
+- [ ] **True-door precision** — *deferred.* Needs entrance-level coord data beyond centroid; pairs
+      with the data work when a richer hub/place coords source is wired.
 **Done when:** the spine shows classified buffers; transition patterns are proposed and confirmable;
 arrival resolves to a true door where known.
 
@@ -453,3 +459,9 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   readiness counts → a calm verdict; surfaced on `/today` as the "Tomorrow" card for a plan beginning
   tomorrow. Build green · 276 tests pass. Next: **Phase 6 — Timing made visible** (buffer badges on
   the spine + transition-pattern inference + true-door; also back-wires breakfast→leave-by for ED1).
+- 2026-06-14 · **Design-handoff rule adopted + P6 (buffers) shipped.** Founder: Design is the
+  front-end team — every UI phase now ships a handoff in `docs/design-handoff-edition-iii.md` (Code
+  builds functional + on-token; Design skins). Caught up the back-catalogue (P0–P6 components) in that
+  doc. P6 partial: **buffer badges** on every spine leg (Comfortable/Tight·Xm/Insufficient) via
+  `LegVM.buffer` ← `checkLegFeasibility`. Deferred: transition-pattern inference + true-door precision.
+  Build green · 276 tests pass. Next: continue P6 follow-ons or **Phase 8 — TfL** (first live-data API).

@@ -101,6 +101,9 @@ export type LegVM = {
   bookingStatus: BookingStatus;
   atRisk?: boolean; // engine flagged a tight/late connection (§5.9)
   riskNote?: string; // the calm one-line caution
+  // Buffer classification on this leg (P6) — a calm badge on every leg, not only
+  // the risky ones; slack present for 'tight'.
+  buffer?: { state: "ok" | "tight" | "late" | "unknown"; slackMinutes?: number };
 };
 
 // One scheduled-transport option in the §7 comparison (two bracket the target).

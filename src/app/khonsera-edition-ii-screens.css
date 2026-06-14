@@ -116,6 +116,13 @@
   letter-spacing: -0.01em; color: var(--ink); }            /* the ONLY rank key */
 .cc-leg-pattern { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--ink-dim); }
+/* P6 — buffer classification badge (calm on every leg) */
+.cc-leg-head-right { display: inline-flex; align-items: baseline; gap: var(--space-2); flex: none; }
+.cc-leg-buffer { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 1px var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--rule-2); color: var(--ink-faint); }
+.cc-leg-buffer[data-buffer="ok"] { color: var(--gold-2); border-color: var(--gold-soft); }
+.cc-leg-buffer[data-buffer="tight"] { color: var(--ochre, var(--gold-2)); border-color: var(--gold-soft); }
+.cc-leg-buffer[data-buffer="late"] { color: var(--rust); border-color: var(--rust); }
 /* the sub-leg run: walk → train → taxi, hairline connected */
 .cc-subseq { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2-5,10px); }
 .cc-subleg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }

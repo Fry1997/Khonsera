@@ -227,7 +227,18 @@ export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: strin
     >
       <div className="cc-leg-head">
         <span className="cc-leg-total">{total} door-to-door</span>
-        <span className="cc-leg-pattern">Direct</span>
+        <span className="cc-leg-head-right">
+          {leg.buffer && leg.buffer.state !== "unknown" ? (
+            <span className="cc-leg-buffer" data-buffer={leg.buffer.state}>
+              {leg.buffer.state === "ok"
+                ? "Comfortable"
+                : leg.buffer.state === "tight"
+                  ? `Tight · ${leg.buffer.slackMinutes ?? 0}m`
+                  : "Insufficient"}
+            </span>
+          ) : null}
+          <span className="cc-leg-pattern">Direct</span>
+        </span>
       </div>
       <div className="cc-subseq">
         <span className="cc-subleg">{LEG_LABEL[leg.mode]}</span>

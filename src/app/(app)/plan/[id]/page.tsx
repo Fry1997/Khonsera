@@ -242,6 +242,10 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       bookingStatus: tr.is_locked ? "booked_in_app" : "manual",
       atRisk,
       riskNote: atRisk && "message" in feas ? feas.message : undefined,
+      buffer: {
+        state: feas.state,
+        slackMinutes: "slackMinutes" in feas ? feas.slackMinutes : undefined,
+      },
     };
   };
 
