@@ -726,3 +726,17 @@ Newest at the bottom of each section.
   for leave-earlier; a minted voucher + note for fast-track); dismiss persists so it never pesters.
   Full *book-and-ticketise onto a Pass* is the P14 connections framework; live security-queue
   enrichment + multi-point corridor weather are positioned P12-scope follow-ons behind their vendor/data.
+
+- **D51 — P13 contextual rules: lounge · parking · gate-change (same framework).** Three more rules on
+  the P12 engine — proving the framework: a function + a line in `evaluateContext` each. **Lounge** is
+  the fast-track *mirror* (the same airport buffer: thin < 75 min → fast-track, long ≥ 90 → lounge) via
+  a **Collinson** mock pass. **Parking** fires on a drive/taxi leg into an airport when a **Parkopedia**
+  mock occupancy outlook (a daily curve peaking late-morning) predicts ≥ 85% full → reserve a space.
+  **Gate-change** restates the in-terminal walk + time-in-hand; its live gate comes from **AeroDataBox**
+  (free 600/mo, env-gated `AERODATABOX_KEY`, mock until keyed) diffed against the plan's last-known gate
+  (`metadata.gate` + flight number). All accept-actions apply through the seam (voucher/pass/reservation
+  + a prep note); all dismiss-verdicts persist (never pester). *Honest positioning:* gate-change's
+  continuous **day-of poll + persisted last-seen-gate** loop is a day-of follow-on (the source + rule +
+  diff are built and fire against a metadata baseline now); booking→ticketise-onto-a-Pass is P14; live
+  security-queue + multi-point weather remain P12-scope max-API follow-ons. New env vars:
+  `COLLINSON_KEY`, `PARKOPEDIA_KEY`, `AERODATABOX_KEY`.

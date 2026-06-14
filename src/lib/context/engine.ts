@@ -16,7 +16,10 @@ export type NudgeUrgency = "info" | "soon" | "now";
 // handler + the later booking framework (P14) can act on it precisely.
 export type NudgeAction =
   | { kind: "leave-earlier"; minutes: number; reason: string }
-  | { kind: "expedite-security"; airport: string; provider: "dragonpass" };
+  | { kind: "expedite-security"; airport: string; provider: "dragonpass" }
+  | { kind: "book-lounge"; airport: string; windowMin: number; boardingIso: string; provider: "collinson" }
+  | { kind: "prebook-parking"; site: string; fromIso: string; toIso: string; provider: "parkopedia" }
+  | { kind: "gate-reroute"; airport: string; fromGate: string; toGate: string; walkMin: number };
 
 export type Nudge = {
   key: string; // stable per (rule, subject) so a verdict persists across reloads
@@ -120,12 +123,101 @@ export function runningLateExpedite(input: FlightBufferInput, nowIso: string): N
   };
 }
 
+// ───────────────────────── long layover → lounge ─────────────────────────
+
+// The mirror image of the fast-track rule: when the airport buffer is GENEROUS,
+// the pinch-point isn't security — it's a long, dull wait. Offer a lounge sized
+// to the window. (Thin < 75 → fast-track; long ≥ 90 → lounge; in between, quiet.)
+export type LoungeInput = {
+  flightStopId: string;
+  airport: string;
+  dwellMin: number; // time on the ground before boarding
+  boardingIso: string;
+};
+const LOUNGE_MIN_DWELL = 90;
+
+export function loungeForLayover(input: LoungeInput, nowIso: string): Nudge | null {
+  if (input.dwellMin < LOUNGE_MIN_DWELL) return null;
+  const hrs = Math.floor(input.dwellMin / 60);
+  const mins = input.dwellMin % 60;
+  const span = hrs ? `${hrs}h${mins ? ` ${mins}m` : ""}` : `${mins} min`;
+  return {
+    key: `lounge:${input.flightStopId}`,
+    rule: "layover-lounge",
+    message:
+      `You've about ${span} at ${input.airport} before boarding. A lounge turns the wait into ` +
+      `downtime — quiet seats, food and wifi, sized to your window.`,
+    actionLabel: "Find a lounge",
+    action: { kind: "book-lounge", airport: input.airport, windowMin: input.dwellMin, boardingIso: input.boardingIso, provider: "collinson" },
+    urgency: urgencyFor(input.boardingIso, nowIso),
+  };
+}
+
+// ───────────────────────── car park likely full → pre-book ─────────────────────────
+
+export type ParkingInput = {
+  legId: string;
+  site: string; // "Gatwick North Terminal car park"
+  predictedOccupancyPct: number; // from Parkopedia outlook (mock until keyed)
+  departIso: string; // when you set off / park
+  untilIso: string; // when you'd retrieve the car (trip end)
+};
+const PARKING_FULL_PCT = 85;
+
+export function parkingLikelyFull(input: ParkingInput, nowIso: string): Nudge | null {
+  if (input.predictedOccupancyPct < PARKING_FULL_PCT) return null;
+  return {
+    key: `parking:${input.legId}`,
+    rule: "parking-prebook",
+    message:
+      `${input.site} is likely full when you arrive (~${Math.round(input.predictedOccupancyPct)}% booked). ` +
+      `Reserving a space now guarantees it — and pre-booked is usually cheaper than the gate rate.`,
+    actionLabel: "Pre-book parking",
+    action: { kind: "prebook-parking", site: input.site, fromIso: input.departIso, toIso: input.untilIso, provider: "parkopedia" },
+    urgency: urgencyFor(input.departIso, nowIso),
+  };
+}
+
+// ───────────────────────── gate changed → reroute the walk ─────────────────────────
+
+// Fires only when a live gate change is present (data-gated on a flight-status
+// feed we don't have yet — the rule is built + tested, the SIGNAL is the
+// deferral). Given the change, restate the walk + the time still in hand.
+export type GateChangeInput = {
+  flightStopId: string;
+  airport: string;
+  fromGate: string;
+  toGate: string;
+  walkMin: number; // in-terminal walk between the gates
+  boardingIso: string;
+};
+
+export function gateChangeReroute(input: GateChangeInput, nowIso: string): Nudge | null {
+  if (!input.toGate || input.toGate === input.fromGate) return null;
+  const inHand = Math.round((ms(input.boardingIso) - ms(nowIso)) / 60_000) - input.walkMin;
+  const tail =
+    inHand >= 0
+      ? `It's about ${input.walkMin} min walk — you've ~${inHand} min in hand after it, so head over when you're ready.`
+      : `It's about ${input.walkMin} min walk — boarding's close, best to make your way now.`;
+  return {
+    key: `gate:${input.flightStopId}:${input.toGate}`,
+    rule: "gate-change",
+    message: `Gate changed at ${input.airport}: ${input.fromGate} to ${input.toGate}. ${tail}`,
+    actionLabel: "Show the way",
+    action: { kind: "gate-reroute", airport: input.airport, fromGate: input.fromGate, toGate: input.toGate, walkMin: input.walkMin },
+    urgency: "now",
+  };
+}
+
 // ───────────────────────── the framework ─────────────────────────
 
 export type ContextInputs = {
   nowIso: string;
   weatherLegs: WeatherLegInput[];
   flightBuffers: FlightBufferInput[];
+  lounges: LoungeInput[];
+  parkings: ParkingInput[];
+  gateChanges: GateChangeInput[];
 };
 
 const URGENCY_RANK: Record<NudgeUrgency, number> = { now: 0, soon: 1, info: 2 };
@@ -141,6 +233,18 @@ export function evaluateContext(inputs: ContextInputs): Nudge[] {
   }
   for (const fb of inputs.flightBuffers) {
     const n = runningLateExpedite(fb, inputs.nowIso);
+    if (n) out.push(n);
+  }
+  for (const lg of inputs.lounges) {
+    const n = loungeForLayover(lg, inputs.nowIso);
+    if (n) out.push(n);
+  }
+  for (const pk of inputs.parkings) {
+    const n = parkingLikelyFull(pk, inputs.nowIso);
+    if (n) out.push(n);
+  }
+  for (const gc of inputs.gateChanges) {
+    const n = gateChangeReroute(gc, inputs.nowIso);
     if (n) out.push(n);
   }
   return out.sort((a, b) => URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency]);

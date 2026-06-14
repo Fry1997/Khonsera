@@ -112,6 +112,7 @@ status. **Deferred:** in-app booking.
 **Max scope:** flight **status**; **terminal + gate** → the **in-terminal walk routing** and the
 **gate-change reroute** rule; **aircraft/airport** metadata. **MVP:** status + gate. **Deferred:**
 swap to a webhook provider (Cirium/FlightAware) when polling volume grows.
+**P13 gate — DONE (mock+gated):** `integrations/aerodatabox.ts` `flightDepartureStatus` (current gate/terminal/status), diffed vs the plan's last-known gate → the gate-change reroute. Real on `AERODATABOX_KEY`; continuous day-of poll loop positioned.
 
 ### DragonPass · revenue · P12 (fast-track ⭐) + P13 (lounge)
 **Max scope (the flagship mechanism):**
@@ -122,6 +123,7 @@ swap to a webhook provider (Cirium/FlightAware) when polling volume grows.
 **MVP:** fast-track for one UK airport (mock until keyed) — **DONE (P12, mock)**: `integrations/dragonpass.ts`
 returns a QR-voucher; real `/v2/orders` order POST drops in behind the same shape when keyed.
 **Deferred:** full lounge catalogue (P13).
+**P13 lounge — DONE (mock):** `integrations/collinson.ts` `bookLounge` mints a lounge-pass QR shape for the long-layover rule; real catalogue + SmartDelay behind the same seam when keyed.
 
 ### Collinson (Priority Pass / LoungeKey) · revenue · P13 (+P11)
 **Max scope:** 1,800+ **lounges**; **meet-and-assist** → the **tight-connection** rule; **transfers /
@@ -145,7 +147,7 @@ beyond the buffer-baseline. No official UK feed exists. **MVP:** buffer-baseline
 - **On-street pay** (RingGo / ParkMobile) → pay without a third app.
 - **Reserve** (YourParkingSpace) → book the bay in advance; **airport + rural** parking.
 - One Arrive commercial relationship spans 90+ countries.
-**MVP:** find + occupancy for the contextual rule. **Deferred:** in-app pay + reserve (P14 connector).
+**MVP:** find + occupancy for the contextual rule — **DONE (P13, mock)**: `integrations/parkopedia.ts` `parkingOutlook` (predicted occupancy) drives the car-park-full rule; `reserveParking` mints a reservation on accept. **Deferred:** real find-data + in-app pay (P14 connector / keyed).
 
 ### Rideshare — Uber / FREE NOW / Bolt · revenue · P14
 **Max scope:** **price + ETA estimate** → the "**a £12 taxi unlocks the meeting**" cost-intelligence

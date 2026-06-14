@@ -586,16 +586,72 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       };
     });
   // A flight anchor carries its airport buffer as the gap between arriving at the
-  // airport (start_time) and the flight departing (end_time).
-  const nudgeFlights = stops
-    .filter((s) => s.type.includes("flight") && s.start_time && s.end_time && new Date(s.end_time).getTime() > new Date(s.start_time).getTime())
+  // airport (start_time) and the flight departing (end_time). The SAME buffer
+  // drives two mirror rules: thin → fast-track (P12), long → lounge (P13).
+  const flightStops = stops.filter(
+    (s) => s.type.includes("flight") && s.start_time && s.end_time && new Date(s.end_time!).getTime() > new Date(s.start_time!).getTime(),
+  );
+  const airportLabel = (s: StopRow) => s.title ?? s.transport_hub?.name ?? "the airport";
+  const nudgeFlights = flightStops.map((s) => ({
+    flightStopId: s.id,
+    airport: airportLabel(s),
+    flightDepartIso: s.end_time!,
+    arriveAirportIso: s.start_time!,
+  }));
+  const nudgeLounges = flightStops.map((s) => ({
+    flightStopId: s.id,
+    airport: airportLabel(s),
+    dwellMin: Math.round((new Date(s.end_time!).getTime() - new Date(s.start_time!).getTime()) / 60_000),
+    boardingIso: s.end_time!,
+  }));
+
+  // Parking: a drive/taxi leg arriving at an airport on a flight day → pre-book.
+  const tripEndIso = stops[stops.length - 1]?.end_time ?? stops[stops.length - 1]?.start_time ?? `${dateEnd}T18:00:00`;
+  const nudgeParkings = nodes
+    .filter((n) => n.after?.kind === "leg")
+    .map((n) => n.after as Extract<SpineNode["after"], { kind: "leg" }>)
+    .filter((after) => {
+      const toStop = stopById.get(after.toStopId);
+      return (after.leg.mode === "drive" || after.leg.mode === "taxi") && !!toStop?.type.includes("flight");
+    })
+    .map((after) => {
+      const fromStop = stopById.get(after.fromStopId);
+      const toStop = stopById.get(after.toStopId)!;
+      return {
+        legId: after.leg.id,
+        site: `${airportLabel(toStop)} parking`,
+        arriveIso: toStop.start_time ?? fromStop?.end_time ?? nowIso,
+        departIso: fromStop?.end_time ?? fromStop?.start_time ?? nowIso,
+        untilIso: tripEndIso,
+      };
+    });
+
+  // Gate change: the live gate comes from AeroDataBox (mock until keyed); we diff
+  // it against the gate the plan last knew (metadata.gate). Needs a flight number
+  // (metadata.flight_number/service_number) + a baseline gate to diff — flights
+  // without those simply don't check. (The continuous day-of poll + last-seen
+  // diff is the positioned day-of follow-on.)
+  const nudgeGateFlights = flightStops
+    .filter((s) => (s.metadata?.flight_number || s.metadata?.service_number) && s.metadata?.gate)
     .map((s) => ({
       flightStopId: s.id,
-      airport: s.title ?? s.transport_hub?.name ?? "the airport",
-      flightDepartIso: s.end_time!,
-      arriveAirportIso: s.start_time!,
+      airport: airportLabel(s),
+      flightNumber: String(s.metadata?.flight_number ?? s.metadata?.service_number),
+      baselineGate: String(s.metadata?.gate),
+      walkMin: Number(s.metadata?.gate_walk_min ?? 7),
+      boardingIso: s.end_time!,
+      dateIso: s.start_time!,
     }));
-  const nudges = await loadNudges({ itineraryId: id, nowIso, legs: nudgeLegs, flights: nudgeFlights });
+
+  const nudges = await loadNudges({
+    itineraryId: id,
+    nowIso,
+    legs: nudgeLegs,
+    flights: nudgeFlights,
+    lounges: nudgeLounges,
+    parkings: nudgeParkings,
+    gateFlights: nudgeGateFlights,
+  });
 
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.

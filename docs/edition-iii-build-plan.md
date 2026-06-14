@@ -334,13 +334,25 @@ security-queue enrichment (Qsensor/FlightQueue — vendor-select, sharpens the b
 corridor weather sampling are **P12-scope max-API** items behind their data/vendor; the full
 **book-and-ticketise** the voucher onto a Pass is the **P14** connections framework.
 
-### Phase 13 — Contextual engine: lounge · parking · gate-change (L4)  `[ ]`
+### Phase 13 — Contextual engine: lounge · parking · gate-change (L4)  `[x]` DONE 2026-06-14
 **Depends on:** P12. **Procurement:** Collinson/DragonPass (lounge), Parkopedia/Arrive (parking) — mocks.
-- [ ] **Long layover / early arrival → lounge** sized to the window.
-- [ ] **Car park likely full → pre-booked alternative** (Parkopedia live + predicted occupancy, mock).
-- [ ] **Gate changed → reroute the in-terminal walk** and restate the time in hand.
+Three more rules on the P12 framework (a function + a line each) — same `PlanNudges`/`NudgeCard` surface.
+- [x] **Long layover → lounge** — `loungeForLayover` (the fast-track mirror: thin buffer < 75 →
+      fast-track, long ≥ 90 → lounge, sized to the window). **Collinson mock** (`integrations/collinson.ts`,
+      env-gated `COLLINSON_KEY`) → a lounge-pass QR shape; accept mints it onto the flight's prep notes.
+- [x] **Car park likely full → pre-book** — `parkingLikelyFull` on a drive/taxi leg into an airport.
+      **Parkopedia mock** (`integrations/parkopedia.ts`, env-gated `PARKOPEDIA_KEY`): `parkingOutlook`
+      predicts occupancy (a daily curve peaking late-morning) → fires ≥ 85%; accept reserves a space.
+- [x] **Gate changed → reroute the walk** — `gateChangeReroute` restates the in-terminal walk + the time
+      still in hand. Live gate from **AeroDataBox** (`integrations/aerodatabox.ts`, free 600/mo, env-gated
+      `AERODATABOX_KEY`, mock until keyed) diffed against the gate the plan last knew (`metadata.gate` +
+      `flight_number`/`service_number`). Fires only on a real difference. *(Positioned follow-on, day-of:
+      the continuous poll + persisted last-seen-gate loop — needs the live day-of loop; the source +
+      rule + diff are built now and fire against a metadata baseline.)*
 **Done when:** lounge, parking-full, and gate-change rules each produce a confirmable action behind
-their provider seams.
+their provider seams. ✓ — lounge + parking fire on real conditions with mock providers; gate-change has
+its real source (AeroDataBox) + rule + diff, with the day-of poll loop positioned. Build green · 304
+tests (context engine ×9). Design handoff folded into the consolidated recovery+care round (below).
 
 ### Phase 14 — Connections framework + booking stub (L5)  `[ ]`
 **Depends on:** P4 (readiness gaps feed it), P12/P13 (lounge/parking rules invoke it).
@@ -629,3 +641,14 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   / a minted voucher), dismiss never pesters. `PlanNudges`→`NudgeCard` on `/plan/[id]`. Design handoff
   added. Build green · **300 tests**. *User-visible:* the day now looks ahead — "heavy rain, leave 20
   min earlier" and "thin airport buffer, get fast-track", each a calm confirmable prompt.
+- 2026-06-14 · **Phase 13 DONE — lounge · parking · gate-change (the framework proves out).** Three more
+  rules, a function + a line each: **long-layover → lounge** (the fast-track *mirror* — same airport
+  buffer, thin→fast-track / long→lounge; **Collinson** mock pass), **car-park full → pre-book** (a
+  drive/taxi leg into an airport + **Parkopedia** mock occupancy ≥85% → reserve), **gate-change →
+  reroute** (live gate from **AeroDataBox** free-tier mock, diffed vs the plan's last-known gate →
+  restate the walk + time in hand). All accept→seam (pass/reservation/voucher + prep note), all
+  dismiss persist. New env: `COLLINSON_KEY`, `PARKOPEDIA_KEY`, `AERODATABOX_KEY`. Build green · **304
+  tests** (context engine ×9). *Deferrals positioned:* gate-change day-of poll loop (day-of), book→Pass
+  (P14). **Design checkpoint reached** → packaged **Round 8** (the deviation & care layer: recovery band
+  + the six nudges, two card states + one band) in `docs/design-handoff-edition-iii.md` for one
+  consolidated brand pass.

@@ -189,3 +189,57 @@ via the export pack mapped to these names.
   - *Design owns `.cc-nudges` / `.cc-nudge-done`* (the open card already has a brand class). This is the
     chief-of-staff quietly looking ahead: helpful, never nagging, dismissible, and once you act it
     settles into a calm confirmation, not a trophy. The fast-track "· sample" cue shows while mocked.
+
+## P13 follow-ons (same `PlanNudges` / `NudgeCard` surface)
+Three more rules, no new component shapes — they render through the existing `NudgeCard` (open) and
+`.cc-nudge-done` (accepted). Skinning those two states covers all six rules.
+- **Long-layover → lounge** — "You've about 2h 30m at Gatwick before boarding. A lounge turns the wait
+  into downtime…" · "Find a lounge". (The mirror of fast-track: same airport buffer, opposite end.)
+- **Car-park full → pre-book** — "Gatwick parking is likely full when you arrive (~90% booked). Reserving
+  now guarantees it…" · "Pre-book parking".
+- **Gate change → reroute** — "Gate changed at Gatwick: 12 to 55. About 8 min walk — you've ~32 min in
+  hand…" · "Show the way". (urgency `now`; the only nudge that's reactive, not foresight.)
+
+---
+
+# DESIGN ROUND 8 (request) — The deviation & care layer  ·  P11 + P12 + P13
+
+**One coherent thing to skin:** everything Khonsera surfaces when the day *deviates from plan* or *needs
+looking after*. Round 7 brand-passed the live spine (status, decision-clock, fragility, Today takeover).
+This round is the layer that sits on top of it: **the way out** (recovery) and **the quiet foresight**
+(contextual nudges). It's a small, finite component set carrying a lot of the product's soul — this is
+where Khonsera stops being a timeline and becomes a chief-of-staff.
+
+### The surfaces (all live on `/plan/[id]` with real data)
+| Component | File | Contract classes | States to skin |
+|---|---|---|---|
+| **Recovery band** | `plan/recovery-card.tsx` | `.cc-recovery` (+ `-head/-eyebrow/-note/-list/-opt/-label/-conseq/-return/-via`) | open band; per-option `data-makes=true|false`; `data-return=at-risk`; the `· sample` cue |
+| **Contextual nudge (open)** | `concierge` `NudgeCard` (wrapped by `plan/plan-nudges.tsx`) | `.cc-nudges`, existing `NudgeCard` (gold-tint) | one proposal + action + "Not now"; "Working…" busy |
+| **Contextual nudge (accepted)** | `plan/plan-nudges.tsx` | `.cc-nudge-done` (+ `-mark`, `data-rule`) | the quiet "Done" confirmation that doesn't vanish |
+
+Six rules flow through the two nudge states (weather, fast-track, lounge, parking, gate-change, +the
+recovery return/detour notes) — so the skin is **two card states + one band**, not fifteen things.
+
+### The tone (the whole point)
+- **Calm caution that carries consequence — never alarm.** Rust only at genuine severity; the consequence
+  always lands in ink ("the trip's lost", "you'll miss the 09:40"), never a klaxon. The recovery band's
+  `data-makes=true` should *reassure* (sage), the misses stay quiet (not red).
+- **Foresight feels different from reaction.** The nudges are a calm hand on the shoulder *ahead* of time
+  (gold-tint, unhurried); the gate-change + recovery band are the *moment-of* (a touch more weight, still
+  composed). Let the skin distinguish "looking ahead" from "handling it now".
+- **Once acted, it settles.** `.cc-nudge-done` is a confirmation, not a trophy — quiet, present, final.
+- **Honesty cue:** `· sample` / "(sample)" appears wherever a provider is still mocked — keep it legible
+  but secondary; it disappears when the real key flows.
+
+### How to preview
+Open a built day on `/plan/[id]`. Nudges sit beneath the fragility line; the recovery band sits under a
+cancelled/severely-delayed booked train leg. Weather + lounge/parking nudges fire on real conditions
+(rain on the leave-home leg; a long airport dwell; a flight-day drive). Fast-track fires on a thin
+airport buffer. All providers are mocked (so they show with `· sample`) — the shapes are final.
+
+### Owned vs done
+- **Code has done:** the functional behaviour, the contract classes/data-attrs above, on-token
+  placeholder styling, the copy (Khonsera voice, no emoji), all states wired to real/mock data.
+- **Design owns:** `.cc-recovery*`, `.cc-nudges`/`.cc-nudge-done*` — the brand skin, the foresight-vs-
+  reaction distinction, the severity colour discipline. Add a stylesheet imported **after**
+  `khonsera-edition-iii-live.css` (the round-7 layer); flag any missing value as a **token request**.

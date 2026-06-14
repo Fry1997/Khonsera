@@ -4,10 +4,24 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
-import { evaluateContext, type Nudge, type NudgeAction, type WeatherLegInput, type FlightBufferInput } from "@/lib/context/engine";
+import {
+  evaluateContext,
+  type Nudge,
+  type NudgeAction,
+  type WeatherLegInput,
+  type FlightBufferInput,
+  type LoungeInput,
+  type ParkingInput,
+  type GateChangeInput,
+} from "@/lib/context/engine";
 import { corridorForecast } from "@/lib/integrations/open-meteo";
 import { bookFastTrack } from "@/lib/integrations/dragonpass";
+import { bookLounge } from "@/lib/integrations/collinson";
+import { parkingOutlook, reserveParking } from "@/lib/integrations/parkopedia";
+import { flightDepartureStatus } from "@/lib/integrations/aerodatabox";
 import { createNote } from "@/lib/actions/notes";
+
+const hhmm = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(iso));
 
 // Context-engine action layer (Phase 12). Computes the live nudge set for a day
 // (weather + buffer signals → engine), filters out anything the traveller has
@@ -29,15 +43,24 @@ type LegFact = {
   isFirstLeaveHome: boolean;
 };
 type FlightFact = { flightStopId: string; airport: string; flightDepartIso: string; arriveAirportIso: string };
+type LoungeFact = { flightStopId: string; airport: string; dwellMin: number; boardingIso: string };
+type ParkingFact = { legId: string; site: string; arriveIso: string; departIso: string; untilIso: string };
+// A flight to check for a live gate change. The baseline gate (last known, from
+// metadata) is diffed against AeroDataBox's current gate; a difference fires the
+// reroute rule.
+type GateFlightFact = { flightStopId: string; airport: string; flightNumber: string; baselineGate: string; walkMin: number; boardingIso: string; dateIso: string };
 
 // Compute + merge. The page passes the day's leg/flight facts (it already has the
-// stops loaded); we fetch weather only for the leave-home leg (one call) and run
-// the engine, then drop nudges with a stored verdict.
+// stops loaded); we fetch weather only for the leave-home leg (one call), enrich
+// parking with a Parkopedia outlook, run the engine, then drop verdicted nudges.
 export async function loadNudges(args: {
   itineraryId: string;
   nowIso: string;
   legs: LegFact[];
   flights: FlightFact[];
+  lounges?: LoungeFact[];
+  parkings?: ParkingFact[];
+  gateFlights?: GateFlightFact[];
 }): Promise<NudgeVM[]> {
   const supabase = await createClient();
 
@@ -59,7 +82,34 @@ export async function loadNudges(args: {
     arriveAirportIso: f.arriveAirportIso,
   }));
 
-  const nudges = evaluateContext({ nowIso: args.nowIso, weatherLegs, flightBuffers });
+  const lounges: LoungeInput[] = (args.lounges ?? []).map((l) => ({
+    flightStopId: l.flightStopId,
+    airport: l.airport,
+    dwellMin: l.dwellMin,
+    boardingIso: l.boardingIso,
+  }));
+
+  // Parking outlook (Parkopedia, mock until keyed) → predicted occupancy per site.
+  const parkings: ParkingInput[] = await Promise.all(
+    (args.parkings ?? []).map(async (p) => {
+      const outlook = await parkingOutlook({ site: p.site, arriveIso: p.arriveIso });
+      return { legId: p.legId, site: p.site, predictedOccupancyPct: outlook.predictedOccupancyPct, departIso: p.departIso, untilIso: p.untilIso };
+    }),
+  );
+
+  // Gate change (AeroDataBox, mock until keyed): fetch the current gate, fire only
+  // when it actually differs from the gate the plan last knew.
+  const gateChanges: GateChangeInput[] = (
+    await Promise.all(
+      (args.gateFlights ?? []).map(async (g): Promise<GateChangeInput | null> => {
+        const status = await flightDepartureStatus({ flightNumber: g.flightNumber, dateIso: g.dateIso });
+        if (!status?.gate || status.gate === g.baselineGate) return null;
+        return { flightStopId: g.flightStopId, airport: g.airport, fromGate: g.baselineGate, toGate: status.gate, walkMin: g.walkMin, boardingIso: g.boardingIso };
+      }),
+    )
+  ).filter((g): g is GateChangeInput => g !== null);
+
+  const nudges = evaluateContext({ nowIso: args.nowIso, weatherLegs, flightBuffers, lounges, parkings, gateChanges });
   if (!nudges.length) return [];
 
   const { data: states } = await supabase
@@ -121,7 +171,37 @@ export async function setNudgeVerdict(input: z.input<typeof setSchema>): Promise
         stopId,
         kind: "prep",
         title: `Fast-track booked — ${action.airport}`,
-        body: `Khonsera: ${voucher.lane}. Ref ${voucher.reference}, valid until ${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(voucher.validToIso))}.${voucher.sample ? " (sample)" : ""}`,
+        body: `Khonsera: ${voucher.lane}. Ref ${voucher.reference}, valid until ${hhmm(voucher.validToIso)}.${voucher.sample ? " (sample)" : ""}`,
+      });
+    } else if (action.kind === "book-lounge") {
+      const stopId = nudgeKey.split(":")[1];
+      const pass = await bookLounge({ airport: action.airport, boardingIso: action.boardingIso, windowMin: action.windowMin });
+      actionResult = pass;
+      await createNote({
+        itineraryId,
+        stopId,
+        kind: "prep",
+        title: `Lounge booked — ${pass.loungeName}`,
+        body: `Khonsera: ${pass.loungeName} at ${action.airport}. Ref ${pass.reference}, access until ${hhmm(pass.validToIso)}.${pass.sample ? " (sample)" : ""}`,
+      });
+    } else if (action.kind === "prebook-parking") {
+      const reservation = await reserveParking({ site: action.site, fromIso: action.fromIso, toIso: action.toIso });
+      actionResult = reservation;
+      await createNote({
+        itineraryId,
+        kind: "prep",
+        title: `Parking reserved — ${action.site}`,
+        body: `Khonsera: space held at ${action.site}. Ref ${reservation.reference}.${reservation.sample ? " (sample)" : ""}`,
+      });
+    } else if (action.kind === "gate-reroute") {
+      // Informational (no booking) — acknowledge by noting the new gate + walk.
+      const stopId = nudgeKey.split(":")[1];
+      await createNote({
+        itineraryId,
+        stopId,
+        kind: "prep",
+        title: `Gate ${action.toGate} — ${action.airport}`,
+        body: `Khonsera: head to gate ${action.toGate} (was ${action.fromGate}), about ${action.walkMin} min walk.`,
       });
     }
   }

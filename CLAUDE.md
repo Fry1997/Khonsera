@@ -72,15 +72,19 @@ Three pure, unit-tested engines drive the day-of intelligence; each is fed by a 
   outbound/return as one unit) + `rankFor` (waits on a founder protect-target). Ways-out from Darwin's
   destination-filtered board + **OTP** cross-network detours (gated `OTP_URL`, inert until self-hosted —
   `docs/otp-self-hosting.md`). `rankFor` is built but OFF until protect-target is set.
-- **Context care** (`src/lib/context/engine.ts`, P12): threshold rules → confirmable `NudgeCard`
-  (`PlanNudges`). **weather→leave-earlier** on real keyless **Open-Meteo**; **running-late→fast-track**
-  on **DragonPass** mock (gated `DRAGONPASS_KEY`). Verdicts persist in `nudge_states` (mig 0036,
-  owner-only RLS); nudges themselves are never stored, always re-derived. Accept applies via the seam
-  (a prep note / a minted voucher); dismiss never pesters.
+- **Context care** (`src/lib/context/engine.ts`, P12–P13): threshold rules → confirmable `NudgeCard`
+  (`PlanNudges`). Six rules: **weather→leave-earlier** (real keyless **Open-Meteo**),
+  **running-late→fast-track** (**DragonPass** mock), **long-layover→lounge** (**Collinson** mock — the
+  fast-track mirror: same airport buffer, thin<75→fast-track, long≥90→lounge), **car-park-full→pre-book**
+  (**Parkopedia** mock outlook), **gate-change→reroute** (**AeroDataBox** gate, mock, diffed vs the
+  plan's last-known gate). Verdicts persist in `nudge_states` (mig 0036, owner-only RLS); nudges are
+  never stored, always re-derived. Accept applies via the seam (a prep note / a minted voucher/pass/
+  reservation); dismiss never pesters. Adding a rule = a function + a line in `evaluateContext`.
 
 **Provider gating rule:** every external adapter self-gates on its env var and returns null/mock when
 unset — the build NEVER blocks on a key, and an unset key shows honest mock with a "· sample" cue, not
-a false alarm. New env vars: `OTP_URL`, `OTP_GRAPHQL_PATH?`, `DRAGONPASS_KEY`, `OPEN_METEO_URL?`.
+a false alarm. New env vars: `OTP_URL`, `OTP_GRAPHQL_PATH?`, `DRAGONPASS_KEY`, `COLLINSON_KEY`,
+`PARKOPEDIA_KEY`, `AERODATABOX_KEY`, `OPEN_METEO_URL?`.
 
 ## Mandatory: Keep docs/ updated
 

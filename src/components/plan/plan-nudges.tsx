@@ -56,7 +56,18 @@ export function PlanNudges({ itineraryId, nudges }: { itineraryId: string; nudge
 }
 
 function doneLabel(n: NudgeVM): string {
-  if (n.action?.kind === "leave-earlier") return `Noted — leaving ${n.action.minutes} minutes earlier. It's on your prep.`;
-  if (n.action?.kind === "expedite-security") return `Fast-track sorted for ${n.action.airport}. The voucher's on your prep notes.`;
-  return "Done.";
+  switch (n.action?.kind) {
+    case "leave-earlier":
+      return `Noted — leaving ${n.action.minutes} minutes earlier. It's on your prep.`;
+    case "expedite-security":
+      return `Fast-track sorted for ${n.action.airport}. The voucher's on your prep notes.`;
+    case "book-lounge":
+      return `Lounge booked at ${n.action.airport}. The pass is on your prep notes.`;
+    case "prebook-parking":
+      return `Space reserved at ${n.action.site}. The booking's on your prep notes.`;
+    case "gate-reroute":
+      return `Noted — gate ${n.action.toGate}. The walk's on your prep notes.`;
+    default:
+      return "Done.";
+  }
 }

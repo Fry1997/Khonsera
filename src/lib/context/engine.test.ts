@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   weatherLeaveEarlier,
   runningLateExpedite,
+  loungeForLayover,
+  parkingLikelyFull,
+  gateChangeReroute,
   evaluateContext,
   type CorridorWeather,
   type WeatherLegInput,
@@ -59,7 +62,39 @@ describe("context engine — running late → expedite", () => {
   });
 });
 
+describe("context engine — long layover → lounge", () => {
+  it("offers a lounge only when the buffer is generous (the fast-track mirror)", () => {
+    const base = { flightStopId: "F1", airport: "Gatwick (LGW)", boardingIso: "2026-07-01T09:00:00Z" };
+    expect(loungeForLayover({ ...base, dwellMin: 60 }, now)).toBeNull(); // short → fast-track territory
+    const n = loungeForLayover({ ...base, dwellMin: 150 }, now)!;
+    expect(n.action).toMatchObject({ kind: "book-lounge", windowMin: 150 });
+    expect(n.message).toContain("2h 30m");
+  });
+});
+
+describe("context engine — parking likely full", () => {
+  const base = { legId: "L1", site: "Gatwick North car park", departIso: "2026-07-01T07:00:00Z", untilIso: "2026-07-03T18:00:00Z" };
+  it("stays quiet with spaces, fires when likely full", () => {
+    expect(parkingLikelyFull({ ...base, predictedOccupancyPct: 60 }, now)).toBeNull();
+    const n = parkingLikelyFull({ ...base, predictedOccupancyPct: 90 }, now)!;
+    expect(n.action).toEqual({ kind: "prebook-parking", site: base.site, fromIso: base.departIso, toIso: base.untilIso, provider: "parkopedia" });
+    expect(n.message).toContain("90%");
+  });
+});
+
+describe("context engine — gate change", () => {
+  const base = { flightStopId: "F1", airport: "LGW", fromGate: "12", walkMin: 8, boardingIso: "2026-07-01T06:40:00Z" };
+  it("ignores a non-change, restates the walk + time in hand on a real change", () => {
+    expect(gateChangeReroute({ ...base, toGate: "12" }, now)).toBeNull();
+    const n = gateChangeReroute({ ...base, toGate: "55" }, now)!; // boarding 40m out, 8m walk → 32 in hand
+    expect(n.urgency).toBe("now");
+    expect(n.message).toContain("12 to 55");
+    expect(n.message).toContain("32 min in hand");
+  });
+});
+
 describe("evaluateContext", () => {
+  const noExtras = { lounges: [], parkings: [], gateChanges: [] };
   it("collects fired rules most-urgent first", () => {
     const nudges = evaluateContext({
       nowIso: now,
@@ -67,9 +102,22 @@ describe("evaluateContext", () => {
       flightBuffers: [
         { flightStopId: "F1", airport: "LGW", flightDepartIso: "2026-07-01T06:30:00Z", arriveAirportIso: "2026-07-01T05:40:00Z" },
       ],
+      ...noExtras,
     });
     expect(nudges).toHaveLength(2); // calm leg dropped
     expect(nudges[0].urgency).toBe("now"); // the imminent flight buffer leads
     expect(nudges[0].rule).toBe("running-late-expedite");
+  });
+
+  it("runs the P13 rules through the same framework", () => {
+    const nudges = evaluateContext({
+      nowIso: now,
+      weatherLegs: [],
+      flightBuffers: [],
+      lounges: [{ flightStopId: "F1", airport: "LGW", dwellMin: 120, boardingIso: "2026-07-01T10:00:00Z" }],
+      parkings: [{ legId: "L1", site: "LGW car park", predictedOccupancyPct: 92, departIso: "2026-07-01T07:00:00Z", untilIso: "2026-07-03T18:00:00Z" }],
+      gateChanges: [{ flightStopId: "F1", airport: "LGW", fromGate: "1", toGate: "9", walkMin: 6, boardingIso: "2026-07-01T10:00:00Z" }],
+    });
+    expect(nudges.map((n) => n.rule).sort()).toEqual(["gate-change", "layover-lounge", "parking-prebook"]);
   });
 });
