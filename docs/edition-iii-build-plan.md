@@ -119,17 +119,24 @@ lands on `/plan/[id]` with home as a base. ✓
 **Done when:** a single unified day shows everything; work/personal reads as a tag; no toggle; RLS
 boundary intact. ✓ Build green · 272 tests pass.
 
-### Phase 2 — Capture completion (L0)  `[ ]`
+### Phase 2 — Capture completion (L0)  `[~]` mostly DONE 2026-06-14
 **Depends on:** P0.
-- [ ] **Manual accommodation card** in `PlanAdd` (check-in-from / check-out-by as constraints, hotel
-      picker, ref, price, room) — parity with the brief's accommodation card.
-- [ ] **Calendar auto-import**: turn read-only Google Calendar events into **confirmable proposals**
-      (infer-never-manufacture) that land as commitments on confirm; resolve messy locations to a
-      Place. Never auto-insert.
-- [ ] **Barcode round-trip verification**: after decode→store, re-encode and **assert byte-identity**;
-      on mismatch fall back to the original PDF. Make the guarantee explicit + tested.
-**Done when:** all four capture methods (email, manual, calendar, barcode) produce confirmable
-structured cards; barcode round-trip is asserted in a test.
+- [x] **Manual accommodation card** in `PlanAdd` — a "Stay" kind with hotel picker + check-in-from /
+      check-out-by (constraint language); `addManualAnchor` gained an `accommodation` kind → an
+      `accommodation` stop with the check-in/out window. (Ref/price/room are minor follow-ons.)
+- [x] **Calendar import** as **confirmable proposals**: `googleListEvents` now captures `location`;
+      `loadCalendarProposals` + `importCalendarEvents` (actions) + `PlanCalendarImport` panel on
+      `/plan/[id]` list calendar events over the day, user ticks which land as appointments; the
+      location string is geocoded by `addManualAnchor`'s address path. Nothing auto-inserts.
+- [ ] **Barcode round-trip verification** — **DEFERRED (principled).** The pipeline stores zxing's
+      `.text`, not raw `.bytes`; there's no raster decoder in deps to read a bwip-js re-encode back;
+      and a blind verify-gate could **reject working tickets** without real RSP-6 data to validate
+      against. The core integrity principle already holds (decoded payload stored **verbatim** and
+      re-encoded as-is, never rebuilt from fields). Real verification needs: capture `.bytes`, add a
+      raster decoder, and validate against real tickets + a gate — a dedicated task, not a blind gate.
+**Done when:** the four capture methods (email, manual, calendar, barcode) produce confirmable
+structured cards. ✓ for email/manual/calendar; barcode capture works, byte-identity *verification*
+deferred. Build green · 272 tests pass.
 
 ### Phase 3 — Notes as a first-class entity  `[ ]`
 **Depends on:** P0.
@@ -354,4 +361,10 @@ flips its feature from mock to live with no code change.
   `.eq("mode")` view-filter) is gone; `activeMode` is now the user's primary mode (from workspace
   type), used only as a default tag + nav variant. Added a `ModeTag` on the Plan list and an in-context
   `PlanModeFlip` on `/plan/[id]`; RLS boundary untouched. Deferred: per-row tags on tasks/contacts.
-  Build green · 272 tests pass. Next: **Phase 2** (capture completion).
+  Build green · 272 tests pass.
+- 2026-06-14 · **Phase 2 mostly shipped.** Manual **accommodation** card ("Stay") in PlanAdd +
+  `addManualAnchor` accommodation kind; **calendar import** as confirmable proposals (location now
+  captured + geocoded, `PlanCalendarImport` on `/plan/[id]`). **Barcode byte-identity verification
+  deferred** — principled: pipeline stores `.text` not `.bytes`, no raster decoder, a blind gate
+  risks rejecting working tickets; core verbatim-reproduce integrity already holds. Build green ·
+  272 tests pass. Next: **Phase 3** (notes as a first-class entity).

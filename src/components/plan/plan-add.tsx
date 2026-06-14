@@ -19,7 +19,7 @@ import {
 // Transport as a STANDALONE fact (a train/flight from A to B at a time — no
 // fixed anchor required first).
 
-type Kind = "appointment" | "place" | "transport";
+type Kind = "appointment" | "place" | "transport" | "accommodation";
 type TMode = "train" | "flight";
 type Hub = { id: string | null; label: string | null };
 
@@ -46,6 +46,12 @@ export function PlanAdd({
   const [arriveBy, setArriveBy] = useState("");
   const [leaveBy, setLeaveBy] = useState("");
 
+  // accommodation fields (check-in-from / check-out-by — constraints, not events)
+  const [checkInDate, setCheckInDate] = useState(journeyDate);
+  const [checkInTime, setCheckInTime] = useState("15:00");
+  const [checkOutDate, setCheckOutDate] = useState(journeyDate);
+  const [checkOutTime, setCheckOutTime] = useState("11:00");
+
   // transport fields
   const [tmode, setTmode] = useState<TMode>("train");
   const [from, setFrom] = useState<Hub>({ id: null, label: null });
@@ -62,6 +68,7 @@ export function PlanAdd({
     setTitle(""); setPlace(null); setArriveBy(""); setLeaveBy("");
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
+    setCheckInDate(journeyDate); setCheckInTime("15:00"); setCheckOutDate(journeyDate); setCheckOutTime("11:00");
     setError(null);
   }
 
@@ -99,6 +106,26 @@ export function PlanAdd({
         departTime: depart,
         arriveTime: arrive,
         reference: reference || null,
+      }).then(done);
+      return;
+    }
+
+    if (kind === "accommodation") {
+      if (!place?.label) {
+        setError("Pick or name the hotel.");
+        return;
+      }
+      setPending(true);
+      const ci = wallClockToIso(checkInDate, checkInTime) || null;
+      const co = wallClockToIso(checkOutDate, checkOutTime) || null;
+      void addManualAnchor({
+        itineraryId: journeyId,
+        kind: "accommodation",
+        title: place.label,
+        locationId: place.kind === "location" ? place.location_id : null,
+        customerSiteId: place.kind === "customer_site" ? place.customer_site_id : null,
+        iso: ci,
+        leaveIso: co,
       }).then(done);
       return;
     }
@@ -142,9 +169,9 @@ export function PlanAdd({
             </header>
 
             <div className="cc-kind-row">
-              {(["appointment", "place", "transport"] as Kind[]).map((k) => (
+              {(["appointment", "place", "transport", "accommodation"] as Kind[]).map((k) => (
                 <button key={k} type="button" className="cc-kind-chip" data-active={kind === k ? "" : undefined} onClick={() => setKind(k)}>
-                  {k === "appointment" ? "Appointment" : k === "place" ? "Place" : "Transport"}
+                  {k === "appointment" ? "Appointment" : k === "place" ? "Place" : k === "transport" ? "Transport" : "Stay"}
                 </button>
               ))}
             </div>
@@ -181,6 +208,42 @@ export function PlanAdd({
                   <span className="cc-var-label">Booking ref (optional)</span>
                   <input type="text" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. MC287441" />
                 </label>
+              </>
+            ) : kind === "accommodation" ? (
+              <>
+                {/* A stay is a CONSTRAINT, not an event: check-in-from / check-out-by
+                    (handover — accommodation is a window the day plans around). */}
+                <div className="cc-time-field">
+                  <span className="cc-var-label">Hotel</span>
+                  <PlacePicker
+                    customers={customers}
+                    customerSites={customerSites}
+                    locations={locations}
+                    value={place}
+                    onChange={setPlace}
+                    placeholder="Search the hotel, or type its name"
+                  />
+                </div>
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">Check-in from</span>
+                    <input type="date" value={checkInDate} onChange={(e) => setCheckInDate(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Time</span>
+                    <input type="time" value={checkInTime} onChange={(e) => setCheckInTime(e.target.value)} />
+                  </label>
+                </div>
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">Check-out by</span>
+                    <input type="date" value={checkOutDate} onChange={(e) => setCheckOutDate(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Time</span>
+                    <input type="time" value={checkOutTime} onChange={(e) => setCheckOutTime(e.target.value)} />
+                  </label>
+                </div>
               </>
             ) : (
               <>

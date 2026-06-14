@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PlanAdd } from "@/components/plan/plan-add";
 import type { PlacePickerLocation } from "@/components/place-picker";
 import { PlanImport } from "@/components/plan/plan-import";
+import { PlanCalendarImport } from "@/components/plan/plan-calendar-import";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
@@ -438,6 +439,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           lastStopId={stops.length ? stops[stops.length - 1].id : null}
           lastStopLabel={stops.length ? (stops[stops.length - 1].title ?? "your day") : "your day"}
         />
+        <PlanCalendarImport itineraryId={id} />
       </div>
     </div>
   );

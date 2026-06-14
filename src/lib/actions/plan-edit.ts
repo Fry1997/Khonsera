@@ -192,7 +192,7 @@ import { createLocation } from "@/lib/actions/locations";
 
 export async function addManualAnchor(input: {
   itineraryId: string;
-  kind: "appointment" | "place";
+  kind: "appointment" | "place" | "accommodation";
   title: string;
   iso?: string | null; // arrive-by (start)
   leaveIso?: string | null; // leave-by (end) — set both for a fixed window ("9 to 5")
@@ -228,7 +228,7 @@ export async function addManualAnchor(input: {
 
   const created = await createStop({
     itinerary_id: input.itineraryId,
-    type: input.kind === "appointment" ? "appointment" : "other",
+    type: input.kind === "appointment" ? "appointment" : input.kind === "accommodation" ? "accommodation" : "other",
     title,
     start_time: arriveIso,
     end_time: leaveIso,

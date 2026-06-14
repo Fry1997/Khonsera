@@ -55,6 +55,7 @@ export type GoogleEvent = {
   summary: string | null;
   start: Date;
   end: Date;
+  location?: string | null;
   htmlLink?: string;
 };
 
@@ -75,6 +76,7 @@ export async function googleListEvents(args: {
     items: Array<{
       id: string;
       summary?: string;
+      location?: string;
       start: { dateTime?: string; date?: string };
       end: { dateTime?: string; date?: string };
       htmlLink?: string;
@@ -88,6 +90,7 @@ export async function googleListEvents(args: {
       summary: e.summary ?? null,
       start: new Date(e.start.dateTime!),
       end: new Date(e.end.dateTime!),
+      location: e.location ?? null,
       htmlLink: e.htmlLink,
     }));
 }
