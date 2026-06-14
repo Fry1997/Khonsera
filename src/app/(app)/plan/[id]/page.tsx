@@ -15,6 +15,8 @@ import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
 import { loadReadiness } from "@/lib/actions/readiness";
 import { ReadinessPanel } from "@/components/plan/readiness-panel";
+import { PlanNudges } from "@/components/plan/plan-nudges";
+import { loadNudges } from "@/lib/actions/context";
 import { tflLegPlan, tflLineStatus, inGreaterLondon, type LatLng, type TflLine } from "@/lib/integrations/tfl";
 import { liveDeparture } from "@/lib/integrations/darwin";
 import { delayConsequence, fragility, cascade } from "@/lib/live/engine";
@@ -562,6 +564,39 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     ripple = worst ? `The day's running ~${dayDelay} min behind — ${worst.text}` : `The day's running ~${dayDelay} min behind.`;
   }
 
+  // Contextual nudges (P12) — the care layer. Weather on the leave-home leg →
+  // "leave earlier"; a thin airport buffer → "get fast-track". Confirmable, never
+  // auto-applied. Facts come from the stops we already loaded.
+  const nowIso = new Date().toISOString();
+  const nudgeLegs = nodes
+    .filter((n) => n.after?.kind === "leg")
+    .map((n) => {
+      const after = n.after as Extract<SpineNode["after"], { kind: "leg" }>;
+      const fromStop = stopById.get(after.fromStopId);
+      const toStop = stopById.get(after.toStopId);
+      const coord = coordOfStop(toStop);
+      return {
+        legId: after.leg.id,
+        mode: after.leg.mode,
+        toLabel: toStop?.title ?? "your stop",
+        departIso: fromStop?.end_time ?? fromStop?.start_time ?? null,
+        lat: coord?.lat ?? null,
+        lng: coord?.lng ?? null,
+        isFirstLeaveHome: fromStop?.type === "start",
+      };
+    });
+  // A flight anchor carries its airport buffer as the gap between arriving at the
+  // airport (start_time) and the flight departing (end_time).
+  const nudgeFlights = stops
+    .filter((s) => s.type.includes("flight") && s.start_time && s.end_time && new Date(s.end_time).getTime() > new Date(s.start_time).getTime())
+    .map((s) => ({
+      flightStopId: s.id,
+      airport: s.title ?? s.transport_hub?.name ?? "the airport",
+      flightDepartIso: s.end_time!,
+      arriveAirportIso: s.start_time!,
+    }));
+  const nudges = await loadNudges({ itineraryId: id, nowIso, legs: nudgeLegs, flights: nudgeFlights });
+
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
   const journeyMap = buildJourneyFromStops(
@@ -619,6 +654,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
               <strong>Tight plan</strong> — only {Math.max(0, frag.weakestSlackMin ?? 0)} min into {weakestInto ?? "a connection"}. One delay and the day breaks; add a buffer while you can.
             </p>
           ) : null}
+
+          <PlanNudges itineraryId={id} nudges={nudges} />
 
           {journeyMap ? <PlanMap journey={journeyMap} /> : null}
 

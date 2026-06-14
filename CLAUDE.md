@@ -61,6 +61,27 @@ the triage in `docs/foundation-rebuild-triage.md`. Honour these every turn:
 8. People & ledger: contacts; messaging/notifications; tasks; expenses.
 9. Teams machinery: workspace admin, approvals, allowance/per-diem, reimbursement.
 
+## Live & contextual layer (Edition III P9–P12) — engines on `/plan/[id]`
+
+Three pure, unit-tested engines drive the day-of intelligence; each is fed by a server reader in
+`plan/[id]/page.tsx` and degrades silently when its signal is absent:
+- **Live spine** (`src/lib/live/engine.ts`, P9–P10): `decisionClock`, `delayConsequence`, `cascade`,
+  `fragility`. Sourced from **Darwin** (rail; gated `DARWIN_LDBWS_TOKEN`/`_KEY`) + **TfL** (gated
+  `TFL_APP_KEY`).
+- **Recovery** (`src/lib/recovery/*`, P11): `buildRecoveryOptions` (the way-out trade-off band +
+  outbound/return as one unit) + `rankFor` (waits on a founder protect-target). Ways-out from Darwin's
+  destination-filtered board + **OTP** cross-network detours (gated `OTP_URL`, inert until self-hosted —
+  `docs/otp-self-hosting.md`). `rankFor` is built but OFF until protect-target is set.
+- **Context care** (`src/lib/context/engine.ts`, P12): threshold rules → confirmable `NudgeCard`
+  (`PlanNudges`). **weather→leave-earlier** on real keyless **Open-Meteo**; **running-late→fast-track**
+  on **DragonPass** mock (gated `DRAGONPASS_KEY`). Verdicts persist in `nudge_states` (mig 0036,
+  owner-only RLS); nudges themselves are never stored, always re-derived. Accept applies via the seam
+  (a prep note / a minted voucher); dismiss never pesters.
+
+**Provider gating rule:** every external adapter self-gates on its env var and returns null/mock when
+unset — the build NEVER blocks on a key, and an unset key shows honest mock with a "· sample" cue, not
+a false alarm. New env vars: `OTP_URL`, `OTP_GRAPHQL_PATH?`, `DRAGONPASS_KEY`, `OPEN_METEO_URL?`.
+
 ## Mandatory: Keep docs/ updated
 
 After making changes to any itinerary page, the Gmail import pipeline, or the shared Timeline component, **update `docs/itinerary-pages.md`** to reflect the change. This document is the design reference for anyone picking up the codebase — it must stay current. If a new page is added, add a new doc file for it.

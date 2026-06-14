@@ -164,3 +164,28 @@ via the export pack mapped to these names.
   cue on mock; "the trade-off — choose your priority" until protect-target is set. *Placeholder inline
   token styles; Design owns `.cc-recovery`* — this is the calm "here's the way out" moment when the day
   breaks: options legible at a glance, `data-makes="true"` reassuring (sage), the misses quiet not red.
+
+### P11 follow-ons (same `RecoveryCard`)
+- **Return-pairing line** 🟡 — `.cc-recovery-return` (inside `.cc-recovery-opt`, when the way-out
+  threatens a booked return). Rust text: "Lands after your 17:42 return — the trip's lost" / "Only N
+  min to turn around for your 17:42 return". *Design owns it* — the heaviest consequence in the band;
+  it should read as the real cost (the wasted trip), still in ink, never a klaxon.
+- **Detour route note** 🟡 — `.cc-recovery-via` (block under the option label) for an OTP cross-network
+  alternative: "via Coventry · 1 change". Faint/secondary — the *how* beneath the *when*. Only present
+  once an OTP instance is live (`OTP_URL`); same band, just more options.
+
+## P12 · Contextual care (nudges)
+
+- **`PlanNudges` / `NudgeCard`** 🟡 — `src/components/plan/plan-nudges.tsx` wrapping the existing
+  `NudgeCard` (concierge). On `/plan/[id]`, beneath the fragility line: the live contextual prompts.
+  - **Open state** — `NudgeCard` (gold-tint, existing): a calm proposal + one action + "Not now".
+    Two rules fire today: *weather → leave earlier* ("Heavy rain forecast on your drive to Gatwick
+    around 07:00 … leaving 20 minutes earlier keeps your arrival comfortable" · "Leave 20 min earlier")
+    and *running late → fast-track* ("Your buffer at Gatwick is thin — about 60 min … A fast-track slot
+    protects it" · "Get fast-track").
+  - **Accepted state** 🟡 — `.cc-nudge-done` (+ `.cc-nudge-done-mark`, `data-rule`): a quiet "Done"
+    line once acted ("Noted — leaving 20 minutes earlier. It's on your prep." / "Fast-track sorted for
+    Gatwick. The voucher's on your prep notes."). It does **not** vanish — the day remembers the call.
+  - *Design owns `.cc-nudges` / `.cc-nudge-done`* (the open card already has a brand class). This is the
+    chief-of-staff quietly looking ahead: helpful, never nagging, dismissible, and once you act it
+    settles into a calm confirmation, not a trophy. The fast-track "· sample" cue shows while mocked.

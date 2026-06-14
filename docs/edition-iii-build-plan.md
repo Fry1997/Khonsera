@@ -312,16 +312,27 @@ consequence + the trade-off; the outbound/return pair handled as a unit. ✓ —
 detours light up the moment the self-hosted instance is pointed at by `OTP_URL`. Protect-target ranking
 remains a founder decision (`rankFor` ready). Build green · 291 tests pass.
 
-### Phase 12 — Contextual engine core + Weather + running-late (L4 ⭐)  `[ ]`
+### Phase 12 — Contextual engine core + Weather + running-late (L4 ⭐)  `[x]` DONE 2026-06-14
 **Depends on:** P9 (+P10). **Procurement:** DragonPass (mock); Open-Meteo (free, real).
-- [ ] The **rule framework**: live signal → condition → proposed action → in-app booking, **confirmable,
-      never auto-inserted**, thresholds as fixed sensible defaults (adjustable per-plan, never learned).
-      Surfaces as a `NudgeCard`.
-- [ ] **Weather → leave earlier** rule, end to end on the **real free** Open-Meteo feed.
-- [ ] **Running late → expedite security** (the flagship) on the **buffer-thinness baseline**;
-      DragonPass fast-track behind a mock adapter (QR voucher shape).
+- [x] The **rule framework** — `src/lib/context/engine.ts` (pure, ×6 tests): live signal → fixed-threshold
+      condition → proposed `NudgeAction` → confirmable `Nudge`. **Never auto-inserted**, thresholds are
+      sensible defaults (not learned). `evaluateContext` runs the rules, most-urgent first; adding a rule
+      = a function + a line. Persistence of the verdict only (mig 0036 `nudge_states`, owner-only RLS);
+      nudges themselves are always re-derived. Surfaces via `PlanNudges`→`NudgeCard` on `/plan/[id]`.
+- [x] **Weather → leave earlier** — end to end on the **real free keyless** Open-Meteo feed
+      (`integrations/open-meteo.ts`, pure `summarizeCorridor` ×3 tests; corridor precip/wind/snow over
+      the leave-home leg's window → severity → a mode-scaled earlier-leave). Accept writes a prep note.
+- [x] **Running late → expedite security** (flagship) on the **buffer-thinness baseline** (a flight
+      anchor's airport dwell < 75 min). DragonPass fast-track behind a **mock adapter**
+      (`integrations/dragonpass.ts`, env-gated `DRAGONPASS_KEY`) returning a real **QR-voucher** shape;
+      accept mints the voucher + drops it on the flight's prep notes. "· sample" cue while mocked.
 **Done when:** the engine fires the weather + running-late rules end to end with a confirmable
-NudgeCard; the provider seam is ready for real DragonPass.
+NudgeCard; the provider seam is ready for real DragonPass. ✓ — both rules fire on real conditions,
+confirm applies through the seam (note / voucher), dismiss persists (never pesters). Build green ·
+300 tests. Design handoff added (`.cc-nudges`/`.cc-nudge-done`). *Deferrals, positioned:* live
+security-queue enrichment (Qsensor/FlightQueue — vendor-select, sharpens the baseline) and multi-point
+corridor weather sampling are **P12-scope max-API** items behind their data/vendor; the full
+**book-and-ticketise** the voucher onto a Pass is the **P14** connections framework.
 
 ### Phase 13 — Contextual engine: lounge · parking · gate-change (L4)  `[ ]`
 **Depends on:** P12. **Procurement:** Collinson/DragonPass (lounge), Parkopedia/Arrive (parking) — mocks.
@@ -603,5 +614,18 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   into `nextRailServices` (deduped vs Darwin same-route), surfaced as "via Coventry · 1 change" in the
   band. Gated on `OTP_URL`; **runbook `docs/otp-self-hosting.md`** (OTP 2.9/Java 25, GB GTFS +
   Geofabrik, `-Xmx8G`, Caddy → `/otp/gtfs/v1`) — same self-host posture as Valhalla/Photon, inert until
-  stood up. RTJP formally struck from the provider table + founder decisions. Build green · 295 tests
+  stood up. RTJP formally struck from the provider table + founder decisions. Build green · 291 tests
   pass. Standing infra ask: deploy the OTP instance + set `OTP_URL`.
+- 2026-06-14 · **OTP hosting PARKED (founder call).** Early self-hosting deemed not worth the standing
+  upkeep with no traffic yet; recovery runs on Darwin same-route meanwhile (graceful). Code stays inert
+  on `OTP_URL`. Revisit at real traffic (see `DECISIONS.md` D49). Pushed straight on to P12.
+- 2026-06-14 · **Phase 12 DONE — contextual care engine (weather + running-late).** The L4 ⭐ care
+  layer: a pure rule framework (`context/engine.ts`, ×6) where a live signal meets a fixed threshold
+  and proposes a confirmable action — never auto-inserted, never learned. Two rules live: **weather →
+  leave earlier** on the **real keyless Open-Meteo** feed (`open-meteo.ts`, ×3) over the leave-home
+  corridor, and the flagship **running late → fast-track** on the airport-buffer baseline with a
+  **DragonPass mock** (`dragonpass.ts`, QR-voucher shape, env-gated `DRAGONPASS_KEY`). Verdicts persist
+  (mig 0036 `nudge_states`, owner-only RLS, advisor-clean); accept applies through the seam (a prep note
+  / a minted voucher), dismiss never pesters. `PlanNudges`→`NudgeCard` on `/plan/[id]`. Design handoff
+  added. Build green · **300 tests**. *User-visible:* the day now looks ahead — "heavy rain, leave 20
+  min earlier" and "thin airport buffer, get fast-track", each a calm confirmable prompt.

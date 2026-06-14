@@ -119,7 +119,9 @@ swap to a webhook provider (Cirium/FlightAware) when polling volume grows.
   **running-late → expedite** flagship; **QR voucher** at the lane.
 - **Lounge prebooking** sized to the window → the long-layover lounge rule.
 - **Availability queries + cancellable orders** → honest "is there a slot" + clean cancel.
-**MVP:** fast-track for one UK airport (mock until keyed). **Deferred:** full lounge catalogue.
+**MVP:** fast-track for one UK airport (mock until keyed) — **DONE (P12, mock)**: `integrations/dragonpass.ts`
+returns a QR-voucher; real `/v2/orders` order POST drops in behind the same shape when keyed.
+**Deferred:** full lounge catalogue (P13).
 
 ### Collinson (Priority Pass / LoungeKey) · revenue · P13 (+P11)
 **Max scope:** 1,800+ **lounges**; **meet-and-assist** → the **tight-connection** rule; **transfers /
@@ -172,8 +174,9 @@ margin. **MVP:** eSIM in readiness + install link. **Deferred:** usage dashboard
 ### Open-Meteo (weather) · free (keyless) · P12, P20
 **Max scope:** **hourly forecast along the corridor** (precip, wind, gusts, visibility, temp, snow);
 severe-weather → the **leave-earlier** rule + readiness (de-ice, fuel, "take a coat"); marine + air
-quality where relevant. **MVP:** corridor precip/wind → leave-earlier. **Deferred:** multi-point
-corridor sampling.
+quality where relevant. **MVP:** corridor precip/wind → leave-earlier — **DONE (P12, real)**:
+`integrations/open-meteo.ts` (keyless, live), `summarizeCorridor` precip/wind/snow → severity.
+**Deferred:** multi-point corridor sampling (still P12-scope; one-point at the leave-home leg today).
 
 ### FX — Frankfurter / exchangerate.host · free · P19
 **Max scope:** live + historical rates → **home-currency view everywhere** (each foreign spend),

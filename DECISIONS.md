@@ -702,3 +702,27 @@ Newest at the bottom of each section.
   offline labels/terrain aren't corridor-cached (geometry + buildings still draw); the demo
   PMTiles bucket is dev-only — production self-hosts the extract + glyph/sprite assets (same
   posture as Valhalla/Photon). Needs a deploy + device to tune the look.
+
+- **D49 — OTP route-alternative recovery: built, hosting PARKED early.** Phase 11 needed a
+  *route-alternative* engine (detour when a line is blocked) — RTJP is effectively deprecated, so the
+  replacement is self-hosted **OpenTripPlanner2** (free OSS, same posture as Valhalla/Photon for nav).
+  Built the whole code side: a pure adapter (`integrations/otp.ts`, `planConnection` build + itinerary→
+  `RecoveryCandidate` map, tested), merged into `nextRailServices` (deduped vs Darwin same-route),
+  surfaced as "via Coventry · 1 change". **Gated on `OTP_URL`, inert until an instance exists** — with
+  none, recovery shows Darwin same-route only (graceful). Founder call: **don't self-host early** — a
+  JVM + GB GTFS + nightly graph rebuild is standing upkeep with ~no payoff before real traffic, and a
+  stale graph could suggest dead trains (Darwin, the live primary, stays correct regardless). Revisit
+  when traffic justifies; turnkey + manual runbooks both deferred. Runbook already written:
+  `docs/otp-self-hosting.md`. RTJP struck from the provider table + founder decisions.
+
+- **D50 — Contextual care engine (P12): rules propose, never act.** Built the L4 care layer as a pure,
+  threshold-driven rule framework (`context/engine.ts`): a live signal meets a *fixed sensible default*
+  threshold (not learned, adjustable per-plan later) and proposes a **confirmable** action — never
+  auto-inserted. Two rules: **weather → leave earlier** on the **real keyless Open-Meteo** feed, and the
+  flagship **running late → fast-track** on the airport-buffer baseline (a flight anchor's dwell < 75
+  min) with a **DragonPass mock** (QR-voucher shape, env-gated). Verdict-only persistence (mig 0036
+  `nudge_states`, owner-only RLS — a nudge is the traveller's private prompt, never visible upward);
+  the nudge set is always re-derived so it can't go stale. Accept applies through the seam (a prep note
+  for leave-earlier; a minted voucher + note for fast-track); dismiss persists so it never pesters.
+  Full *book-and-ticketise onto a Pass* is the P14 connections framework; live security-queue
+  enrichment + multi-point corridor weather are positioned P12-scope follow-ons behind their vendor/data.
