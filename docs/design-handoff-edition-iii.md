@@ -131,6 +131,11 @@ don't rename. No emojis anywhere (hard rule).
 - **Day ripple** 🟡 (P10) — `.cc-day-ripple` on `/plan/[id]`, when a live delay is on the day: "The
   day's running ~N min behind — you'll be N late for X." The whole-day cascade at a glance. *Design
   owns it* — present (rust, a touch of weight) but still calm; it sits above the per-leg alerts.
+- **Today disruption banner** 🟡 (P10) — `src/components/today/today-disruption.tsx`,
+  `.cc-today-disruption[data-severe]` + `-item`, with `cc-screen[data-disrupted]` on the page. Leads
+  `/today` when a live rail break is on the plan ("Euston 09:40 · Delayed 13 min — you'll miss…").
+  *Design owns it* — this is the day's whole character shifting to disruption: it should command the
+  screen (the rest recedes) yet stay the calm chief-of-staff, never panic. severe = rust, late = gold.
 
 ---
 

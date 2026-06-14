@@ -10,6 +10,9 @@ import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { buildDayReview } from "@/lib/actions/review";
 import { DayReviewCard } from "@/components/plan/day-review";
 import { TflLineStatus } from "@/components/today/tfl-line-status";
+import { TodayDisruption, type TodayDisruptionItem } from "@/components/today/today-disruption";
+import { liveDeparture } from "@/lib/integrations/darwin";
+import { delayConsequence } from "@/lib/live/engine";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 import { TodayPasses } from "@/components/today/today-passes";
@@ -167,6 +170,29 @@ export default async function TodayPage({
     return ta - tb;
   });
 
+  // Disruption state (P10) — a live break on today's rail legs → Today's disruption
+  // character. Server-side via Darwin; dormant (no call returns data) without the
+  // key, so no false alarms. Rail departures = a rail-station hub with an onward leg.
+  const disruptions: TodayDisruptionItem[] = [];
+  for (let i = 0; i < allStops.length; i++) {
+    const st = allStops[i];
+    const code = st.transport_hub?.code;
+    if (st.transport_hub?.kind !== "rail_station" || !legFromStops.has(st.id) || !code || !st.start_time) continue;
+    const live = await liveDeparture(code, londonHHMM(st.start_time) ?? "");
+    if (!live) continue;
+    const m = /\+(\d+)/.exec(live.detail ?? "");
+    const delayMin = live.label === "Cancelled" ? 999 : m ? Number(m[1]) : 0;
+    if (delayMin <= 0) continue;
+    const next = allStops.slice(i + 1).find((s) => s.start_time);
+    const text = next?.start_time
+      ? delayConsequence(
+          { id: next.id, intoName: next.title ?? "your next stop", arriveIso: next.start_time, deadlineIso: next.start_time, kind: "commitment" },
+          delayMin === 999 ? 60 : delayMin,
+        ).text
+      : live.label;
+    disruptions.push({ title: `${st.transport_hub?.name ?? st.title ?? "Your train"} · ${live.label}`, text, severe: delayMin >= 16 || delayMin === 999 });
+  }
+
   // Greater London — show live TfL line status when today touches London (Phase 8).
   const inLondon = [baseCoord, ...allStops.map((s) => coordOf(s))].some(
     (c) => c != null && (c.lat !== 0 || c.lng !== 0) &&
@@ -272,7 +298,7 @@ export default async function TodayPage({
         : undefined;
 
   return (
-    <div className="cc-screen">
+    <div className="cc-screen" data-disrupted={disruptions.length ? "true" : undefined}>
       {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
       <OfflineTicketSync tickets={tickets} />
       <header>
@@ -281,6 +307,8 @@ export default async function TodayPage({
           Right now
         </h1>
       </header>
+
+      <TodayDisruption items={disruptions} />
 
       {inLondon ? <TflLineStatus /> : null}
 

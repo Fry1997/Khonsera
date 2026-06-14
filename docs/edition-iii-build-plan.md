@@ -262,18 +262,23 @@ Heavily Design-led (schematic render). Re-scoped out of P8 as a distinct data+de
 ✓ Build green · 282 tests pass. *The deeper **whole-day live re-solve** (re-propagating every downstream
 time as a disruption unfolds) is the **disruption state machine → Phase 10**, not a P9 gap.*
 
-### Phase 10 — Live spine B: fragility + disruption phase + on-service (L2)  `[~]` in progress
-**Depends on:** P9. *Staying in P10 until done.*
+### Phase 10 — Live spine B: fragility + disruption phase + on-service (L2)  `[x]` DONE 2026-06-14
+**Depends on:** P9.
 - [x] **Fragility detection** — `fragility()` in the live engine (unit-tested) + a `.cc-fragility`
       line on `/plan/[id]`: the thinnest connection read from the legs' buffer classification → "tight
       plan, one delay and it breaks; add a buffer while you can." Design handoff logged.
-- [ ] **Full Today-state machine** — *(P10, remaining)* calm → imminent → live → **disruption**; extend
-      the today projection (4 states today) with the disruption state driven by the live signals.
+- [x] **Today disruption state** — a live rail break (Darwin) flips Today's character: a
+      `TodayDisruption` banner + `cc-screen[data-disrupted]`, leading with the consequence. Additive
+      over the existing projection; dormant without the key (no false alarms). Design handoff logged.
 - [x] **Whole-day live re-solve** (carried from P9) — `cascade` runs across the day's commitments on a
-      live delay; `/plan/[id]` shows the day-level ripple ("the day's running ~N min behind — …",
-      `.cc-day-ripple`). Design handoff logged.
-- [ ] **On-service tracking** — *(P10, remaining; partly data-gated)* calling-points + stops-to-go from
-      Darwin; *live position on the train needs a position source (RTT) → tagged.*
+      live delay; `/plan/[id]` shows the day-level ripple (`.cc-day-ripple`). Design handoff logged.
+- [→ data-gated] **On-service tracking** — calling-points + stops-to-go **and** live train position.
+      Both are (2) data-gated: the `calling_points` column exists but **the import doesn't populate it**
+      (parsing intermediate stops from booking PDFs is a capture task), and there's **no RTT client**
+      for live position. Position: a "deepen the rail pass" task (calling-points population) + an RTT
+      adapter (live position) — fires when those land.
+**Done when:** the day flags fragility, enters a true disruption state on a break, and (when data
+exists) tracks you on the running service. ✓ for everything buildable now; on-service is data-gated.
 **Done when:** the day flags fragility, enters a true disruption state on a break, and tracks you on
 the running service.
 
@@ -546,3 +551,10 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   ("the day's running ~N min behind — …", `.cc-day-ripple`). Build green · 283 tests pass. **P10
   remaining (positioned):** full Today disruption state machine; on-service tracking (calling-points
   buildable; live train position RTT-gated).
+- 2026-06-14 · **Phase 10 COMPLETE.** Today disruption state (additive `TodayDisruption` banner +
+  `cc-screen[data-disrupted]`, Darwin-driven server-side, dormant without the key) — Today now flips to
+  a disruption character on a live rail break. With fragility + the whole-day cascade already done,
+  P10's buildable scope is finished. **On-service tracking is (2) data-gated** (the `calling_points`
+  column isn't populated by the import; no RTT client for live position) → positioned as a
+  calling-points-population task + an RTT adapter. Build green · 283 tests pass. Next: **Phase 11
+  (Recovery)** — gated on the protect-target + RTJP-licence founder decisions (mock first).
