@@ -5,9 +5,8 @@ import type { AppMode } from "@/lib/mode";
 import type { Route } from "next";
 
 // The "more" menu behind the topbar — the 4 primary destinations live in the
-// bottom tab bar; this carries the secondary ones + Tell.
+// bottom tab bar; this carries the secondary ones.
 const MORE = [
-  { href: "/capture" as Route, label: "Tell Khonsera" },
   { href: "/expenses" as Route, label: "Expenses" },
   { href: "/workspace" as Route, label: "Workspace" },
   { href: "/settings" as Route, label: "Settings" },

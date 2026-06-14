@@ -66,8 +66,8 @@ export function AppSidebar({
 
       <div className="cc-rail-foot">
         <ModeSwitchControl mode={mode} size="md" />
-        <Link href={"/capture" as Route} className="cc-btn cc-btn-gold cc-btn-block">
-          Tell Khonsera
+        <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold cc-btn-block">
+          Plan a day
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 8, borderTop: "1px solid var(--rule)" }}>
           <span className="cc-overflow-avatar" style={{ width: 32, height: 32 }}>{init}</span>

@@ -129,6 +129,23 @@ default FOSSGIS) + **Photon** geocoding (`PHOTON_URL`, default komoot) + MapLibr
   the `.pmtiles` + glyph/sprite assets for production. NavMap surfaces any map init/tile error
   inline (not a silent blank) and force-resizes on load. See `docs/navigation.md`.
 
+### BENCHED (2026-06-14): Tell Khonsera + Ask Khonsera — free-text is parked
+**Decision (founder, Edition III direction):** the deterministic free-text parser misclassifies
+events too often to ship. **Capture is now email-import + manual entry only.** Both the free-text
+**capture** ("Tell Khonsera") and the read-only NL **query** layer ("Ask Khonsera") are **removed
+from the product surface** — every entry point (sidebar/mobile nav buttons, welcome fork, Today/Plan
+empty-state CTAs, the brief's quiet link, `PlanCapture` on `/plan/[id]`, the landing-page hero copy)
+now points to **manual entry (`/itineraries/new`, which also has Gmail import)**. `/capture` and
+`/capture/drafts` **redirect** to `/itineraries/new`.
+
+The engine is **dormant, NOT deleted** — `src/lib/parser/*` (~7k lines), `src/lib/dictionary/*`,
+`src/components/capture/*`, `src/components/plan/plan-capture.tsx`, and the
+`previewCapture`/`routeCaptureGlobal`/`captureToEvent`/`confirmCapture` actions all remain in the
+tree, unimported. **Do not wire them back into the surface.** Free-text returns **later as an
+AI-enabled tier** where an **LLM** (not this parser) handles parsing. The sections below describe
+that dormant engine — keep for reference, but it is not a live path. Email reads only build
+structured hotel/train/flight **cards**; there is no free-text "tell" or "ask".
+
 ### Tell Khonsera capture substrate (migrations 0027/0028)
 Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.
 - Facts (`stops`/`transitions`/`travel_bookings`) carry `confidence`, `source`,

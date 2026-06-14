@@ -108,12 +108,12 @@ export default async function PlanIndexPage() {
         <div className="cc-plan-empty">
           <p className="cc-plan-empty-lead">Nothing planned yet.</p>
           <p className="cc-plan-empty-sub">
-            The fastest way: just tell Khonsera what&apos;s coming up — &ldquo;train to Derby at 9,
-            meet Sarah at 2&rdquo; — and watch it thread the day.
+            Add a day by hand — your trains, stays and meetings — or import the bookings
+            from your inbox, and Khonsera threads the rest.
           </p>
           <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href={"/capture" as Route} className="cc-btn cc-btn-gold">
-              Tell Khonsera your day
+            <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold">
+              Plan a day
             </Link>
           </div>
         </div>

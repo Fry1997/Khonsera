@@ -18,11 +18,11 @@ import { WAITLIST_COOKIE } from "@/lib/waitlist-shared";
 export const metadata: Metadata = {
   title: "Khonsera — your travel, quietly handled.",
   description:
-    "Tell Khonsera the day in plain words. It threads the plan, works the time around it back to the minute, and watches the world so you don't have to. The calm organising layer above the booking sites.",
+    "Forward your booking confirmations or add them by hand. Khonsera threads the plan, works the time around it back to the minute, and watches the world so you don't have to. The calm organising layer above the booking sites.",
   openGraph: {
     title: "Khonsera — your travel, quietly handled.",
     description:
-      "The calm organising layer above the booking sites. Tell it the fixed points of your day; it works out everything in between, and keeps watch as things change.",
+      "The calm organising layer above the booking sites. Bring it the fixed points of your day; it works out everything in between, and keeps watch as things change.",
     siteName: "Khonsera",
     type: "website",
   },
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Khonsera — your travel, quietly handled.",
     description:
-      "The calm organising layer above the booking sites. Tell it the day in plain words; it handles the rest.",
+      "The calm organising layer above the booking sites. Bring it your bookings; it handles the rest.",
   },
 };
 
@@ -212,8 +212,8 @@ function Marketing({ joined }: { joined: boolean }) {
             <span className="cc-mkt-hero-eyebrow">A travel concierge · est. MMXXVI</span>
             <h1 className="cc-mkt-headline">Your travel, quietly handled.</h1>
             <p className="cc-mkt-sub">
-              Tell it what you know — the flight, the dinner, the meeting — in any order. Khonsera
-              threads it into a door-to-door plan and keeps the timing live, so{" "}
+              Forward your confirmations, or add them by hand &mdash; the flight, the dinner, the
+              meeting. Khonsera threads them into a door-to-door plan and keeps the timing live, so{" "}
               <em>you&apos;re never the one doing the arithmetic.</em>
             </p>
             <a href="#waitlist" className="cc-btn cc-btn-gold cc-mkt-hero-cta">

@@ -291,12 +291,12 @@ export default async function TodayPage({
           </span>
           <h2 className="cc-at-headline">Let&apos;s set up your day</h2>
           <p className="cc-at-sub">
-            Tell Khonsera what&apos;s coming up — &ldquo;train to Derby at 9, meet Sarah at 2&rdquo; —
-            and it threads the day: the next move, the leave-by, and the chain ahead.
+            Add what&apos;s coming up — your trains, stays and meetings — or import the bookings
+            from your inbox, and Khonsera threads the day: the next move, the leave-by, the chain ahead.
           </p>
           <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            <Link href={"/capture" as Route} className="cc-btn cc-btn-gold">
-              Tell Khonsera your day
+            <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold">
+              Plan a day
             </Link>
             <Link href={"/plan" as Route} className="cc-btn">
               Open the plan

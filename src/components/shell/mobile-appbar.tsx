@@ -57,8 +57,8 @@ export function MobileAppbar({
           </Link>
         </div>
         <div className="cc-appbar-right">
-          <Link href={"/capture" as Route} className="cc-iconbtn" data-variant="ghost" title="Tell Khonsera">
-            <span style={{ width: 20, height: 20 }}><Ico d={I.tell} /></span>
+          <Link href={"/itineraries/new" as Route} className="cc-iconbtn" data-variant="ghost" title="Plan a day">
+            <span style={{ width: 20, height: 20 }}><Ico d={I.plus} /></span>
           </Link>
           <button type="button" className="cc-iconbtn" data-variant="ghost" aria-label="Menu" onClick={() => setOpen(true)}>
             <span style={{ width: 20, height: 20 }}><Ico d={I.more} /></span>

@@ -53,24 +53,17 @@ export function WelcomeScreen({ mode }: { mode: Mode }) {
               Is it <em>booked</em> — in part or full? However much you know, I&apos;ll take it from there.
             </h1>
             <div className="cc-welcome-fork">
-              <button type="button" className="cc-fork-option" data-primary="true" disabled={pending} onClick={() => go("/capture")}>
-                <div>
-                  <span className="t">Just tell me in plain words</span>
-                  <span className="s">&ldquo;Train to Derby at 9, meet Sarah at 2&rdquo; — I&apos;ll thread the whole day.</span>
-                </div>
-                <span className="ic"><Chevron /></span>
-              </button>
-              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/settings")}>
+              <button type="button" className="cc-fork-option" data-primary="true" disabled={pending} onClick={() => go("/settings")}>
                 <div>
                   <span className="t">It&apos;s booked — in my inbox</span>
-                  <span className="s">Connect your email; I&apos;ll find the confirmations.</span>
+                  <span className="s">Connect your email; I&apos;ll find the confirmations and build the cards.</span>
                 </div>
                 <span className="ic"><Chevron /></span>
               </button>
-              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/plan")}>
+              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/itineraries/new")}>
                 <div>
-                  <span className="t">Fill it in step by step</span>
-                  <span className="s">Add the facts as you go.</span>
+                  <span className="t">I&apos;ll add it by hand</span>
+                  <span className="s">Enter the trains, stays and meetings yourself.</span>
                 </div>
                 <span className="ic"><Chevron /></span>
               </button>
