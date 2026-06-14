@@ -243,3 +243,19 @@ airport buffer. All providers are mocked (so they show with `· sample`) — the
 - **Design owns:** `.cc-recovery*`, `.cc-nudges`/`.cc-nudge-done*` — the brand skin, the foresight-vs-
   reaction distinction, the severity colour discipline. Add a stylesheet imported **after**
   `khonsera-edition-iii-live.css` (the round-7 layer); flag any missing value as a **token request**.
+
+---
+
+## DESIGN ROUND 8 — INTEGRATED (2026-06-14) ✓
+`for-code-r8` applied. `khonsera-edition-iii-care.css` dropped into `src/app/` and imported **last**
+(after `khonsera-edition-iii-live.css`). Reconciled the markup to the contract:
+- **RecoveryCard** — stripped all inline placeholder styles; split the honesty cue into its own
+  `.cc-recovery-sample`; made `-label/-conseq/-return/-via` direct grid children of `.cc-recovery-opt`
+  (the skin's `auto 1fr` grid); the return-note's cost clause now emphasised in `<strong>` (rust).
+- **PlanNudges** — the open nudge now emits the full `.cc-nudge` contract (`-foresight` mark =
+  "Looking ahead"/"Now", `-msg`, `-actions` with `.cc-btn-gold`/`.cc-btn-quiet`), with `data-urgency="now"`
+  on the gate-change (the foresight→reaction flip) + `data-rule` slug. Dropped the bare concierge
+  `NudgeCard` here in favour of the contract markup. Accepted state → `.cc-nudge-done` (`-mark` ✓ circle,
+  `-text` with `<strong>`, `-tail` = the booking ref). Busy → `.cc-btn-gold[data-busy]`.
+- **No token requests** (Design used `color-mix()` against existing `--success`/`--gold`). Redlines +
+  class-map saved to `docs/design/edition-iii-r8-*`. Build green · 304 tests · tsc clean.

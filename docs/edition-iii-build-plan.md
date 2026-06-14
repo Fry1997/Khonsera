@@ -651,7 +651,7 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   tests** (context engine ×9). *Deferrals positioned:* gate-change day-of poll loop (day-of), book→Pass
   (P14). **Design checkpoint reached** → packaged **Round 8** (the deviation & care layer: recovery band
   + the six nudges, two card states + one band) in `docs/design-handoff-edition-iii.md` for one
-  consolidated brand pass.
+  consolidated brand pass. Round 8 returned + INTEGRATED same day.
 - 2026-06-14 · **Provider procurement handoff + Collinson chosen (D52).** Wrote
   `docs/provider-procurement-handoff.md` (founder action list: who/what/why/cost/env per provider).
   Corrected the AeroDataBox "free" claim (it's low-cost paid; no free generous flight-gate feed).

@@ -2,15 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { NudgeCard } from "@/components/concierge";
 import { setNudgeVerdict, type NudgeVM } from "@/lib/actions/context";
 
-// The care layer on the plan (Phase 12). Renders the live contextual nudges —
-// weather-leave-earlier, running-late-expedite — each confirmable or dismissible.
-// Accepted ones show a quiet "done" line (the action was applied through its
-// seam: a prep note, a fast-track voucher); they don't disappear, so the day
-// remembers the decision. Nothing here is alarm — calm caution that carries
-// consequence. Design owns the final skin (`.cc-nudges` / `.cc-nudge-done`).
+// The care layer on the plan (Phase 12–13). The live contextual nudges — six
+// rules through two states. Round 8 skin (`khonsera-edition-iii-care.css`) owns
+// the look via `.cc-nudge*` contract classes; the only behavioural hook is
+// `data-urgency="now"` (gate-change → reaction). No inline styles (they'd override
+// the stylesheet). Foresight is unhurried; reaction carries a touch more weight;
+// an accepted nudge settles into a quiet confirmation, never vanishing.
 export function PlanNudges({ itineraryId, nudges }: { itineraryId: string; nudges: NudgeVM[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -27,47 +26,71 @@ export function PlanNudges({ itineraryId, nudges }: { itineraryId: string; nudge
   }
 
   return (
-    <section className="cc-nudges" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-      {nudges.map((n) =>
-        n.verdict === "accepted" ? (
-          <div
-            key={n.key}
-            className="cc-nudge-done"
-            data-rule={n.rule}
-            style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--radius-lg, 12px)", border: "1px solid var(--rule)", background: "var(--card)" }}
-          >
-            <span className="cc-nudge-done-mark" style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--sage, var(--gold-2))" }}>
-              Done
-            </span>
-            <p style={{ margin: "var(--space-1) 0 0", color: "var(--ink)" }}>{doneLabel(n)}</p>
+    <section className="cc-nudges">
+      {nudges.map((n) => {
+        if (n.verdict === "accepted") {
+          const tail = doneTail(n);
+          return (
+            <div key={n.key} className="cc-nudge-done" data-rule={ruleSlug(n.rule)}>
+              <span className="cc-nudge-done-mark" aria-hidden />
+              <div>
+                <p className="cc-nudge-done-text">{doneText(n)}</p>
+                {tail ? <p className="cc-nudge-done-tail">{tail}</p> : null}
+              </div>
+            </div>
+          );
+        }
+        const busy = busyKey === n.key && pending;
+        const reaction = n.urgency === "now";
+        return (
+          <div key={n.key} className="cc-nudge" data-urgency={reaction ? "now" : undefined} data-rule={ruleSlug(n.rule)}>
+            <div className="cc-nudge-foresight">{reaction ? "Now" : "Looking ahead"}</div>
+            <p className="cc-nudge-msg">{n.message}</p>
+            <div className="cc-nudge-actions">
+              <button type="button" className="cc-btn-gold" data-busy={busy ? "" : undefined} disabled={busy} onClick={() => act(n, "accepted")}>
+                {busy ? "Working…" : n.actionLabel}
+              </button>
+              <button type="button" className="cc-btn-quiet" onClick={() => act(n, "dismissed")}>
+                Not now
+              </button>
+            </div>
           </div>
-        ) : (
-          <NudgeCard
-            key={n.key}
-            message={n.message}
-            actionLabel={busyKey === n.key && pending ? "Working…" : n.actionLabel}
-            onAction={() => act(n, "accepted")}
-            onDismiss={() => act(n, "dismissed")}
-          />
-        ),
-      )}
+        );
+      })}
     </section>
   );
 }
 
-function doneLabel(n: NudgeVM): string {
+// Design's data-rule slug set — copy-only (no per-rule style), so a clean label.
+function ruleSlug(rule: string): string {
+  if (rule.includes("weather")) return "weather";
+  if (rule.includes("expedite")) return "fasttrack";
+  if (rule.includes("lounge")) return "lounge";
+  if (rule.includes("parking")) return "parking";
+  if (rule.includes("gate")) return "gate";
+  return "care";
+}
+
+// The accepted confirmation — a key noun in <strong>, the rest in ink-2.
+function doneText(n: NudgeVM) {
   switch (n.action?.kind) {
     case "leave-earlier":
-      return `Noted — leaving ${n.action.minutes} minutes earlier. It's on your prep.`;
+      return <><strong>Leaving {n.action.minutes} min earlier</strong> — it&rsquo;s on your prep.</>;
     case "expedite-security":
-      return `Fast-track sorted for ${n.action.airport}. The voucher's on your prep notes.`;
+      return <><strong>Fast-track sorted</strong> for {n.action.airport}. The voucher&rsquo;s on your prep notes.</>;
     case "book-lounge":
-      return `Lounge booked at ${n.action.airport}. The pass is on your prep notes.`;
+      return <><strong>Lounge booked</strong> at {n.action.airport}. The pass is on your prep notes.</>;
     case "prebook-parking":
-      return `Space reserved at ${n.action.site}. The booking's on your prep notes.`;
+      return <><strong>Space reserved</strong> at {n.action.site}. The booking&rsquo;s on your prep notes.</>;
     case "gate-reroute":
-      return `Noted — gate ${n.action.toGate}. The walk's on your prep notes.`;
+      return <><strong>Gate {n.action.toGate}</strong> — the walk&rsquo;s on your prep notes.</>;
     default:
       return "Done.";
   }
+}
+
+// The settled, even-quieter tail — the booking reference when there is one.
+function doneTail(n: NudgeVM): string | null {
+  const r = n.actionResult as { reference?: string } | undefined;
+  return r?.reference ? `Ref ${r.reference}` : null;
 }
