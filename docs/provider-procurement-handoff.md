@@ -1,0 +1,86 @@
+# Provider procurement handoff (founder action list)
+
+**The reassuring frame first:** *nothing here blocks the build.* Every external provider is behind a
+mock + an env-gated adapter, so the product runs end-to-end today on sample data (shown with a
+"· sample" cue). This document is the checklist to **light each feature up for real in production** —
+who the provider is, what feature it powers, the cost model, the env var to set, and the action you
+take. Sorted by *how much effort the action is*, easiest first.
+
+Set an env var → that feature flips from sample to live. No code change.
+
+---
+
+## A · Already live / no action needed
+
+| Provider | Powers | Cost | Env | Status |
+|---|---|---|---|---|
+| **Darwin / LDBWS** (Rail Data Marketplace) | Live train times, delays, cancellations → the whole live-rail spine + recovery (P9–P11) | Free | `DARWIN_LDBWS_TOKEN` | ✅ keyed & live in prod |
+| **Open-Meteo** | Weather → "leave earlier" rule (P12) | Free **for non-commercial**; see decision #2 | *(keyless)* | ✅ live, but commercial-use caveat |
+
+## B · Free, self-serve — minutes of your time
+
+| Provider | Who / what | Powers | Cost | Env | Action |
+|---|---|---|---|---|---|
+| **TfL Unified API** | Transport for London's open API | London transit: live arrivals, line status, journey planner (P8) + feeds disruption (P9–P10) | Free | `TFL_APP_KEY` | Register at api-portal.tfl.gov.uk → paste the key |
+| **AeroDataBox** | Flight-status data (via RapidAPI) | Live gate/terminal → the gate-change reroute rule (P13) | Free **600 calls/mo**, then paid tiers | `AERODATABOX_KEY` | Subscribe (free tier) on RapidAPI → paste the key |
+
+## C · Free software, but you host it (infrastructure)
+
+| Provider | Who / what | Powers | Cost | Env | Action |
+|---|---|---|---|---|---|
+| **OpenTripPlanner (OTP)** | Open-source journey planner, self-hosted | Cross-network *detour* routes when a line is blocked (P11 recovery) | Free OSS + ~£20–50/mo server | `OTP_URL` | **PARKED (D49)** — stand up a JVM when traffic justifies; runbook: `docs/otp-self-hosting.md` |
+| **Valhalla / Photon** | Open-source routing + geocoding | The owned A→B nav stack | Free; public instances are fair-use | `VALHALLA_URL` / `PHOTON_URL` | Self-host before real traffic (currently on public instances) |
+
+## D · Commercial relationships — apply, may take weeks, you earn revenue
+
+These are revenue providers: the supplier collects the customer's money and you take a commission or a
+margin. They need a B2B application/contract, so **start these early** if you want the feature live.
+
+| Provider | Who / what | Powers | Cost model | Env | Action |
+|---|---|---|---|---|---|
+| **DragonPass** *or* **Collinson** | Airport-experience networks (lounges + fast-track) — *pick one, see decision #1* | Fast-track security (P12) + airport lounge (P13) | Revenue (commission / wholesale+markup) | `DRAGONPASS_KEY` / `COLLINSON_KEY` | Apply to your chosen partner |
+| **Parkopedia / Arrive** | Parking data + booking aggregator | Predicted car-park occupancy + reserve a space (P13) | Low/revenue (data licence + booking commission) | `PARKOPEDIA_KEY` | Apply for API access |
+
+### Coming up (later phases — listed so you can start slow ones early)
+- **Booking.com Demand** (hotels, P14) — *weeks to approve, start early.*
+- **Duffel** (flights: search/book/disruption webhooks, L5) — replaces the dead Amadeus self-service.
+- **Collinson SmartDelay** (lounge auto-granted on a flight delay — a disruption-moment revenue line for
+  the recovery layer) — comes with the Collinson relationship if you pick them in decision #1.
+- **Airalo** (eSIM, P19), **FX feed** (P19), **Xero/QuickBooks** (accounting export, post-P16).
+
+---
+
+## Decisions you need to make
+
+### 1. Airport-experience partner: DragonPass vs Collinson — **pick one**
+Both do lounges *and* fast-track; you don't need both. The build currently mocks DragonPass for
+fast-track and Collinson for lounge purely because the capability map listed both — that split is
+arbitrary and should collapse to one contract.
+- **DragonPass** — one partner covers **both** fast-track and lounge; generally the simpler single
+  onboarding for a young company. **Recommended starting point.**
+- **Collinson (Priority Pass / LoungeKey)** — bigger lounge network + **SmartDelay** (lounge auto-
+  triggered by a flight delay, which plugs straight into our recovery moment) + meet-and-assist. Richer,
+  but a heavier relationship.
+- **My recommendation:** start with **DragonPass only** (covers both features under one contract);
+  revisit Collinson later if you want SmartDelay or the Priority Pass network. Swapping/adding is a
+  one-adapter change — the rule engine is provider-agnostic.
+
+### 2. Open-Meteo: commercial plan or self-host
+Open-Meteo is free for **non-commercial** use. Khonsera is commercial, so for production you need
+either their **paid API plan** (cheap) or to **self-host** their open-source server. Trivial change
+(`OPEN_METEO_URL`), but a real licensing line to close before launch.
+
+### 3. Parkopedia commercial terms
+Parking is a "low/revenue" provider — confirm whether you want the data-only tier (occupancy for the
+nudge) or the full reserve-and-pay tier (which also feeds the P14 booking framework).
+
+---
+
+## What each provides and *why* (one line each)
+- **Darwin** — *why:* the day can't react to a delay it can't see; this is the live rail truth. **Free.**
+- **TfL** — *why:* London is a huge share of UK travel days; without it the city legs are blind. **Free.**
+- **Open-Meteo** — *why:* "leave 15 min earlier, it's about to pour" is foresight you can't fake. **~Free.**
+- **AeroDataBox** — *why:* a gate change you find out about late is a missed flight. **Free tier.**
+- **OTP** — *why:* when the line itself is blocked, the answer isn't "next train", it's "another way". **Self-host.**
+- **DragonPass/Collinson** — *why:* thin buffer → fast-track saves the flight; long wait → a lounge. **Revenue.**
+- **Parkopedia** — *why:* "the car park will be full" the day before beats circling it on the day. **Revenue.**
