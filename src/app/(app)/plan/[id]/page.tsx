@@ -16,6 +16,7 @@ import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
 import { loadReadiness } from "@/lib/actions/readiness";
 import { ReadinessPanel } from "@/components/plan/readiness-panel";
 import { tflLegPlan, tflLineStatus, inGreaterLondon, type LatLng, type TflLine } from "@/lib/integrations/tfl";
+import { liveDeparture } from "@/lib/integrations/darwin";
 import { delayConsequence } from "@/lib/live/engine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
@@ -418,7 +419,30 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   await Promise.all(
     nodes.map(async (n) => {
       if (n.after?.kind !== "leg") return;
-      const fromC = coordOfStop(stopById.get(n.after.fromStopId));
+      const fromStop = stopById.get(n.after.fromStopId);
+
+      // Rail path — a booked train leg → live Darwin status → engine consequence.
+      // Dormant (no call) unless DARWIN_LDBWS_KEY is set, so no false alarms.
+      const crs = fromStop?.transport_hub?.code ?? null;
+      if (n.after.leg.bookingStatus === "booked_in_app" && crs && fromStop?.start_time) {
+        const live = await liveDeparture(crs, londonHHMM(fromStop.start_time) ?? "");
+        if (live) {
+          const m = /\+(\d+)/.exec(live.detail ?? "");
+          const delayMin = live.label === "Cancelled" ? 999 : m ? Number(m[1]) : 0;
+          if (delayMin > 0) {
+            const to = stopById.get(n.after.toStopId);
+            const text = to?.start_time
+              ? delayConsequence(
+                  { id: n.after.toStopId, intoName: to.title ?? "your destination", arriveIso: to.start_time, deadlineIso: to.start_time, kind: "connection" },
+                  delayMin === 999 ? 60 : delayMin,
+                ).text
+              : live.label;
+            n.after.liveAlert = { title: live.label, text, state: delayMin >= 16 || delayMin === 999 ? "severe" : "minor" };
+          }
+        }
+      }
+
+      const fromC = coordOfStop(fromStop);
       const toC = coordOfStop(stopById.get(n.after.toStopId));
       if (!inGreaterLondon(fromC) || !inGreaterLondon(toC)) return;
       const plan = await tflLegPlan(fromC!, toC!);
@@ -445,6 +469,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     stops.length === 0 ? "empty" : anyAtRisk ? "at-risk" : stops.length <= 2 ? "sparse" : "threaded";
 
   const title = journey.title || spanLabel(dateStart, dateStart);
+
+  // Decision-clock (P9) — the day's single reassuring number: when to set off.
+  const startStop = stops.find((s) => s.type === "start");
+  const leaveByIso = startStop?.end_time ?? null;
+  const firstLeg = transitions.find((tr) => tr.from_stop_id === startStop?.id);
+  const firstDest = firstLeg ? stopById.get(firstLeg.to_stop_id)?.title ?? null : null;
 
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
@@ -482,6 +512,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
                 <IntentionCard key={it.id} intention={it} />
               ))}
             </section>
+          ) : null}
+
+          {leaveByIso ? (
+            <p className="cc-decision-clock" style={{ margin: 0, fontFamily: "var(--mono)", fontSize: "var(--fs-label)", color: "var(--gold-2)", letterSpacing: "0.04em" }}>
+              Set off by {londonHHMM(leaveByIso)}{firstDest ? ` for ${firstDest}` : ""}
+            </p>
           ) : null}
 
           {journeyMap ? <PlanMap journey={journeyMap} /> : null}

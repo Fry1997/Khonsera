@@ -113,6 +113,19 @@ don't rename. No emojis anywhere (hard rule).
     line · Minor Delays · you'll be 6 min late for X"). *Design owns it* — calm caution, never alarm;
     weight tracks `data-state` (minor → gold, severe/suspended → rust).
 
+## P9 · Live spine (decision-clock + consequence)
+
+- **Decision-clock** 🟡 — `.cc-decision-clock` on `/plan/[id]` (page-level). One quiet line: "Set off
+  by HH:MM for X" — the day's single reassuring number. *Design owns it* — it should read as calm
+  reassurance (mono gold figure), the opposite of an alarm.
+- **Rail live-alert** 🟡 — `.cc-live-alert[data-state="minor|severe"]` under a booked train leg on
+  `/plan/[id]`: the live status title + the engine **consequence** ("Delayed 13 min — you'll miss the
+  10:40, act by 10:27"). *Design owns it* — minor = gold, severe = rust; a calm caution that carries
+  consequence without panic. (Only appears with `DARWIN_LDBWS_KEY` + a real delay.)
+- **TfL reroute prompt** 🟡 — `.cc-tflleg-reroute` inside `.cc-tflleg-alert` for a severe/suspended
+  line: the one-line "consider an alternative, or a taxi". *Design owns it* — an offered way out,
+  understated.
+
 ---
 
 ## How to use this handoff

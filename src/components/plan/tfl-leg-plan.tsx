@@ -17,6 +17,11 @@ export function TflLegPlan({ data }: { data: TflLegPlanVM }) {
             {disruption.line} line · {disruption.status}
           </span>
           {consequence ? <span style={{ fontSize: "var(--fs-label)", color: "var(--ink)" }}>{consequence}</span> : null}
+          {disruption.state === "severe" || disruption.state === "suspended" ? (
+            <span className="cc-tflleg-reroute" style={{ fontSize: "var(--fs-label)", color: "var(--gold-2)" }}>
+              Consider an alternative route, or a taxi to keep the day.
+            </span>
+          ) : null}
         </div>
       ) : null}
       <div className="cc-tflleg-route" style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "baseline" }}>
