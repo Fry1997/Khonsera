@@ -136,6 +136,35 @@ scattered sums.
 
 ---
 
+## Deviation & care layer (Edition III P9–P13) — live on `/plan/[id]` + `/today`
+
+*The components that appear when the day deviates from plan or needs looking after. Round 7 brand-passed
+the live-spine set (✓ skinned); the recovery + nudge set is the **Round 8** request (🟡 to skin). Full
+brief, contract classes, states and preview steps live in `docs/design-handoff-edition-iii.md`.*
+
+### Live-spine set (P9–P10) — ✓ Round 7 skinned
+**Decision-clock** (`.cc-decision-clock` · `.label/.figure/.for`) — the day's single "set off by HH:MM".
+**Live-alert** (per-leg, rail + TfL) — live status + the engine **consequence** ("you'll miss the 09:40,
+act by 09:27"); minor=gold, severe=rust. **Fragility** (`.cc-fragility`) — "tight plan, one delay and it
+breaks". **Day-ripple** (`.cc-day-ripple`) — the whole-day knock-on. **Today disruption takeover**
+(`.cc-today-disruption`, `cc-screen[data-disrupted]`) — the day's character shifting to disruption.
+
+### RecoveryCard — the way out (P11) · 🟡 Round 8
+`plan/recovery-card.tsx`, `.cc-recovery` (+ `-head/-eyebrow/-note/-list/-opt/-label/-conseq/-return/-via`).
+**Data:** beneath a cancelled/severely-delayed booked train — each viable alternative + its consequence
+("makes your 2pm, 12 min spare" / "reaches it 18 min late"); the booked-return impact (`-return`, rust);
+an OTP detour note (`-via`, "via Coventry · 1 change"). **States:** per-option `data-makes=true|false`
+(true reassures/sage, false stays quiet — never red); `data-return=at-risk`; the `· sample` honesty cue.
+
+### PlanNudges / NudgeCard — contextual care (P12–P13) · 🟡 Round 8
+`plan/plan-nudges.tsx` wrapping the `NudgeCard` (above). Six rules render through **two states**:
+**open** (`NudgeCard`, gold-tint) — one calm proposal + action + "Not now" (weather→leave-earlier,
+running-late→fast-track, layover→lounge, parking→pre-book, gate-change→reroute); **accepted**
+(`.cc-nudge-done` + `-mark`, `data-rule`) — a quiet "Done" confirmation that doesn't vanish. **Tone:**
+foresight (ahead-of-time, unhurried) vs reaction (moment-of, a touch more weight); once acted, it settles.
+
+---
+
 ## Cross-cutting rules
 - **Tokens only** (`design-tokens.md`); no raw hex/px in components.
 - **Calm by default;** gold/accent is punctuation — the single live "now" pulse or the one action.
