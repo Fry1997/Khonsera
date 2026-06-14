@@ -106,7 +106,8 @@ adapter seam beside the TfL adapter. **MVP:** one second city. **Deferred:** bro
 **Max scope:** flight **search + book** (NDC); **seat maps + ancillaries** (bags, seats); **order
 change / cancel**; **schedule-change + disruption webhooks** → flight-delay feeds the contextual
 engine and the recovery layer. Replaces Amadeus self-service (dead 17 Jul 2026). **MVP:** capture +
-status. **Deferred:** in-app booking.
+status. **Deferred:** in-app booking (hold/pay-later orders).
+**P14 — DONE (flights LIVE, test mode):** `integrations/duffel.ts` — real offer→order lifecycle (`v2`), search/compare/book lands a flight run; test key in hand (`DUFFEL_API_TOKEN`). Stays real-shaped, pending account activation.
 
 ### AeroDataBox · low-cost paid (~$5/mo for 3k calls; small free/trial tier — free 300–600/mo only via API.Market, ~$0.99/mo on RapidAPI) · P13
 **Max scope:** flight **status**; **terminal + gate** → the **in-terminal walk routing** and the

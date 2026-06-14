@@ -259,3 +259,14 @@ airport buffer. All providers are mocked (so they show with `· sample`) — the
   `-text` with `<strong>`, `-tail` = the booking ref). Busy → `.cc-btn-gold[data-busy]`.
 - **No token requests** (Design used `color-mix()` against existing `--success`/`--gold`). Redlines +
   class-map saved to `docs/design/edition-iii-r8-*`. Build green · 304 tests · tsc clean.
+
+## P14 · Connections / booking (the finder) — 🟡 to skin (next round)
+
+- **FlightFinder** 🟡 — `src/components/plan/flight-finder.tsx`, `.cc-conn` (+ `-head/-close/-form/`
+  `-list/-offer/-offer-title/-offer-summary/-offer-price/-error/-confirmed/-empty`). On `/plan/[id]`
+  (action row): a search form (from/to IATA + date) → a **compare** list of fares (title · summary ·
+  price · Book) → booked flight lands in the day as a flight run; a confirmation line shows the PNR.
+  Reuses `.cc-btn`/`.cc-field`/`.cc-eyebrow`. *Placeholder inline token styles; Design owns `.cc-conn*`*
+  — this is the "buy without leaving" moment: calm, comparison legible at a glance, the price in mono,
+  one clear primary action (Book) per row, the "· sample" cue while a provider is mocked. Currency via
+  `Intl.NumberFormat`. (The compare could later adopt the `ComparisonMatrix` contract component.)

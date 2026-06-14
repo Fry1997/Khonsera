@@ -354,26 +354,32 @@ their provider seams. ✓ — lounge + parking fire on real conditions with mock
 its real source (AeroDataBox) + rule + diff, with the day-of poll loop positioned. Build green · 304
 tests (context engine ×9). Design handoff folded into the consolidated recovery+care round (below).
 
-### Phase 14 — Connections framework + booking (L5)  `[ ]`
+### Phase 14 — Connections framework + booking (L5)  `[~]` core DONE 2026-06-14
 **Depends on:** P4 (readiness gaps feed it), P12/P13 (lounge/parking rules invoke it).
-**Providers (D53, real contracts):** **Duffel Flights** (test key in hand → the LIVE validation
-connector), **Duffel Stays** (pending sales activation), **Parkopedia** (email sent), **Assertis** (rail
-booking — email sent). All env-gated; mock behind the same interface until live.
-- [ ] A reusable **supplier pattern**: search → availability/quote → book → confirm, behind a provider
-      interface; result flows back as a Ticket/Commitment. The **money/irreversible step is the stub**
-      (the one permitted fake) even where the data path is real.
-- [ ] **Model every interface on the REAL provider contract** (research-first), so mock→real is a swap,
-      not a redesign. Connectors: **Duffel Flights** (real, test mode), **Duffel Stays** (real-shaped,
-      gated), **Parkopedia** parking (mock, real-shaped), **Assertis** rail (referred/real-shaped),
-      lounge/fast-track (DragonPass, from P12–P13).
-- [ ] **Validate against a real API, not just mocks** — wire **Duffel Flights live against test mode**
-      (the `duffel_test_…` token) so the framework is proven against a real offer→order lifecycle before
-      we lean on it. (This is the de-risking rung: turns "the mocks should work" into a tested fact.)
-- [ ] **Fares display** (informing only) where data exists; purchase referred until the retailing
-      relationship (Assertis rail / Duffel order) is live.
-**Done when:** a connection can be searched/compared/booked from a readiness gap or a nudge and lands in
-the day; **Duffel Flights works live against test mode**; the other adapters are env-gated real-shaped
-mocks. **New env:** `DUFFEL_API_TOKEN` (test now), `ASSERTIS_KEY` (pending), `PARKOPEDIA_KEY` (pending).
+**Providers (D53, real contracts):** **Duffel Flights** (test key → LIVE validation), **Duffel Stays**
+(pending sales activation), **Parkopedia** (email sent), **Assertis** (rail booking — email sent).
+- [x] A reusable **supplier pattern** — `src/lib/connections/types.ts`: one Offer → Quote → Booking
+      vocabulary every connector speaks + a `connectionProviders()` registry (live/test/mock/pending,
+      derived from env). The money/irreversible step is the stub; the data path is real where possible.
+- [x] **Modelled on the REAL Duffel contract** (research-first, June 2026): `integrations/duffel.ts` —
+      Flights (offer_requests→offers→orders, `Duffel-Version: v2`, Bearer, test-by-token-prefix) +
+      Stays (search→rates→quote→booking, 403→pending). Pure mappers (`mapDuffelOffer/Order/Stay`) ×4
+      unit tests. Gated on `DUFFEL_API_TOKEN`; deterministic mock + `· sample` when unset.
+- [x] **Validated against a real API** — Flights run **live against Duffel test mode** end to end:
+      `searchFlightOffers` → compare → `bookFlightOffer` (refresh → create instant order, balance pay)
+      → **lands as a flight run** via `addTransport`. The `FlightFinder` surface on `/plan/[id]`.
+- [x] **Stays real-shaped** — `searchStayOffers`/`bookStayOffer` (lands an accommodation anchor);
+      inert/pending until Duffel activates Stays on the account.
+- [~] **Positioned in-phase follow-ons** (each tagged): **passenger-details capture** (test-mode
+      defaults now → a proper passenger form, needs profile/traveller depth); **readiness-gap "book"
+      wiring** (the finder is on the plan action row; wiring it from a P4 gap is a one-button connect);
+      **stay-finder surface** (action ready, no UI yet — flights is the validated surface); **Assertis
+      rail booking** + **Duffel Stays** (provider-gated); **hold/pay-later** orders (instant only today);
+      **rail fares display** (Darwin/RDG fares feed — separate fast-follow).
+**Done when:** a connection can be searched/compared/booked and lands in the day; **Duffel Flights works
+live against test mode**; other adapters are env-gated real-shaped mocks. ✓ for the core + the live
+flight path; the follow-ons above are positioned. Build green · 308 tests. **New env:** `DUFFEL_API_TOKEN`
+(test now), `ASSERTIS_KEY`/`PARKOPEDIA_KEY` (pending). Design handoff (`.cc-conn*`) added.
 
 ### Phase 15 — Mileage tracker (L6)  `[ ]`
 **Depends on:** P0 (day-object + routing). *Parallelisable, sequenced here for linear cadence.*
@@ -671,3 +677,17 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   both fast-track + lounge route through `dragonpass.ts` (`DRAGONPASS_KEY`). **Collinson** (Priority Pass
   + SmartDelay) is the long-term strategic **target**, kept **dormant** (`collinson.ts`) until that
   enterprise relationship is realistic; identical voucher shapes → one-line switch. 304 tests green.
+- 2026-06-14 · **Round 8 (deviation & care) integrated** — `khonsera-edition-iii-care.css` last; recovery
+  band + nudges reconciled to the contract (`.cc-recovery*`, `.cc-nudge*` with the `data-urgency`
+  foresight→reaction flip), inline placeholders stripped. No token requests. 304 tests.
+- 2026-06-14 · **Phase 14 core DONE — connections framework + Duffel Flights LIVE (test mode).** Built the
+  shared supplier vocabulary (`connections/types.ts`: Offer→Quote→Booking + provider registry) and the
+  real **Duffel** adapter (`integrations/duffel.ts`) to the researched June-2026 contract — Flights
+  (offer→order) + Stays (search→quote→book), pure mappers ×4 tested, token-gated with `· sample` mock.
+  Flights run **live end to end against Duffel test mode**: `searchFlightOffers` → compare in the
+  `FlightFinder` → `bookFlightOffer` (refresh → instant order, balance pay, no real money) → **lands as a
+  flight run** via `addTransport`. Stays real-shaped (pending Duffel activation → 403 falls to mock).
+  This is the de-risking rung paying off: the framework is proven against a real offer→order lifecycle,
+  not just mocks. Positioned follow-ons: passenger-details capture, readiness-gap wiring, stay surface,
+  Assertis rail, hold orders. Build green · **308 tests**. New env `DUFFEL_API_TOKEN` (set in Vercel).
+  Design handoff (`.cc-conn*`) added.

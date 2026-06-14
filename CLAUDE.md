@@ -85,7 +85,16 @@ Three pure, unit-tested engines drive the day-of intelligence; each is fed by a 
 **Provider gating rule:** every external adapter self-gates on its env var and returns null/mock when
 unset — the build NEVER blocks on a key, and an unset key shows honest mock with a "· sample" cue, not
 a false alarm. New env vars: `OTP_URL`, `OTP_GRAPHQL_PATH?`, `DRAGONPASS_KEY` (fast-track + lounge),
-`PARKOPEDIA_KEY`, `AERODATABOX_KEY`, `OPEN_METEO_URL?`, `COLLINSON_KEY?` (dormant long-term target).
+`PARKOPEDIA_KEY`, `AERODATABOX_KEY`, `OPEN_METEO_URL?`, `COLLINSON_KEY?` (dormant long-term target),
+`DUFFEL_API_TOKEN` (P14 flights — `duffel_test_…` routes to test mode), `ASSERTIS_KEY?` (rail booking, pending).
+
+## Connections / booking (Edition III P14) — `src/lib/connections/` + `integrations/duffel.ts`
+The reusable supplier pattern: one **Offer → Quote → Booking** vocabulary every connector speaks, so the
+surface searches/compares/books the same way and a mock swaps for a real adapter with no caller change.
+**Duffel Flights is LIVE against test mode** (the framework's proof) — search→compare→book in
+`FlightFinder`, the booked flight lands as a flight run via `addTransport`. Duffel Stays is real-shaped
+but pending account activation (403→mock). Build interfaces on the REAL provider contract (research-first)
+so mock→real is a swap, not a redesign; the money step is the one permitted stub (test mode = no charge).
 
 ## Mandatory: Keep docs/ updated
 
