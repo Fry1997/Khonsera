@@ -333,6 +333,15 @@ flips its feature from mock to live with no code change.
 
 ## Entity-depth track (ED) — replace the operator's app, one entity at a time
 
+**Sequencing decision (2026-06-14):** *press on with the dependency-ordered phases; enrich each
+entity at the phase that powers it — don't front-load the ED track against mocks.* The research
+showed most of each entity's depth rides on phases not yet built (flight gates/status → L4 + live;
+hotel message/cancel → L5; cancel-by → P9; breakfast → leave-by → P6). So: **structural / no-partner
+entity depth** is done opportunistically (as ED1's arrival payload was — buildable today, no API);
+**API/live-powered depth folds into its capability phase** rather than being stubbed early. The
+catalogue is the per-entity *depth checklist* each phase fulfils as it lands. ED2+ are therefore
+**triggered by their powering phase**, not run upfront.
+
 Runs **parallel to the capability phases** (it needs the day-object + capture, not the live engine).
 **Every ED phase begins with a research pass** (a research agent → `docs/research/<entity>.md`):
 discover the category apps' feature set (to match) + the third-party services/APIs that already
