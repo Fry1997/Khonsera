@@ -16,7 +16,7 @@ export type NudgeUrgency = "info" | "soon" | "now";
 // handler + the later booking framework (P14) can act on it precisely.
 export type NudgeAction =
   | { kind: "leave-earlier"; minutes: number; reason: string }
-  | { kind: "expedite-security"; airport: string; provider: "dragonpass" }
+  | { kind: "expedite-security"; airport: string; provider: "collinson" }
   | { kind: "book-lounge"; airport: string; windowMin: number; boardingIso: string; provider: "collinson" }
   | { kind: "prebook-parking"; site: string; fromIso: string; toIso: string; provider: "parkopedia" }
   | { kind: "gate-reroute"; airport: string; fromGate: string; toGate: string; walkMin: number };
@@ -118,7 +118,7 @@ export function runningLateExpedite(input: FlightBufferInput, nowIso: string): N
       `Your buffer at ${input.airport} is thin — about ${bufferMin} min on the ground before your ${clock(input.flightDepartIso)} flight. ` +
       `A fast-track slot through security protects it.`,
     actionLabel: "Get fast-track",
-    action: { kind: "expedite-security", airport: input.airport, provider: "dragonpass" },
+    action: { kind: "expedite-security", airport: input.airport, provider: "collinson" },
     urgency: urgencyFor(input.flightDepartIso, nowIso),
   };
 }

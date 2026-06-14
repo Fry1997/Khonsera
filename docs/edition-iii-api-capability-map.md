@@ -115,7 +115,10 @@ truly-free generous flight-gate feed exists — this is the cheapest. **Deferred
 provider (Cirium/FlightAware) when polling volume grows.
 **P13 gate — DONE (mock+gated):** `integrations/aerodatabox.ts` `flightDepartureStatus` (current gate/terminal/status), diffed vs the plan's last-known gate → the gate-change reroute. Real on `AERODATABOX_KEY`; continuous day-of poll loop positioned.
 
-### DragonPass · revenue · P12 (fast-track ⭐) + P13 (lounge)
+### Collinson — the chosen airport-experience partner (D52) · revenue · P12 (fast-track ⭐) + P13 (lounge)
+*(DragonPass DORMANT — `integrations/dragonpass.ts` kept as a fallback fast-track adapter, identical shape.)*
+
+### DragonPass · revenue · (dormant fallback)
 **Max scope (the flagship mechanism):**
 - **Fast-track security + immigration prebooking** (`/v2/orders/...prebooking`) → the
   **running-late → expedite** flagship; **QR voucher** at the lane.

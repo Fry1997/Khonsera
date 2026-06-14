@@ -53,7 +53,7 @@ describe("context engine — running late → expedite", () => {
 
   it("fires fast-track when the buffer is thin", () => {
     const n = runningLateExpedite(fb("2026-07-01T08:00:00Z"), now)!; // 60 min < 75
-    expect(n.action).toEqual({ kind: "expedite-security", airport: "Gatwick (LGW)", provider: "dragonpass" });
+    expect(n.action).toEqual({ kind: "expedite-security", airport: "Gatwick (LGW)", provider: "collinson" });
     expect(n.message).toContain("60 min");
   });
 

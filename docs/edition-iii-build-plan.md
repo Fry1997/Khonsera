@@ -652,3 +652,9 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   (P14). **Design checkpoint reached** → packaged **Round 8** (the deviation & care layer: recovery band
   + the six nudges, two card states + one band) in `docs/design-handoff-edition-iii.md` for one
   consolidated brand pass.
+- 2026-06-14 · **Provider procurement handoff + Collinson chosen (D52).** Wrote
+  `docs/provider-procurement-handoff.md` (founder action list: who/what/why/cost/env per provider).
+  Corrected the AeroDataBox "free" claim (it's low-cost paid; no free generous flight-gate feed).
+  Founder picked **Collinson** as the single strategic airport-experience partner — consolidated
+  fast-track + lounge onto `collinson.ts` (`COLLINSON_KEY`); **DragonPass dormant** as fallback. 304
+  tests green.

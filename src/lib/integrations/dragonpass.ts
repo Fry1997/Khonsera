@@ -1,10 +1,13 @@
-// DragonPass adapter (Phase 12) — fast-track security prebooking, the flagship
-// "running late → expedite" connection. REVENUE provider, procurement-gated:
-// MOCK until DRAGONPASS_KEY is set, then the real `/v2/orders/...prebooking`
-// product drops in behind this same shape (capability map). The mock returns a
-// realistic QR-voucher so the whole flow — propose → confirm → voucher in hand —
-// works end to end today; the full ticketisation (rendering the QR on a Pass)
-// is the P14 connections framework.
+// DragonPass adapter (Phase 12) — fast-track security prebooking.
+//
+// DORMANT (D52): Collinson is now the single airport-experience partner (fast-track
+// + lounge), so the context engine no longer imports this. Kept in the tree as the
+// ready fallback/secondary fast-track adapter (Collinson's fast-track footprint is
+// narrower than a pure fast-track vendor's) — it speaks the identical voucher shape,
+// so re-pointing `actions/context.ts` back here is a one-line change. Do NOT delete.
+//
+// REVENUE provider, procurement-gated: MOCK until DRAGONPASS_KEY is set, then the
+// real `/v2/orders/...prebooking` product drops in behind this same shape.
 
 export type FastTrackSlot = { startIso: string; endIso: string };
 

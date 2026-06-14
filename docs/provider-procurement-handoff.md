@@ -38,7 +38,7 @@ margin. They need a B2B application/contract, so **start these early** if you wa
 
 | Provider | Who / what | Powers | Cost model | Env | Action |
 |---|---|---|---|---|---|
-| **DragonPass** *or* **Collinson** | Airport-experience networks (lounges + fast-track) — *pick one, see decision #1* | Fast-track security (P12) + airport lounge (P13) | Revenue (commission / wholesale+markup) | `DRAGONPASS_KEY` / `COLLINSON_KEY` | Apply to your chosen partner |
+| **Collinson** (Priority Pass / LoungeKey) | Airport-experience network — **chosen partner (decision #1)** | Fast-track security (P12) + airport lounge (P13) + SmartDelay later | Revenue (commission / wholesale+markup) | `COLLINSON_KEY` | Apply for API access — enterprise relationship |
 | **Parkopedia / Arrive** | Parking data + booking aggregator | Predicted car-park occupancy + reserve a space (P13) | Low/revenue (data licence + booking commission) | `PARKOPEDIA_KEY` | Apply for API access |
 
 ### Coming up (later phases — listed so you can start slow ones early)
@@ -52,18 +52,16 @@ margin. They need a B2B application/contract, so **start these early** if you wa
 
 ## Decisions you need to make
 
-### 1. Airport-experience partner: DragonPass vs Collinson — **pick one**
-Both do lounges *and* fast-track; you don't need both. The build currently mocks DragonPass for
-fast-track and Collinson for lounge purely because the capability map listed both — that split is
-arbitrary and should collapse to one contract.
-- **DragonPass** — one partner covers **both** fast-track and lounge; generally the simpler single
-  onboarding for a young company. **Recommended starting point.**
-- **Collinson (Priority Pass / LoungeKey)** — bigger lounge network + **SmartDelay** (lounge auto-
-  triggered by a flight delay, which plugs straight into our recovery moment) + meet-and-assist. Richer,
-  but a heavier relationship.
-- **My recommendation:** start with **DragonPass only** (covers both features under one contract);
-  revisit Collinson later if you want SmartDelay or the Priority Pass network. Swapping/adding is a
-  one-adapter change — the rule engine is provider-agnostic.
+### 1. Airport-experience partner — **DECIDED: Collinson** (founder, 2026-06-14)
+Both DragonPass and Collinson do lounges *and* fast-track; one partner, not two. **Chosen: Collinson**
+(Priority Pass / LoungeKey) as the **long-term strategic, enterprise-level** partner — the bigger lounge
+network, **SmartDelay** (lounge auto-triggered by a flight delay, which plugs straight into our recovery
+moment), and meet-and-assist. The build now routes **both** fast-track (P12) and lounge (P13) through
+`integrations/collinson.ts` on `COLLINSON_KEY`.
+- **Honest caveat:** Collinson's *fast-track* footprint is narrower than a pure fast-track vendor's.
+  **DragonPass stays dormant in the tree** (`integrations/dragonpass.ts`, identical voucher shape) as a
+  ready fallback/secondary fast-track adapter — re-pointing is a one-line change. `DRAGONPASS_KEY` is
+  therefore an *optional* fallback env, not a primary.
 
 ### 2. Open-Meteo: commercial plan or self-host
 Open-Meteo is free for **non-commercial** use. Khonsera is commercial, so for production you need

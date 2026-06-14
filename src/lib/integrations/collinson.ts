@@ -1,9 +1,15 @@
-// Collinson (Priority Pass / LoungeKey) adapter (Phase 13) — airport lounge
-// access for the long-layover rule. REVENUE provider, procurement-gated: MOCK
-// until COLLINSON_KEY is set. The mock returns a realistic lounge pass so
-// propose → confirm → pass-in-hand works end to end today; the real catalogue +
-// booking drop in behind this shape. (SmartDelay — lounge auto-triggered by a
-// flight delay — is the P11/P13 follow-on noted in the capability map.)
+// Collinson (Priority Pass / LoungeKey) adapter (Phase 12–13) — the single
+// airport-experience partner (founder call, D52): BOTH **fast-track security**
+// (the running-late flagship, P12) and **lounge** access (the long-layover rule,
+// P13). REVENUE provider, procurement-gated: MOCK until COLLINSON_KEY is set. The
+// mock returns realistic vouchers so propose → confirm → pass-in-hand works end to
+// end today; the real catalogue + booking drop in behind these shapes. (SmartDelay
+// — lounge auto-triggered by a flight delay — is the P11/P13 follow-on noted in
+// the capability map, and a key reason Collinson is the strategic partner.)
+//
+// Honest note: Collinson's fast-track footprint is narrower than a pure fast-track
+// vendor's; `integrations/dragonpass.ts` stays in the tree (dormant) as the ready
+// fallback/secondary fast-track adapter behind the identical voucher shape.
 
 export type LoungePass = {
   reference: string;
@@ -19,6 +25,45 @@ export type LoungePass = {
 
 function collinsonKey(): string | null {
   return process.env.COLLINSON_KEY ?? null;
+}
+
+// ───────────────────────── fast-track security (P12 flagship) ─────────────────────────
+
+export type FastTrackVoucher = {
+  reference: string;
+  airport: string;
+  lane: string;
+  validFromIso: string;
+  validToIso: string;
+  qrPayload: string;
+  provider: "collinson";
+  sample: boolean;
+};
+
+export async function fastTrackAvailability(airport: string): Promise<{ available: boolean; sample: boolean }> {
+  void airport;
+  if (collinsonKey()) return { available: true, sample: false };
+  return { available: true, sample: true };
+}
+
+// Book (or, mocked, mint) a fast-track voucher. Deterministic so dev + tests are
+// stable. The real order POST replaces the mock branch behind the same return.
+export async function bookFastTrack(args: { airport: string; flightDepartIso: string }): Promise<FastTrackVoucher> {
+  const sample = !collinsonKey();
+  const depart = new Date(args.flightDepartIso).getTime();
+  const validFromIso = new Date(depart - 120 * 60_000).toISOString();
+  const validToIso = new Date(depart - 30 * 60_000).toISOString();
+  const ref = `FT-${codeOf(args.airport)}-${shortHash(args.airport + args.flightDepartIso)}`;
+  return {
+    reference: ref,
+    airport: args.airport,
+    lane: "Security — Fast Track",
+    validFromIso,
+    validToIso,
+    qrPayload: `COLLINSON|${ref}|${args.flightDepartIso}`,
+    provider: "collinson",
+    sample,
+  };
 }
 
 export async function loungeAvailability(airport: string): Promise<{ available: boolean; loungeName: string; sample: boolean }> {

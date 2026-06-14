@@ -740,3 +740,13 @@ Newest at the bottom of each section.
   diff are built and fire against a metadata baseline now); booking→ticketise-onto-a-Pass is P14; live
   security-queue + multi-point weather remain P12-scope max-API follow-ons. New env vars:
   `COLLINSON_KEY`, `PARKOPEDIA_KEY`, `AERODATABOX_KEY`.
+
+- **D52 — Airport-experience partner: Collinson (single partner), DragonPass dormant.** Founder call:
+  Collinson (Priority Pass / LoungeKey) is the long-term **strategic, enterprise-level** partner — the
+  bigger lounge network + **SmartDelay** (lounge auto-triggered by a flight delay → plugs into the P11
+  recovery moment) + meet-and-assist. Consolidated **both** fast-track (P12 flagship) and lounge (P13)
+  onto `integrations/collinson.ts` via `COLLINSON_KEY`; the context engine's `expedite-security` action
+  now carries `provider: "collinson"`. **DragonPass retired to dormant** (`integrations/dragonpass.ts`
+  kept, unimported) as a ready fallback/secondary fast-track adapter — Collinson's fast-track footprint
+  is narrower than a pure fast-track vendor's, and the voucher shapes are identical, so re-pointing is a
+  one-line change. `DRAGONPASS_KEY` is now an optional fallback env, not a primary. 304 tests green.
