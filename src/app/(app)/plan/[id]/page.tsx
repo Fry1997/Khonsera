@@ -15,6 +15,7 @@ import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
 import { loadReadiness } from "@/lib/actions/readiness";
 import { ReadinessPanel } from "@/components/plan/readiness-panel";
+import { tflLegPlan, inGreaterLondon, type LatLng } from "@/lib/integrations/tfl";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -53,6 +54,13 @@ function mapStopType(t: string): AnchorType {
 }
 const LEG_MODES = new Set(["walk", "drive", "taxi", "bus", "tube", "train", "flight", "mixed"]);
 const mapLegMode = (m: string): LegMode => (LEG_MODES.has(m) ? m : "mixed") as LegMode;
+
+function coordOfStop(s: StopRow | undefined): LatLng | null {
+  if (!s) return null;
+  const lat = s.customer_site?.latitude ?? s.location?.latitude ?? s.transport_hub?.latitude ?? null;
+  const lng = s.customer_site?.longitude ?? s.location?.longitude ?? s.transport_hub?.longitude ?? null;
+  return lat == null || lng == null ? null : { lat, lng };
+}
 
 const londonHHMM = (iso?: string | null): string | null =>
   iso
@@ -396,6 +404,19 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     const notes = u.anchor ? notesByStop.get(u.entryId) ?? [] : [];
     return { key: u.key, anchor: u.anchor, isBase, accommodation, notes, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
+
+  // Phase 8 — resolve each London transit leg to a live TfL plan (multimodal
+  // route + arrivals at the boarding stop). Mock until TFL_APP_KEY is set.
+  await Promise.all(
+    nodes.map(async (n) => {
+      if (n.after?.kind !== "leg") return;
+      const fromC = coordOfStop(stopById.get(n.after.fromStopId));
+      const toC = coordOfStop(stopById.get(n.after.toStopId));
+      if (inGreaterLondon(fromC) && inGreaterLondon(toC)) {
+        n.after.tflPlan = (await tflLegPlan(fromC!, toC!)) ?? undefined;
+      }
+    }),
+  );
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);
   const planState: "empty" | "sparse" | "threaded" | "at-risk" =

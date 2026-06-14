@@ -33,6 +33,13 @@ logged in the Progress Log.
 - Commit + push to the working branch; tick this file's boxes; append to the Progress Log; update
   `CLAUDE.md` if institutional knowledge changed.
 - State the user-visible increment plainly (what can a person now do that they couldn't before).
+- **A phase is *complete*, not "partial".** Build every sub-task that is buildable now. The only
+  legitimate reasons to leave a sub-task unbuilt are: (1) it depends on a *later* phase's machinery,
+  (2) it depends on data / a key / an external we don't have, or (3) it's a large *distinct* feature
+  that warrants its own phase. Each deferral carries an **explicit tag** naming what unblocks it
+  (which phase / which data / which key) — never a vague "follow-on". If a phase is too big to be a
+  completable unit, **re-scope it** (split the distinct features into their own phases) rather than
+  ship it "partial".
 
 ## Standing rules (apply on every push)
 
@@ -212,19 +219,29 @@ arrival resolves to a true door where known.
 - [ ] Live position feeds the whole-day timing (seam for the cascade in P9).
 **Done when:** turn-by-turn guidance reflects time-in-hand, and live position updates the day's timing.
 
-### Phase 8 — City mobility / TfL (C4)  `[~]` partial 2026-06-14
+### Phase 8 — City mobility / TfL (C4)  `[x]` DONE 2026-06-14
 **Depends on:** P6. **Procurement:** `TFL_APP_KEY` (free, api.tfl.gov.uk) — **mock until set.**
 - [x] **TfL adapter** (`src/lib/integrations/tfl.ts`) behind a clean seam, **live + deterministic
-      mock, env-gated** (`TFL_APP_KEY`): `tflLineStatus()` over tube/overground/Elizabeth/DLR/tram.
-- [x] **Live line status surface** — `TflLineStatus` on `/today`, London-gated (Greater London bbox);
-      concierge restraint (leads with disruptions, withholds the rest); honest "· sample" when mock.
-      Design handoff logged.
-- [ ] **Live arrivals** at a stop — *typed seam in the adapter; UI follow-on.*
-- [ ] **Multimodal point-to-point** (walk → Tube → walk) — *deferred (journey-planner endpoint).*
-- [ ] **Line-status-aware reroute** + **network maps** (schematic + highlight) — *deferred.*
-**Done when:** a London day plans multimodal transit with live arrivals + line status, reroutes on a
-suspension, and renders the highlighted network map. *Line status live; the rest are the max-scope
-follow-ons (capability map).*
+      mock, env-gated** (`TFL_APP_KEY`): line status, **journey planner** (multimodal), **arrivals**,
+      **StopPoint** (resolved via the journey's boarding point).
+- [x] **Live line status** — `TflLineStatus` on `/today`, London-gated; concierge restraint; honest
+      "· sample" when mock.
+- [x] **Multimodal point-to-point + live arrivals** — every **London transit leg** on `/plan/[id]`
+      resolves to a TfL plan (walk → line → walk) with **next-train arrivals** at the boarding stop
+      (`TflLegPlan`). Design handoff logged.
+- [→ P9] **Line-status-aware reroute** — genuinely depends on the **live-cascade engine (Phase 9)**;
+      built there (a suspension re-plans the city day like a cancelled train).
+- [→ P8b] **Network maps** (schematic + route highlight) — a large distinct data+design feature;
+      re-scoped to its own phase.
+**Done when:** a London day plans multimodal transit with live arrivals + line status. ✓ (reroute and
+network maps are explicitly sequenced, not "partial"). Build green · 276 tests pass.
+
+### Phase 8b — TfL network maps (schematic + route highlight)  `[ ]`
+**Depends on:** P8. **Procurement:** none beyond `TFL_APP_KEY`. *Re-scoped out of P8 as a distinct
+data+design feature.*
+- [ ] Line **route sequences** from TfL (`Line/{id}/Route/Sequence`) → the Tube/Overground schematic.
+- [ ] Render the schematic with the **day's route highlighted** (the network map people navigate by).
+**Done when:** a London transit leg shows the schematic line map with its route picked out.
 
 ### Phase 9 — Live spine A: decision-clock + consequence + live cascade (L2)  `[ ]`
 **Depends on:** P6; Darwin (DONE-partial) / TfL (P8).
@@ -233,8 +250,10 @@ follow-ons (capability map).*
 - [ ] **Consequence translation** — "delayed 12 min → you'll miss the 09:40 → act by 09:12."
 - [ ] **Whole-day cascade live** — a slip in one leg recomputes every downstream leg + buffer and
       re-stabilises or flags a break (run the solver reactively on live signals, not just at create).
+- [ ] **Line-status-aware reroute** (carried from P8) — a suspended TfL line re-plans the city day on
+      the same cascade machinery (the journey-planner + line-status seams from P8 are ready).
 **Done when:** a live delay shifts state, states its consequence, shows act-by, and recomputes the
-day downstream.
+day downstream (incl. a TfL line suspension re-planning the city leg).
 
 ### Phase 10 — Live spine B: fragility + disruption phase + on-service (L2)  `[ ]`
 **Depends on:** P9.
@@ -481,5 +500,12 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   over tube/overground/Elizabeth/DLR/tram. `TflLineStatus` on `/today`, London-gated, concierge
   restraint (disruptions first, rest withheld), honest "· sample" on mock. Proves the
   mocks-before-procurement rule end to end. Design handoff logged. **Procurement note to founder:
-  add `TFL_APP_KEY` to flip mock → live.** Build green · 276 tests pass. Follow-ons: arrivals,
-  journey planner (multimodal), line-status reroute, network maps.
+  add `TFL_APP_KEY` to flip mock → live.** Build green · 276 tests pass.
+- 2026-06-14 · **Phase 8 COMPLETED (option A — honour the phase premise).** Founder rightly flagged
+  that "partial then move on" erodes what a phase means. Tightened the Definition of Done (a phase is
+  complete; deferrals carry an explicit tag; re-scope rather than ship "partial"). Finished TfL as a
+  unit: adapter now also does the **journey planner + arrivals + StopPoint**; **every London transit
+  leg on `/plan/[id]` resolves to a multimodal TfL plan + next-train arrivals** (`TflLegPlan`). The two
+  genuinely-dependent pieces are tagged, not dropped: **line-status reroute → Phase 9** (needs the
+  cascade engine), **network maps → new Phase 8b** (distinct data+design feature). Design handoff
+  updated. Build green · 276 tests pass.

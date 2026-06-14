@@ -103,6 +103,11 @@ don't rename. No emojis anywhere (hard rule).
   (no `TFL_APP_KEY` yet) — keep that honesty cue when skinning. *Built with placeholder inline token
   styles* (flex + the dot colour) so it's legible now; **Design owns the `.cc-tfl` skin** — give the
   disrupted lines weight, the all-clear state calm, and treat it as a quiet board, not an alarm panel.
+- **`TflLegPlan`** 🟡 — `src/components/plan/tfl-leg-plan.tsx`, `.cc-tflleg` (+ `-route/-step/`
+  `-arrivals/-arr`). Beneath each **London transit leg** on `/plan/[id]`: the multimodal route
+  (walk → line → walk, per-step minutes) + **next-train arrivals** at the boarding stop. Eyebrow
+  carries the total + "· sample" when mock. *Placeholder inline token styles; Design owns `.cc-tflleg`*
+  — make the steps read as a route, the arrivals as a quiet live ticker.
 
 ---
 

@@ -17,6 +17,8 @@ import type {
 import { wallClockToIso } from "@/lib/time-zone";
 import { AccommodationCard } from "@/components/plan/accommodation-card";
 import { NotesPanel } from "@/components/plan/notes-panel";
+import { TflLegPlan } from "@/components/plan/tfl-leg-plan";
+import type { TflLegPlanVM } from "@/lib/integrations/tfl";
 import type { NoteVM } from "@/lib/actions/notes";
 import type { AccommodationDetails } from "@/lib/accommodation/types";
 import {
@@ -55,7 +57,7 @@ export type SpineNode = {
   passDelete?: string | null;
   dayStart?: string; // a day divider label ("Day 2 · Thu 26 Jun") on multi-day Events
   after?:
-    | ({ kind: "leg"; leg: LegVM } & LegBetween)
+    | ({ kind: "leg"; leg: LegVM; tflPlan?: TflLegPlanVM } & LegBetween)
     | ({ kind: "gap"; gap: GapVM } & LegBetween)
     | null;
 };
@@ -167,18 +169,21 @@ export function PlanSpine({
                 </div>
                 <div>
                   {n.after.kind === "leg" ? (
-                    <LegCard
-                      leg={n.after.leg}
-                      onCompare={() =>
-                        setCompare({
-                          transitionId: n.after!.transitionId,
-                          itineraryId: n.after!.itineraryId,
-                          fromStopId: n.after!.fromStopId,
-                          toStopId: n.after!.toStopId,
-                          title: n.anchor?.title ?? "",
-                        })
-                      }
-                    />
+                    <>
+                      <LegCard
+                        leg={n.after.leg}
+                        onCompare={() =>
+                          setCompare({
+                            transitionId: n.after!.transitionId,
+                            itineraryId: n.after!.itineraryId,
+                            fromStopId: n.after!.fromStopId,
+                            toStopId: n.after!.toStopId,
+                            title: n.anchor?.title ?? "",
+                          })
+                        }
+                      />
+                      {n.after.tflPlan ? <TflLegPlan data={n.after.tflPlan} /> : null}
+                    </>
                   ) : (
                     <GapCard
                       gap={n.after.gap}
