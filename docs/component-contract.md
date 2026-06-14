@@ -163,6 +163,15 @@ running-late→fast-track, layover→lounge, parking→pre-book, gate-change→r
 (`.cc-nudge-done` + `-mark`, `data-rule`) — a quiet "Done" confirmation that doesn't vanish. **Tone:**
 foresight (ahead-of-time, unhurried) vs reaction (moment-of, a touch more weight); once acted, it settles.
 
+### ConnectionsFinder — search / compare / book (P14) · 🟡 Round 9
+`plan/connections-finder.tsx`, `.cc-conn` (+ `-head/-tabs/-tab[data-active]/-sample/-close/-form/-near/`
+`-lbl/-list/-offer/-offer-main/-offer-title/-offer-summary/-offer-price/-pax/-pax-lead/-pax-grid/`
+`-pax-actions/-error/-pending/-confirmed/-empty`). On `/plan/[id]`: Flights|Stays tabs → a search row →
+a **compare** list (title · mono summary · mono price · one primary action) → for flights a
+**passenger-capture** step → the booked item lands in the day. Flights LIVE vs Duffel test mode; stays
+mock until activation. **Tone:** the "buy without leaving Khonsera" moment — calm, comparison glanceable,
+one action per row, the "· sample" cue honest. Reuses `.cc-btn`/`.cc-field`.
+
 ---
 
 ## Cross-cutting rules
