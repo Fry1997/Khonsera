@@ -11,8 +11,7 @@ export default async function TasksPage() {
 
   const { data } = await supabase
     .from("tasks")
-    .select("id, title, due_date, due_time, done")
-    .eq("mode", ctx.activeMode)
+    .select("id, title, due_date, due_time, done, mode")
     .order("done", { ascending: true })
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
@@ -28,7 +27,7 @@ export default async function TasksPage() {
     <div className="cc-screen">
       <header>
         <span className="cc-eyebrow">
-          {ctx.activeMode === "work" ? "Work" : "Personal"} · Tasks
+          Tasks
         </span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           Things to do

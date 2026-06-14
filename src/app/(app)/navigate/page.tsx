@@ -24,9 +24,7 @@ export default async function NavigatePage({
   return (
     <div className="cc-screen">
       <header>
-        <span className="cc-eyebrow">
-          {ctx.activeMode === "work" ? "Work" : "Personal"} · Navigate
-        </span>
+        <span className="cc-eyebrow">Navigate</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           Point to point
         </h1>

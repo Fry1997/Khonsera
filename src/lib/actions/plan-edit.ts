@@ -782,3 +782,21 @@ export async function ensureHomeBookend(
   if (changed) await resequenceAndSolve(itineraryId);
   return { ok: true, added: changed };
 }
+
+// Re-tag a whole day as work or personal (Edition III D1: the tag is the privacy
+// boundary, flipped in context — not a global lens). Owner-only; RLS keeps a
+// personal-tagged day invisible to the workspace.
+export async function setItineraryMode(itineraryId: string, mode: "work" | "personal") {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("itineraries")
+    .update({ mode })
+    .eq("id", itineraryId)
+    .eq("user_id", ctx.userId);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath(`/plan/${itineraryId}`);
+  revalidatePath("/plan");
+  revalidatePath("/today");
+  return { ok: true as const };
+}

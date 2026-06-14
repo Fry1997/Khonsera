@@ -561,6 +561,16 @@
 .cc-journey-when { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .cc-journey-span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--gold-2); }
 .cc-journey-status { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+/* Work/personal tag — the quiet per-item classification (Edition III D1) */
+.cc-mode-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 1px var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--rule-2); color: var(--ink-faint); }
+.cc-mode-tag[data-mode="work"] { color: var(--gold-2); border-color: var(--gold-soft); }
+/* In-context day re-tag (two quiet segments) */
+.cc-mode-flip { display: inline-flex; border: 1px solid var(--rule-2); border-radius: var(--radius-pill); overflow: hidden; }
+.cc-mode-flip[data-pending="true"] { opacity: .6; }
+.cc-mode-flip-seg { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: var(--space-1) var(--space-3); background: none; border: 0; color: var(--ink-faint); cursor: pointer; }
+.cc-mode-flip-seg[data-active="true"] { background: var(--gold-soft); color: var(--gold-2); }
 .cc-journey-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px; letter-spacing: -0.01em;
   color: var(--ink); margin: 4px 0 0; }
 .cc-journey-meta { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }

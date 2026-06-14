@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import { signOut } from "@/app/login/actions";
-import { ModeSwitchControl } from "./mode-switch-control";
 import type { AppMode } from "@/lib/mode";
 
 // Desktop rail — Design Round 2 (`.cc-rail`): lockup top, nav list, then a foot
-// with the mode toggle + Tell + profile. The content column stays centred
-// (`.cc-shell-col`). Today · Plan · Tasks · People→Clients (Work).
+// with the create action + profile. One unified day (Edition III D1): no mode
+// toggle; `mode` only picks the People↔Clients nav variant for the user's
+// primary context. Today · Plan · Tasks · People→Clients (Work).
 type NavItem = { href: Route; label: string; icon: keyof typeof Glyphs };
 
 function navFor(mode: AppMode): NavItem[] {
@@ -65,7 +65,6 @@ export function AppSidebar({
       </nav>
 
       <div className="cc-rail-foot">
-        <ModeSwitchControl mode={mode} size="md" />
         <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold cc-btn-block">
           Plan a day
         </Link>

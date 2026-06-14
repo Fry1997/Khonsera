@@ -26,9 +26,7 @@ export default async function WalletPage({
   return (
     <div className="cc-screen">
       <header>
-        <span className="cc-eyebrow">
-          {ctx.activeMode === "work" ? "Work" : "Personal"} · Wallet
-        </span>
+        <span className="cc-eyebrow">Wallet</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           Your tickets
         </h1>

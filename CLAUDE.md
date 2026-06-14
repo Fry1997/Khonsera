@@ -293,6 +293,18 @@ maximising each API per **`docs/edition-iii-api-capability-map.md`**.
   (`buildJourneyFromStops`), rendered on `/plan/[id]` via the client wrapper `plan/plan-map.tsx`.
 - Home (`start`/`end` stops) renders as a **base** card via `isBase` on `SpineNode`, never an anchor.
 
+### One unified day — no Mode toggle (Edition III P1, D1)
+- **There is no work/personal toggle.** The day is one blended view. `ModeSwitchControl` is retired
+  from the shell; `switchMode`/`getActiveMode`/`mode-switch-control.tsx` are **dormant** — do not
+  re-mount them. Do **not** add `.eq("mode", activeMode)` view-filters; that was the lens we removed.
+- `ctx.activeMode` is now the user's **primary mode**, derived from the default workspace's type in
+  `requireUserContext` (organisation → work, else personal). It is used **only** as the default tag
+  on new items and the Clients↔People nav variant — never as a visibility filter.
+- Work/personal is a **per-item tag** (`app_mode`), shown via `ModeTag` (`.cc-mode-tag`) and flipped
+  in context via `PlanModeFlip` → `setItineraryMode`. The **privacy boundary stays in the data layer**
+  (RLS `can_access_itinerary`); removing the app filters did not weaken it — personal stays invisible
+  to the workspace.
+
 ## Brief Page Structure (`/itineraries/new`)
 
 ### Layout (top to bottom)

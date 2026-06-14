@@ -20,15 +20,16 @@ export default async function WorkspacePage() {
     return (
       <div className="cc-screen">
         <header>
-          <span className="cc-eyebrow">Personal</span>
-          <h1 className="cc-screen-title" style={{ marginTop: 6 }}>Workspace</h1>
+          <span className="cc-eyebrow">Workspace</span>
+          <h1 className="cc-screen-title" style={{ marginTop: 6 }}>No work team yet</h1>
         </header>
         <div className="cc-boundary">
-          <p className="t" style={{ fontSize: 16, color: "var(--ink)" }}>This is a work-mode thing.</p>
+          <p className="t" style={{ fontSize: 16, color: "var(--ink)" }}>You&apos;re not part of a work team.</p>
           <p className="cc-empty-sub" style={{ margin: "8px 0 16px", maxWidth: "44ch" }}>
-            Your personal travel is yours alone — never visible to any company, manager, or admin.
+            When you join or create one, your work travel appears here. Your personal travel is yours
+            alone — never visible to any company, manager, or admin.
           </p>
-          <Link href={"/today" as Route} className="cc-btn cc-btn-ghost">Switch to Work in the menu</Link>
+          <Link href={"/today" as Route} className="cc-btn cc-btn-ghost">Back to today</Link>
         </div>
       </div>
     );

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveMode, type AppMode } from "@/lib/mode";
+import { type AppMode } from "@/lib/mode";
 
 export const getSessionUser = cache(async () => {
   const supabase = await createClient();
@@ -42,6 +42,18 @@ export const requireUserContext = cache(
       throw new Error("Profile not provisioned");
     }
 
+    // Edition III D1: there is no work/personal toggle. The day is one unified
+    // view; `activeMode` is the user's PRIMARY mode — derived from their default
+    // workspace's nature — used only as the default tag on new items and the
+    // Clients↔People nav variant, never as a visibility lens. The privacy
+    // boundary stays enforced in the data layer (RLS, migration 0030).
+    const { data: ws } = await supabase
+      .from("workspaces")
+      .select("type")
+      .eq("id", profile.default_workspace_id)
+      .maybeSingle();
+    const primaryMode: AppMode = ws?.type === "organisation" ? "work" : "personal";
+
     return {
       userId: profile.id,
       email: profile.email,
@@ -49,7 +61,7 @@ export const requireUserContext = cache(
       isStaff: profile.is_staff,
       isAdmin: profile.is_admin,
       workspaceId: profile.default_workspace_id,
-      activeMode: await getActiveMode(),
+      activeMode: primaryMode,
     };
   },
 );

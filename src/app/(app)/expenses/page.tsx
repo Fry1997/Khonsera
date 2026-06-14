@@ -39,7 +39,7 @@ export default async function ExpensesPage() {
   return (
     <div className="cc-screen">
       <header>
-        <span className="cc-eyebrow">{ctx.activeMode === "work" ? "Work" : "Personal"} · Ledger</span>
+        <span className="cc-eyebrow">Ledger</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>Expenses</h1>
       </header>
 

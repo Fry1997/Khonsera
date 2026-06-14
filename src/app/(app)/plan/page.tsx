@@ -35,7 +35,6 @@ export default async function PlanIndexPage() {
   const { data: rows } = await supabase
     .from("itineraries")
     .select("id, title, mode, date_start, date_end, status")
-    .eq("mode", ctx.activeMode)
     .order("date_start", { ascending: true });
 
   const itins = (rows ?? []) as ItinRow[];
@@ -94,7 +93,7 @@ export default async function PlanIndexPage() {
   return (
     <div className="cc-screen">
       <header>
-        <span className="cc-eyebrow">{ctx.activeMode === "work" ? "Work" : "Personal"} · Plan</span>
+        <span className="cc-eyebrow">Plan</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           What are you planning?
         </h1>

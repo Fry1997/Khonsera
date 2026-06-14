@@ -65,11 +65,11 @@ export async function loadWalletTickets(): Promise<TicketVM[]> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Itineraries in the active mode (RLS already scopes to the user/workspace).
+  // One unified wallet — every held pass, work or personal (RLS scopes to the
+  // user/workspace; personal stays invisible upward).
   const { data: itins } = await supabase
     .from("itineraries")
-    .select("id")
-    .eq("mode", ctx.activeMode);
+    .select("id");
   const itinIds = (itins ?? []).map((r) => r.id as string);
   if (itinIds.length === 0) return [];
 

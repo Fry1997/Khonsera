@@ -8,6 +8,7 @@ import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { PlanMap } from "@/components/plan/plan-map";
+import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
 import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
@@ -396,6 +397,9 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           {title}
         </h1>
+        <div style={{ marginTop: "var(--space-2)" }}>
+          <PlanModeFlip itineraryId={id} mode={journey.mode === "work" ? "work" : "personal"} />
+        </div>
       </header>
 
       {stops.length === 0 ? (

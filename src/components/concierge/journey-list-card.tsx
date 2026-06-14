@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import type { JourneyVM } from "./types";
+import { ModeTag } from "./mode-tag";
 
 // JourneyListCard — one Event (a day or a multi-day trip) in the Plan index
 // (contract §3). Rebuilt to Design's Edition II `.cc-*` contract (was the one
@@ -36,7 +37,10 @@ export function JourneyListCard({
     <Link href={href ?? (`/plan/${journey.id}` as Route)} className="cc-journey-card" data-mode={journey.mode}>
       <div className="cc-journey-when">
         <span className="cc-journey-span">{spanLabel(journey.dateStart, journey.dateEnd)}</span>
-        <span className="cc-journey-status" data-status={journey.status}>{journey.status}</span>
+        <span style={{ display: "inline-flex", alignItems: "baseline", gap: "var(--space-2)" }}>
+          <ModeTag mode={journey.mode} />
+          <span className="cc-journey-status" data-status={journey.status}>{journey.status}</span>
+        </span>
       </div>
       <h3 className="cc-journey-title">{journey.title || "Untitled"}</h3>
       <p className="cc-journey-meta">

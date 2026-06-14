@@ -153,7 +153,6 @@ export async function routeCaptureGlobal(input: {
   const { data: found } = await supabase
     .from("itineraries")
     .select("id")
-    .eq("mode", ctx.activeMode)
     .lte("date_start", primaryDate)
     .gte("date_end", primaryDate)
     .order("date_start", { ascending: false })

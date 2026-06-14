@@ -100,19 +100,24 @@ rural orchestration.
 **Done when:** one coherent navigation; no duplicate/orphan screens reachable; Brief → built plan
 lands on `/plan/[id]` with home as a base. ✓
 
-### Phase 1 — One unified day + privacy tag (Mode reconciliation)  `[ ]`
+### Phase 1 — One unified day + privacy tag (Mode reconciliation)  `[x]` DONE 2026-06-14
 *Edition III D1: there is no work/personal toggle — one blended day; the tag is a privacy boundary.*
 **Depends on:** P0.
-- [ ] Remove the **Mode lens**: drop `.eq("mode", activeMode)` view-filters from `/today`,
-      `/plan`(+list), `/tasks`, `/contacts`, `/dashboard`-equivalent. Retire `ModeSwitchControl` from
-      the shell.
-- [ ] Render work + personal commitments in **one timeline**, each carrying a quiet **work/personal
-      tag** (pill/dot) on the card.
-- [ ] Keep `app_mode` as the per-item tag and the **RLS boundary unchanged** (personal never visible
-      upward). Default new items sensibly (work when in a workspace context, else personal); let the
-      user flip the tag in context.
+- [x] Removed the **Mode lens**: dropped `.eq("mode", activeMode)` from `/today`, `/plan`, `/tasks`,
+      `/contacts`, wallet loader (+ dormant plan-capture). Retired `ModeSwitchControl` from the shell
+      (sidebar + mobile appbar + the dead topbar); `switchMode`/`getActiveMode`/`mode-switch-control`
+      now dormant.
+- [x] **One timeline** with a quiet **work/personal tag**: new `ModeTag` (`.cc-mode-tag`) on the Plan
+      list cards; stripped the "Work/Personal ·" eyebrow prefixes app-wide (the view is unified).
+- [x] **`activeMode` reframed** from a cookie-toggle to the user's **primary mode** (derived from the
+      default workspace's type in `requireUserContext`) — used only as the new-item default tag + the
+      Clients↔People nav variant, never a lens.
+- [x] **Flip in context**: `setItineraryMode` action + `PlanModeFlip` segmented control on `/plan/[id]`
+      re-tags a whole day. RLS (`can_access_itinerary`) untouched → personal stays invisible upward.
+- [ ] *Deferred (minor):* per-row tags on `/tasks` + `/contacts` (data now selects `mode`; needs
+      TaskVM/ContactVM + row plumbing). Journey-list tag + flip cover the done-when.
 **Done when:** a single unified day shows everything; work/personal reads as a tag; no toggle; RLS
-boundary intact (verify a workspace member cannot see a personal-tagged item).
+boundary intact. ✓ Build green · 272 tests pass.
 
 ### Phase 2 — Capture completion (L0)  `[ ]`
 **Depends on:** P0.
@@ -344,5 +349,9 @@ flips its feature from mock to live with no code change.
   as a base, the JourneyMap is ported onto `/plan/[id]`, the Brief lands there, and
   `/dashboard·/bookings·/itineraries·/itineraries/[id](+timeline)·/flights` redirect to their
   canonical equivalents (originals dormant). Navigate added to mobile. Build green · 272 tests pass.
-  Next: **Phase 1** (one unified day + privacy tag). Also: API-capability map added — every API phase
-  must build to *max scope* (see `docs/edition-iii-api-capability-map.md`).
+  Also: API-capability map added — every API phase must build to *max scope*.
+- 2026-06-14 · **Phase 1 shipped.** One unified day: the work/personal *lens* (the toggle + every
+  `.eq("mode")` view-filter) is gone; `activeMode` is now the user's primary mode (from workspace
+  type), used only as a default tag + nav variant. Added a `ModeTag` on the Plan list and an in-context
+  `PlanModeFlip` on `/plan/[id]`; RLS boundary untouched. Deferred: per-row tags on tasks/contacts.
+  Build green · 272 tests pass. Next: **Phase 2** (capture completion).

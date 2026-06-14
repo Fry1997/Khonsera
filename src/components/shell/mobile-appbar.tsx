@@ -3,9 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ModeSwitchControl } from "@/components/mode-switch-control";
 import { signOut } from "@/app/login/actions";
-import type { AppMode } from "@/lib/mode";
 
 // Mobile app shell header — Design Round 2 (`.cc-appbar`). The fix for the live
 // pile-up: emblem-only lockup left (no wordmark → no "KHONSER" clip), exactly two
@@ -38,13 +36,11 @@ export function MobileAppbar({
   firstName,
   initials,
   isStaff,
-  mode,
 }: {
   email: string;
   firstName: string;
   initials: string;
   isStaff: boolean;
-  mode: AppMode;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -87,8 +83,6 @@ export function MobileAppbar({
                 <div className="cc-overflow-email">{email}</div>
               </div>
             </div>
-
-            <ModeSwitchControl mode={mode} size="md" />
 
             <Link href={"/wallet" as Route} className="cc-overflow-row" onClick={() => setOpen(false)}>
               <span className="ic"><Ico d={I.ticket} /></span>Wallet

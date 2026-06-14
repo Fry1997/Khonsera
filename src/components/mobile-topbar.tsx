@@ -1,7 +1,5 @@
 import { KhonseraBrand } from "./khonsera-brand";
 import { MobileNav } from "./mobile-nav";
-import { ModeSwitchControl } from "./mode-switch-control";
-import type { AppMode } from "@/lib/mode";
 import type { Route } from "next";
 
 // The "more" menu behind the topbar — the 4 primary destinations live in the
@@ -17,11 +15,9 @@ const MORE = [
 // collides with the logo (the Round-2 fix). Sticky.
 export async function MobileTopbar({
   email,
-  mode,
 }: {
   email: string;
   isStaff?: boolean;
-  mode: AppMode;
 }) {
   return (
     <header
@@ -42,7 +38,6 @@ export async function MobileTopbar({
     >
       <KhonseraBrand size="sm" />
       <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
-        <ModeSwitchControl mode={mode} size="sm" />
         <MobileNav items={MORE} email={email} />
       </div>
     </header>

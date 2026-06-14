@@ -99,7 +99,6 @@ export default async function TodayPage({
   const { data: events } = await supabase
     .from("itineraries")
     .select("id, title, mode, date_start, date_end, status")
-    .eq("mode", ctx.activeMode)
     .lte("date_start", today)
     .gte("date_end", today)
     .in("status", ["draft", "planning", "planned", "in_progress"])
@@ -254,7 +253,7 @@ export default async function TodayPage({
       {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
       <OfflineTicketSync tickets={tickets} />
       <header>
-        <span className="cc-eyebrow">{ctx.activeMode === "work" ? "Work" : "Personal"} · Today</span>
+        <span className="cc-eyebrow">Today</span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           Right now
         </h1>

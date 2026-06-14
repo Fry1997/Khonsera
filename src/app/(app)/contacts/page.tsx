@@ -13,7 +13,6 @@ export default async function ContactsPage() {
     .from("contacts")
     .select("id, name, email, phone, role")
     .eq("workspace_id", ctx.workspaceId)
-    .eq("mode", ctx.activeMode)
     .order("name", { ascending: true });
 
   const contacts: ContactVM[] = (data ?? []).map((c) => {
@@ -31,7 +30,7 @@ export default async function ContactsPage() {
     <div className="cc-screen">
       <header>
         <span className="cc-eyebrow">
-          {ctx.activeMode === "work" ? "Work" : "Personal"} · People
+          People
         </span>
         <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
           People
