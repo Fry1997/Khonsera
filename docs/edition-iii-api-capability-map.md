@@ -108,10 +108,11 @@ change / cancel**; **schedule-change + disruption webhooks** → flight-delay fe
 engine and the recovery layer. Replaces Amadeus self-service (dead 17 Jul 2026). **MVP:** capture +
 status. **Deferred:** in-app booking.
 
-### AeroDataBox · free 600 units/mo · P13
+### AeroDataBox · low-cost paid (~$5/mo for 3k calls; small free/trial tier — free 300–600/mo only via API.Market, ~$0.99/mo on RapidAPI) · P13
 **Max scope:** flight **status**; **terminal + gate** → the **in-terminal walk routing** and the
-**gate-change reroute** rule; **aircraft/airport** metadata. **MVP:** status + gate. **Deferred:**
-swap to a webhook provider (Cirium/FlightAware) when polling volume grows.
+**gate-change reroute** rule; **aircraft/airport** metadata. **MVP:** status + gate. **Note:** no
+truly-free generous flight-gate feed exists — this is the cheapest. **Deferred:** swap to a webhook
+provider (Cirium/FlightAware) when polling volume grows.
 **P13 gate — DONE (mock+gated):** `integrations/aerodatabox.ts` `flightDepartureStatus` (current gate/terminal/status), diffed vs the plan's last-known gate → the gate-change reroute. Real on `AERODATABOX_KEY`; continuous day-of poll loop positioned.
 
 ### DragonPass · revenue · P12 (fast-track ⭐) + P13 (lounge)

@@ -17,12 +17,12 @@ Set an env var → that feature flips from sample to live. No code change.
 | **Darwin / LDBWS** (Rail Data Marketplace) | Live train times, delays, cancellations → the whole live-rail spine + recovery (P9–P11) | Free | `DARWIN_LDBWS_TOKEN` | ✅ keyed & live in prod |
 | **Open-Meteo** | Weather → "leave earlier" rule (P12) | Free **for non-commercial**; see decision #2 | *(keyless)* | ✅ live, but commercial-use caveat |
 
-## B · Free, self-serve — minutes of your time
+## B · Cheap/free, self-serve — minutes of your time
 
 | Provider | Who / what | Powers | Cost | Env | Action |
 |---|---|---|---|---|---|
-| **TfL Unified API** | Transport for London's open API | London transit: live arrivals, line status, journey planner (P8) + feeds disruption (P9–P10) | Free | `TFL_APP_KEY` | Register at api-portal.tfl.gov.uk → paste the key |
-| **AeroDataBox** | Flight-status data (via RapidAPI) | Live gate/terminal → the gate-change reroute rule (P13) | Free **600 calls/mo**, then paid tiers | `AERODATABOX_KEY` | Subscribe (free tier) on RapidAPI → paste the key |
+| **TfL Unified API** | Transport for London's open API | London transit: live arrivals, line status, journey planner (P8) + feeds disruption (P9–P10) | **Free** | `TFL_APP_KEY` | Register at api-portal.tfl.gov.uk → paste the key |
+| **AeroDataBox** | Flight-status data (RapidAPI / API.Market) | Live gate/terminal → the gate-change reroute rule (P13) | **Low-cost paid** — RapidAPI basic ≈ $0.99/mo (small/trial quota; ~7-day trial); ~$5/mo for 3k calls; genuinely-free 300–600/mo tier only via **API.Market**. **No truly-free generous flight-gate feed exists.** | `AERODATABOX_KEY` | Subscribe (API.Market free tier, or RapidAPI ~$5/mo for real volume) → paste the key |
 
 ## C · Free software, but you host it (infrastructure)
 
@@ -80,7 +80,7 @@ nudge) or the full reserve-and-pay tier (which also feeds the P14 booking framew
 - **Darwin** — *why:* the day can't react to a delay it can't see; this is the live rail truth. **Free.**
 - **TfL** — *why:* London is a huge share of UK travel days; without it the city legs are blind. **Free.**
 - **Open-Meteo** — *why:* "leave 15 min earlier, it's about to pour" is foresight you can't fake. **~Free.**
-- **AeroDataBox** — *why:* a gate change you find out about late is a missed flight. **Free tier.**
+- **AeroDataBox** — *why:* a gate change you find out about late is a missed flight. **~$5/mo (cheapest gate feed; no free generous option).**
 - **OTP** — *why:* when the line itself is blocked, the answer isn't "next train", it's "another way". **Self-host.**
 - **DragonPass/Collinson** — *why:* thin buffer → fast-track saves the flight; long wait → a lounge. **Revenue.**
 - **Parkopedia** — *why:* "the car park will be full" the day before beats circling it on the day. **Revenue.**
