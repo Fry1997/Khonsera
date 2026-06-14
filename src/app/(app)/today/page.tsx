@@ -7,6 +7,8 @@ import { isWelcomed } from "@/lib/welcome";
 import type { AnchorVM, AnchorType, TicketVM } from "@/components/concierge";
 import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/planning/today";
 import { loadJourneyTickets } from "@/lib/actions/wallet";
+import { buildDayReview } from "@/lib/actions/review";
+import { DayReviewCard } from "@/components/plan/day-review";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 import { TodayPasses } from "@/components/today/today-passes";
@@ -105,6 +107,20 @@ export default async function TodayPage({
     .order("date_start", { ascending: true });
 
   const covering = events ?? [];
+
+  // Night-before review (B3.6): a plan that BEGINS tomorrow gets a calm preview —
+  // "here's tomorrow, here's when you leave, you're ready" — discharged the evening
+  // before. (Only days starting tomorrow, so an in-progress trip isn't repeated.)
+  const tomorrow = ymd(new Date(now.getTime() + 86_400_000));
+  const { data: tmrwRows } = await supabase
+    .from("itineraries")
+    .select("id")
+    .eq("date_start", tomorrow)
+    .in("status", ["draft", "planning", "planned", "in_progress"])
+    .order("date_start", { ascending: true })
+    .limit(1);
+  const tomorrowReview =
+    tmrwRows && tmrwRows.length ? await buildDayReview(tmrwRows[0].id as string) : null;
 
   // Compose today's slice across all covering Events (E1).
   const allStops: StopRow[] = [];
@@ -303,6 +319,8 @@ export default async function TodayPage({
           </div>
         </div>
       )}
+
+      {tomorrowReview ? <DayReviewCard review={tomorrowReview} eyebrow="Tomorrow" /> : null}
     </div>
   );
 }

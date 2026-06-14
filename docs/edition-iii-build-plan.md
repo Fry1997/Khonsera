@@ -176,13 +176,16 @@ workspace, personal notes are not. ✓ Build green · 272 tests pass.
 **Done when:** opening a day produces a tailored "have you got everything" checklist with
 sorted/missing state and actionable gaps. ✓ Build green · 276 tests pass.
 
-### Phase 5 — The night-before review (preparation's payoff, B3.6)  `[ ]`
-**Depends on:** P4, and the timing surfacing of P6 (may run after P6).
-- [ ] A calm, complete **pre-day review**: the back-calculated leave-by, the route + legs, the buffer
-      on each commitment, anything fragile — "here's your day, here's when you leave, you're ready."
-- [ ] Reachable the evening before (and on demand); reads as reassurance, not a dashboard (C16).
+### Phase 5 — The night-before review (preparation's payoff, B3.6)  `[x]` DONE 2026-06-14
+*Not a new entity — a composed view over P3/P4/timing. Built directly.*
+**Depends on:** P4.
+- [x] `buildDayReview` (composition action) assembles the **leave-by** (the one time that matters), the
+      route shape (total time + legs), the commitments, **fragility** (a tight leg flagged via
+      `checkLegFeasibility`), and the **readiness** counts → a calm verdict ("You're ready. Sleep easy.").
+- [x] Surfaced on `/today` as the **"Tomorrow" card** for a plan that begins tomorrow (the night-before
+      moment), reads as reassurance not a dashboard (`DayReviewCard`, leave-by as the hero figure).
 **Done when:** the day before a trip, a single review surfaces leave-by + route + buffers + fragility
-in one calm view.
+in one calm view. ✓ Build green · 276 tests pass.
 
 ### Phase 6 — Timing made visible (L1 finish)  `[ ]`
 **Depends on:** P0.
@@ -445,3 +448,8 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   Categories live: tickets/bookings/documents/devices/international/multiday; each gap actionable
   (link / reminder / book-mocked). `ReadinessPanel` on `/plan/[id]`, calm-by-default. Build green ·
   276 tests pass. Next: **Phase 5 — night-before review** (completes the Preparation trio).
+- 2026-06-14 · **Phase 5 shipped — Preparation trio complete.** Night-before review (a composed view,
+  not a new entity): `buildDayReview` assembles leave-by + route shape + commitments + fragility +
+  readiness counts → a calm verdict; surfaced on `/today` as the "Tomorrow" card for a plan beginning
+  tomorrow. Build green · 276 tests pass. Next: **Phase 6 — Timing made visible** (buffer badges on
+  the spine + transition-pattern inference + true-door; also back-wires breakfast→leave-by for ED1).

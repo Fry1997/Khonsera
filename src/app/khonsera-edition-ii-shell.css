@@ -628,6 +628,26 @@
   width: 26px; height: 26px; cursor: pointer; color: var(--ink-faint); line-height: 1; }
 .cc-readiness-tick:hover { color: var(--gold-2); border-color: var(--gold-soft); }
 .cc-readiness-x:hover { color: var(--rust); }
+
+/* P5 — the night-before review (reassurance, not a dashboard) */
+.cc-review { margin-top: var(--space-5); border: 1px solid var(--rule); border-radius: 8px;
+  background: var(--card); padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-review-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 11px); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--gold-2); }
+.cc-review-title { font-family: var(--display); font-size: 20px; color: var(--ink); margin: 0; }
+.cc-review-leaveby { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-2) 0; }
+.cc-review-leaveby-label { font-size: var(--fs-label); color: var(--ink-faint); }
+.cc-review-leaveby-time { font-family: var(--display); font-size: 32px; color: var(--gold-2); letter-spacing: -0.01em; }
+.cc-review-shape { font-size: var(--fs-label); color: var(--ink-faint); margin: 0; }
+.cc-review-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cc-review-row { display: grid; grid-template-columns: 56px 1fr; gap: var(--space-3); align-items: baseline; }
+.cc-review-row-time { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-faint); }
+.cc-review-row-label { font-size: var(--fs-body); color: var(--ink); }
+.cc-review-flag { font-size: var(--fs-label); color: var(--rust); margin: var(--space-2) 0 0; }
+.cc-review-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--rule); flex-wrap: wrap; }
+.cc-review-verdict { font-size: var(--fs-body); color: var(--ink); }
+.cc-review-verdict[data-clear="true"] { color: var(--gold-2); }
 .cc-journey-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px; letter-spacing: -0.01em;
   color: var(--ink); margin: 4px 0 0; }
 .cc-journey-meta { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }
