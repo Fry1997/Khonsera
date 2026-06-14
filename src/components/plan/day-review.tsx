@@ -6,18 +6,20 @@ function clock(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(iso));
 }
 
-// The night-before review (Phase 5). Reassurance, not a dashboard (C16): lead with
-// the one time that matters (leave-by), then the shape of the day and the verdict.
+// P5 hero — the night-before review. Reassurance, not a dashboard (C16): lead
+// with leave-by as the hero figure. Markup carries Design's Edition III contract
+// (.cc-review[data-clear], leaveby .l/.v, rows .t/.who); skin in edition-iii.css.
 export function DayReviewCard({ review, eyebrow }: { review: DayReview; eyebrow?: string }) {
+  const clear = !review.fragile && review.readinessOpen === 0;
   return (
-    <section className="cc-review">
+    <section className="cc-review" data-clear={clear ? "true" : "false"}>
       <span className="cc-review-eyebrow">{eyebrow ?? review.dateLabel}</span>
       <h2 className="cc-review-title">{review.title}</h2>
 
       {review.leaveBy ? (
         <div className="cc-review-leaveby">
-          <span className="cc-review-leaveby-label">Leave by</span>
-          <span className="cc-review-leaveby-time">{clock(review.leaveBy)}</span>
+          <span className="l">Leave by</span>
+          <span className="v">{clock(review.leaveBy)}</span>
         </div>
       ) : null}
 
@@ -30,14 +32,14 @@ export function DayReviewCard({ review, eyebrow }: { review: DayReview; eyebrow?
       </p>
 
       {review.commitments.length > 0 ? (
-        <ul className="cc-review-list">
+        <div className="cc-review-list">
           {review.commitments.map((c, i) => (
-            <li key={i} className="cc-review-row">
-              <span className="cc-review-row-time">{c.timeLabel ?? "—"}</span>
-              <span className="cc-review-row-label">{c.label}</span>
-            </li>
+            <div key={i} className="cc-review-row">
+              <span className="t">{c.timeLabel ?? "—"}</span>
+              <span className="who">{c.label}</span>
+            </div>
           ))}
-        </ul>
+        </div>
       ) : null}
 
       {review.fragile && review.fragileNote ? (
@@ -45,9 +47,7 @@ export function DayReviewCard({ review, eyebrow }: { review: DayReview; eyebrow?
       ) : null}
 
       <div className="cc-review-foot">
-        <span className="cc-review-verdict" data-clear={!review.fragile && review.readinessOpen === 0 ? "true" : "false"}>
-          {review.verdict}
-        </span>
+        <span className="cc-review-verdict">{review.verdict}</span>
         <Link href={`/plan/${review.itineraryId}` as Route} className="cc-btn cc-btn-ghost">
           Open the plan
         </Link>

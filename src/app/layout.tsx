@@ -7,7 +7,8 @@ import "./khonsera-edition-ii-shell.css"; // Round 2 shell + landing + auth + se
 import "./khonsera-edition-ii-landing.css"; // Round 3 landing/waitlist elevation
 import "./khonsera-edition-ii-landing-shot.css"; // Round 3 in-context app shot (Code-productionised)
 import "./khonsera-edition-ii-documents.css"; // Round 5 booked-document family elevation
-import "./khonsera-edition-ii-wallet.css"; // Round 5b first-class Wallet + docked-pass — LAST
+import "./khonsera-edition-ii-wallet.css"; // Round 5b first-class Wallet + docked-pass
+import "./khonsera-edition-iii.css"; // Edition III build-programme skin (P0–P6) — LAST
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical Khonsera type stack, per the Visual Identity brand book

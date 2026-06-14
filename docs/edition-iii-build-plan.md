@@ -465,3 +465,9 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   doc. P6 partial: **buffer badges** on every spine leg (Comfortable/Tight·Xm/Insufficient) via
   `LegVM.buffer` ← `checkLegFeasibility`. Deferred: transition-pattern inference + true-door precision.
   Build green · 276 tests pass. Next: continue P6 follow-ons or **Phase 8 — TfL** (first live-data API).
+- 2026-06-14 · **Design round 6 integrated.** First brand pass over P0–P6 (`for-code-r6`) applied:
+  `khonsera-edition-iii.css` (additive, imported last) + the markup hooks its selectors need (the two
+  heroes restructured — AccommodationCard stay-document + DayReview leave-by figure; `data-panel` on
+  ReadinessPanel; `data-open`/chevron on Notes; `data-checked` pick-boxes; the Stay detail grid; the
+  PlanMap band). Removed Code's placeholder CSS for these so Design owns them. Design's redlines +
+  class-map saved to `docs/design/`. Build green · 276 tests pass.

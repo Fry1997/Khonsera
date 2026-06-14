@@ -11,5 +11,10 @@ const JourneyMap = dynamic(() => import("@/components/journey-map").then((m) => 
 });
 
 export function PlanMap({ journey }: { journey: Journey }) {
-  return <JourneyMap journey={journey} mode="planning" />;
+  // .cc-plan-map is Design's framed inset band (Edition III skin); the map fills it.
+  return (
+    <div className="cc-plan-map">
+      <JourneyMap journey={journey} mode="planning" />
+    </div>
+  );
 }

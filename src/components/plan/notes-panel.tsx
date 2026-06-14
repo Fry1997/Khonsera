@@ -57,9 +57,11 @@ export function NotesPanel({
   }
 
   return (
-    <div className="cc-notes">
+    <div className="cc-notes" data-open={open ? "true" : "false"}>
       <button type="button" className="cc-notes-toggle" onClick={() => setOpen((v) => !v)}>
-        {notes.length > 0 ? `Notes · ${notes.length}` : "Add a note"}
+        <span className="cc-notes-title">Notes</span>
+        <span className="cc-notes-count">{notes.length > 0 ? notes.length : "Add"}</span>
+        <span className="cc-chev" aria-hidden>›</span>
       </button>
 
       {open ? (
@@ -71,8 +73,11 @@ export function NotesPanel({
                 {n.visibility === "org_reviewable" ? <span className="cc-note-shared">Shared with work</span> : null}
                 <button type="button" className="cc-note-del" onClick={() => remove(n.id)} disabled={pending} aria-label="Delete note">×</button>
               </div>
-              {n.title ? <div className="cc-note-title">{n.title}</div> : null}
-              {n.body ? <div className="cc-note-text">{n.body}</div> : null}
+              <div className="cc-note-body">
+                {n.title ? <strong>{n.title}</strong> : null}
+                {n.title && n.body ? <br /> : null}
+                {n.body}
+              </div>
             </div>
           ))}
 
@@ -82,8 +87,8 @@ export function NotesPanel({
                 <button type="button" className="cc-kind-chip" data-active={kind === "prep" ? "" : undefined} onClick={() => setKind("prep")}>Prep</button>
                 <button type="button" className="cc-kind-chip" data-active={kind === "outcome" ? "" : undefined} onClick={() => setKind("outcome")}>Outcome</button>
               </div>
-              <input className="field" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" />
-              <textarea className="field" value={body} onChange={(e) => setBody(e.target.value)} placeholder={kind === "prep" ? "Agenda, who you're seeing, what to bring…" : "What happened, decisions, follow-ups…"} style={{ minHeight: 72, resize: "vertical" }} />
+              <input className="cc-note-input" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" />
+              <textarea className="cc-note-input" value={body} onChange={(e) => setBody(e.target.value)} placeholder={kind === "prep" ? "Agenda, who you're seeing, what to bring…" : "What happened, decisions, follow-ups…"} style={{ minHeight: 72 }} />
               {isWork && kind === "outcome" ? (
                 <label className="cc-note-share">
                   <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />

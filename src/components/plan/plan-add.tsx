@@ -290,52 +290,49 @@ export function PlanAdd({
                   </label>
                 </div>
 
-                <button type="button" className="cc-btn cc-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => setAccMore((v) => !v)}>
-                  {accMore ? "Hide arrival details" : "Arrival details (wifi, parking, check-in…)"}
+                <button type="button" className="cc-stay-expand" aria-expanded={accMore} onClick={() => setAccMore((v) => !v)}>
+                  <span className="cc-chev" aria-hidden>›</span>
+                  Arrival details (wifi, parking, check-in…)
                 </button>
                 {accMore ? (
-                  <>
-                    <label className="cc-time-field">
+                  <div className="cc-stay-detail">
+                    <label className="cc-stay-wide">
                       <span className="cc-var-label">Hotel phone</span>
                       <input type="tel" value={acc.phone ?? ""} onChange={(e) => setA({ phone: e.target.value })} placeholder="For 'hold my room, running late'" />
                     </label>
-                    <label className="cc-time-field">
+                    <label className="cc-stay-wide">
                       <span className="cc-var-label">Check-in / access</span>
                       <input type="text" value={acc.access_instructions ?? ""} onChange={(e) => setA({ access_instructions: e.target.value })} placeholder="Front desk · or lockbox code" />
                     </label>
-                    <div className="cc-dur-row">
-                      <label>
-                        <span className="cc-var-label">Wi-Fi network</span>
-                        <input type="text" value={acc.wifi_ssid ?? ""} onChange={(e) => setA({ wifi_ssid: e.target.value })} />
-                      </label>
-                      <label>
-                        <span className="cc-var-label">Wi-Fi password</span>
-                        <input type="text" value={acc.wifi_password ?? ""} onChange={(e) => setA({ wifi_password: e.target.value })} />
-                      </label>
-                    </div>
-                    <label className="cc-time-field">
+                    <label>
+                      <span className="cc-var-label">Wi-Fi network</span>
+                      <input type="text" value={acc.wifi_ssid ?? ""} onChange={(e) => setA({ wifi_ssid: e.target.value })} />
+                    </label>
+                    <label>
+                      <span className="cc-var-label">Wi-Fi password</span>
+                      <input type="text" value={acc.wifi_password ?? ""} onChange={(e) => setA({ wifi_password: e.target.value })} />
+                    </label>
+                    <label className="cc-stay-wide">
                       <span className="cc-var-label">Parking</span>
                       <input type="text" value={acc.parking_info ?? ""} onChange={(e) => setA({ parking_info: e.target.value })} placeholder="On-site £18/night · or none" />
                     </label>
-                    <label className="cc-time-field">
+                    <label className="cc-stay-wide">
                       <span className="cc-var-label">Breakfast hours</span>
                       <input type="text" value={acc.breakfast_window ?? ""} onChange={(e) => setA({ breakfast_window: e.target.value })} placeholder="07:00–10:30" />
                     </label>
-                    <label className="cc-time-field">
+                    <label className="cc-stay-wide">
                       <span className="cc-var-label">Cancellation</span>
                       <input type="text" value={acc.cancellation_policy ?? ""} onChange={(e) => setA({ cancellation_policy: e.target.value })} placeholder="Free cancellation policy" />
                     </label>
-                    <div className="cc-dur-row">
-                      <label>
-                        <span className="cc-var-label">Free-cancel until</span>
-                        <input type="date" value={acc.free_cancel_until ?? ""} onChange={(e) => setA({ free_cancel_until: e.target.value })} />
-                      </label>
-                      <label>
-                        <span className="cc-var-label">Price</span>
-                        <input type="text" value={acc.price ?? ""} onChange={(e) => setA({ price: e.target.value })} placeholder="£240" />
-                      </label>
-                    </div>
-                  </>
+                    <label>
+                      <span className="cc-var-label">Free-cancel until</span>
+                      <input type="date" value={acc.free_cancel_until ?? ""} onChange={(e) => setA({ free_cancel_until: e.target.value })} />
+                    </label>
+                    <label>
+                      <span className="cc-var-label">Price</span>
+                      <input type="text" value={acc.price ?? ""} onChange={(e) => setA({ price: e.target.value })} placeholder="£240" />
+                    </label>
+                  </div>
                 ) : null}
               </>
             ) : (

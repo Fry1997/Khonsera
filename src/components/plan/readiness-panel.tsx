@@ -43,12 +43,12 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
   }
 
   return (
-    <section className="cc-readiness" data-clear={live.length === 0 ? "true" : "false"}>
+    <section className="cc-readiness" data-panel data-clear={live.length === 0 ? "true" : "false"}>
       <button type="button" className="cc-readiness-head" onClick={() => setOpen((v) => !v)}>
-        <span className="cc-readiness-title">
-          {live.length === 0 ? "You're set for this day" : `Getting ready — ${live.length} to sort`}
+        <span className="cc-readiness-title">{live.length === 0 ? "Readiness" : "Getting ready"}</span>
+        <span className="cc-readiness-meta">
+          {live.length > 0 ? `${live.length} to sort` : doneCount > 0 ? `${doneCount} sorted` : ""}
         </span>
-        <span className="cc-readiness-meta">{doneCount > 0 ? `${doneCount} sorted` : ""}</span>
       </button>
 
       {open && live.length > 0 ? (
@@ -65,14 +65,14 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
                   </div>
                   <div className="cc-readiness-actions">
                     {i.action.kind === "link" ? (
-                      <a className="cc-btn cc-btn-ghost" href={i.action.href} target="_blank" rel="noopener noreferrer">{i.action.label}</a>
+                      <a href={i.action.href} target="_blank" rel="noopener noreferrer">{i.action.label}</a>
                     ) : i.action.kind === "task" || i.action.kind === "book" ? (
-                      <button type="button" className="cc-btn cc-btn-ghost" disabled={pending === i.key} onClick={() => remind(i)}>
+                      <button type="button" disabled={pending === i.key} onClick={() => remind(i)}>
                         {i.action.kind === "book" ? "Add reminder" : "Remind me"}
                       </button>
                     ) : null}
-                    <button type="button" className="cc-readiness-tick" title="Done" disabled={pending === i.key} onClick={() => set(i.key, "done")}>✓</button>
-                    <button type="button" className="cc-readiness-x" title="Dismiss" disabled={pending === i.key} onClick={() => set(i.key, "dismissed")}>×</button>
+                    <button type="button" disabled={pending === i.key} onClick={() => set(i.key, "done")}>Done</button>
+                    <button type="button" disabled={pending === i.key} onClick={() => set(i.key, "dismissed")}>Dismiss</button>
                   </div>
                 </div>
               ))}

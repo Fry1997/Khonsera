@@ -77,21 +77,23 @@ export function PlanCalendarImport({ itineraryId }: { itineraryId: string }) {
             </header>
 
             {loading ? (
-              <p className="cc-empty-sub">Reading your calendar…</p>
+              <p className="cc-pick-loading">Reading your calendar…</p>
             ) : proposals && proposals.length === 0 ? (
-              <p className="cc-empty-sub">No calendar events over this day.</p>
+              <p className="cc-pick-empty">No calendar events over this day.</p>
             ) : proposals ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              <div>
                 {proposals.map((p) => (
-                  <label key={p.id} className="cc-pick-row" style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-start" }}>
+                  <label key={p.id} className="cc-pick-row" data-checked={picked[p.id] ? "true" : "false"}>
                     <input
                       type="checkbox"
+                      className="sr-only"
                       checked={Boolean(picked[p.id])}
                       onChange={(e) => setPicked((prev) => ({ ...prev, [p.id]: e.target.checked }))}
                     />
-                    <span>
-                      <span style={{ color: "var(--ink)" }}>{p.title}</span>
-                      <span style={{ display: "block", fontSize: "var(--fs-micro)", color: "var(--ink-faint)" }}>
+                    <span className="cc-pick-box" aria-hidden>✓</span>
+                    <span className="cc-pick-main">
+                      <span className="cc-pick-title">{p.title}</span>
+                      <span className="cc-pick-meta">
                         {clock(p.startIso)}{p.location ? ` · ${p.location}` : ""}
                       </span>
                     </span>

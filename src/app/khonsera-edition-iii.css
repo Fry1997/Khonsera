@@ -1,0 +1,241 @@
+/* ============================================================================
+ * KHONSERA · EDITION III — build-programme skin  ·  P0–P6
+ * ----------------------------------------------------------------------------
+ * ADDITIVE. Import LAST, after the Edition II layers:
+ *
+ *   import "./globals.css";
+ *   import "./khonsera-edition-ii.css";
+ *   import "./khonsera-edition-ii-screens.css";
+ *   import "./khonsera-edition-ii-shell.css";
+ *   import "./khonsera-edition-iii.css";     // ← THIS FILE
+ *
+ * Skins the Code-authored P0–P6 components BY CONTRACT NAME — no markup, JS, or
+ * class-name changes; tokens only; globals.css untouched. Each block names its
+ * component, file, and the states it covers, so it maps 1:1 to the handoff.
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * P0 · PlanMap framing — plan-map.tsx · /plan/[id]
+ * The map themes are already wired; Design owns the plan-page framing only.
+ * Keep it a quiet inset band, not a full-bleed hero — the spine is the hero.
+ * ------------------------------------------------------------------------- */
+.cc-plan-map { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
+  height: 200px; box-shadow: var(--shadow-sm); position: relative; }
+.cc-plan-map::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--ink-soft); border-radius: 8px; }
+@media (min-width: 680px) { .cc-plan-map { height: 280px; } }
+
+/* ---------------------------------------------------------------------------
+ * P0 · Home base node — .cc-base-node in plan-spine.tsx
+ * The day's origin/return — a FIXED home, not an editable anchor. It should
+ * read as a settled bookend: quieter than an AnchorCard, no card chrome.
+ * ------------------------------------------------------------------------- */
+.cc-base-node { display: flex; align-items: baseline; gap: var(--space-3);
+  padding: var(--space-2) 0; }
+.cc-base-eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ink-faint); }
+.cc-base-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 16px;
+  letter-spacing: -0.015em; color: var(--ink-2); }
+.cc-base-time { font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+  margin-left: auto; font-variant-numeric: tabular-nums; }
+/* its spine dot: a small filled home, ink not gold — bookend, not focal */
+.cc-base-node .cc-node-dot::before, .cc-base-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--ink-dim);
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px var(--rule-2); }
+
+/* ---------------------------------------------------------------------------
+ * P1 · ModeTag — mode-tag.tsx · .cc-mode-tag[data-mode]
+ * A quiet work/personal tag on plan cards. Reads as a tag, never a button.
+ * ------------------------------------------------------------------------- */
+.cc-mode-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px;
+  border-radius: 999px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; line-height: 1.6; border: 1px solid transparent; }
+.cc-mode-tag::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.cc-mode-tag[data-mode="work"] { color: var(--gold-2); background: var(--gold-tint); }
+.cc-mode-tag[data-mode="personal"] { color: var(--ink-faint); background: var(--ink-soft); }
+
+/* ---------------------------------------------------------------------------
+ * P1 · PlanModeFlip — plan-mode-flip.tsx · .cc-mode-flip
+ * Two-segment control to re-tag a whole day. Segmented-control styling.
+ * ------------------------------------------------------------------------- */
+.cc-mode-flip { display: inline-flex; align-items: center; gap: 2px; background: var(--card-2);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 3px; }
+.cc-mode-flip button, .cc-mode-flip [role="tab"] { font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.12em; text-transform: uppercase; padding: 7px 16px; border-radius: 999px;
+  border: none; background: transparent; color: var(--ink-dim); cursor: pointer;
+  transition: color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard); }
+.cc-mode-flip [data-active="true"], .cc-mode-flip [aria-selected="true"] {
+  background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+.cc-mode-flip[data-pending] { opacity: 0.6; pointer-events: none; }
+
+/* ---------------------------------------------------------------------------
+ * P2 · PlanCalendarImport — plan-calendar-import.tsx · .cc-sheet + .cc-pick-row
+ * Calendar events with checkboxes. Design owns the pick-row.
+ * ------------------------------------------------------------------------- */
+.cc-pick-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3-5) var(--space-2);
+  border-top: 1px solid var(--rule); cursor: pointer; }
+.cc-pick-row:first-of-type { border-top: none; }
+.cc-pick-box { width: 20px; height: 20px; border-radius: 4px; border: 1.5px solid var(--rule-2);
+  flex: none; display: flex; align-items: center; justify-content: center; color: transparent;
+  transition: all var(--dur-base) var(--ease-standard); }
+.cc-pick-row[data-checked="true"] .cc-pick-box { background: var(--gold); border-color: var(--gold); color: #fff; }
+.cc-pick-main { flex: 1; min-width: 0; }
+.cc-pick-title { font-size: 14.5px; color: var(--ink); letter-spacing: -0.01em; }
+.cc-pick-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px;
+  font-variant-numeric: tabular-nums; }
+.cc-pick-empty, .cc-pick-loading { font-family: var(--serif); font-style: italic; font-size: 15px;
+  color: var(--ink-dim); text-align: center; padding: var(--space-8) var(--space-4); }
+
+/* ---------------------------------------------------------------------------
+ * P2 · Stay fields — plan-add.tsx "Stay" kind (existing field atoms)
+ * Design owns the expand affordance + the dense detail layout.
+ * ------------------------------------------------------------------------- */
+.cc-stay-expand { display: flex; align-items: center; gap: var(--space-2); width: 100%;
+  padding: var(--space-3) 0; background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold-2); border-top: 1px solid var(--rule); }
+.cc-stay-expand .cc-chev { transition: transform var(--dur-base) var(--ease-standard); }
+.cc-stay-expand[aria-expanded="true"] .cc-chev { transform: rotate(90deg); }
+.cc-stay-detail { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-3); }
+.cc-stay-detail > .cc-stay-wide { grid-column: 1 / -1; }
+
+/* ---------------------------------------------------------------------------
+ * ED1 · AccommodationCard — accommodation-card.tsx · .cc-acc-card
+ * HERO surface — it replaces the hotel app on the day. Concierge treatment:
+ * an issued stay-document, not a label/value list. Fields render when present.
+ * ------------------------------------------------------------------------- */
+.cc-acc-card { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+  overflow: hidden; box-shadow: var(--shadow); }
+.cc-acc-head { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--rule); position: relative; }
+/* the gold seam down the head — the "booked & held" signature */
+.cc-acc-head::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--gold); }
+.cc-acc-eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--gold-2); }
+.cc-acc-name { font-family: var(--display); font-weight: var(--fw-medium); font-size: 22px;
+  letter-spacing: -0.025em; color: var(--ink); margin-top: 4px; line-height: 1.1; }
+.cc-acc-board { font-size: 13px; color: var(--ink-dim); margin-top: 3px; }
+.cc-acc-channel { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px;
+  border-radius: 5px; background: var(--ink); color: var(--paper); font-family: var(--sans);
+  font-weight: var(--fw-semibold); font-size: 12.5px; text-decoration: none; flex: none; }
+/* the detail grid — quiet label/value rows, mono values, hairline separated */
+.cc-acc-body { padding: var(--space-2) var(--space-5) var(--space-5); }
+.cc-acc-row { display: grid; grid-template-columns: 132px 1fr; gap: var(--space-4); align-items: baseline;
+  padding: var(--space-3) 0; border-top: 1px solid var(--rule); }
+.cc-acc-row:first-child { border-top: none; }
+.cc-acc-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-acc-value { font-size: 14.5px; color: var(--ink); letter-spacing: -0.01em; }
+.cc-acc-mono { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink); }
+.cc-acc-link { color: var(--gold-2); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
+/* cancellation row — the reassurance line; sage when free, neutral otherwise */
+.cc-acc-row[data-kind="cancellation"] .cc-acc-value { color: var(--sage); }
+.cc-acc-row[data-kind="price"] .cc-acc-value { font-family: var(--mono); font-size: 16px; }
+
+/* ---------------------------------------------------------------------------
+ * P3 · NotesPanel — notes-panel.tsx · .cc-notes
+ * Collapsed toggle → list + add form. prep vs outcome; "Shared with work".
+ * ------------------------------------------------------------------------- */
+.cc-notes { border: 1px solid var(--rule); border-radius: 8px; background: var(--card); overflow: hidden; }
+.cc-notes-toggle { display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: var(--space-4) var(--space-4-5); background: none; border: none; cursor: pointer; text-align: left; }
+.cc-notes-toggle .cc-notes-count { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.cc-notes-toggle .cc-chev { transition: transform var(--dur-base) var(--ease-standard); color: var(--ink-dim); }
+.cc-notes[data-open="true"] .cc-notes-toggle .cc-chev { transform: rotate(90deg); }
+.cc-notes-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15px; letter-spacing: -0.015em; color: var(--ink); }
+.cc-notes-body { padding: 0 var(--space-4-5) var(--space-4-5); display: flex; flex-direction: column; gap: var(--space-2-5); }
+.cc-note { border: 1px solid var(--rule); border-radius: 6px; padding: var(--space-3-5) var(--space-4);
+  background: var(--paper); }
+.cc-note-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1-5); }
+.cc-note-kind { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; }
+.cc-note-kind[data-kind="prep"] { color: var(--gold-2); background: var(--gold-tint); }
+.cc-note-kind[data-kind="outcome"] { color: var(--sage); background: var(--sage-2); }
+.cc-note-shared { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-faint); display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+.cc-note-body { font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.cc-note-form { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-1); }
+.cc-note-input { width: 100%; padding: var(--space-3) var(--space-3-5); background: var(--paper);
+  border: 1px solid var(--rule-2); border-radius: 5px; font-family: var(--sans); font-size: 14px;
+  color: var(--ink); outline: none; resize: vertical; }
+.cc-note-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-tint); }
+
+/* ---------------------------------------------------------------------------
+ * P4 · ReadinessPanel — readiness-panel.tsx · .cc-readiness
+ * "Have you got everything?" — reassurance, NOT a to-do app. Calm vs warn.
+ * (Scoped to the panel; the ActiveTile readiness block from R1 is separate.)
+ * ------------------------------------------------------------------------- */
+.cc-readiness-panel.cc-readiness, .cc-readiness[data-panel] { background: var(--card);
+  border: 1px solid var(--rule); border-radius: 8px; padding: var(--space-5); }
+.cc-readiness-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
+  margin-bottom: var(--space-4); }
+.cc-readiness-head .cc-readiness-title { font-family: var(--display); font-weight: var(--fw-medium);
+  font-size: 17px; letter-spacing: -0.02em; color: var(--ink); }
+/* the cleared state — the reassurance payoff */
+.cc-readiness[data-clear="true"] { background: var(--sage-2); border-color: transparent; }
+.cc-readiness[data-clear="true"] .cc-readiness-title::after { content: " · You're set"; color: var(--sage); }
+.cc-readiness-cat { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-faint); margin: var(--space-4) 0 var(--space-2); }
+.cc-readiness-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-2-5) 0;
+  border-top: 1px solid var(--rule); }
+.cc-readiness-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px; background: var(--ink-faint); }
+.cc-readiness-item[data-sev="info"] .cc-readiness-dot { background: var(--sage); }
+.cc-readiness-item[data-sev="advise"] .cc-readiness-dot { background: var(--gold); }
+.cc-readiness-item[data-sev="warn"] .cc-readiness-dot { background: var(--amber); }
+.cc-readiness-text { flex: 1; }
+.cc-readiness-label { font-size: 14.5px; color: var(--ink); letter-spacing: -0.01em; }
+.cc-readiness-detail { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; line-height: 1.45; }
+.cc-readiness-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.cc-readiness-actions a, .cc-readiness-actions button { font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-2); background: none; border: none;
+  border-bottom: 1px solid var(--gold-soft); padding: 0 0 2px; cursor: pointer; text-decoration: none; }
+
+/* ---------------------------------------------------------------------------
+ * P5 · DayReviewCard — day-review.tsx · .cc-review · /today "Tomorrow"
+ * HERO / emotional payoff — being looked after, not a summary table.
+ * Lead with leave-by as the hero figure.
+ * ------------------------------------------------------------------------- */
+.cc-review { background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  padding: var(--space-6); box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.cc-review-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-review-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 23px;
+  letter-spacing: -0.03em; color: var(--ink); margin-top: var(--space-1); }
+/* leave-by — the hero figure */
+.cc-review-leaveby { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-5) 0;
+  padding: var(--space-4) 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.cc-review-leaveby .l { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-review-leaveby .v { font-family: var(--mono); font-size: 40px; line-height: 1; color: var(--gold-2);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+/* the day-shape: a compact horizontal run of the day's legs */
+.cc-review-shape { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.cc-review-list { display: flex; flex-direction: column; gap: 0; margin-top: var(--space-2); }
+.cc-review-row { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-2-5) 0;
+  border-top: 1px solid var(--rule); }
+.cc-review-row .t { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); width: 52px; flex: none;
+  font-variant-numeric: tabular-nums; }
+.cc-review-row .who { font-size: 14px; color: var(--ink); }
+/* fragile flag — a calm caution, not alarm */
+.cc-review-flag { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-3-5); border-radius: 6px; background: var(--amber-2); color: var(--amber);
+  font-size: 13px; }
+.cc-review-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--rule); }
+.cc-review-verdict { font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--ink-2); }
+.cc-review[data-clear="true"] .cc-review-verdict { color: var(--sage); }
+.cc-review[data-clear="true"] .cc-review-verdict::before { content: "✓  "; font-style: normal; font-family: var(--sans); }
+
+/* ---------------------------------------------------------------------------
+ * P6 · Leg buffer badge — .cc-leg-buffer[data-buffer] in timeline-cards.tsx
+ * Calm classification on EVERY leg. Comfortable barely-there; insufficient
+ * catches the eye without alarm.
+ * ------------------------------------------------------------------------- */
+.cc-leg-head-right { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.cc-leg-buffer { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono);
+  font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.cc-leg-buffer::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.cc-leg-buffer[data-buffer="ok"] { color: var(--gold-2); background: transparent; opacity: 0.75; }
+.cc-leg-buffer[data-buffer="tight"] { color: var(--amber); background: var(--amber-2); }
+.cc-leg-buffer[data-buffer="late"] { color: var(--rust); background: var(--rust-2); }

@@ -8,10 +8,18 @@ logged here with its **component · where · states · data · what Design owns*
 against real, live examples on `/plan/[id]` and `/today`.
 
 **Standing note for Design:** all of the below is Code-authored against tokens (no raw hex/px), with
-placeholder layout. Treat the class names as the seam; restyle freely. None of it has had a brand
-pass yet. Names follow the contract — don't rename. No emojis anywhere (hard rule).
+placeholder layout. Treat the class names as the seam; restyle freely. Names follow the contract —
+don't rename. No emojis anywhere (hard rule).
 
-Status legend: 🟡 awaiting first Design pass.
+> **Round 6 applied (2026-06-14).** Design's first brand pass (`for-code-r6`) is **integrated**:
+> `src/app/khonsera-edition-iii.css` (additive, imported last in `layout.tsx`), plus the markup hooks
+> its selectors need — `.cc-plan-map` band, the AccommodationCard stay-document (gold seam, `Call`
+> button, `data-kind` rows), the DayReview leave-by hero (`.l/.v`, `.t/.who`, root `data-clear`),
+> `.cc-readiness[data-panel]` + amber-not-rust severity, NotesPanel `data-open`+chevron, the
+> calendar `.cc-pick-row[data-checked]` boxes, the Stay `.cc-stay-expand`/`.cc-stay-detail` grid, and
+> the per-leg `.cc-leg-buffer`. **Code's placeholder CSS for these was removed** so Design owns the
+> look outright. Reference: `docs/design/edition-iii-r6-redlines.md` + `-class-data-map.md`. Build
+> green · 276 tests pass. Status below flips 🟡→✅ for round 6; future phases append new 🟡 entries.
 
 ---
 
