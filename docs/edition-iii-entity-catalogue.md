@@ -76,18 +76,33 @@ window. No structured hotel concept in the data model. This is ~10% of the entit
   window**, smoking, floor/accessibility, special requests.
 - **Loyalty**: membership number + tier.
 
-### Operator-app replacement checklist (what the Hilton/Booking app does → our answer)
-| Their app lets you… | Khonsera response | Boundary |
+### Operator-app replacement checklist (grounded — see `docs/research/accommodation.md`)
+The posture is **channel-aware**: for OTA-booked rooms (Booking.com/Expedia) we can operate the
+membrane fully via their manage/message APIs; for chain-direct bookings the PMS-bound features are
+genuine dead-ends we surface + deep-link.
+| Their app lets you… | Khonsera posture | Powered by |
 |---|---|---|
-| See the full reservation + confirmation | Structured booking, **offline-available** | Operate |
-| Mobile check-in / online check-in | Surface the window + ID/card needed; deep-link/stub to online check-in | Operate → refer the submit |
-| **Digital room key** | Reproduce **only** where a legitimate pass/credential exists (barcode-realism rule); else surface confirmation + "key at desk" — stated plainly | Honest limit |
-| View / pay the folio (bill) | Capture the folio into the **expense ledger**; payment referred | Operate (admin) / refer (pay) |
-| Request late check-out / amenities / housekeeping | **Compose the message**, OS/voice sends; one-tap **call the hotel** | Operate compose |
-| Directions / parking / shuttle | True-entrance **map**, **parking layer** (reserve/pay), shuttle + transit to first commitment | Operate |
-| Breakfast / restaurant / gym / wifi | Surfaced; **breakfast-end feeds the morning leave-by** | Operate |
-| Loyalty points / tier perks | Store number + tier, surface perks | Operate / refer deep account |
-| Modify / cancel | Surface **cancel-by** as a decision-clock + readiness item; modify/cancel referred to channel | Operate the *decision*, refer the *act* |
+| View reservation details | **Operate fully** | email parse · or Demand/Rapid/Hotelbeds retrieve |
+| Directions / parking / shuttle | **Operate fully (better — door-to-door)** | Google Places + own MapLibre/Valhalla nav |
+| Amenities / breakfast hours / wifi info | **Operate fully** | Content API (Hotelbeds/Rapid) + Places · or parse |
+| Cancellation policy + cancel-by | **Operate fully** (display + decision-clock + readiness) | API response or parsed text |
+| Check-out / flight knock-on alerts | **Operate fully — native edge** | Khonsera's own timeline/solver |
+| Add to Wallet / offline pass | **Operate fully** | Khonsera mints passes (already does for rail) |
+| Receipts / invoices | **Operate (own bookings) / surface (others)** | API record · else parsed confirmation |
+| Message the property | **Operate for OTA / refer for chain** | Booking.com Messaging API · Rapid Property Message Center |
+| Request late check-out / amenity / service | **Operate via message (OTA) / refer (chain)** | OTA messaging · else deep-link |
+| Modify / cancel | **Operate for rooms we sold / refer otherwise** | Demand/Rapid/Hotelbeds manage-booking |
+| Wi-Fi auto-connect | **Honest limit → surface the credential** | parse/Content gives ssid+password; auto-join is app-proprietary |
+| Mobile / online check-in | **Refer / honest limit** | chain PMS-bound |
+| Choose / upgrade room | **Refer / honest limit** | live chain PMS inventory |
+| View & pay folio (bill) | **Honest limit (chain dead-end)** | folio lives in chain PMS |
+| **Digital room key** | **Honest limit at chains; later opt-in tier for indie/PMS** | chains locked (ASSA ABLOY Seos); indie via Mews/OPERA + FLEXIPASS/OpenKey, per-property |
+| Loyalty points / tier / perks | **Surface only / deep-link** | proprietary per programme |
+
+**The winnable edge:** the *arrival payload + content + timeline* — reservation, directions/parking,
+check-in/wifi/access instructions, cancellation clarity, check-out reminders, Wallet passes — all of
+which Khonsera does **better** than operator apps (door-to-door nav + offline snapshot, no partner
+dependency). The dead-ends (chain key/folio/check-in) are surfaced + deep-linked, never faked.
 
 ### Day-object behaviour
 Accommodation is a **constraint, not a fixed event** (check-in-from / check-out-by). It creates:
@@ -105,15 +120,33 @@ check-in is after the first meeting.
 stub; **Parkopedia/Arrive** for hotel parking; map/geocode for the true entrance; FX for foreign
 city tax. Folio → expenses (L6).
 
-### Schema (needed)
-A structured `accommodation_bookings` record (or rich columns on the stay stop): the fields above,
-replacing `room_details: string`. The current free-text card is a **placeholder** — a dedicated
-"deepen accommodation" phase builds this. Don't extend the free-text wrapper; model it.
+### Schema (needed) — grouped structured fields, retiring `room_details: string`
+A structured `accommodation_bookings` record, grouped so we can render, navigate-to, offline-cache,
+and honestly deep-link a stay — and later hang messaging/keys on the channel/PMS fields **without
+another migration**:
+- **Property**: name, brand/chain, address, lat/lng (true entrance), phone, front-desk hours, tz.
+- **Stay window** (constraints, not fixed points): check_in_from, check_out_by, nights, guests, rooms.
+- **Room & rate**: room_type, bed_config, board_basis, breakfast_window, smoking, accessibility,
+  special_requests, rate_plan.
+- **Money**: total + breakdown (room/taxes/**city_tax**/fees), currency, prepaid?, card_last4.
+- **Booking channel**: channel (direct/booking.com/expedia/hotelbeds/airbnb), confirmation_ref,
+  channel_booking_id (the handle for manage/message/cancel APIs), pms (mews/opera/null), loyalty_no/tier.
+- **Arrival payload (the edge)**: check_in_method, access_instructions, wifi_ssid, wifi_password,
+  parking_info, cancellation_policy, free_cancel_until.
+
+**Email-parse is the universal backbone** (the TripIt model = our existing Gmail import) — it surfaces
+*any* stay (chain-direct, indie, Airbnb) even with no partner API; the channel fields light up extra
+operation (message/modify/cancel) only for OTA-sold rooms. The current free-text card is a
+**placeholder** — ED1 builds this. Don't extend the wrapper; model it.
 
 ### Membrane boundary
-**Operate:** every detail, day-of action, document, contact, the folio-as-expense. **Refer:** the
-initial booking, paid upgrades, paying the bill, deep loyalty-account management. **Honest limit:**
-proprietary digital room keys — reproduce only a legitimately-held credential, else say "key at desk."
+**Operate:** the arrival payload + content + timeline (reservation, directions/parking, check-in/wifi
+instructions, cancellation clarity, check-out alerts, Wallet pass) — better than the operator apps;
+plus message/modify/cancel for **OTA-sold** rooms. **Refer:** initial booking, paid upgrades, deep
+loyalty management, and chain-direct manage actions (deep-link). **Honest limit (don't fake):** chain
+**digital key, live folio, mobile check-in** are PMS-bound dead-ends — surface + deep-link. The indie
+digital-key path (Mews/OPERA + FLEXIPASS/OpenKey) is a real but **per-property, later opt-in tier**,
+never a day-one consumer feature.
 
 ---
 
