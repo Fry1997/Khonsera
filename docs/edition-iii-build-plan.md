@@ -203,9 +203,10 @@ in one calm view. ✓ Build green · 276 tests pass.
 - [x] **Buffer badges on the spine**: every leg now shows its feasibility classification —
       `.cc-leg-buffer` on `LegCard` (Comfortable / Tight · Xm / Insufficient), fed from
       `checkLegFeasibility` via `LegVM.buffer`. (Design handoff logged.)
-- [ ] **Transition-pattern inference** (Direct / Drop-and-go / Hub-to-hub) — *deferred.* The UI slot
-      exists (`.cc-leg-pattern`, hardcoded "Direct"); the classifier (geometry + timing → confirmable
-      proposal) is a focused follow-on.
+- [ ] **Transition-pattern inference** (Direct / Drop-and-go / Hub-to-hub) — **OWED (buildable now).**
+      Not a legitimate defer under the tightened rule (no later-phase/data/key dependency); it was a
+      scope-skip. The UI slot exists (`.cc-leg-pattern`, hardcoded "Direct"); the classifier
+      (geometry + timing → confirmable proposal) should be closed. *To do.*
 - [ ] **True-door precision** — *deferred.* Needs entrance-level coord data beyond centroid; pairs
       with the data work when a richer hub/place coords source is wired.
 **Done when:** the spine shows classified buffers; transition patterns are proposed and confirmable;
@@ -237,8 +238,9 @@ arrival resolves to a true door where known.
 network maps are explicitly sequenced, not "partial"). Build green · 276 tests pass.
 
 ### Phase 8b — TfL network maps (schematic + route highlight)  `[ ]`
-**Depends on:** P8. **Procurement:** none beyond `TFL_APP_KEY`. *Re-scoped out of P8 as a distinct
-data+design feature.*
+**Depends on:** P8 (done). **Procurement:** none beyond `TFL_APP_KEY`. **Position:** *parallelizable,
+off the critical path — scheduled after the live-spine core (post-P11), or pulled forward on request.*
+Heavily Design-led (schematic render). Re-scoped out of P8 as a distinct data+design feature.
 - [ ] Line **route sequences** from TfL (`Line/{id}/Route/Sequence`) → the Tube/Overground schematic.
 - [ ] Render the schematic with the **day's route highlighted** (the network map people navigate by).
 **Done when:** a London transit leg shows the schematic line map with its route picked out.
