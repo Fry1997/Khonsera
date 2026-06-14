@@ -94,6 +94,28 @@ type TransRow = {
   computed_duration_minutes: number | null;
 };
 
+// The booked return = the first LOCKED (booked-in-app) rail departure that
+// leaves after the outbound has arrived. Its departure is a hard, perishable
+// commitment — miss it and the ticket's gone — so recovery protects it.
+function bookedReturnDeparture(
+  stops: StopRow[],
+  transitions: TransRow[],
+  afterIso: string,
+): { iso: string } | null {
+  const afterMs = new Date(afterIso).getTime();
+  const byId = new Map(stops.map((st) => [st.id, st]));
+  let best: { iso: string; ms: number } | null = null;
+  for (const tr of transitions) {
+    if (!tr.is_locked) continue;
+    const from = byId.get(tr.from_stop_id);
+    if (!from?.transport_hub?.code || !from.start_time) continue;
+    const ms = new Date(from.start_time).getTime();
+    if (ms <= afterMs) continue;
+    if (!best || ms < best.ms) best = { iso: from.start_time, ms };
+  }
+  return best ? { iso: best.iso } : null;
+}
+
 function durationDisplay(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -452,7 +474,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
               const { candidates, sample } = await nextRailServices({ originCrs: crs, destCrs, destName: to.title ?? destCrs, afterIso: fromStop.start_time, durationMin });
               const nextC = stops.find((s) => s.start_time && new Date(s.start_time).getTime() > new Date(to.start_time!).getTime() && s.type !== "start" && s.type !== "end" && s.type !== "accommodation");
               const commitment = nextC?.start_time ? { name: nextC.title ?? "your next commitment", byIso: nextC.start_time } : null;
-              const options = buildRecoveryOptions(candidates, commitment);
+              // Outbound+return as one unit (P11): the booked return is the next
+              // locked rail departure downstream of this break. A way-out that
+              // lands after it leaves strands you — surface that on every option.
+              const returnDep = bookedReturnDeparture(stops, transitions, to.start_time);
+              const protectedReturn = returnDep ? { label: londonHHMM(returnDep.iso) ?? "return", departIso: returnDep.iso } : null;
+              const options = buildRecoveryOptions(candidates, commitment, protectedReturn);
               if (options.length) n.after.recovery = { options, sample };
             }
           }

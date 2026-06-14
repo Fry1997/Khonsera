@@ -32,6 +32,23 @@ describe("recovery engine", () => {
     expect(opts[0].consequence).toMatch(/Arrives/);
   });
 
+  it("treats the outbound+return as one unit — flags a way-out that lands after the booked return", () => {
+    const ret = { label: "17:42", departIso: "2026-07-01T16:42:00Z" };
+    const opts = buildRecoveryOptions(
+      [
+        cand("ok", "2026-07-01T12:40:00Z"), // hours before the return — silent
+        cand("tight", "2026-07-01T16:30:00Z"), // 12 min turnaround — warns
+        cand("blown", "2026-07-01T17:10:00Z"), // after the return — trip lost
+      ],
+      commitment,
+      ret,
+    );
+    const byId = Object.fromEntries(opts.map((o) => [o.id, o]));
+    expect(byId.ok.returnNote).toBeUndefined();
+    expect(byId.tight.returnNote).toContain("12 min to turn around");
+    expect(byId.blown.returnNote).toContain("trip's lost");
+  });
+
   it("rankFor(least-disruption) puts makes-it + fewest changes first", () => {
     const opts = buildRecoveryOptions(
       [

@@ -24,6 +24,11 @@ export type RecoveryOption = RecoveryCandidate & {
   intoLateMin: number; // arrival minus the deadline (negative = time to spare)
   makesIt: boolean;
   consequence: string;
+  // The outbound+return booking is ONE unit (P11). When a return is booked
+  // downstream, a way-out that lands you after it has left strands you / wastes
+  // the ticket — say so plainly. Silent (undefined) when the return is safe:
+  // consequence in ink only when there's a consequence.
+  returnNote?: string;
 };
 
 function ms(iso: string): number {
@@ -40,25 +45,43 @@ export type ProtectTarget = "earliest-arrival" | "protect-return" | "least-disru
 
 export type Commitment = { name: string; byIso: string };
 
+/** A booked return service the outbound shares a trip with. A way-out that
+ *  arrives at the destination after this has departed leaves you stranded with
+ *  a wasted ticket — the pair is one unit, so we surface that on every option. */
+export type ReturnLeg = { label: string; departIso: string };
+
 /** Evaluate each candidate against the commitment to protect; trade-off order
- *  (soonest arrival) by default — neutral until a protect-target is set. */
+ *  (soonest arrival) by default — neutral until a protect-target is set. When a
+ *  booked return is given, each option also carries the return's impact. */
 export function buildRecoveryOptions(
   candidates: RecoveryCandidate[],
   commitment: Commitment | null,
+  protectedReturn?: ReturnLeg | null,
 ): RecoveryOption[] {
   return candidates
     .map((c): RecoveryOption => {
+      const returnNote = returnImpact(c.arriveIso, protectedReturn);
       if (!commitment) {
-        return { ...c, intoLateMin: 0, makesIt: true, consequence: `Arrives ${clock(c.arriveIso)}` };
+        return { ...c, intoLateMin: 0, makesIt: true, consequence: `Arrives ${clock(c.arriveIso)}`, returnNote };
       }
       const lateMin = minsBetween(commitment.byIso, c.arriveIso);
       const makesIt = lateMin <= 0;
       const consequence = makesIt
         ? `Makes your ${commitment.name}${lateMin < 0 ? `, ${-lateMin} min to spare` : " (just)"}`
         : `Reaches your ${commitment.name} ${lateMin} min late`;
-      return { ...c, intoLateMin: lateMin, makesIt, consequence };
+      return { ...c, intoLateMin: lateMin, makesIt, consequence, returnNote };
     })
     .sort((a, b) => ms(a.arriveIso) - ms(b.arriveIso));
+}
+
+/** The return is only worth speaking about when it's threatened: a way-out that
+ *  gets you in after the return has left wastes the trip. Otherwise stay quiet. */
+function returnImpact(arriveIso: string, protectedReturn?: ReturnLeg | null): string | undefined {
+  if (!protectedReturn) return undefined;
+  const slack = minsBetween(arriveIso, protectedReturn.departIso); // +ve = return still ahead
+  if (slack < 0) return `Lands after your ${protectedReturn.label} return — the trip's lost`;
+  if (slack <= 20) return `Only ${slack} min to turn around for your ${protectedReturn.label} return`;
+  return undefined;
 }
 
 /** Reorder once a protect-target is chosen. Until then, callers show the

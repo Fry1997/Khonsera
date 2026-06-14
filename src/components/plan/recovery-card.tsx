@@ -20,10 +20,15 @@ export function RecoveryCard({ options, sample }: { options: RecoveryOption[]; s
       </div>
       <ul className="cc-recovery-list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         {options.map((o) => (
-          <li key={o.id} className="cc-recovery-opt" data-makes={o.makesIt ? "true" : "false"}
+          <li key={o.id} className="cc-recovery-opt" data-makes={o.makesIt ? "true" : "false"} data-return={o.returnNote ? "at-risk" : undefined}
             style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "var(--space-3)", alignItems: "baseline" }}>
             <span className="cc-recovery-label" style={{ fontFamily: "var(--mono)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{o.label}</span>
-            <span className="cc-recovery-conseq" style={{ fontSize: "var(--fs-label)", color: o.makesIt ? "var(--sage, var(--ink))" : "var(--ink)" }}>{o.consequence}</span>
+            <span style={{ display: "flex", flexDirection: "column", gap: "var(--space-0-5)" }}>
+              <span className="cc-recovery-conseq" style={{ fontSize: "var(--fs-label)", color: o.makesIt ? "var(--sage, var(--ink))" : "var(--ink)" }}>{o.consequence}</span>
+              {o.returnNote ? (
+                <span className="cc-recovery-return" style={{ fontSize: "var(--fs-label)", color: "var(--rust)" }}>{o.returnNote}</span>
+              ) : null}
+            </span>
           </li>
         ))}
       </ul>
