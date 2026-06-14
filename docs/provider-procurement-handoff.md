@@ -38,7 +38,8 @@ margin. They need a B2B application/contract, so **start these early** if you wa
 
 | Provider | Who / what | Powers | Cost model | Env | Action |
 |---|---|---|---|---|---|
-| **Collinson** (Priority Pass / LoungeKey) | Airport-experience network — **chosen partner (decision #1)** | Fast-track security (P12) + airport lounge (P13) + SmartDelay later | Revenue (commission / wholesale+markup) | `COLLINSON_KEY` | Apply for API access — enterprise relationship |
+| **DragonPass** | Airport-experience network — **active partner (decision #1)** | Fast-track security (P12) + airport lounge (P13) | Revenue (commission / wholesale+markup) | `DRAGONPASS_KEY` | Apply to DragonPass — the achievable short-term contract |
+| **Collinson** (Priority Pass + SmartDelay) | Same space — **long-term strategic target (dormant)** | Future: lounge + fast-track + SmartDelay (delay-triggered lounge → recovery) | Revenue | `COLLINSON_KEY` | Pursue the enterprise relationship over time; adapter is ready |
 | **Parkopedia / Arrive** | Parking data + booking aggregator | Predicted car-park occupancy + reserve a space (P13) | Low/revenue (data licence + booking commission) | `PARKOPEDIA_KEY` | Apply for API access |
 
 ### Coming up (later phases — listed so you can start slow ones early)
@@ -52,16 +53,16 @@ margin. They need a B2B application/contract, so **start these early** if you wa
 
 ## Decisions you need to make
 
-### 1. Airport-experience partner — **DECIDED: Collinson** (founder, 2026-06-14)
-Both DragonPass and Collinson do lounges *and* fast-track; one partner, not two. **Chosen: Collinson**
-(Priority Pass / LoungeKey) as the **long-term strategic, enterprise-level** partner — the bigger lounge
-network, **SmartDelay** (lounge auto-triggered by a flight delay, which plugs straight into our recovery
-moment), and meet-and-assist. The build now routes **both** fast-track (P12) and lounge (P13) through
-`integrations/collinson.ts` on `COLLINSON_KEY`.
-- **Honest caveat:** Collinson's *fast-track* footprint is narrower than a pure fast-track vendor's.
-  **DragonPass stays dormant in the tree** (`integrations/dragonpass.ts`, identical voucher shape) as a
-  ready fallback/secondary fast-track adapter — re-pointing is a one-line change. `DRAGONPASS_KEY` is
-  therefore an *optional* fallback env, not a primary.
+### 1. Airport-experience partner — **DECIDED: DragonPass now, Collinson the long-term target** (founder, 2026-06-14)
+Both do lounges *and* fast-track; one partner, not two. **Ship on DragonPass** as the practical
+**short-term** partner — one contract covering both fast-track (P12) and lounge (P13), with achievable
+onboarding for a young company. The build routes **both** rules through `integrations/dragonpass.ts` on
+`DRAGONPASS_KEY`.
+- **Collinson is the long-term strategic, enterprise-level *target*** — the bigger lounge network +
+  **SmartDelay** (lounge auto-triggered by a flight delay → plugs straight into the recovery moment) +
+  meet-and-assist — but it's **not a short-term solution**, so it's kept **dormant**
+  (`integrations/collinson.ts`, ready, unimported). Switching to it when that relationship lands is a
+  one-line change (identical voucher shapes). `COLLINSON_KEY` is the dormant/future env.
 
 ### 2. Open-Meteo: commercial plan or self-host
 Open-Meteo is free for **non-commercial** use. Khonsera is commercial, so for production you need

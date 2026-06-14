@@ -1,15 +1,15 @@
-// Collinson (Priority Pass / LoungeKey) adapter (Phase 12–13) — the single
-// airport-experience partner (founder call, D52): BOTH **fast-track security**
-// (the running-late flagship, P12) and **lounge** access (the long-layover rule,
-// P13). REVENUE provider, procurement-gated: MOCK until COLLINSON_KEY is set. The
-// mock returns realistic vouchers so propose → confirm → pass-in-hand works end to
-// end today; the real catalogue + booking drop in behind these shapes. (SmartDelay
-// — lounge auto-triggered by a flight delay — is the P11/P13 follow-on noted in
-// the capability map, and a key reason Collinson is the strategic partner.)
+// Collinson (Priority Pass / LoungeKey) adapter — fast-track + lounge access,
+// behind the identical voucher shapes as DragonPass.
 //
-// Honest note: Collinson's fast-track footprint is narrower than a pure fast-track
-// vendor's; `integrations/dragonpass.ts` stays in the tree (dormant) as the ready
-// fallback/secondary fast-track adapter behind the identical voucher shape.
+// DORMANT (D52): Collinson is the LONG-TERM STRATEGIC TARGET — the bigger lounge
+// network + **SmartDelay** (lounge auto-triggered by a flight delay → plugs into the
+// P11 recovery moment) + meet-and-assist — but it's an enterprise relationship, not a
+// short-term solution. The build ships on **DragonPass** now (`integrations/dragonpass.ts`,
+// the active single partner); this adapter is kept ready, unimported, so switching to
+// Collinson when that relationship lands is a one-line change in `actions/context.ts`.
+// Do NOT delete.
+//
+// REVENUE provider, procurement-gated: MOCK until COLLINSON_KEY is set.
 
 export type LoungePass = {
   reference: string;

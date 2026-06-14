@@ -1,13 +1,12 @@
-// DragonPass adapter (Phase 12) — fast-track security prebooking.
-//
-// DORMANT (D52): Collinson is now the single airport-experience partner (fast-track
-// + lounge), so the context engine no longer imports this. Kept in the tree as the
-// ready fallback/secondary fast-track adapter (Collinson's fast-track footprint is
-// narrower than a pure fast-track vendor's) — it speaks the identical voucher shape,
-// so re-pointing `actions/context.ts` back here is a one-line change. Do NOT delete.
+// DragonPass adapter (Phase 12–13) — the single airport-experience partner (founder
+// call, D52): BOTH **fast-track security** (the running-late flagship, P12) and
+// **lounge** access (the long-layover rule, P13). Chosen as the practical SHORT-TERM
+// partner (one contract, achievable onboarding); Collinson (Priority Pass + SmartDelay)
+// is the long-term strategic TARGET, kept dormant in `integrations/collinson.ts` until
+// that enterprise relationship is realistic — identical voucher shapes, one-line swap.
 //
 // REVENUE provider, procurement-gated: MOCK until DRAGONPASS_KEY is set, then the
-// real `/v2/orders/...prebooking` product drops in behind this same shape.
+// real `/v2/orders/...prebooking` product drops in behind these same shapes.
 
 export type FastTrackSlot = { startIso: string; endIso: string };
 
@@ -55,6 +54,49 @@ export async function bookFastTrack(args: { airport: string; flightDepartIso: st
     provider: "dragonpass",
     sample,
   };
+}
+
+// ───────────────────────── lounge access (P13) ─────────────────────────
+
+export type LoungePass = {
+  reference: string;
+  airport: string;
+  loungeName: string;
+  validFromIso: string;
+  validToIso: string;
+  guests: number;
+  qrPayload: string;
+  provider: "dragonpass";
+  sample: boolean;
+};
+
+export async function loungeAvailability(airport: string): Promise<{ available: boolean; loungeName: string; sample: boolean }> {
+  return { available: true, loungeName: loungeNameFor(airport), sample: !dragonpassKey() };
+}
+
+// Book (or, mocked, mint) a lounge pass sized to the window before boarding.
+export async function bookLounge(args: { airport: string; boardingIso: string; windowMin: number }): Promise<LoungePass> {
+  const sample = !dragonpassKey();
+  const boarding = new Date(args.boardingIso).getTime();
+  const validToIso = new Date(boarding - 20 * 60_000).toISOString(); // leave to reach the gate
+  const validFromIso = new Date(boarding - args.windowMin * 60_000).toISOString();
+  const ref = `LG-${slug(args.airport)}-${shortHash(args.airport + args.boardingIso)}`;
+  return {
+    reference: ref,
+    airport: args.airport,
+    loungeName: loungeNameFor(args.airport),
+    validFromIso,
+    validToIso,
+    guests: 1,
+    qrPayload: `DRAGONPASS|${ref}|${args.boardingIso}`,
+    provider: "dragonpass",
+    sample,
+  };
+}
+
+function loungeNameFor(airport: string): string {
+  const code = /\(([A-Z]{3})\)/.exec(airport)?.[1];
+  return code ? `DragonPass Lounge ${code}` : "Airport Lounge";
 }
 
 function slug(s: string): string {

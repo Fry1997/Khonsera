@@ -655,6 +655,7 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
 - 2026-06-14 · **Provider procurement handoff + Collinson chosen (D52).** Wrote
   `docs/provider-procurement-handoff.md` (founder action list: who/what/why/cost/env per provider).
   Corrected the AeroDataBox "free" claim (it's low-cost paid; no free generous flight-gate feed).
-  Founder picked **Collinson** as the single strategic airport-experience partner — consolidated
-  fast-track + lounge onto `collinson.ts` (`COLLINSON_KEY`); **DragonPass dormant** as fallback. 304
-  tests green.
+  Founder picked **DragonPass** as the single active airport-experience partner (practical short-term) —
+  both fast-track + lounge route through `dragonpass.ts` (`DRAGONPASS_KEY`). **Collinson** (Priority Pass
+  + SmartDelay) is the long-term strategic **target**, kept **dormant** (`collinson.ts`) until that
+  enterprise relationship is realistic; identical voucher shapes → one-line switch. 304 tests green.

@@ -15,9 +15,10 @@ import {
   type GateChangeInput,
 } from "@/lib/context/engine";
 import { corridorForecast } from "@/lib/integrations/open-meteo";
-// Collinson is the single airport-experience partner (D52): fast-track + lounge.
-// DragonPass stays dormant in the tree as the fallback fast-track adapter.
-import { bookFastTrack, bookLounge } from "@/lib/integrations/collinson";
+// DragonPass is the single airport-experience partner (D52, short-term): fast-track
+// + lounge. Collinson (Priority Pass + SmartDelay) is the long-term strategic target,
+// kept dormant in the tree until that enterprise relationship is realistic.
+import { bookFastTrack, bookLounge } from "@/lib/integrations/dragonpass";
 import { parkingOutlook, reserveParking } from "@/lib/integrations/parkopedia";
 import { flightDepartureStatus } from "@/lib/integrations/aerodatabox";
 import { createNote } from "@/lib/actions/notes";

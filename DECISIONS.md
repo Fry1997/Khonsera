@@ -741,12 +741,14 @@ Newest at the bottom of each section.
   security-queue + multi-point weather remain P12-scope max-API follow-ons. New env vars:
   `COLLINSON_KEY`, `PARKOPEDIA_KEY`, `AERODATABOX_KEY`.
 
-- **D52 — Airport-experience partner: Collinson (single partner), DragonPass dormant.** Founder call:
-  Collinson (Priority Pass / LoungeKey) is the long-term **strategic, enterprise-level** partner — the
-  bigger lounge network + **SmartDelay** (lounge auto-triggered by a flight delay → plugs into the P11
-  recovery moment) + meet-and-assist. Consolidated **both** fast-track (P12 flagship) and lounge (P13)
-  onto `integrations/collinson.ts` via `COLLINSON_KEY`; the context engine's `expedite-security` action
-  now carries `provider: "collinson"`. **DragonPass retired to dormant** (`integrations/dragonpass.ts`
-  kept, unimported) as a ready fallback/secondary fast-track adapter — Collinson's fast-track footprint
-  is narrower than a pure fast-track vendor's, and the voucher shapes are identical, so re-pointing is a
-  one-line change. `DRAGONPASS_KEY` is now an optional fallback env, not a primary. 304 tests green.
+- **D52 — Airport-experience partner: DragonPass now (single partner), Collinson the long-term target.**
+  Founder call: ship on **DragonPass** as the practical SHORT-TERM partner — one contract covering BOTH
+  fast-track (P12 flagship) and lounge (P13), with achievable onboarding. **Collinson** (Priority Pass /
+  LoungeKey + **SmartDelay** — lounge auto-triggered by a flight delay, which would plug into the P11
+  recovery moment) is the long-term **strategic, enterprise-level TARGET**, but not a short-term
+  solution, so it is kept **dormant** (`integrations/collinson.ts`, unimported, ready). Both fast-track +
+  lounge route through `integrations/dragonpass.ts` via `DRAGONPASS_KEY`; the engine's `expedite-security`
+  + `book-lounge` actions carry `provider: "dragonpass"`. Voucher shapes are identical across both
+  adapters, so switching to Collinson when that relationship lands is a one-line change in
+  `actions/context.ts`. `COLLINSON_KEY` is the dormant/future env. 304 tests green.
+  *(An earlier same-session draft of D52 had these reversed; this is the settled decision.)*
