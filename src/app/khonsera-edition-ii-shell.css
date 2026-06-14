@@ -585,6 +585,26 @@
 .cc-acc-link { color: var(--gold-2); text-decoration: none; }
 .cc-acc-link:hover { text-decoration: underline; }
 .cc-acc-mono { font-family: var(--mono); color: var(--ink-faint); }
+
+/* P3 — notes on a commitment (prep + outcome) */
+.cc-notes { margin-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-notes-toggle { align-self: flex-start; background: none; border: 0; cursor: pointer; padding: 0;
+  font-family: var(--mono); font-size: var(--fs-label); letter-spacing: .04em; color: var(--gold-2); }
+.cc-notes-body { display: flex; flex-direction: column; gap: var(--space-2);
+  border-left: 1px solid var(--rule-2); padding-left: var(--space-3); }
+.cc-note { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) 0; }
+.cc-note-head { display: flex; align-items: center; gap: var(--space-2); }
+.cc-note-kind { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 1px var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--rule-2); color: var(--ink-faint); }
+.cc-note-kind[data-kind="outcome"] { color: var(--gold-2); border-color: var(--gold-soft); }
+.cc-note-shared { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-2); }
+.cc-note-del { margin-left: auto; background: none; border: 0; cursor: pointer; color: var(--ink-faint); font-size: 15px; line-height: 1; }
+.cc-note-del:hover { color: var(--rust); }
+.cc-note-title { font-size: var(--fs-body); color: var(--ink); font-weight: 500; }
+.cc-note-text { font-size: var(--fs-label); color: var(--ink-soft, var(--ink)); white-space: pre-wrap; }
+.cc-note-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-note-share { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-label); color: var(--ink-faint); }
+.cc-note-actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
 .cc-journey-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px; letter-spacing: -0.01em;
   color: var(--ink); margin: 4px 0 0; }
 .cc-journey-meta { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }

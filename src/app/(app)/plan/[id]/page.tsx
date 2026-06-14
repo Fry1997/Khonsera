@@ -12,6 +12,7 @@ import { PlanMap } from "@/components/plan/plan-map";
 import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
 import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
 import { accommodationFromMetadata } from "@/lib/accommodation/types";
+import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -245,6 +246,16 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const constraints = await loadConstraints();
   const stopById = new Map(stops.map((st) => [st.id, st]));
 
+  // Prep + outcome notes per commitment (P3). RLS already scopes to the viewer.
+  const allNotes = await listNotesForStops(stops.map((st) => st.id));
+  const notesByStop = new Map<string, NoteVM[]>();
+  for (const n of allNotes) {
+    if (!n.stopId) continue;
+    const arr = notesByStop.get(n.stopId) ?? [];
+    arr.push(n);
+    notesByStop.set(n.stopId, arr);
+  }
+
   // PlacePicker data — saved places pin to the top, then Google autocomplete.
   // Lets manual Place/Appointment adds bind a real, geocoded location so the
   // leg to/from it routes (not a bare un-geocoded address string).
@@ -375,7 +386,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     const isBase = entryType === "start" || entryType === "end";
     const accommodation =
       entryType === "accommodation" ? accommodationFromMetadata(entryStop?.metadata) : null;
-    return { key: u.key, anchor: u.anchor, isBase, accommodation, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
+    const notes = u.anchor ? notesByStop.get(u.entryId) ?? [] : [];
+    return { key: u.key, anchor: u.anchor, isBase, accommodation, notes, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);
@@ -426,7 +438,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
           <PlanConstraints initial={constraints} />
 
-          <PlanSpine nodes={nodes} journeyDate={dateStart} eventId={id} />
+          <PlanSpine nodes={nodes} journeyDate={dateStart} eventId={id} isWork={journey.mode === "work"} />
         </>
       )}
 

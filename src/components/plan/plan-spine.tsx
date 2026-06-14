@@ -16,6 +16,8 @@ import type {
 } from "@/components/concierge";
 import { wallClockToIso } from "@/lib/time-zone";
 import { AccommodationCard } from "@/components/plan/accommodation-card";
+import { NotesPanel } from "@/components/plan/notes-panel";
+import type { NoteVM } from "@/lib/actions/notes";
 import type { AccommodationDetails } from "@/lib/accommodation/types";
 import {
   setAnchorVariable,
@@ -42,6 +44,7 @@ export type SpineNode = {
   // return-home. Renders as a fixed home card, not an editable, removable anchor.
   accommodation?: AccommodationDetails | null; // ED1 — the stay's arrival payload, rendered below
   // the anchor (wifi, access, parking, cancellation…) so the Hilton/Booking app is redundant.
+  notes?: NoteVM[]; // P3 — prep + outcome notes bound to this commitment
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8), ONE rail hop
   // Live status (Darwin) for this hop's boarding station: CRS + planned departure
   // (London HH:MM) + the hop's destination CRS (disambiguates same-minute
@@ -65,10 +68,12 @@ export function PlanSpine({
   nodes,
   journeyDate,
   eventId,
+  isWork,
 }: {
   nodes: SpineNode[];
   journeyDate: string;
   eventId: string;
+  isWork: boolean;
 }) {
   const router = useRouter();
   const [edit, setEdit] = useState<EditTarget | null>(null);
@@ -148,6 +153,9 @@ export function PlanSpine({
                       ×
                     </button>
                     {n.accommodation ? <AccommodationCard a={n.accommodation} /> : null}
+                    {n.anchor ? (
+                      <NotesPanel stopId={n.anchor.id} itineraryId={eventId} isWork={isWork} notes={n.notes ?? []} />
+                    ) : null}
                   </div>
                 ) : null}
               </div>

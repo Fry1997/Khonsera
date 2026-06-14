@@ -182,6 +182,24 @@ Title, **true-door place**, time window, attendees/**contact**, agenda + materia
 (prep notes, P3), outcome notes (org-reviewable for work), the back-calculated leave-by. Already the
 best-served non-rail entity; deepen with notes (P3) + attendees.
 
+## 6b · NOTES (content entity — built P3) — grounded in `docs/research/notes.md`
+Not a bookable entity (no operator app, no booking API), so the rule reads differently: the bar is
+"never reach for a separate notes app, and the **org sees the work outcome, never the person's
+thinking**." Two kinds sharing one shape, split by `kind`:
+- **Prep**: objective, agenda, attendees + roles, what-to-bring (checklist → readiness), dress,
+  logistics/access, talking points, context, materials.
+- **Outcome**: summary, decisions, action items (owner + due → tasks later), follow-ups, sentiment
+  (private), expenses-to-claim.
+**Shape (shipped):** `notes` (kind, title, body markdown, `checklist`/`action_items` jsonb,
+`visibility`, `source`, `template_key`, `transcript`) + `note_attachments` (designed-in, shipped
+later) — migration 0034. **Boundary (the critical bit):** a note binds to a commitment (`stop_id`) or
+a day (`itinerary_id`), never floats; the **org-review boundary is one RLS line** — a workspace
+member reads a note only when `work` + `outcome` + `org_reviewable`; personal and all prep notes are
+owner-only. Verified clean by the security advisor. **Day-of:** prep notes are what you open on
+arrival; checklist feeds readiness (P4); action items promote to tasks later. **Follow-ons:**
+attachments (Supabase Storage), voice capture (on-device Web Speech — already used in nav), templates
+(in-code preset registry keyed by commitment type).
+
 ## 7 · LOUNGE / FAST-TRACK, eSIM, COACH, FERRY  *(stubs — work at their phases)*
 Each gets the same treatment: the operator-app-replacement checklist, day-object hooks, readiness,
 max-scope API, schema, membrane boundary — written when its phase is reached.

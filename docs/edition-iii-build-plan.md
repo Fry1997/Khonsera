@@ -146,16 +146,20 @@ boundary intact. ✓ Build green · 272 tests pass.
 structured cards. ✓ for email/manual/calendar; barcode capture works, byte-identity *verification*
 deferred. Build green · 272 tests pass.
 
-### Phase 3 — Notes as a first-class entity  `[ ]`
+### Phase 3 — Notes as a first-class entity  `[x]` DONE 2026-06-14
+*Research-first (new entity): `docs/research/notes.md` → catalogue §6b.*
 **Depends on:** P0.
-- [ ] Notes table/entity attachable to a **Commitment or Day**, with **prep** and **outcome** kinds
-      (timestamps, edit history).
-- [ ] Prep notes surface on the commitment (agenda, who, what to bring, context). Outcome notes
-      recorded during/after.
-- [ ] **Org-reviewable outcome notes** for *work*-tagged commitments only (personal notes stay
-      private — enforce via RLS).
+- [x] `notes` + `note_attachments` tables (migration 0034, applied + advisor-verified), attachable to
+      a **commitment (`stop_id`) or day (`itinerary_id`)**, `kind` = prep|outcome, markdown body +
+      jsonb `checklist`/`action_items` + `source`/`template_key`/`transcript` (voice/templates
+      designed-in, shipped later). Owner-scoped actions in `notes.ts`.
+- [x] Prep + outcome notes surface **on the commitment** via `NotesPanel` on the plan spine (add/edit/
+      delete, kind toggle, prep/outcome prompts).
+- [x] **Org-review boundary in RLS** (one line): a workspace member reads a note only when
+      `work` + `outcome` + `org_reviewable`; personal and all prep notes are owner-only. Defended in
+      the action too (personal can't be made reviewable). Security advisor: clean on both new tables.
 **Done when:** a commitment carries prep + outcome notes; work outcome notes are visible to the
-workspace, personal notes are not.
+workspace, personal notes are not. ✓ Build green · 272 tests pass.
 
 ### Phase 4 — Readiness check (the heart of preparation, B3.3)  `[ ]`
 **Depends on:** P2, P3.
@@ -425,5 +429,11 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   metadata — no migration), deep manual "Stay" capture (essentials + expandable arrival payload), the
   **arrival-payload card** on the plan spine (phone/wifi/access/parking/breakfast/cancellation), and
   brief/import mapped into it. The thin P2 card is now a real entity. Build green · 272 tests pass.
-  Follow-ons noted (OTA message/cancel APIs, folio→expenses, cancel-by→decision-clock). Next: **ED2
-  (Flight)** or resume **Phase 3** — founder's call.
+  Follow-ons noted (OTA message/cancel APIs, folio→expenses, cancel-by→decision-clock).
+- 2026-06-14 · **Sequencing locked + Phase 3 shipped.** Decided: press on with the spine, enrich
+  entities at their powering phase. **Notes** (new entity) got the research-first treatment
+  (`docs/research/notes.md` → catalogue §6b), then built: migration 0034 (`notes` + `note_attachments`,
+  applied to the live project + **security-advisor-verified** — the org-review boundary is one RLS
+  line), owner-scoped actions, and a per-commitment `NotesPanel` (prep/outcome, work-outcome
+  org-reviewable). Build green · 272 tests pass. Next: **Phase 4 — Readiness check** (prep checklist
+  feeds it).
