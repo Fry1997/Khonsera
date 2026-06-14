@@ -17,7 +17,7 @@ import { loadReadiness } from "@/lib/actions/readiness";
 import { ReadinessPanel } from "@/components/plan/readiness-panel";
 import { tflLegPlan, tflLineStatus, inGreaterLondon, type LatLng, type TflLine } from "@/lib/integrations/tfl";
 import { liveDeparture } from "@/lib/integrations/darwin";
-import { delayConsequence, fragility } from "@/lib/live/engine";
+import { delayConsequence, fragility, cascade } from "@/lib/live/engine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -416,6 +416,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     for (const l of statusRes.data) if (l.state !== "good") disrupted.set(l.name.toLowerCase(), l);
   }
   const DELAY_FOR: Record<string, number> = { minor: 6, severe: 16, suspended: 35, info: 0 };
+  const liveDelays: number[] = []; // every live delay on the day, for the whole-day cascade
   await Promise.all(
     nodes.map(async (n) => {
       if (n.after?.kind !== "leg") return;
@@ -430,6 +431,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           const m = /\+(\d+)/.exec(live.detail ?? "");
           const delayMin = live.label === "Cancelled" ? 999 : m ? Number(m[1]) : 0;
           if (delayMin > 0) {
+            liveDelays.push(delayMin === 999 ? 60 : delayMin);
             const to = stopById.get(n.after.toStopId);
             const text = to?.start_time
               ? delayConsequence(
@@ -453,6 +455,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         plan.disruption = { line: st.name, state: st.state, status: st.status };
         const to = stopById.get(n.after.toStopId);
         const addMin = DELAY_FOR[st.state] ?? 0;
+        if (addMin > 0) liveDelays.push(addMin);
         if (to?.start_time && addMin > 0) {
           plan.consequence = delayConsequence(
             { id: n.after.toStopId, intoName: to.title ?? "your next stop", arriveIso: to.start_time, deadlineIso: to.start_time, kind: "commitment" },
@@ -493,6 +496,19 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     }
   }
   const frag = fragility(fragSlacks);
+
+  // Whole-day live re-solve (P10) — when a live delay is on the day, cascade it
+  // across the remaining commitments and surface the day-level ripple.
+  const dayDelay = liveDelays.length ? Math.max(...liveDelays) : 0;
+  let ripple: string | null = null;
+  if (dayDelay > 0) {
+    const conns = stops
+      .filter((s) => s.type !== "start" && s.type !== "end" && s.type !== "accommodation" && s.start_time)
+      .map((s) => ({ id: s.id, intoName: s.title ?? "your next thing", arriveIso: s.start_time!, deadlineIso: s.start_time!, kind: "commitment" as const }));
+    const cons = cascade(conns, dayDelay);
+    const worst = cons.find((c) => c.broken);
+    ripple = worst ? `The day's running ~${dayDelay} min behind — ${worst.text}` : `The day's running ~${dayDelay} min behind.`;
+  }
 
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
@@ -535,6 +551,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           {leaveByIso ? (
             <p className="cc-decision-clock" style={{ margin: 0, fontFamily: "var(--mono)", fontSize: "var(--fs-label)", color: "var(--gold-2)", letterSpacing: "0.04em" }}>
               Set off by {londonHHMM(leaveByIso)}{firstDest ? ` for ${firstDest}` : ""}
+            </p>
+          ) : null}
+
+          {ripple ? (
+            <p className="cc-day-ripple" style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--rust)", fontWeight: 500 }}>
+              {ripple}
             </p>
           ) : null}
 

@@ -128,6 +128,9 @@ don't rename. No emojis anywhere (hard rule).
 - **Fragility line** 🟡 (P10) — `.cc-fragility` on `/plan/[id]` (near the decision-clock): "Tight plan
   — only N min into X. One delay and the day breaks; add a buffer while you can." *Design owns it* —
   a calm caution (rust text), the foresight that lets you fix it *before* it breaks, never alarm.
+- **Day ripple** 🟡 (P10) — `.cc-day-ripple` on `/plan/[id]`, when a live delay is on the day: "The
+  day's running ~N min behind — you'll be N late for X." The whole-day cascade at a glance. *Design
+  owns it* — present (rust, a touch of weight) but still calm; it sits above the per-leg alerts.
 
 ---
 

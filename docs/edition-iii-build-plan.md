@@ -269,8 +269,9 @@ time as a disruption unfolds) is the **disruption state machine → Phase 10**, 
       plan, one delay and it breaks; add a buffer while you can." Design handoff logged.
 - [ ] **Full Today-state machine** — *(P10, remaining)* calm → imminent → live → **disruption**; extend
       the today projection (4 states today) with the disruption state driven by the live signals.
-- [ ] **Whole-day live re-solve** (carried from P9) — *(P10, remaining)* run `cascade` across the day's
-      connections on a live delay → re-propagate downstream times, not just the per-leg consequence.
+- [x] **Whole-day live re-solve** (carried from P9) — `cascade` runs across the day's commitments on a
+      live delay; `/plan/[id]` shows the day-level ripple ("the day's running ~N min behind — …",
+      `.cc-day-ripple`). Design handoff logged.
 - [ ] **On-service tracking** — *(P10, remaining; partly data-gated)* calling-points + stops-to-go from
       Darwin; *live position on the train needs a position source (RTT) → tagged.*
 **Done when:** the day flags fragility, enters a true disruption state on a break, and tracks you on
@@ -540,3 +541,8 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   **Remaining in P10 (positioned, staying in-phase):** full Today disruption state machine; whole-day
   live re-solve (cascade across the day); on-service tracking (calling-points/stops-to-go; live train
   position is RTT-data-gated → tagged).
+- 2026-06-14 · **P10 part 2: whole-day live re-solve.** Threaded every live delay (rail + TfL) through
+  the `/plan/[id]` pass, ran `cascade` across the day's commitments, and surfaced the day-level ripple
+  ("the day's running ~N min behind — …", `.cc-day-ripple`). Build green · 283 tests pass. **P10
+  remaining (positioned):** full Today disruption state machine; on-service tracking (calling-points
+  buildable; live train position RTT-gated).
