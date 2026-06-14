@@ -35,6 +35,12 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
 
   if (items.length === 0) return null;
 
+  // Which finder tab a "book" gap deep-links to. Hotel gaps → stays, ticket gaps
+  // → flights (rail booking is Assertis-pending). Parking books via its nudge, so
+  // it keeps the reminder path (no finder).
+  const bookFind = (key: string): "flight" | "stay" | null =>
+    key.startsWith("hotel:") ? "stay" : key.startsWith("ticket:") ? "flight" : null;
+
   const byCat = new Map<ReadinessCategory, ReadinessItem[]>();
   for (const i of live) {
     const arr = byCat.get(i.category) ?? [];
@@ -66,6 +72,11 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
                   <div className="cc-readiness-actions">
                     {i.action.kind === "link" ? (
                       <a href={i.action.href} target="_blank" rel="noopener noreferrer">{i.action.label}</a>
+                    ) : i.action.kind === "book" && bookFind(i.key) ? (
+                      <>
+                        <button type="button" onClick={() => router.push(`?find=${bookFind(i.key)}` as Parameters<typeof router.push>[0])}>Find &amp; book</button>
+                        <button type="button" disabled={pending === i.key} onClick={() => remind(i)}>Remind me</button>
+                      </>
                     ) : i.action.kind === "task" || i.action.kind === "book" ? (
                       <button type="button" disabled={pending === i.key} onClick={() => remind(i)}>
                         {i.action.kind === "book" ? "Add reminder" : "Remind me"}

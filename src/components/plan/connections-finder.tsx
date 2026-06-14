@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { searchFlightOffers, bookFlightOffer, searchStayOffers, bookStayOffer } from "@/lib/actions/connections";
 import type { Offer } from "@/lib/connections/types";
 
@@ -29,9 +29,13 @@ export function ConnectionsFinder({
   destination: StayDestination | null;
 }) {
   const router = useRouter();
+  // A readiness gap can deep-link straight into the finder via `?find=flight|stay`
+  // ("book from a readiness gap") — open to that tab when the param is present.
+  const findParam = useSearchParams().get("find");
+  const router0Find: Mode | null = findParam === "stay" ? "stay" : findParam === "flight" ? "flight" : null;
   const [pending, startTransition] = useTransition();
-  const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>("flight");
+  const [open, setOpen] = useState(router0Find !== null);
+  const [mode, setMode] = useState<Mode>(router0Find ?? "flight");
 
   const [origin, setOrigin] = useState("");
   const [dest, setDest] = useState("");
