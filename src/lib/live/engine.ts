@@ -101,3 +101,14 @@ export function cascade(connections: Connection[], firstLegDelayMin: number): Co
   }
   return out.sort((a, b) => b.lateMin - a.lateMin);
 }
+
+// Fragility (Phase 10): is the day one delay from collapse? A plan is fragile when
+// its thinnest connection has little or no slack to absorb a delay. Surfaced as a
+// calm "add a buffer while you can", not an alarm.
+export type Fragility = { fragile: boolean; weakestSlackMin: number | null };
+
+export function fragility(slacksMin: number[], threshold = 10): Fragility {
+  if (slacksMin.length === 0) return { fragile: false, weakestSlackMin: null };
+  const weakest = Math.min(...slacksMin);
+  return { fragile: weakest <= threshold, weakestSlackMin: weakest };
+}

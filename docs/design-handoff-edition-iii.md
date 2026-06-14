@@ -125,6 +125,9 @@ don't rename. No emojis anywhere (hard rule).
 - **TfL reroute prompt** 🟡 — `.cc-tflleg-reroute` inside `.cc-tflleg-alert` for a severe/suspended
   line: the one-line "consider an alternative, or a taxi". *Design owns it* — an offered way out,
   understated.
+- **Fragility line** 🟡 (P10) — `.cc-fragility` on `/plan/[id]` (near the decision-clock): "Tight plan
+  — only N min into X. One delay and the day breaks; add a buffer while you can." *Design owns it* —
+  a calm caution (rust text), the foresight that lets you fix it *before* it breaks, never alarm.
 
 ---
 

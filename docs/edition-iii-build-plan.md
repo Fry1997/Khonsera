@@ -262,14 +262,17 @@ Heavily Design-led (schematic render). Re-scoped out of P8 as a distinct data+de
 ✓ Build green · 282 tests pass. *The deeper **whole-day live re-solve** (re-propagating every downstream
 time as a disruption unfolds) is the **disruption state machine → Phase 10**, not a P9 gap.*
 
-### Phase 10 — Live spine B: fragility + disruption phase + on-service (L2)  `[ ]`
-**Depends on:** P9.
-- [ ] **Fragility detection** — flag a plan with no slack before it breaks (a robustness signal, not
-      just a per-leg tight flag).
-- [ ] **Full Today-state machine** — calm → imminent → live → **disruption**, adopting the character
-      of whatever is most live.
-- [ ] **On-service tracking** — calling-points, your stop, stops-to-go (Darwin calling points; RTT
-      client behind an interface).
+### Phase 10 — Live spine B: fragility + disruption phase + on-service (L2)  `[~]` in progress
+**Depends on:** P9. *Staying in P10 until done.*
+- [x] **Fragility detection** — `fragility()` in the live engine (unit-tested) + a `.cc-fragility`
+      line on `/plan/[id]`: the thinnest connection read from the legs' buffer classification → "tight
+      plan, one delay and it breaks; add a buffer while you can." Design handoff logged.
+- [ ] **Full Today-state machine** — *(P10, remaining)* calm → imminent → live → **disruption**; extend
+      the today projection (4 states today) with the disruption state driven by the live signals.
+- [ ] **Whole-day live re-solve** (carried from P9) — *(P10, remaining)* run `cascade` across the day's
+      connections on a live delay → re-propagate downstream times, not just the per-leg consequence.
+- [ ] **On-service tracking** — *(P10, remaining; partly data-gated)* calling-points + stops-to-go from
+      Darwin; *live position on the train needs a position source (RTT) → tagged.*
 **Done when:** the day flags fragility, enters a true disruption state on a break, and tracks you on
 the running service.
 
@@ -528,3 +531,12 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   (severe/suspended). Both live signals (TfL + rail) now state consequence + act-by. Build green · 282
   tests pass. The deeper **whole-day live re-solve** is correctly placed in **P10** (disruption state
   machine), not a P9 gap. Next: **Phase 10** (fragility + disruption state + on-service).
+- 2026-06-14 · **Darwin confirmed keyed in prod** — the var is **`DARWIN_LDBWS_TOKEN`** (set Jun 11);
+  `darwinKey()` already reads it (it falls back `KEY ?? TOKEN`), and `liveDeparture` self-gates. So the
+  **P9 rail consequence path is LIVE in production**, not dormant.
+- 2026-06-14 · **Phase 10 started (live spine B, part 1).** **Fragility detection**: `fragility()` in the
+  engine (unit-tested) + a `.cc-fragility` line on `/plan/[id]` reading the thinnest connection from the
+  P6 buffers ("one delay and the day breaks; add a buffer while you can"). Build green · 283 tests pass.
+  **Remaining in P10 (positioned, staying in-phase):** full Today disruption state machine; whole-day
+  live re-solve (cascade across the day); on-service tracking (calling-points/stops-to-go; live train
+  position is RTT-data-gated → tagged).

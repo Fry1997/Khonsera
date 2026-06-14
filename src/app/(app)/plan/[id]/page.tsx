@@ -17,7 +17,7 @@ import { loadReadiness } from "@/lib/actions/readiness";
 import { ReadinessPanel } from "@/components/plan/readiness-panel";
 import { tflLegPlan, tflLineStatus, inGreaterLondon, type LatLng, type TflLine } from "@/lib/integrations/tfl";
 import { liveDeparture } from "@/lib/integrations/darwin";
-import { delayConsequence } from "@/lib/live/engine";
+import { delayConsequence, fragility } from "@/lib/live/engine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -476,6 +476,24 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const firstLeg = transitions.find((tr) => tr.from_stop_id === startStop?.id);
   const firstDest = firstLeg ? stopById.get(firstLeg.to_stop_id)?.title ?? null : null;
 
+  // Fragility (P10) — is the day one delay from collapse? Read the thinnest
+  // connection from the legs' buffer classification (P6).
+  const fragSlacks: number[] = [];
+  let weakestInto: string | null = null;
+  let weakestVal = Infinity;
+  for (const n of nodes) {
+    if (n.after?.kind !== "leg") continue;
+    const b = n.after.leg.buffer;
+    if (!b || b.state === "ok" || b.state === "unknown") continue;
+    const slack = b.state === "late" ? -1 : b.slackMinutes ?? 0;
+    fragSlacks.push(slack);
+    if (slack < weakestVal) {
+      weakestVal = slack;
+      weakestInto = n.after.leg.toLabel;
+    }
+  }
+  const frag = fragility(fragSlacks);
+
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
   const journeyMap = buildJourneyFromStops(
@@ -517,6 +535,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           {leaveByIso ? (
             <p className="cc-decision-clock" style={{ margin: 0, fontFamily: "var(--mono)", fontSize: "var(--fs-label)", color: "var(--gold-2)", letterSpacing: "0.04em" }}>
               Set off by {londonHHMM(leaveByIso)}{firstDest ? ` for ${firstDest}` : ""}
+            </p>
+          ) : null}
+
+          {frag.fragile ? (
+            <p className="cc-fragility" style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--rust)" }}>
+              Tight plan — only {Math.max(0, frag.weakestSlackMin ?? 0)} min into {weakestInto ?? "a connection"}. One delay and the day breaks; add a buffer while you can.
             </p>
           ) : null}
 

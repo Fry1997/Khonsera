@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decisionClock, delayConsequence, slackMinutes, cascade, type Connection } from "./engine";
+import { decisionClock, delayConsequence, slackMinutes, cascade, fragility, type Connection } from "./engine";
 
 const conn = (over: Partial<Connection> = {}): Connection => ({
   id: "c1",
@@ -42,6 +42,13 @@ describe("live engine", () => {
     const dc = decisionClock([comfy, tight], "2026-07-01T09:00:00Z");
     expect(dc?.for).toBe("the 09:40");
     expect(dc?.tight).toBe(true);
+  });
+
+  it("fragility flags the thinnest connection as one delay from collapse", () => {
+    expect(fragility([25, 8, 40]).fragile).toBe(true);
+    expect(fragility([25, 8, 40]).weakestSlackMin).toBe(8);
+    expect(fragility([25, 40]).fragile).toBe(false);
+    expect(fragility([]).fragile).toBe(false);
   });
 
   it("cascade carries a missed hard connection's lateness onward", () => {
