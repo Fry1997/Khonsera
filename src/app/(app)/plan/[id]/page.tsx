@@ -11,6 +11,7 @@ import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { PlanMap } from "@/components/plan/plan-map";
 import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
 import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
+import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -369,9 +370,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     }
     // Home `start`/`end` stops are the day's base (origin / return-home), not
     // editable anchors. Flag them so the spine renders a fixed home card.
-    const entryType = stopById.get(u.entryId)?.type;
+    const entryStop = stopById.get(u.entryId);
+    const entryType = entryStop?.type;
     const isBase = entryType === "start" || entryType === "end";
-    return { key: u.key, anchor: u.anchor, isBase, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
+    const accommodation =
+      entryType === "accommodation" ? accommodationFromMetadata(entryStop?.metadata) : null;
+    return { key: u.key, anchor: u.anchor, isBase, accommodation, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
   const anyAtRisk = nodes.some((n) => n.after?.kind === "leg" && n.after.leg.atRisk);

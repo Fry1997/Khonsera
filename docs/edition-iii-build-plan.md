@@ -343,9 +343,15 @@ structured schema built (no free-text dumping grounds), day-object hooks + readi
 the max-scope APIs connected (or mocked). **Done when:** the user would have no reason to open the
 operator's own app for that entity's travel-day needs.
 
-- [ ] **ED1 — Accommodation** (replace Hilton/Booking). Structured `accommodation_bookings` (retire
-      `room_details: string`), cancellation/free-cancel-until, board + breakfast window → leave-by,
-      true entrance, parking, folio→expenses, loyalty, compose-to-hotel. *Deepens the P2 placeholder.*
+- [~] **ED1 — Accommodation** (replace Hilton/Booking) — **core shipped 2026-06-14.** Structured
+      `AccommodationDetails` model on the stay stop's `metadata.accommodation` (JSONB, no migration);
+      deep manual capture in the PlanAdd "Stay" card (channel, confirmation, room/board, + an
+      expandable **arrival payload**: phone, check-in/access, wifi, parking, breakfast, cancellation +
+      free-cancel-until, price); the **arrival-payload card** rendered on the plan spine (the winnable
+      edge — call the hotel, wifi, access, parking, cancel-by); brief/import mapped into the structured
+      metadata. *Follow-ons (need APIs/other phases): message/modify/cancel via Booking.com/Expedia
+      (mocked, L5), folio→expenses (P16), cancel-by→decision-clock (P9), breakfast→leave-by (P6),
+      Wallet pass for stays.*
 - [ ] **ED2 — Flight** (replace Virgin/BA). PNR, boarding pass reproduced (PDF417/BCBP), terminal/gate
       + bag-drop/boarding/gate-close → decision-clock, seat, baggage, status/gate-change → reroute.
       Couples to L4 (fast-track/lounge) + AeroDataBox.
@@ -406,3 +412,9 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   bound the rule into Standing Rules, and added the **Entity-depth track (ED1–ED7)**. Next build
   action: **ED1 — deepen Accommodation** (structured model replacing `room_details`), then resume
   Phase 3.
+- 2026-06-14 · **ED1 core shipped.** Structured accommodation model (`AccommodationDetails` on stop
+  metadata — no migration), deep manual "Stay" capture (essentials + expandable arrival payload), the
+  **arrival-payload card** on the plan spine (phone/wifi/access/parking/breakfast/cancellation), and
+  brief/import mapped into it. The thin P2 card is now a real entity. Build green · 272 tests pass.
+  Follow-ons noted (OTA message/cancel APIs, folio→expenses, cancel-by→decision-clock). Next: **ED2
+  (Flight)** or resume **Phase 3** — founder's call.

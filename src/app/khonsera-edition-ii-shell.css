@@ -571,6 +571,20 @@
 .cc-mode-flip-seg { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
   padding: var(--space-1) var(--space-3); background: none; border: 0; color: var(--ink-faint); cursor: pointer; }
 .cc-mode-flip-seg[data-active="true"] { background: var(--gold-soft); color: var(--gold-2); }
+
+/* ED1 — accommodation arrival payload (beneath the stay anchor) */
+.cc-acc-card { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--rule);
+  border-radius: 6px; background: var(--card); display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-acc-head { display: flex; align-items: baseline; justify-content: space-between; }
+.cc-acc-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 11px); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--gold-2); }
+.cc-acc-channel { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-acc-row { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-3); align-items: baseline; }
+.cc-acc-label { font-size: var(--fs-label); color: var(--ink-faint); }
+.cc-acc-value { font-size: var(--fs-body); color: var(--ink); }
+.cc-acc-link { color: var(--gold-2); text-decoration: none; }
+.cc-acc-link:hover { text-decoration: underline; }
+.cc-acc-mono { font-family: var(--mono); color: var(--ink-faint); }
 .cc-journey-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px; letter-spacing: -0.01em;
   color: var(--ink); margin: 4px 0 0; }
 .cc-journey-meta { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }

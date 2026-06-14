@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addManualAnchor, addTransport } from "@/lib/actions/plan-edit";
+import {
+  type AccommodationDetails,
+  type BoardBasis,
+  type BookingChannel,
+  BOARD_LABELS,
+  CHANNEL_LABELS,
+} from "@/lib/accommodation/types";
 import { wallClockToIso } from "@/lib/time-zone";
 import { TransportHubPicker } from "@/components/transport-hub-picker";
 import {
@@ -51,6 +58,10 @@ export function PlanAdd({
   const [checkInTime, setCheckInTime] = useState("15:00");
   const [checkOutDate, setCheckOutDate] = useState(journeyDate);
   const [checkOutTime, setCheckOutTime] = useState("11:00");
+  // structured stay detail (ED1) — one object; the arrival payload is the edge
+  const [acc, setAcc] = useState<AccommodationDetails>({});
+  const [accMore, setAccMore] = useState(false);
+  const setA = (patch: Partial<AccommodationDetails>) => setAcc((p) => ({ ...p, ...patch }));
 
   // transport fields
   const [tmode, setTmode] = useState<TMode>("train");
@@ -69,6 +80,7 @@ export function PlanAdd({
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
     setCheckInDate(journeyDate); setCheckInTime("15:00"); setCheckOutDate(journeyDate); setCheckOutTime("11:00");
+    setAcc({}); setAccMore(false);
     setError(null);
   }
 
@@ -118,6 +130,8 @@ export function PlanAdd({
       setPending(true);
       const ci = wallClockToIso(checkInDate, checkInTime) || null;
       const co = wallClockToIso(checkOutDate, checkOutTime) || null;
+      const fcu = acc.free_cancel_until ? wallClockToIso(acc.free_cancel_until, "23:59") || null : null;
+      const details: AccommodationDetails = { ...acc, property_name: place.label, free_cancel_until: fcu };
       void addManualAnchor({
         itineraryId: journeyId,
         kind: "accommodation",
@@ -126,6 +140,7 @@ export function PlanAdd({
         customerSiteId: place.kind === "customer_site" ? place.customer_site_id : null,
         iso: ci,
         leaveIso: co,
+        details,
       }).then(done);
       return;
     }
@@ -244,6 +259,84 @@ export function PlanAdd({
                     <input type="time" value={checkOutTime} onChange={(e) => setCheckOutTime(e.target.value)} />
                   </label>
                 </div>
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">Confirmation</span>
+                    <input type="text" value={acc.confirmation_ref ?? ""} onChange={(e) => setA({ confirmation_ref: e.target.value })} placeholder="Booking ref" />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Booked via</span>
+                    <select value={acc.channel ?? ""} onChange={(e) => setA({ channel: (e.target.value || null) as BookingChannel | null })}>
+                      <option value="">—</option>
+                      {(Object.keys(CHANNEL_LABELS) as BookingChannel[]).map((c) => (
+                        <option key={c} value={c}>{CHANNEL_LABELS[c]}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">Room</span>
+                    <input type="text" value={acc.room_type ?? ""} onChange={(e) => setA({ room_type: e.target.value })} placeholder="e.g. King, 2 guests" />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Board</span>
+                    <select value={acc.board_basis ?? ""} onChange={(e) => setA({ board_basis: (e.target.value || null) as BoardBasis | null })}>
+                      <option value="">—</option>
+                      {(Object.keys(BOARD_LABELS) as BoardBasis[]).map((b) => (
+                        <option key={b} value={b}>{BOARD_LABELS[b]}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <button type="button" className="cc-btn cc-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => setAccMore((v) => !v)}>
+                  {accMore ? "Hide arrival details" : "Arrival details (wifi, parking, check-in…)"}
+                </button>
+                {accMore ? (
+                  <>
+                    <label className="cc-time-field">
+                      <span className="cc-var-label">Hotel phone</span>
+                      <input type="tel" value={acc.phone ?? ""} onChange={(e) => setA({ phone: e.target.value })} placeholder="For 'hold my room, running late'" />
+                    </label>
+                    <label className="cc-time-field">
+                      <span className="cc-var-label">Check-in / access</span>
+                      <input type="text" value={acc.access_instructions ?? ""} onChange={(e) => setA({ access_instructions: e.target.value })} placeholder="Front desk · or lockbox code" />
+                    </label>
+                    <div className="cc-dur-row">
+                      <label>
+                        <span className="cc-var-label">Wi-Fi network</span>
+                        <input type="text" value={acc.wifi_ssid ?? ""} onChange={(e) => setA({ wifi_ssid: e.target.value })} />
+                      </label>
+                      <label>
+                        <span className="cc-var-label">Wi-Fi password</span>
+                        <input type="text" value={acc.wifi_password ?? ""} onChange={(e) => setA({ wifi_password: e.target.value })} />
+                      </label>
+                    </div>
+                    <label className="cc-time-field">
+                      <span className="cc-var-label">Parking</span>
+                      <input type="text" value={acc.parking_info ?? ""} onChange={(e) => setA({ parking_info: e.target.value })} placeholder="On-site £18/night · or none" />
+                    </label>
+                    <label className="cc-time-field">
+                      <span className="cc-var-label">Breakfast hours</span>
+                      <input type="text" value={acc.breakfast_window ?? ""} onChange={(e) => setA({ breakfast_window: e.target.value })} placeholder="07:00–10:30" />
+                    </label>
+                    <label className="cc-time-field">
+                      <span className="cc-var-label">Cancellation</span>
+                      <input type="text" value={acc.cancellation_policy ?? ""} onChange={(e) => setA({ cancellation_policy: e.target.value })} placeholder="Free cancellation policy" />
+                    </label>
+                    <div className="cc-dur-row">
+                      <label>
+                        <span className="cc-var-label">Free-cancel until</span>
+                        <input type="date" value={acc.free_cancel_until ?? ""} onChange={(e) => setA({ free_cancel_until: e.target.value })} />
+                      </label>
+                      <label>
+                        <span className="cc-var-label">Price</span>
+                        <input type="text" value={acc.price ?? ""} onChange={(e) => setA({ price: e.target.value })} placeholder="£240" />
+                      </label>
+                    </div>
+                  </>
+                ) : null}
               </>
             ) : (
               <>

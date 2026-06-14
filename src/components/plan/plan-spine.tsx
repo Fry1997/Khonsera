@@ -15,6 +15,8 @@ import type {
   BarcodeVM,
 } from "@/components/concierge";
 import { wallClockToIso } from "@/lib/time-zone";
+import { AccommodationCard } from "@/components/plan/accommodation-card";
+import type { AccommodationDetails } from "@/lib/accommodation/types";
 import {
   setAnchorVariable,
   compareLeg,
@@ -38,6 +40,8 @@ export type SpineNode = {
   anchor?: AnchorVM; // a normal anchor node
   isBase?: boolean; // a home/base node (the `start`/`end` stop) — the day's origin or
   // return-home. Renders as a fixed home card, not an editable, removable anchor.
+  accommodation?: AccommodationDetails | null; // ED1 — the stay's arrival payload, rendered below
+  // the anchor (wifi, access, parking, cancellation…) so the Hilton/Booking app is redundant.
   pass?: TicketVM; // a booked-travel node → the docked Pass (proposal §8), ONE rail hop
   // Live status (Darwin) for this hop's boarding station: CRS + planned departure
   // (London HH:MM) + the hop's destination CRS (disambiguates same-minute
@@ -143,6 +147,7 @@ export function PlanSpine({
                     >
                       ×
                     </button>
+                    {n.accommodation ? <AccommodationCard a={n.accommodation} /> : null}
                   </div>
                 ) : null}
               </div>

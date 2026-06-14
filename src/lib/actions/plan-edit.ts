@@ -15,6 +15,7 @@ import { haversineMeters } from "@/lib/geo";
 import type { TransitionMode } from "@/lib/types/domain";
 import type { ParsedTransportBooking } from "@/lib/gmail/types";
 import type { AnchorVariableKind, AnchorVariableSlot } from "@/components/concierge";
+import type { AccommodationDetails } from "@/lib/accommodation/types";
 
 // Planner master brief §5.3 — set any two of {arrive-by, duration, leave-by}; the
 // engine derives the third. This persists one variable edit onto the underlying
@@ -203,6 +204,7 @@ export async function addManualAnchor(input: {
   locationId?: string | null;
   customerSiteId?: string | null;
   address?: string | null; // raw-text fallback → geocoded to coords
+  details?: AccommodationDetails | null; // ED1 — structured stay payload (accommodation kind only)
 }): Promise<{ ok: boolean; error?: string }> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "Give it a name." };
@@ -236,6 +238,10 @@ export async function addManualAnchor(input: {
     is_time_fixed: Boolean(arriveIso || leaveIso),
     location_id: locationId,
     customer_site_id: customerSiteId,
+    metadata:
+      input.kind === "accommodation"
+        ? { kind: "accommodation", accommodation: input.details ?? {} }
+        : undefined,
   });
   if (!created.ok) {
     const msg = "message" in created.error ? created.error.message : "Couldn't add that.";

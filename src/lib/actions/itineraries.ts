@@ -830,6 +830,15 @@ export async function createItineraryFromBrief(
         room: ab.room,
         check_in_from: ab.check_in_time ?? "15:00",
         check_out_by: ab.check_out_time ?? "11:00",
+        // ED1 — structured stay payload (read by the plan's AccommodationCard).
+        // Carries what the brief/import knows; the manual Stay card fills the rest.
+        accommodation: {
+          property_name: ab.hotel_label ?? null,
+          brand: ab.provider || null,
+          confirmation_ref: ab.reference || null,
+          room_type: ab.room || null,
+          price: ab.price || null,
+        },
       },
       itinerary_id: itinerary.id,
       workspace_id: ctx.workspaceId,
