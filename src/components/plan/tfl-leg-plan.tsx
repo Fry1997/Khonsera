@@ -4,12 +4,21 @@ import type { TflLegPlanVM } from "@/lib/integrations/tfl";
 // arrivals at the boarding stop, rendered beneath a London transit leg on the
 // plan. Functional + on-token + .cc-tflleg contract classes; Design owns the skin.
 export function TflLegPlan({ data }: { data: TflLegPlanVM }) {
-  const { plan, arrivals, sample } = data;
+  const { plan, arrivals, sample, disruption, consequence } = data;
   const boardingArrivals = arrivals.slice(0, 3);
   return (
-    <div className="cc-tflleg"
+    <div className="cc-tflleg" data-disrupted={disruption ? "true" : "false"}
       style={{ marginTop: "var(--space-2)", padding: "var(--space-2) var(--space-3)", border: "1px solid var(--rule)", borderRadius: 6, background: "var(--card)", display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
       <span className="cc-eyebrow">Via TfL · {plan.durationMin} min{sample ? " · sample" : ""}</span>
+      {disruption ? (
+        <div className="cc-tflleg-alert" data-state={disruption.state}
+          style={{ display: "flex", flexDirection: "column", gap: 2, padding: "var(--space-1) 0" }}>
+          <span style={{ fontSize: "var(--fs-label)", color: disruption.state === "minor" ? "var(--gold-2)" : "var(--rust)" }}>
+            {disruption.line} line · {disruption.status}
+          </span>
+          {consequence ? <span style={{ fontSize: "var(--fs-label)", color: "var(--ink)" }}>{consequence}</span> : null}
+        </div>
+      ) : null}
       <div className="cc-tflleg-route" style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "baseline" }}>
         {plan.legs.map((l, i) => (
           <span key={i} className="cc-tflleg-step" style={{ fontSize: "var(--fs-label)", color: l.line ? "var(--ink)" : "var(--ink-dim)" }}>

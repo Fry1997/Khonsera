@@ -15,7 +15,8 @@ import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
 import { loadReadiness } from "@/lib/actions/readiness";
 import { ReadinessPanel } from "@/components/plan/readiness-panel";
-import { tflLegPlan, inGreaterLondon, type LatLng } from "@/lib/integrations/tfl";
+import { tflLegPlan, tflLineStatus, inGreaterLondon, type LatLng, type TflLine } from "@/lib/integrations/tfl";
+import { delayConsequence } from "@/lib/live/engine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -405,16 +406,37 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     return { key: u.key, anchor: u.anchor, isBase, accommodation, notes, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
-  // Phase 8 — resolve each London transit leg to a live TfL plan (multimodal
-  // route + arrivals at the boarding stop). Mock until TFL_APP_KEY is set.
+  // Phase 8 — resolve each London transit leg to a live TfL plan; Phase 9 — when a
+  // line on that route is disrupted, translate it into a consequence on the next
+  // commitment (the live engine). Mock until TFL_APP_KEY is set.
+  const statusRes = await tflLineStatus();
+  const disrupted = new Map<string, TflLine>();
+  if (statusRes.mode !== "unavailable") {
+    for (const l of statusRes.data) if (l.state !== "good") disrupted.set(l.name.toLowerCase(), l);
+  }
+  const DELAY_FOR: Record<string, number> = { minor: 6, severe: 16, suspended: 35, info: 0 };
   await Promise.all(
     nodes.map(async (n) => {
       if (n.after?.kind !== "leg") return;
       const fromC = coordOfStop(stopById.get(n.after.fromStopId));
       const toC = coordOfStop(stopById.get(n.after.toStopId));
-      if (inGreaterLondon(fromC) && inGreaterLondon(toC)) {
-        n.after.tflPlan = (await tflLegPlan(fromC!, toC!)) ?? undefined;
+      if (!inGreaterLondon(fromC) || !inGreaterLondon(toC)) return;
+      const plan = await tflLegPlan(fromC!, toC!);
+      if (!plan) return;
+      const hit = plan.plan.legs.find((l) => l.line && disrupted.has(l.line.toLowerCase()));
+      if (hit?.line) {
+        const st = disrupted.get(hit.line.toLowerCase())!;
+        plan.disruption = { line: st.name, state: st.state, status: st.status };
+        const to = stopById.get(n.after.toStopId);
+        const addMin = DELAY_FOR[st.state] ?? 0;
+        if (to?.start_time && addMin > 0) {
+          plan.consequence = delayConsequence(
+            { id: n.after.toStopId, intoName: to.title ?? "your next stop", arriveIso: to.start_time, deadlineIso: to.start_time, kind: "commitment" },
+            addMin,
+          ).text;
+        }
       }
+      n.after.tflPlan = plan;
     }),
   );
 

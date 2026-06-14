@@ -118,7 +118,7 @@ function mockJourney(): TflJourneyPlan {
     durationMin: 21,
     legs: [
       { mode: "walking", summary: "Walk to the station", durationMin: 6 },
-      { mode: "tube", line: "Victoria", summary: "Victoria line", durationMin: 11 },
+      { mode: "tube", line: "Jubilee", summary: "Jubilee line", durationMin: 11 },
       { mode: "walking", summary: "Walk to your destination", durationMin: 4 },
     ],
     boardingStopId: "940GZZLUVIC",
@@ -201,7 +201,14 @@ export async function tflArrivals(stopPointId: string): Promise<IntegrationResul
 
 // A London leg of the day, resolved: the multimodal plan + live arrivals at its
 // boarding stop. `sample` is true while running on the mock (no key yet).
-export type TflLegPlanVM = { plan: TflJourneyPlan; arrivals: TflArrival[]; sample: boolean };
+// `disruption`/`consequence` are filled (P9) when a line on the route is delayed.
+export type TflLegPlanVM = {
+  plan: TflJourneyPlan;
+  arrivals: TflArrival[];
+  sample: boolean;
+  disruption?: { line: string; state: TflLineState; status: string };
+  consequence?: string; // engine-translated impact on the next commitment
+};
 
 export async function tflLegPlan(from: LatLng, to: LatLng): Promise<TflLegPlanVM | null> {
   const jr = await tflJourney(from, to);

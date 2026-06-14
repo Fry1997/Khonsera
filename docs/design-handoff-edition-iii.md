@@ -108,6 +108,10 @@ don't rename. No emojis anywhere (hard rule).
   (walk → line → walk, per-step minutes) + **next-train arrivals** at the boarding stop. Eyebrow
   carries the total + "· sample" when mock. *Placeholder inline token styles; Design owns `.cc-tflleg`*
   — make the steps read as a route, the arrivals as a quiet live ticker.
+  - **Disruption + consequence (P9)** — when a line on the route is delayed, `.cc-tflleg[data-disrupted]`
+    + `.cc-tflleg-alert[data-state]` show the line status and the engine's **consequence** ("Jubilee
+    line · Minor Delays · you'll be 6 min late for X"). *Design owns it* — calm caution, never alarm;
+    weight tracks `data-state` (minor → gold, severe/suspended → rust).
 
 ---
 

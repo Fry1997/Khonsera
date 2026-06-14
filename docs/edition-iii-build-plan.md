@@ -245,17 +245,23 @@ Heavily Design-led (schematic render). Re-scoped out of P8 as a distinct data+de
 - [ ] Render the schematic with the **day's route highlighted** (the network map people navigate by).
 **Done when:** a London transit leg shows the schematic line map with its route picked out.
 
-### Phase 9 — Live spine A: decision-clock + consequence + live cascade (L2)  `[ ]`
-**Depends on:** P6; Darwin (DONE-partial) / TfL (P8).
-- [ ] **Decision-clock** — "act by HH:MM": the latest moment a decision can still be made. Derive and
-      surface as the day's single most reassuring number.
-- [ ] **Consequence translation** — "delayed 12 min → you'll miss the 09:40 → act by 09:12."
-- [ ] **Whole-day cascade live** — a slip in one leg recomputes every downstream leg + buffer and
-      re-stabilises or flags a break (run the solver reactively on live signals, not just at create).
-- [ ] **Line-status-aware reroute** (carried from P8) — a suspended TfL line re-plans the city day on
-      the same cascade machinery (the journey-planner + line-status seams from P8 are ready).
-**Done when:** a live delay shifts state, states its consequence, shows act-by, and recomputes the
-day downstream (incl. a TfL line suspension re-planning the city leg).
+### Phase 9 — Live spine A: decision-clock + consequence + live cascade (L2)  `[~]` in progress
+**Depends on:** P6; Darwin (DONE-partial) / TfL (P8). *Spans >1 push — staying in P9 until done.*
+- [x] **Pure live engine** (`src/lib/live/engine.ts`, unit-tested ×6): `decisionClock` ("act by"),
+      `delayConsequence` (the calm sentence + broken/act-by), `cascade` (a missed hard connection
+      carries its lateness onward). Signal-agnostic.
+- [x] **Consequence translation, live (TfL path)** — a disrupted line on a **London leg** runs through
+      the engine → the impact on the next commitment, surfaced on the `TflLegPlan` (Design handoff
+      logged). Wired to the TfL line-status signal (mock until key).
+- [ ] **Decision-clock surface** — *(P9, remaining)* the engine's "act by HH:MM" as the day's figure
+      on Today/`/plan`.
+- [ ] **Consequence + live cascade on the RAIL path** — *(P9, remaining)* Darwin departure delay on a
+      booked leg → engine consequence; whole-day cascade re-propagated on the live signal.
+- [ ] **Line-status-aware reroute** (carried from P8) — *(P9, remaining)* suspended line → alternative
+      via the journey planner.
+**Done when:** a live delay (rail or TfL) shifts state, states its consequence, shows act-by, and
+recomputes the day downstream. *Engine + TfL-consequence done; rail path + decision-clock surface +
+reroute remain in P9.*
 
 ### Phase 10 — Live spine B: fragility + disruption phase + on-service (L2)  `[ ]`
 **Depends on:** P9.
@@ -511,3 +517,9 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   genuinely-dependent pieces are tagged, not dropped: **line-status reroute → Phase 9** (needs the
   cascade engine), **network maps → new Phase 8b** (distinct data+design feature). Design handoff
   updated. Build green · 276 tests pass.
+- 2026-06-14 · **Phase 9 started (live spine, part 1).** Built the pure live engine (`live/engine.ts`,
+  unit-tested ×6): decision-clock, consequence translation, cascade. Surfaced the **consequence** on
+  the TfL path — a disrupted line on a London leg runs through the engine and shows its impact on the
+  next commitment (`TflLegPlan` disruption + consequence). Build green · 282 tests pass. **Remaining
+  in P9 (positioned, next push, not advancing past):** decision-clock figure surface; the RAIL path
+  (Darwin departure delay → consequence + whole-day cascade); line-status reroute.
