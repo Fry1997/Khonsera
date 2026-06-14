@@ -9,6 +9,7 @@ import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/plan
 import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { buildDayReview } from "@/lib/actions/review";
 import { DayReviewCard } from "@/components/plan/day-review";
+import { TflLineStatus } from "@/components/today/tfl-line-status";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
 import { TodayPasses } from "@/components/today/today-passes";
@@ -166,6 +167,12 @@ export default async function TodayPage({
     return ta - tb;
   });
 
+  // Greater London — show live TfL line status when today touches London (Phase 8).
+  const inLondon = [baseCoord, ...allStops.map((s) => coordOf(s))].some(
+    (c) => c != null && (c.lat !== 0 || c.lng !== 0) &&
+      c.lat >= 51.28 && c.lat <= 51.7 && c.lng >= -0.52 && c.lng <= 0.34,
+  );
+
   const anchors: AnchorVM[] = allStops.map((s) => ({
     id: s.id,
     type: mapStopType(s.type),
@@ -274,6 +281,8 @@ export default async function TodayPage({
           Right now
         </h1>
       </header>
+
+      {inLondon ? <TflLineStatus /> : null}
 
       {anchors.length ? (
         <>

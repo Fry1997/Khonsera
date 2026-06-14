@@ -212,14 +212,19 @@ arrival resolves to a true door where known.
 - [ ] Live position feeds the whole-day timing (seam for the cascade in P9).
 **Done when:** turn-by-turn guidance reflects time-in-hand, and live position updates the day's timing.
 
-### Phase 8 — City mobility / TfL (C4)  `[ ]`
-**Depends on:** P6. **Procurement:** TfL Unified API key (free, self-serve) — mock until present.
-- [ ] **TfL adapter** behind the transit seam: live arrivals, line status, journey planner.
-- [ ] **Multimodal point-to-point** (walk → Tube → walk) as a continuous plan between commitments.
-- [ ] **Line-status-aware reroute** (a suspended line re-plans the city day like a cancelled train).
-- [ ] **Network maps**: Tube/Overground schematic with the route highlighted.
+### Phase 8 — City mobility / TfL (C4)  `[~]` partial 2026-06-14
+**Depends on:** P6. **Procurement:** `TFL_APP_KEY` (free, api.tfl.gov.uk) — **mock until set.**
+- [x] **TfL adapter** (`src/lib/integrations/tfl.ts`) behind a clean seam, **live + deterministic
+      mock, env-gated** (`TFL_APP_KEY`): `tflLineStatus()` over tube/overground/Elizabeth/DLR/tram.
+- [x] **Live line status surface** — `TflLineStatus` on `/today`, London-gated (Greater London bbox);
+      concierge restraint (leads with disruptions, withholds the rest); honest "· sample" when mock.
+      Design handoff logged.
+- [ ] **Live arrivals** at a stop — *typed seam in the adapter; UI follow-on.*
+- [ ] **Multimodal point-to-point** (walk → Tube → walk) — *deferred (journey-planner endpoint).*
+- [ ] **Line-status-aware reroute** + **network maps** (schematic + highlight) — *deferred.*
 **Done when:** a London day plans multimodal transit with live arrivals + line status, reroutes on a
-suspension, and renders the highlighted network map. (Generalises later via GTFS-RT + OTP.)
+suspension, and renders the highlighted network map. *Line status live; the rest are the max-scope
+follow-ons (capability map).*
 
 ### Phase 9 — Live spine A: decision-clock + consequence + live cascade (L2)  `[ ]`
 **Depends on:** P6; Darwin (DONE-partial) / TfL (P8).
@@ -471,3 +476,10 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   ReadinessPanel; `data-open`/chevron on Notes; `data-checked` pick-boxes; the Stay detail grid; the
   PlanMap band). Removed Code's placeholder CSS for these so Design owns them. Design's redlines +
   class-map saved to `docs/design/`. Build green · 276 tests pass.
+- 2026-06-14 · **Phase 8 (TfL) first cut — first live-data API.** Adapter (`integrations/tfl.ts`)
+  behind a clean seam with a deterministic **mock**, env-gated on `TFL_APP_KEY` (free): line status
+  over tube/overground/Elizabeth/DLR/tram. `TflLineStatus` on `/today`, London-gated, concierge
+  restraint (disruptions first, rest withheld), honest "· sample" on mock. Proves the
+  mocks-before-procurement rule end to end. Design handoff logged. **Procurement note to founder:
+  add `TFL_APP_KEY` to flip mock → live.** Build green · 276 tests pass. Follow-ons: arrivals,
+  journey planner (multimodal), line-status reroute, network maps.

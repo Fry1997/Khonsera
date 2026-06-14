@@ -92,6 +92,18 @@ don't rename. No emojis anywhere (hard rule).
   alarm. (Note for Code+Design: `.cc-leg-pattern` still renders a hardcoded "Direct" — real
   Direct/Drop-and-go/Hub-to-hub inference is a deferred Phase 6 item.)
 
+## P8 · City mobility / TfL (first live-data API)
+
+- **`TflLineStatus`** 🟡 — `src/components/today/tfl-line-status.tsx`, `.cc-tfl` (+ `-line/-dot/-name/`
+  `-status/-reason/-allgood/-rest`). Live London line status on `/today`, shown only on **London
+  days**. *Concierge restraint already in the markup:* it leads with **disrupted** lines (name +
+  status + reason) and withholds the rest ("Everything else running well"); when all-clear it's a
+  single calm line. *States:* `.cc-tfl-line[data-state="good|minor|severe|suspended|info"]` (the dot
+  colour maps to sage/gold/amber/rust). The eyebrow shows **"· sample"** when the data is the mock
+  (no `TFL_APP_KEY` yet) — keep that honesty cue when skinning. *Built with placeholder inline token
+  styles* (flex + the dot colour) so it's legible now; **Design owns the `.cc-tfl` skin** — give the
+  disrupted lines weight, the all-clear state calm, and treat it as a quiet board, not an alarm panel.
+
 ---
 
 ## How to use this handoff
