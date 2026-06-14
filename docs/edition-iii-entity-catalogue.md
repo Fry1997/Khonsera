@@ -200,6 +200,20 @@ arrival; checklist feeds readiness (P4); action items promote to tasks later. **
 attachments (Supabase Storage), voice capture (on-device Web Speech — already used in nav), templates
 (in-code preset registry keyed by commitment type).
 
+## 6c · READINESS (derived entity — built P4) — grounded in `docs/research/readiness.md`
+Not stored, not booked — **derived from the day-object** by a rules engine each load, with a thin
+persisted tick/dismiss/snooze overlay. The bar: "never wonder if you've forgotten something." Owner-
+**private** (a manager sees work outcomes, never your prep). Shape (shipped): pure engine
+`src/lib/readiness/engine.ts` (`buildDaySummary` → `evaluateReadiness`, a check registry of
+`{key, category, label, severity, action}` with trigger predicates over the day) + `readiness_state`
+(migration 0035, owner-only RLS) holding only `status` per `item_key`. Categories live today: tickets
+(unbooked public-transport legs), bookings (uncovered nights, destination parking), documents
+(flight ID; international passport → IATA deep-link), devices (charge, adapter), international
+(eSIM/currency, via a UK-bbox heuristic), multiday (pack-shape). Each gap is **actionable**: `link`
+out, `task` (drop a reminder — wired now), or `book` (mocked until L5; a booked item auto-satisfies).
+**Follow-ons:** Sherpa/Timatic entry-requirement API (over the hardcoded passport rules + IATA link),
+weather checks (Open-Meteo, P12/P20), surfacing the notes prep-checklist + destination-country model.
+
 ## 7 · LOUNGE / FAST-TRACK, eSIM, COACH, FERRY  *(stubs — work at their phases)*
 Each gets the same treatment: the operator-app-replacement checklist, day-object hooks, readiness,
 max-scope API, schema, membrane boundary — written when its phase is reached.

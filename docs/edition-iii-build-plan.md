@@ -161,17 +161,20 @@ deferred. Build green · 272 tests pass.
 **Done when:** a commitment carries prep + outcome notes; work outcome notes are visible to the
 workspace, personal notes are not. ✓ Build green · 272 tests pass.
 
-### Phase 4 — Readiness check (the heart of preparation, B3.3)  `[ ]`
+### Phase 4 — Readiness check (the heart of preparation, B3.3)  `[x]` DONE 2026-06-14
+*Research-first (new entity): `docs/research/readiness.md` → catalogue §6c. Derived, not stored.*
 **Depends on:** P2, P3.
-- [ ] A **per-day readiness checklist** assembled from what the day actually requires: tickets
-      loaded/reproduced; documents (ID/passport+expiry/visa/licence) when the day needs them;
-      bookings the day needs (parking/hotel/onward/table); devices & power; international
-      (passport/visa/currency/eSIM/tz); rural (fuel/charge/parking/route); multi-day (check-in/out,
-      pack-shape).
-- [ ] Each gap is **actionable** (sets a Task now; books later via L5). Hook unbooked needs to the
-      connections seam (mock until L5).
+- [x] A **derived per-day checklist** from a rules engine (`src/lib/readiness/engine.ts`,
+      `buildDaySummary` → `evaluateReadiness`, pure + unit-tested ×4): tickets (unbooked
+      public-transport legs), bookings (uncovered nights, destination parking), documents (flight ID;
+      international passport → IATA deep-link), devices (charge/adapter), international (eSIM/currency
+      via UK-bbox heuristic), multiday (pack-shape). `readiness_state` (migration 0035, **owner-only**
+      RLS — readiness is private prep) holds only the tick/dismiss/snooze overlay.
+- [x] Each gap is **actionable**: `link` out, `task` (drop a reminder — wired via createTask now), or
+      `book` (mocked until L5; auto-satisfies on book). `ReadinessPanel` on `/plan/[id]` — calm by
+      default ("You're set"), grouped by category, tick/dismiss.
 **Done when:** opening a day produces a tailored "have you got everything" checklist with
-sorted/missing state and actionable gaps.
+sorted/missing state and actionable gaps. ✓ Build green · 276 tests pass.
 
 ### Phase 5 — The night-before review (preparation's payoff, B3.6)  `[ ]`
 **Depends on:** P4, and the timing surfacing of P6 (may run after P6).
@@ -435,5 +438,10 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   (`docs/research/notes.md` → catalogue §6b), then built: migration 0034 (`notes` + `note_attachments`,
   applied to the live project + **security-advisor-verified** — the org-review boundary is one RLS
   line), owner-scoped actions, and a per-commitment `NotesPanel` (prep/outcome, work-outcome
-  org-reviewable). Build green · 272 tests pass. Next: **Phase 4 — Readiness check** (prep checklist
-  feeds it).
+  org-reviewable). Build green · 272 tests pass.
+- 2026-06-14 · **Phase 4 shipped.** Readiness (new entity, research-first → `docs/research/readiness.md`,
+  catalogue §6c): a **derived** checklist from a pure rules engine over the day-object (unit-tested ×4)
+  + `readiness_state` (migration 0035, **owner-only** RLS — private prep) for the tick/dismiss overlay.
+  Categories live: tickets/bookings/documents/devices/international/multiday; each gap actionable
+  (link / reminder / book-mocked). `ReadinessPanel` on `/plan/[id]`, calm-by-default. Build green ·
+  276 tests pass. Next: **Phase 5 — night-before review** (completes the Preparation trio).

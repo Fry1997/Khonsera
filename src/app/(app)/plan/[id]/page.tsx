@@ -13,6 +13,8 @@ import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
 import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
 import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
+import { loadReadiness } from "@/lib/actions/readiness";
+import { ReadinessPanel } from "@/components/plan/readiness-panel";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { resolveItineraryTimes } from "@/lib/actions/itineraries";
@@ -247,6 +249,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const stopById = new Map(stops.map((st) => [st.id, st]));
 
   // Prep + outcome notes per commitment (P3). RLS already scopes to the viewer.
+  const readiness = await loadReadiness(id);
   const allNotes = await listNotesForStops(stops.map((st) => st.id));
   const notesByStop = new Map<string, NoteVM[]>();
   for (const n of allNotes) {
@@ -435,6 +438,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           ) : null}
 
           {journeyMap ? <PlanMap journey={journeyMap} /> : null}
+
+          <ReadinessPanel itineraryId={id} items={readiness} />
 
           <PlanConstraints initial={constraints} />
 

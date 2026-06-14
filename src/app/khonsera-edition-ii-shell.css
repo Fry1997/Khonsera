@@ -605,6 +605,29 @@
 .cc-note-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .cc-note-share { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-label); color: var(--ink-faint); }
 .cc-note-actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
+
+/* P4 — readiness ("have you got everything?") */
+.cc-readiness { border: 1px solid var(--rule); border-radius: 6px; background: var(--card); overflow: hidden; }
+.cc-readiness[data-clear="true"] { border-color: var(--gold-soft); }
+.cc-readiness-head { width: 100%; display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-3); padding: var(--space-3) var(--space-4); background: none; border: 0; cursor: pointer; text-align: left; }
+.cc-readiness-title { font-family: var(--display); font-size: 16px; color: var(--ink); }
+.cc-readiness-meta { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-faint); }
+.cc-readiness-body { padding: 0 var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-readiness-cat { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gold-2); margin-bottom: var(--space-1); }
+.cc-readiness-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-2) 0; }
+.cc-readiness-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; flex: none; background: var(--rule-2); }
+.cc-readiness-item[data-sev="warn"] .cc-readiness-dot { background: var(--rust); }
+.cc-readiness-item[data-sev="advise"] .cc-readiness-dot { background: var(--gold-2); }
+.cc-readiness-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cc-readiness-label { font-size: var(--fs-body); color: var(--ink); }
+.cc-readiness-detail { font-size: var(--fs-micro, 11px); color: var(--ink-faint); }
+.cc-readiness-actions { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.cc-readiness-tick, .cc-readiness-x { background: none; border: 1px solid var(--rule-2); border-radius: var(--radius-pill);
+  width: 26px; height: 26px; cursor: pointer; color: var(--ink-faint); line-height: 1; }
+.cc-readiness-tick:hover { color: var(--gold-2); border-color: var(--gold-soft); }
+.cc-readiness-x:hover { color: var(--rust); }
 .cc-journey-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px; letter-spacing: -0.01em;
   color: var(--ink); margin: 4px 0 0; }
 .cc-journey-meta { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }
