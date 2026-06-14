@@ -30,6 +30,23 @@ keep it honest:
    otherwise open another app for, (b) feeds the timing/feasibility engine, or (c) feeds the
    readiness check. Fields that do none of those three are noise — leave them out.
 
+## Process: every entity starts with a research pass
+
+Before an entity is designed or built, **run a research agent** for it. The catalogue depth must be
+grounded in what the category actually offers — not memory. The research pass produces, with cited
+sources, two things that then drive the entity's section:
+
+1. **Operator/category app feature discovery** — what do the apps that own this entity let a traveller
+   do? (Hotels: Hilton, Marriott, IHG, Booking.com, Expedia, Airbnb. Flights: BA, Virgin, easyJet,
+   Ryanair. Etc.) Every feature becomes a row in the **operator-app-replacement checklist** —
+   matched to the best of our ability, marked operate / refer-purchase / honest-limit.
+2. **Third-party servicing landscape** — what existing services/APIs already do this entity well, so
+   we **integrate rather than reinvent** (and find the best-fit one for the membrane: in-app, no
+   redirect). Cross-references and feeds `docs/edition-iii-api-capability-map.md`.
+
+Findings land in `docs/research/<entity>.md` and are distilled into the entity's section here. **An
+ED phase is not started until its research pass is done.**
+
 ## Per-entity template (what each section below must answer)
 
 - **Identity & booking** — the structured record (no free-text dumping grounds).

@@ -334,7 +334,10 @@ flips its feature from mock to live with no code change.
 ## Entity-depth track (ED) — replace the operator's app, one entity at a time
 
 Runs **parallel to the capability phases** (it needs the day-object + capture, not the live engine).
-Each ED phase takes one entry type to its full depth in `docs/edition-iii-entity-catalogue.md` — the
+**Every ED phase begins with a research pass** (a research agent → `docs/research/<entity>.md`):
+discover the category apps' feature set (to match) + the third-party services/APIs that already
+service the entity (to integrate, not reinvent). Then it takes the entry type to its full depth in
+`docs/edition-iii-entity-catalogue.md` — the
 operator-app-replacement checklist answered (operate / refer-purchase / honest-limit per row), the
 structured schema built (no free-text dumping grounds), day-object hooks + readiness items wired, and
 the max-scope APIs connected (or mocked). **Done when:** the user would have no reason to open the
