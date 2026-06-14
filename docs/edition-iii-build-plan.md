@@ -354,14 +354,26 @@ their provider seams. ✓ — lounge + parking fire on real conditions with mock
 its real source (AeroDataBox) + rule + diff, with the day-of poll loop positioned. Build green · 304
 tests (context engine ×9). Design handoff folded into the consolidated recovery+care round (below).
 
-### Phase 14 — Connections framework + booking stub (L5)  `[ ]`
+### Phase 14 — Connections framework + booking (L5)  `[ ]`
 **Depends on:** P4 (readiness gaps feed it), P12/P13 (lounge/parking rules invoke it).
-- [ ] A reusable **supplier pattern**: search → availability → book → confirm, behind a provider
-      interface; the **transaction is faked** (the one stub); result flows back as a Ticket/Commitment.
-- [ ] First mock connectors: parking, hotel, lounge, rideshare, eSIM.
-- [ ] **Fares display** (informing only) where data exists; purchase referred.
-**Done when:** a connection can be searched/compared/"booked" (stub) from a readiness gap or a nudge,
-and lands in the day; real adapters are env-gated.
+**Providers (D53, real contracts):** **Duffel Flights** (test key in hand → the LIVE validation
+connector), **Duffel Stays** (pending sales activation), **Parkopedia** (email sent), **Assertis** (rail
+booking — email sent). All env-gated; mock behind the same interface until live.
+- [ ] A reusable **supplier pattern**: search → availability/quote → book → confirm, behind a provider
+      interface; result flows back as a Ticket/Commitment. The **money/irreversible step is the stub**
+      (the one permitted fake) even where the data path is real.
+- [ ] **Model every interface on the REAL provider contract** (research-first), so mock→real is a swap,
+      not a redesign. Connectors: **Duffel Flights** (real, test mode), **Duffel Stays** (real-shaped,
+      gated), **Parkopedia** parking (mock, real-shaped), **Assertis** rail (referred/real-shaped),
+      lounge/fast-track (DragonPass, from P12–P13).
+- [ ] **Validate against a real API, not just mocks** — wire **Duffel Flights live against test mode**
+      (the `duffel_test_…` token) so the framework is proven against a real offer→order lifecycle before
+      we lean on it. (This is the de-risking rung: turns "the mocks should work" into a tested fact.)
+- [ ] **Fares display** (informing only) where data exists; purchase referred until the retailing
+      relationship (Assertis rail / Duffel order) is live.
+**Done when:** a connection can be searched/compared/booked from a readiness gap or a nudge and lands in
+the day; **Duffel Flights works live against test mode**; the other adapters are env-gated real-shaped
+mocks. **New env:** `DUFFEL_API_TOKEN` (test now), `ASSERTIS_KEY` (pending), `PARKOPEDIA_KEY` (pending).
 
 ### Phase 15 — Mileage tracker (L6)  `[ ]`
 **Depends on:** P0 (day-object + routing). *Parallelisable, sequenced here for linear cadence.*

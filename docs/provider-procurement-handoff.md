@@ -42,11 +42,21 @@ margin. They need a B2B application/contract, so **start these early** if you wa
 | **Collinson** (Priority Pass + SmartDelay) | Same space — **long-term strategic target (dormant)** | Future: lounge + fast-track + SmartDelay (delay-triggered lounge → recovery) | Revenue | `COLLINSON_KEY` | Pursue the enterprise relationship over time; adapter is ready |
 | **Parkopedia / Arrive** | Parking data + booking aggregator | Predicted car-park occupancy + reserve a space (P13) | Low/revenue (data licence + booking commission) | `PARKOPEDIA_KEY` | Apply for API access |
 
+### Phase 14 booking partners — status (founder, 2026-06-14)
+The connections/booking framework (P14) is built against **real provider contracts**, env-gated, with
+mocks behind the same interface until each is live. Current procurement status:
+
+| Provider | For | Status | Env | Notes |
+|---|---|---|---|---|
+| **Duffel — Flights** | Flight search + fares + book (test mode) | ✅ **test API key in hand** — the live validation connector | `DUFFEL_API_TOKEN` | `duffel_test_…` token routes to test env (no real money). Set it in Vercel — never in chat. |
+| **Duffel — Stays** | Hotel search + book | ⏳ **pending Duffel sales activation** (Stays is sales-gated) | `DUFFEL_API_TOKEN` | Same provider/token; built real-shaped, lights up when Stays is enabled on the account. |
+| **Parkopedia / Arrive** | Parking occupancy + reserve | ⏳ **email sent**, awaiting reply | `PARKOPEDIA_KEY` | Mock in place (P13), real-shaped. |
+| **Assertis** | **Rail booking / retailing** (purchase e-tickets — complements Darwin's live times) | ⏳ **email sent**, awaiting reply | `ASSERTIS_KEY` | Rail *purchase* layer; until live, rail fares are display-only / referred. |
+
 ### Coming up (later phases — listed so you can start slow ones early)
-- **Booking.com Demand** (hotels, P14) — *weeks to approve, start early.*
-- **Duffel** (flights: search/book/disruption webhooks, L5) — replaces the dead Amadeus self-service.
+- **Booking.com Demand** (hotels, alt to Duffel Stays) — *weeks to approve;* Duffel Stays is the primary path.
 - **Collinson SmartDelay** (lounge auto-granted on a flight delay — a disruption-moment revenue line for
-  the recovery layer) — comes with the Collinson relationship if you pick them in decision #1.
+  the recovery layer) — comes with the Collinson relationship (decision #1's long-term target).
 - **Airalo** (eSIM, P19), **FX feed** (P19), **Xero/QuickBooks** (accounting export, post-P16).
 
 ---

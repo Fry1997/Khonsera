@@ -752,3 +752,15 @@ Newest at the bottom of each section.
   adapters, so switching to Collinson when that relationship lands is a one-line change in
   `actions/context.ts`. `COLLINSON_KEY` is the dormant/future env. 304 tests green.
   *(An earlier same-session draft of D52 had these reversed; this is the settled decision.)*
+
+- **D53 — Phase 14 booking partners (founder procurement, in flight).** The connections/booking
+  framework is built against **real provider contracts** (research-first), env-gated, mock behind the
+  same interface until live. Statuses: **Duffel Flights** — **test API key in hand**, the live
+  validation connector (real search/offers against Duffel test mode, `duffel_test_…` token → test env,
+  no real money; key set in Vercel as `DUFFEL_API_TOKEN`, never in chat). **Duffel Stays** (hotels) —
+  build as if using Duffel (same token), but **pending Duffel sales activation** (Stays is sales-gated),
+  so gated/real-shaped until enabled. **Parkopedia** (parking) — **email sent**, mock in place.
+  **Assertis** (UK rail **booking/retailing** — the purchase layer that complements Darwin's live
+  times) — **email sent**; until live, rail fares stay display-only / referred. Booking.com is the
+  fallback hotel path behind Duffel Stays. This directly answers the "how do we know the mocks work"
+  question: Duffel test mode validates the framework against a real API before we depend on it.
