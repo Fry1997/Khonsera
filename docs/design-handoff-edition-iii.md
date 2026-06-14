@@ -260,13 +260,21 @@ airport buffer. All providers are mocked (so they show with `· sample`) — the
 - **No token requests** (Design used `color-mix()` against existing `--success`/`--gold`). Redlines +
   class-map saved to `docs/design/edition-iii-r8-*`. Build green · 304 tests · tsc clean.
 
-## P14 · Connections / booking (the finder) — 🟡 to skin (next round)
+## P14 · Connections / booking (the finder) — 🟡 ROUND 9 REQUEST
 
-- **FlightFinder** 🟡 — `src/components/plan/flight-finder.tsx`, `.cc-conn` (+ `-head/-close/-form/`
-  `-list/-offer/-offer-title/-offer-summary/-offer-price/-error/-confirmed/-empty`). On `/plan/[id]`
-  (action row): a search form (from/to IATA + date) → a **compare** list of fares (title · summary ·
-  price · Book) → booked flight lands in the day as a flight run; a confirmation line shows the PNR.
-  Reuses `.cc-btn`/`.cc-field`/`.cc-eyebrow`. *Placeholder inline token styles; Design owns `.cc-conn*`*
-  — this is the "buy without leaving" moment: calm, comparison legible at a glance, the price in mono,
-  one clear primary action (Book) per row, the "· sample" cue while a provider is mocked. Currency via
-  `Intl.NumberFormat`. (The compare could later adopt the `ComparisonMatrix` contract component.)
+- **ConnectionsFinder** 🟡 — `src/components/plan/connections-finder.tsx`. On `/plan/[id]` (action row):
+  the search → compare → book surface for flights + stays. Classes (`.cc-conn` root +):
+  - `-head` / `-tabs` / `-tab[data-active]` / `-sample` / `-close` — the Flights|Stays tab bar + the
+    "· sample" honesty cue + close.
+  - `-form` / `-near` / `-lbl` — the search row (flight: from/to IATA + date; stay: "Near {place}" +
+    check-in/out). Reuses `.cc-field` + `.cc-btn`.
+  - `-list` / `-offer` / `-offer-main` / `-offer-title` / `-offer-summary` / `-offer-price` — the
+    **compare** list: one fare/stay per row (title · mono summary · mono price · a primary action).
+  - `-pax` / `-pax-lead` / `-pax-grid` / `-pax-actions` — the **passenger-capture** step before a
+    flight order (title/name/DOB/gender/email/phone), then "Confirm — price".
+  - `-error` (rust) / `-pending` (gold — "Stays not activated, sample") / `-confirmed` (sage) / `-empty`.
+  - *Placeholder inline token styles; Design owns `.cc-conn*`.* The "buy without leaving Khonsera"
+    moment: calm, the comparison legible at a glance, price in mono, ONE primary action per row, the
+    passenger step unhurried, the "· sample" cue honest. (Compare could later adopt `ComparisonMatrix`.)
+  - **Live note:** flights are REAL against Duffel test mode (search→order); stays + the "· sample" cue
+    are mock until Duffel Stays activates. The booked item lands in the day (flight run / stay anchor).

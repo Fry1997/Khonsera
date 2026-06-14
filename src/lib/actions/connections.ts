@@ -58,24 +58,39 @@ const bookFlightSchema = z.object({
     endIso: z.string().optional(),
     detail: z.record(z.unknown()).optional(),
   }),
+  // The traveller on the ticket. Optional — falls back to the profile name +
+  // test-mode defaults when omitted (so a quick test book still works).
+  passenger: z
+    .object({
+      givenName: z.string().trim().min(1),
+      familyName: z.string().trim().min(1),
+      bornOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      gender: z.enum(["m", "f"]),
+      title: z.enum(["mr", "ms", "mrs", "miss"]),
+      email: z.string().email(),
+      phoneNumber: z.string().trim().min(5),
+    })
+    .optional(),
 });
 
 export async function bookFlightOffer(input: z.input<typeof bookFlightSchema>): Promise<{ ok: boolean; booking?: Booking; error?: string }> {
   const parsed = bookFlightSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Couldn't read that offer." };
-  const { itineraryId, offer } = parsed.data;
+  const { itineraryId, offer, passenger } = parsed.data;
   const ctx = await requireUserContext();
 
   // Refresh for the live price + the passenger id Duffel expects on the order.
   const fresh = (await refreshOffer(offer.id)) ?? null;
   const liveOffer: Offer = fresh ?? { ...(offer as Offer), kind: "flight", provider: "duffel", summary: "", sample: false };
 
-  // Passenger: name from the profile; test-mode defaults for the rest (a dedicated
-  // passenger-details capture step is the positioned in-phase follow-on).
+  // The traveller: the captured passenger if given, else the profile name +
+  // test-mode defaults. The passenger id always comes from the live offer.
   const [given = "Traveller", family = "Khonsera"] = String(ctx.fullName ?? "").trim().split(/\s+/);
   const passengerId = ((liveOffer.detail?.passengers as { id?: string }[] | undefined)?.[0]?.id) ?? "pas_0";
   const passengers: FlightPassenger[] = [
-    { id: passengerId, given_name: given, family_name: family || "Khonsera", born_on: "1990-01-01", gender: "m", title: "mr", email: ctx.email ?? "traveller@example.com", phone_number: "+442080160508" },
+    passenger
+      ? { id: passengerId, given_name: passenger.givenName, family_name: passenger.familyName, born_on: passenger.bornOn, gender: passenger.gender, title: passenger.title, email: passenger.email, phone_number: passenger.phoneNumber }
+      : { id: passengerId, given_name: given, family_name: family || "Khonsera", born_on: "1990-01-01", gender: "m", title: "mr", email: ctx.email ?? "traveller@example.com", phone_number: "+442080160508" },
   ];
 
   const booking = await createFlightOrder({ offer: liveOffer, passengers });

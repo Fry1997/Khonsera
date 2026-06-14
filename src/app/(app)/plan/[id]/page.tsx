@@ -5,7 +5,7 @@ import { PlanAdd } from "@/components/plan/plan-add";
 import type { PlacePickerLocation } from "@/components/place-picker";
 import { PlanImport } from "@/components/plan/plan-import";
 import { PlanCalendarImport } from "@/components/plan/plan-calendar-import";
-import { FlightFinder } from "@/components/plan/flight-finder";
+import { ConnectionsFinder } from "@/components/plan/connections-finder";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
@@ -654,6 +654,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     gateFlights: nudgeGateFlights,
   });
 
+  // Connections finder (P14) — defaults so a booking is quick. Passenger from the
+  // profile; the stay search anchors on the day's first real geocoded destination.
+  const [pgiven = "", pfamily = ""] = String(ctx.fullName ?? "").trim().split(/\s+/);
+  const connDefaultPassenger = { givenName: pgiven, familyName: pfamily, email: ctx.email ?? "" };
+  const destStop = stops.find((s) => s.type !== "start" && s.type !== "end" && s.type !== "accommodation" && coordOfStop(s));
+  const dcoord = destStop ? coordOfStop(destStop) : null;
+  const connDestination = dcoord ? { lat: dcoord.lat, lng: dcoord.lng, label: destStop?.title ?? "your destination" } : null;
+
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
   const journeyMap = buildJourneyFromStops(
@@ -738,7 +746,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           lastStopLabel={stops.length ? (stops[stops.length - 1].title ?? "your day") : "your day"}
         />
         <PlanCalendarImport itineraryId={id} />
-        <FlightFinder itineraryId={id} defaultDate={dateStart} />
+        <ConnectionsFinder
+          itineraryId={id}
+          defaultDate={dateStart}
+          defaultPassenger={connDefaultPassenger}
+          destination={connDestination}
+        />
       </div>
     </div>
   );
