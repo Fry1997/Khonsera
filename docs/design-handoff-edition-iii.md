@@ -278,3 +278,21 @@ airport buffer. All providers are mocked (so they show with `· sample`) — the
     passenger step unhurried, the "· sample" cue honest. (Compare could later adopt `ComparisonMatrix`.)
   - **Live note:** flights are REAL against Duffel test mode (search→order); stays + the "· sample" cue
     are mock until Duffel Stays activates. The booked item lands in the day (flight run / stay anchor).
+
+## DESIGN ROUND 9 — INTEGRATED (2026-06-14) ✓
+`for-code-r9` applied. `khonsera-edition-iii-connections.css` dropped into `src/app/` and imported
+**last** (after `…-care.css`). Reconciled `connections-finder.tsx` to Design's fuller anatomy — no inline
+styles (the skin owns `.cc-conn*`):
+- **Tabs** as a pill segmented control: `data-active="true|false"` strings (not booleans).
+- **Search form** restructured to `.cc-conn-field` (label + input) wrappers; IATA fields carry
+  `.cc-conn-field--iata`; the stay "Near {place}" uses `.cc-conn-near`; Search is the one `.cc-btn` (the
+  form golds it).
+- **Offer row** split into `-main` (title + `-op` badge + `-summary` + `-fare`) and `-right` (`-price` +
+  `-action`); the flight summary parses into times + a `.stops[data-direct]` span (direct = sage relief);
+  `-list-head` shows count + "cheapest first".
+- **Passenger step** to the 2-col `-grid` (email `.span-2`), `-lead` (title + fare), Spectral `-note`,
+  `-actions` with `.cc-conn-confirm` (price in `.price`), `.cc-conn-back`, `.cc-conn-pax-secure`.
+- **States**: `-error` (rust `<strong>` cause split on the em-dash), `-pending` (gold + `.sample`),
+  `-confirmed` (`-mark` ✓ / `-title` / `-detail` with `.ref` / `-tail`), `-empty` (+ `.hint`).
+- **No token requests.** Tokens verified to resolve. Redlines + map saved to `docs/design/edition-iii-r9-*`.
+  Build green · 308 tests · tsc clean.

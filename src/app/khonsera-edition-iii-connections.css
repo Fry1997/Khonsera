@@ -1,0 +1,192 @@
+/* ============================================================================
+ * KHONSERA · EDITION III — CONNECTIONS / BOOKING  ·  P14  (Round 9)
+ * ----------------------------------------------------------------------------
+ * ADDITIVE. Import LAST, after the round-8 care layer:
+ *
+ *   …
+ *   import "./khonsera-edition-iii-live.css";    // round 7
+ *   import "./khonsera-edition-iii-care.css";    // round 8
+ *   import "./khonsera-edition-iii-connections.css";  // ← THIS FILE (round 9)
+ *
+ * Skins the ConnectionsFinder — search → compare → book for flights + stays,
+ * on /plan/[id]. The "buy without leaving Khonsera" moment. Concierge restraint:
+ * the comparison legible at a glance, price in mono, ONE primary action per row,
+ * the passenger step unhurried, the "· sample" honesty cue kept while mocked.
+ *
+ * Tokens only; no markup/JS/class changes; globals.css untouched.
+ * ========================================================================== */
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Shell — the finder opens as a calm panel in the action row (a sheet-like
+ * surface), not a modal takeover. It's a considered desk, not a search engine.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-conn {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  box-shadow: var(--shadow); overflow: hidden;
+}
+
+/* head + tabs ------------------------------------------------------------- */
+.cc-conn-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) 0;
+}
+.cc-conn-tabs { display: inline-flex; gap: 2px; background: var(--card-2);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 3px; }
+.cc-conn-tab {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); padding: 8px 16px; border-radius: 999px; border: none; background: none;
+  cursor: pointer; transition: color var(--dur-base) var(--ease-standard);
+}
+.cc-conn-tab[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+.cc-conn-sample { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-faint); }
+.cc-conn-close { margin-left: auto; background: none; border: none; color: var(--ink-dim); cursor: pointer;
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.cc-conn-close:hover { background: var(--ink-soft); color: var(--ink); }
+
+/* search form ------------------------------------------------------------- */
+.cc-conn-form {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-4-5);
+  border-bottom: 1px solid var(--rule);
+}
+.cc-conn-field { display: flex; flex-direction: column; gap: var(--space-1-5); min-width: 0; }
+.cc-conn-lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-conn-form .cc-field, .cc-conn-field .cc-field {
+  background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
+  padding: 11px 13px; font-family: var(--sans); font-size: 14px; color: var(--ink); min-width: 0;
+}
+.cc-conn-field--iata .cc-field { font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  width: 84px; }
+.cc-conn-near { flex: 1 1 200px; }
+.cc-conn-near .cc-field { width: 100%; }
+.cc-conn-form .cc-btn, .cc-conn-form .cc-btn-gold {
+  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px; cursor: pointer;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Compare list — one fare / stay per row, legible at a glance.
+ * Title (what it is) · mono summary (the shape) · mono price · one action.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-conn-list { display: flex; flex-direction: column; }
+.cc-conn-list-head { display: flex; align-items: baseline; justify-content: space-between;
+  padding: var(--space-4) var(--space-5) var(--space-2); }
+.cc-conn-list-count { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-conn-list-sort { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint); }
+
+.cc-conn-offer {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) var(--space-5); border-top: 1px solid var(--rule);
+  transition: background var(--dur-base) var(--ease-standard);
+}
+.cc-conn-offer:hover { background: var(--sand); }
+.cc-conn-offer-main { min-width: 0; }
+.cc-conn-offer-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15.5px;
+  letter-spacing: -0.015em; color: var(--ink); display: flex; align-items: baseline; gap: var(--space-2); }
+/* the carrier/operator badge — quiet */
+.cc-conn-offer-op { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); }
+/* the shape line: times, stops, duration — all mono, the scannable spine */
+.cc-conn-offer-summary { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-top: 4px;
+  font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
+.cc-conn-offer-summary .stops { color: var(--ink-dim); }
+.cc-conn-offer-summary .stops[data-direct="true"] { color: var(--success); }   /* direct = quiet relief */
+.cc-conn-offer-summary .layover { color: var(--ink-dim); }
+/* fare brand chips (Economy / flexible) — faint */
+.cc-conn-offer-fare { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-faint); margin-top: 5px; }
+/* price + action, right-aligned, price the dominant figure */
+.cc-conn-offer-right { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
+.cc-conn-offer-price { font-family: var(--mono); font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em; }
+.cc-conn-offer-price .per { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em; }
+.cc-conn-offer-action {
+  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  padding: 9px 16px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer;
+  white-space: nowrap;
+}
+.cc-conn-offer-action[data-variant="quiet"] { background: transparent; color: var(--gold-2); border-color: var(--rule-2); }
+
+/* stays-specific: the rating + board line reads in the summary slot */
+.cc-conn-offer-summary .rating { color: var(--gold-2); }
+.cc-conn-offer-summary .board { color: var(--ink-2); }
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Passenger capture — the step before a flight order. Unhurried, considered;
+ * a clean form, not a checkout wall.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-conn-pax { padding: var(--space-5); }
+.cc-conn-pax-lead { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-2); }
+.cc-conn-pax-lead .title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px;
+  letter-spacing: -0.02em; color: var(--ink); }
+.cc-conn-pax-lead .fare { font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+  font-variant-numeric: tabular-nums; margin-left: auto; }
+.cc-conn-pax-note { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--ink-dim);
+  margin-bottom: var(--space-4); }
+.cc-conn-pax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.cc-conn-pax-grid .cc-conn-field { gap: var(--space-1); }
+.cc-conn-pax-grid .span-2 { grid-column: 1 / -1; }
+.cc-conn-pax-grid .cc-field {
+  background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
+  padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--sans); width: 100%;
+}
+.cc-conn-pax-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5);
+  padding-top: var(--space-4); border-top: 1px solid var(--rule); }
+.cc-conn-pax-actions .cc-conn-confirm {
+  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  padding: 13px 22px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 14px; cursor: pointer;
+}
+.cc-conn-pax-actions .cc-conn-confirm .price { font-family: var(--mono); margin-left: 8px; font-variant-numeric: tabular-nums; }
+.cc-conn-pax-actions .cc-conn-back { background: none; border: none; color: var(--ink-dim);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.cc-conn-pax-secure { margin-left: auto; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-faint); display: inline-flex; align-items: center; gap: 6px; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * States — error / pending / confirmed / empty. Severity discipline holds.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-conn-error {
+  display: flex; align-items: flex-start; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
+  padding: var(--space-3-5) var(--space-4); border-radius: 6px;
+  background: var(--rust-2); color: var(--ink); font-size: 13.5px; line-height: 1.45;
+}
+.cc-conn-error::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--rust);
+  flex: none; margin-top: 6px; }
+.cc-conn-error strong { color: var(--rust); font-weight: var(--fw-medium); }
+
+/* pending — "Stays not activated, sample". Gold (informational, not failure). */
+.cc-conn-pending {
+  display: flex; align-items: center; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
+  padding: var(--space-3-5) var(--space-4); border-radius: 6px;
+  background: var(--gold-tint); color: var(--ink-2); font-size: 13.5px; line-height: 1.45;
+}
+.cc-conn-pending::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold);
+  flex: none; }
+.cc-conn-pending .sample { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-faint); }
+
+/* confirmed — the booked moment. Sage, calm, final; it lands in the day. */
+.cc-conn-confirmed {
+  display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-5);
+}
+.cc-conn-confirmed-mark { flex: none; width: 30px; height: 30px; border-radius: 50%;
+  border: 1.5px solid var(--success); color: var(--success); display: flex; align-items: center; justify-content: center;
+  margin-top: 1px; }
+.cc-conn-confirmed-mark::before { content: "✓"; font-size: 14px; }
+.cc-conn-confirmed-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 17px;
+  letter-spacing: -0.02em; color: var(--ink); }
+.cc-conn-confirmed-detail { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); margin-top: var(--space-1); }
+.cc-conn-confirmed-detail .ref { font-family: var(--mono); color: var(--ink); }
+.cc-conn-confirmed-tail { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint);
+  margin-top: var(--space-2); }
+
+/* empty — a single calm line, never a dead panel. */
+.cc-conn-empty {
+  padding: var(--space-8) var(--space-5); text-align: center;
+  font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-dim);
+}
+.cc-conn-empty .hint { display: block; font-family: var(--mono); font-style: normal; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-top: var(--space-2); }
