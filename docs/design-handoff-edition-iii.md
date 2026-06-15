@@ -448,3 +448,17 @@ surfaces sharing the Edition III tokens. Skin `.cc-mileage*`, `.cc-budget*`, `.c
 - **Public recipient page** 🟡 — `app/share/[token]/shared-view.tsx` (NO app chrome): "Someone is sharing
   their journey", last-updated, View-on-map, or "This share has ended". *Tone:* a calm standalone page a
   non-user opens from a text — warm, minimal, reassuring. *Design owns it end-to-end (it's outside the shell).*
+
+## DESIGN (sharing) — INTEGRATED (2026-06-15) ✓
+`for-code-sharing` applied. `khonsera-edition-iii-sharing.css` added to `src/app/`, imported **last**
+(after connections). Reconciled both surfaces to the contract; inline placeholder styles stripped:
+- **ShareControl** — `.cc-share`/`-head`, `.cc-share-tell button[data-tone="safe"]` (Arrived safely =
+  sage), the **trust-anchor** `.cc-share-employer` (with `<strong>` + `.never`) kept visible for both
+  work + personal, `.cc-share-live[data-broadcasting]` with the broadcasting state (`.cc-share-broadcast`
+  `-status`/`.who`/`.until`, `.cc-share-sendlink`, `.cc-share-stop`), duration as a `.cc-share-dur`
+  button group (`data-active`), `.cc-share-go`, the active `.cc-share-list`/`-row`, `.cc-share-error`.
+- **Public recipient page** — `.cc-shared[data-ended]` (chrome-free body): `-mark`/`-eyebrow`/`-title em`/
+  `-updated`/`-map`/`-view`/`-foot`/`-ended-note`. The live MapLibre view inside `.cc-shared-map` stays
+  positioned (coords + view-on-map link sit on the ground for now).
+- No token requests; verified. Redlines + map saved to `docs/design/edition-iii-sharing-*`.
+  Build green · 324 tests · tsc clean.

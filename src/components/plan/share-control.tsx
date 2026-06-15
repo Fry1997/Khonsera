@@ -18,6 +18,8 @@ export function ShareControl({ itineraryId, isWork, shares }: { itineraryId: str
   const watchId = useRef<number | null>(null);
 
   const active = shares.filter((s) => !s.revoked);
+  const broadcastingShare = liveToken ? active.find((s) => s.token === liveToken) ?? null : null;
+  const broadcasting = !!broadcastingShare;
 
   // While broadcasting, post position to ALL active shares (one call covers them).
   useEffect(() => {
@@ -61,42 +63,54 @@ export function ShareControl({ itineraryId, isWork, shares }: { itineraryId: str
   }
 
   return (
-    <section className="cc-share" style={{ border: "1px solid var(--rule)", borderRadius: "var(--radius-lg, 12px)", padding: "var(--space-4)", background: "var(--card)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-      <span className="cc-eyebrow">Share &amp; tell</span>
+    <section className="cc-share">
+      <div className="cc-share-head"><span className="cc-eyebrow">Share &amp; tell</span></div>
 
       {/* Compose-message — handed to the OS share sheet */}
-      <div className="cc-share-tell" style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
-        <button type="button" className="cc-btn cc-btn-ghost" onClick={() => compose("Running about 15 minutes late — start without me, I'll be there as soon as I can.")}>Running late</button>
-        <button type="button" className="cc-btn cc-btn-ghost" onClick={() => compose("Arrived safely.")}>Arrived safely</button>
-        <button type="button" className="cc-btn cc-btn-ghost" onClick={() => compose("On my way — see you soon.")}>On my way</button>
+      <div className="cc-share-tell">
+        <button type="button" onClick={() => compose("Running about 15 minutes late — start without me, I'll be there as soon as I can.")}>Running late</button>
+        <button type="button" data-tone="safe" onClick={() => compose("Arrived safely.")}>Arrived safely</button>
+        <button type="button" onClick={() => compose("On my way — see you soon.")}>On my way</button>
       </div>
 
-      {isWork ? (
-        <p className="cc-share-employer" style={{ fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)", margin: 0 }}>
-          Your workspace sees this work trip&rsquo;s status and ETA — never your live location.
-        </p>
-      ) : null}
+      {/* The trust anchor — kept visible, never collapsed */}
+      <p className="cc-share-employer">
+        {isWork ? <>Your workspace sees this work trip&rsquo;s status and ETA — <strong>never</strong> your <span className="never">live location</span>.</>
+                : <>Your live location is <strong>yours</strong> — shared only with whom you choose, <span className="never">never a workspace</span>.</>}
+      </p>
 
       {/* Personal tier — live location as a revocable, time-bounded gift */}
-      <div className="cc-share-live" style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
-        <input className="cc-field" placeholder="Share with (e.g. Mum)" value={recipient} onChange={(e) => setRecipient(e.target.value)} style={{ width: 150 }} />
-        <select className="cc-field" value={hours} onChange={(e) => setHours(Number(e.target.value))}>{[1, 2, 4, 8].map((h) => <option key={h} value={h}>{h}h</option>)}</select>
-        <button type="button" className="cc-btn cc-btn-gold" onClick={startShare} disabled={pending}>Share live location</button>
+      <div className="cc-share-live" data-broadcasting={broadcasting ? "true" : "false"}>
+        <span className="cc-share-live-eyebrow">Share live location</span>
+        <span className="cc-share-live-note">A revocable, time-bounded gift to someone you choose.</span>
+        {broadcasting ? (
+          <div className="cc-share-broadcast">
+            <span className="cc-share-broadcast-status">Broadcasting · <span className="who">{broadcastingShare?.recipient || "your link"}</span> <span className="until">until {broadcastingShare ? new Date(broadcastingShare.expiresAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""}</span></span>
+            <button type="button" className="cc-share-sendlink" onClick={() => broadcastingShare && shareLink(broadcastingShare.token)}>Send link</button>
+            <button type="button" className="cc-share-stop" onClick={() => broadcastingShare && revoke(broadcastingShare.id)}>Stop</button>
+          </div>
+        ) : (
+          <div className="cc-share-live-form">
+            <input className="cc-field" placeholder="Share with (e.g. Mum)" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+            <span className="cc-share-dur">
+              {[1, 2, 4, 8].map((h) => <button key={h} type="button" data-active={hours === h ? "true" : "false"} onClick={() => setHours(h)}>{h}h</button>)}
+            </span>
+            <button type="button" className="cc-share-go" onClick={startShare} disabled={pending}>Share live location</button>
+          </div>
+        )}
       </div>
-      {error ? <p className="cc-share-error" style={{ color: "var(--rust)", fontSize: "var(--fs-label)" }}>{error}</p> : null}
+      {error ? <p className="cc-share-error">{error}</p> : null}
 
       {active.length > 0 ? (
-        <ul className="cc-share-list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+        <ul className="cc-share-list">
           {active.map((s) => (
-            <li key={s.id} className="cc-share-row" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-              <span style={{ color: "var(--ink)" }}>{s.recipient || "Anyone with the link"}</span>
-              <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: liveToken === s.token ? "var(--sage, var(--gold-2))" : "var(--ink-dim)" }}>
+            <li key={s.id} className="cc-share-row">
+              <span className="cc-share-row-who">{s.recipient || "Anyone with the link"}</span>
+              <span className="cc-share-row-meta">
                 {liveToken === s.token ? "broadcasting" : s.lastAt ? `last sent ${new Date(s.lastAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "ready"} · until {new Date(s.expiresAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
               </span>
-              <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8 }}>
-                <button type="button" className="cc-share-link" onClick={() => shareLink(s.token)} style={{ background: "none", border: "none", color: "var(--gold-2)", cursor: "pointer", fontSize: "var(--fs-micro, 11px)" }}>Send link</button>
-                <button type="button" className="cc-share-revoke" onClick={() => revoke(s.id)} style={{ background: "none", border: "none", color: "var(--ink-dim)", cursor: "pointer", fontSize: "var(--fs-micro, 11px)" }}>Stop</button>
-              </span>
+              <button type="button" className="cc-share-link" onClick={() => shareLink(s.token)}>Send link</button>
+              <button type="button" className="cc-share-revoke" onClick={() => revoke(s.id)}>Stop</button>
             </li>
           ))}
         </ul>

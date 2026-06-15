@@ -1,0 +1,147 @@
+/* ============================================================================
+ * KHONSERA · EDITION III — SHARING / COMMS / SAFETY  ·  P18  (Sharing pack)
+ * ----------------------------------------------------------------------------
+ * ADDITIVE. Import LAST, after the ledger layer:
+ *   …
+ *   import "./khonsera-edition-iii-ledger.css";
+ *   import "./khonsera-edition-iii-sharing.css";   // ← THIS FILE
+ *
+ * Skins ShareControl (.cc-share*) on /plan/[id] + the standalone public
+ * recipient page (.cc-shared*, NO app chrome). Tokens only; no markup/JS/class
+ * changes; globals.css untouched.
+ *
+ * THE RULE: trust + control. Sharing reads calm and OBVIOUSLY revocable; the
+ * "your workspace sees status + ETA, never your live location" guarantee is
+ * stated plainly, not buried. Gold = the one share action; rust only on stop/
+ * revoke + a genuine error; sage = a safe/active confirmation. As warm and
+ * reassuring as a text to someone who loves you.
+ * ========================================================================== */
+
+.cc-share { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.cc-share-head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-dim); padding: var(--space-4) var(--space-5) var(--space-2); }
+
+/* compose-message buttons — Running late / Arrived safely / On my way → share sheet */
+.cc-share-tell { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-5) var(--space-4); }
+.cc-share-tell button {
+  display: inline-flex; align-items: center; gap: 7px; background: var(--sand); color: var(--ink);
+  border: 1px solid var(--rule-2); border-radius: 999px; padding: 9px 15px;
+  font-family: var(--sans); font-weight: var(--fw-medium); font-size: 13px; cursor: pointer;
+}
+.cc-share-tell button:hover { border-color: var(--ink-dim); }
+.cc-share-tell button[data-tone="safe"] { color: var(--success); border-color: color-mix(in oklab, var(--success) 32%, var(--rule)); }
+
+/* the employer / work-trip privacy line — the guarantee, stated plainly */
+.cc-share-employer {
+  display: flex; align-items: flex-start; gap: var(--space-2-5); margin: 0 var(--space-5) var(--space-4);
+  padding: var(--space-3) var(--space-4); border-radius: 6px; background: var(--sand);
+  border: 1px solid var(--rule); font-size: 12.5px; line-height: 1.5; color: var(--ink-2);
+}
+.cc-share-employer::before {                                  /* a quiet shield/lock glyph slot */
+  content: ""; width: 14px; height: 14px; flex: none; margin-top: 2px; border-radius: 3px;
+  border: 1.5px solid var(--ink-dim);
+  -webkit-mask: linear-gradient(#000 0 0); }
+.cc-share-employer strong { color: var(--ink); font-weight: var(--fw-medium); }
+.cc-share-employer .never { color: var(--ink); font-weight: var(--fw-medium); }   /* "never your live location" */
+
+/* ── the personal live-location gift ──────────────────────────────────────── */
+.cc-share-live { padding: var(--space-4) var(--space-5) var(--space-5); border-top: 1px solid var(--rule); }
+.cc-share-live-eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: var(--space-2); }
+.cc-share-live-note { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--ink-dim);
+  margin-bottom: var(--space-3-5); }
+.cc-share-live-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.cc-share-live-form .cc-field { flex: 1 1 160px; background: var(--paper); border: 1px solid var(--rule-2);
+  border-radius: 5px; padding: 11px 13px; font-family: var(--sans); font-size: 14px; color: var(--ink); }
+.cc-share-dur { display: inline-flex; gap: 2px; background: var(--card-2); border: 1px solid var(--rule);
+  border-radius: 999px; padding: 3px; }
+.cc-share-dur button { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-dim);
+  padding: 7px 12px; border-radius: 999px; border: none; background: none; cursor: pointer; white-space: nowrap; }
+.cc-share-dur button[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+.cc-share-go {
+  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px; cursor: pointer;
+}
+
+/* broadcasting state — calm, present, obviously stoppable */
+.cc-share-live[data-broadcasting="true"] { background: var(--gold-tint); }
+.cc-share-broadcast { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.cc-share-broadcast-status { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--mono); font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cc-share-broadcast-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .cc-share-live[data-broadcasting="true"] .cc-share-broadcast-status::before {
+    animation: cc-share-pulse 2s var(--ease-standard, cubic-bezier(.2,0,0,1)) infinite; }
+}
+@keyframes cc-share-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.cc-share-broadcast .who { font-size: 13px; color: var(--ink-2); }
+.cc-share-broadcast .until { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.cc-share-sendlink { background: transparent; color: var(--gold-2); border: 1px solid var(--rule-2);
+  border-radius: 5px; padding: 9px 15px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px;
+  cursor: pointer; margin-left: auto; }
+.cc-share-stop {                                              /* revoke — rust, the obvious off-switch */
+  background: transparent; color: var(--rust); border: 1px solid color-mix(in oklab, var(--rust) 36%, var(--rule));
+  border-radius: 5px; padding: 9px 15px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer;
+}
+
+/* active-shares list — recipient + link + revoke, every one obviously endable */
+.cc-share-list { display: flex; flex-direction: column; }
+.cc-share-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-1) var(--space-3);
+  padding: var(--space-3-5) var(--space-5); border-top: 1px solid var(--rule); }
+.cc-share-row-who { font-size: 14px; color: var(--ink); }
+.cc-share-row-meta { grid-column: 1; font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); margin-top: 2px;
+  font-variant-numeric: tabular-nums; }
+.cc-share-link { background: none; border: 1px solid var(--rule-2); border-radius: 5px; padding: 6px 11px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold-2); cursor: pointer; }
+.cc-share-revoke { background: none; border: none; color: var(--ink-dim); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.cc-share-revoke:hover { color: var(--rust); }
+.cc-share-error { display: flex; align-items: flex-start; gap: var(--space-2); margin: var(--space-3) var(--space-5) var(--space-4);
+  font-size: 12.5px; color: var(--ink); }
+.cc-share-error::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--rust); flex: none; margin-top: 6px; }
+.cc-share-error strong { color: var(--rust); font-weight: var(--fw-medium); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PUBLIC RECIPIENT PAGE — .cc-shared* — a standalone page a non-user opens from
+ * a text. NO app chrome. Warm, minimal, reassuring; Design owns it end-to-end.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.cc-shared {
+  min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  text-align: center; gap: var(--space-3); padding: var(--space-8) var(--space-5) var(--space-6);
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in oklab, var(--gold-100) 22%, transparent), transparent 58%),
+    var(--paper);
+  color: var(--ink); font-family: var(--sans);
+}
+/* the title block sits comfortably below a modest top margin, not floating mid-screen */
+.cc-shared-mark { height: 30px; width: auto; opacity: 0.9; margin: var(--space-4) 0 var(--space-2); }
+.cc-shared-eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-shared-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 27px;
+  letter-spacing: -0.03em; color: var(--ink); margin: 0; max-width: 18ch; line-height: 1.15; }
+.cc-shared-title em { font-family: var(--serif); font-style: italic; }
+.cc-shared-updated { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--mono);
+  font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.cc-shared-updated::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex: none; }
+.cc-shared-map {
+  width: 100%; max-width: 420px; aspect-ratio: 4 / 3; max-height: 300px; flex: 0 0 auto;
+  border-radius: 12px; margin-top: var(--space-3);
+  background:
+    linear-gradient(135deg, var(--card-2) 0%, var(--sand) 100%);
+  border: 1px solid var(--rule); position: relative; overflow: hidden;
+}
+.cc-shared-map::after {                                       /* a quiet location pin sit at centre */
+  content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; transform: translate(-50%,-50%);
+  border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 5px var(--gold-soft), 0 0 0 6px var(--gold); }
+.cc-shared-view {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 6px;
+  padding: 13px 24px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 14px; cursor: pointer;
+  text-decoration: none; margin-top: var(--space-2);
+}
+.cc-shared-foot { margin-top: var(--space-5); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  color: var(--ink-faint); }
+/* ended state — a calm full-stop, not an error */
+.cc-shared[data-ended="true"] .cc-shared-updated::before { background: var(--ink-faint); }
+.cc-shared-ended-note { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-dim);
+  max-width: 28ch; }

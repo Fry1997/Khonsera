@@ -11,7 +11,8 @@ import "./khonsera-edition-ii-wallet.css"; // Round 5b first-class Wallet + dock
 import "./khonsera-edition-iii.css"; // Edition III build-programme skin (P0–P6)
 import "./khonsera-edition-iii-live.css"; // Edition III live spine + disruption (P8–P10)
 import "./khonsera-edition-iii-care.css"; // Edition III deviation & care (P11–P13)
-import "./khonsera-edition-iii-connections.css"; // Edition III connections/booking (P14) — LAST
+import "./khonsera-edition-iii-connections.css"; // Edition III connections/booking (P14)
+import "./khonsera-edition-iii-sharing.css"; // Edition III sharing/comms/safety (P18) — LAST
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical Khonsera type stack, per the Visual Identity brand book
