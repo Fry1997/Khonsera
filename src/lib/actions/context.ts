@@ -14,7 +14,6 @@ import {
   type ParkingInput,
   type GateChangeInput,
 } from "@/lib/context/engine";
-import { corridorForecast } from "@/lib/integrations/open-meteo";
 // DragonPass is the single airport-experience partner (D52, short-term): fast-track
 // + lounge. Collinson (Priority Pass + SmartDelay) is the long-term strategic target,
 // kept dormant in the tree until that enterprise relationship is realistic.
@@ -66,16 +65,13 @@ export async function loadNudges(args: {
 }): Promise<NudgeVM[]> {
   const supabase = await createClient();
 
-  // Weather only where it's actionable: the leg that leaves home. One forecast.
+  // NOTE (2026-06-15): weather is NO LONGER fetched here. It was a live Open-Meteo
+  // call (up to 5s) on EVERY plan render, blocking the cards — to power a
+  // leave-earlier nudge that almost never fired and the user never saw. Weather now
+  // lives where it's visible and day-of relevant: the Today page (getLocalWeather).
+  // The other care rules below are buffer-derived (instant) or mock-gated, so the
+  // plan render no longer waits on any live weather call.
   const weatherLegs: WeatherLegInput[] = [];
-  const homeLeg = args.legs.find((l) => l.isFirstLeaveHome && l.departIso && l.lat != null && l.lng != null);
-  if (homeLeg && homeLeg.departIso) {
-    const endIso = new Date(new Date(homeLeg.departIso).getTime() + 90 * 60_000).toISOString();
-    const weather = await corridorForecast({ lat: homeLeg.lat!, lng: homeLeg.lng!, startIso: homeLeg.departIso, endIso });
-    if (weather) {
-      weatherLegs.push({ legId: homeLeg.legId, mode: homeLeg.mode, toLabel: homeLeg.toLabel, departIso: homeLeg.departIso, weather });
-    }
-  }
 
   const flightBuffers: FlightBufferInput[] = args.flights.map((f) => ({
     flightStopId: f.flightStopId,

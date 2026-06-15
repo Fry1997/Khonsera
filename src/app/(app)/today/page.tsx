@@ -11,6 +11,7 @@ import { buildDayReview } from "@/lib/actions/review";
 import { DayReviewCard } from "@/components/plan/day-review";
 import { PlanCreate } from "@/components/plan/plan-create";
 import { TflLineStatus } from "@/components/today/tfl-line-status";
+import { getLocalWeather } from "@/lib/actions/weather";
 import { TodayDisruption, type TodayDisruptionItem } from "@/components/today/today-disruption";
 import { liveDeparture } from "@/lib/integrations/darwin";
 import { delayConsequence } from "@/lib/live/engine";
@@ -298,15 +299,29 @@ export default async function TodayPage({
         ? `${covering.length} plans today`
         : undefined;
 
+  // Weather where you are — the integration, made visible (cached → renders whole).
+  const weather = await getLocalWeather();
+
   return (
     <div className="cc-screen" data-disrupted={disruptions.length ? "true" : undefined}>
       {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
       <OfflineTicketSync tickets={tickets} />
-      <header>
-        <span className="cc-eyebrow">Today</span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-          Right now
-        </h1>
+      <header className="cc-today-head">
+        <div>
+          <span className="cc-eyebrow">Today</span>
+          <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
+            Right now
+          </h1>
+        </div>
+        {weather ? (
+          <div className="cc-weather" data-day={weather.isDay ? "true" : "false"}>
+            <span className="cc-weather-temp">{weather.tempC}&deg;</span>
+            <span className="cc-weather-meta">
+              <span className="cc-weather-headline">{weather.headline}</span>
+              <span className="cc-weather-place">{weather.place}</span>
+            </span>
+          </div>
+        ) : null}
       </header>
 
       <TodayDisruption items={disruptions} />

@@ -188,3 +188,18 @@
 
 /* when the day is disrupted, the rest of /today recedes — the banner leads */
 .cc-screen[data-disrupted] > *:not(.cc-today-disruption):not(.cc-appbar):not(.cc-tabbar) { opacity: 0.62; }
+
+/* ── Today weather strip (2026-06-15) ────────────────────────────────────────
+   The Open-Meteo integration, made visible: current conditions where you are,
+   server-rendered + cached so it arrives WHOLE with the page (no clumsy fill-in). */
+.cc-today-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.cc-weather { display: inline-flex; align-items: center; gap: var(--space-2-5); flex: none;
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--rule); border-radius: var(--radius-lg, 12px);
+  background: var(--card); }
+.cc-weather-temp { font-family: var(--display); font-size: 26px; font-weight: var(--fw-medium, 500);
+  letter-spacing: -0.02em; color: var(--ink); line-height: 1; }
+.cc-weather-meta { display: flex; flex-direction: column; gap: 1px; }
+.cc-weather-headline { font-size: 13px; color: var(--ink-2); }
+.cc-weather-place { font-family: var(--mono); font-size: 10px; letter-spacing: var(--ls-eyebrow, 0.16em);
+  text-transform: uppercase; color: var(--ink-faint); }
+.cc-weather[data-day="false"] { background: var(--card-2); }

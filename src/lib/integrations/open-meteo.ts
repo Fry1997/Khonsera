@@ -86,6 +86,43 @@ export async function corridorForecast(args: {
   }
 }
 
+// Current conditions at a point — for the Today weather strip (it renders the
+// integration we already pay for). Cached 30 min via the Next data cache, so the
+// page renders WHOLE (no clumsy fill-in) and most loads are a cache hit. Null on
+// any failure → Today simply omits the strip.
+export type CurrentWeather = { tempC: number; headline: string; code: number; isDay: boolean };
+
+export async function currentConditions(args: { lat: number; lng: number }): Promise<CurrentWeather | null> {
+  const url =
+    `${BASE}?latitude=${args.lat.toFixed(4)}&longitude=${args.lng.toFixed(4)}` +
+    `&current=temperature_2m,weather_code,is_day&timezone=Europe%2FLondon`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000), next: { revalidate: 1800 } });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { current?: { temperature_2m?: number; weather_code?: number; is_day?: number } };
+    const c = json.current;
+    if (!c || c.temperature_2m == null) return null;
+    const code = c.weather_code ?? 0;
+    return { tempC: Math.round(c.temperature_2m), headline: wmoHeadline(code), code, isDay: c.is_day !== 0 };
+  } catch {
+    return null;
+  }
+}
+
+// WMO weather-code → a short human headline (no emoji). Bucketed sensibly.
+function wmoHeadline(code: number): string {
+  if (code === 0) return "Clear";
+  if (code <= 2) return "Mostly clear";
+  if (code === 3) return "Cloudy";
+  if (code <= 48) return "Fog";
+  if (code <= 57) return "Drizzle";
+  if (code <= 67) return "Rain";
+  if (code <= 77) return "Snow";
+  if (code <= 82) return "Showers";
+  if (code <= 86) return "Snow showers";
+  return "Thunderstorm";
+}
+
 // The API's hourly `time` strings are local (no Z). Strip our ISO to the same
 // shape so the in-window comparison lines up.
 function localizeWindow(iso: string): string {
