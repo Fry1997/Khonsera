@@ -230,3 +230,46 @@ max-scope API, schema, membrane boundary — written when its phase is reached.
 - Each entity-depth phase's Definition of Done = **its operator-app-replacement checklist is answered**
   (operate / refer / honest-limit marked for every row), with the max-scope APIs from the capability
   map wired (or mocked).
+
+---
+
+## Flight — operator-app-redundant depth (researched 2026-06-15)
+
+*Benchmarked against Google Flights / Skyscanner / Kayak / Hopper / Booking.com / Kiwi (booking
+experience) + BA / easyJet / Ryanair / United apps (post-booking), and mapped to the verified Duffel
+capability surface. The rule: operate everything we can, refer only the purchase + the airline-issued
+credentials, be honest about the limits.*
+
+### OPERATE (build on Duffel — confirmed available)
+| Capability | Duffel | Status |
+|---|---|---|
+| Search: one-way/return + **multi-city** (3+ slices), cabin, pax (adult/child/infant) | ✅ | ✓ search; multi-city *positioned* |
+| **Fare-brand compare** (Basic/Standard/Flex as distinct offers) | ✅ | depth mapped; surface *now* |
+| **Fare conditions upfront** (refundable / changeable + penalty) — the industry weak spot | ✅ `conditions` | surface *now* (our edge) |
+| **Baggage** included per offer (carry-on/checked) + **extra bags** (at + post-booking) | ✅ | included *now*; buy-bags *positioned* |
+| **Seat selection** (seat maps) | ⚠️ partial coverage, at-booking | *positioned* (needs seat-grid UI) |
+| Order (instant / **hold** for BA/LH/AA…), Duffel-managed payment, **test mode** | ✅ | ✓ (live test mode) |
+| **Manage booking**: change date/flight, cancel + refund (quote→confirm) | ✅ | *positioned* (own surface) |
+| **Airline-initiated change** webhooks | ✅ | *positioned* |
+| **Loyalty** number capture (member fares + miles) | ✅ capture only | *positioned* |
+| Flight **status / gate / delay / boarding** | ❌ Duffel | ✅ **we already own it** (AeroDataBox + live spine) |
+
+### REFER (not ours to originate — deep-link / barcode rule)
+- **Online check-in** — airline-controlled (runs against the airline DCS). → deep-link the airline's
+  check-in with the **PNR + surname** when it opens (~24–48h out). Never attempt to check in for them.
+- **Mobile boarding pass barcode** — airline-issued + cryptographically signed; OTAs cannot mint it.
+  → after the user checks in and *holds* the pass, reproduce it under the **barcode rule** (as we do the
+  rail Aztec) into the Wallet. We surface PNR + check-in link, not a minted pass.
+- **The purchase** — the one permitted stub (Duffel test mode = no charge today).
+
+### HONEST LIMITS (don't fake)
+- **No price intelligence** via Duffel (no calendar / history / "buy vs wait" / flexible dates). Would
+  need our own repeated-dated-search cache or a separate provider → *positioned, clearly labelled*.
+- **Name corrections** — no Duffel endpoint; airline/agent only → refer.
+- **Meals/lounge** as flight ancillaries — not reliably supported on Duffel (lounge is our DragonPass
+  path instead).
+
+**Re-scope:** P14 (connections framework) is DONE as the L5 foundation. Giving **flights** this full
+depth is its own phase — **ED-Flight** — sequenced next on the connections track. The structural fixes
+(separate flight/stay flows, airport autocomplete, conditions/baggage upfront, real confirmation +
+check-in deep-link) land first; seat/bags/multi-city/servicing/price-intel are tagged follow-ons.

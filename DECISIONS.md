@@ -807,3 +807,19 @@ Newest at the bottom of each section.
   order change/cancel flows; Stays `POST /stays/accommodation/suggestions` for name search + coords-only
   `search`, accommodation/rate depth, quote→booking). Rebuilding: separate flight & stay flows (no
   toggle), airport autocomplete (no IATA typing), independent hotel search, full offer + booking depth.
+
+- **D58 — Flight surface rebuilt on the entity-depth benchmark (not just the API).** Founder's second
+  critique was right: I'd benchmarked Duffel's *docs*, not flight *platforms*. Four research streams
+  (Google Flights/Skyscanner/Kayak/Hopper booking UX; BA/easyJet/Ryanair/United post-booking; full
+  Duffel capability map) now ground the build. Rebuilt the surface: **separate FlightFinder + StayFinder**
+  (killed the conflated toggle — they're independent flows); **airport autocomplete** (Duffel Places /
+  mock — no IATA typing); **fare depth at compare time** (fare brand, baggage carry-on/checked,
+  refundable/changeable, carbon — the industry weak spot Duffel hands us); **sort (cheapest/fastest) +
+  direct-only**; **independent stay location search** (geocoder — not gated on the day); **honest
+  confirmation** (PNR + e-ticket + the airline **check-in deep-link**). Captured the flight **entity-depth
+  catalogue** (operate/refer/honest-limit). **Confirmed honest limits (don't fake):** online check-in +
+  boarding-pass barcode are airline-DCS-only (deep-link + the barcode rule = reproduce only once held);
+  price calendar/history/prediction needs a non-Duffel source; live status/gate we already own
+  (AeroDataBox + live spine). *Positioned (own phase, ED-Flight follow-ons):* seat selection (seat_maps,
+  at-booking), buy-bags ancillary, multi-city, post-booking change/cancel + airline-change webhook,
+  price-track loop, separate-ticket risk surfaced via our fragility engine. Build green · 320 tests.

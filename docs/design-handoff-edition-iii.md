@@ -310,3 +310,22 @@ styles (the skin owns `.cc-conn*`):
     (`button[data-active]`), delete. Plus `.cc-mileage-add` (manual entry) + `.cc-mileage-empty`.
   - *Placeholder inline token styles; Design owns `.cc-mileage*`.* Tone: a quiet ledger, the claimable
     figure the one confident number, classification a clean two-state toggle, recording calm not alarmist.
+
+## P14 / ED-Flight · Separate flight & stay flows + depth — 🟡 ROUND 10 REQUEST
+
+The connections surface was **restructured** (founder critique): the Flights|Stays toggle is gone — two
+independent flows, each its own button. New/changed surfaces to skin (additive over Round 9's `.cc-conn*`):
+- **FlightFinder** (`plan/flight-finder.tsx`) + **StayFinder** (`plan/stay-finder.tsx`) — separate `.cc-conn`
+  panels (no `.cc-conn-tabs`).
+- **Airport / location autocomplete** 🟡 — `.cc-conn-field--airport` / `.cc-conn-near` with a
+  `.cc-conn-suggest` dropdown (`.cc-conn-suggest-item`: mono IATA + name/city). The headline UX fix —
+  type "Heathrow", never "LHR".
+- **Offer depth chips** 🟡 — `.cc-conn-offer-chips` / `.cc-conn-chip[data-tone="good|dim"]`: fare brand,
+  baggage (e.g. "1 cabin + 1 checked"), Refundable/Changeable (sage), carbon "412kg CO2" (dim). This is
+  our fare-honesty edge — every metasearch is weak here; keep it glanceable, not noisy.
+- **Filter/sort row** 🟡 — `.cc-conn-controls` (a "Direct only" checkbox + a cheapest/fastest select) in
+  the `.cc-conn-list-head`.
+- **Honest confirmation tail** — the booked card now carries the **check-in deep-link** message ("check
+  in on the airline's app ~24–48h before — your boarding pass is issued there, then add it to Wallet").
+  *Tone:* matter-of-fact honesty, not an apology — we operate everything except the airline's credential.
+- *Placeholder inline token styles on the new bits; Round 9's `.cc-conn*` still skins the shared shell.*
