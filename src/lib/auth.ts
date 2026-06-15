@@ -15,6 +15,8 @@ export async function requireUser() {
   return user;
 }
 
+export type WorkspaceRole = "company_admin" | "team_manager" | "traveller" | "owner" | "admin" | "member" | "viewer";
+
 export type CurrentUserContext = {
   userId: string;
   email: string;
@@ -23,6 +25,9 @@ export type CurrentUserContext = {
   isAdmin: boolean;
   workspaceId: string;
   activeMode: AppMode;
+  // The user's role in their default workspace — the RBAC handle (P17). Server
+  // actions gate on this; never trust a client-sent role.
+  role: WorkspaceRole;
 };
 
 export const requireUserContext = cache(
@@ -54,6 +59,13 @@ export const requireUserContext = cache(
       .maybeSingle();
     const primaryMode: AppMode = ws?.type === "organisation" ? "work" : "personal";
 
+    const { data: membership } = await supabase
+      .from("memberships")
+      .select("role")
+      .eq("workspace_id", profile.default_workspace_id)
+      .eq("user_id", profile.id)
+      .maybeSingle();
+
     return {
       userId: profile.id,
       email: profile.email,
@@ -62,6 +74,19 @@ export const requireUserContext = cache(
       isAdmin: profile.is_admin,
       workspaceId: profile.default_workspace_id,
       activeMode: primaryMode,
+      role: (membership?.role as WorkspaceRole) ?? "traveller",
     };
   },
 );
+
+// RBAC (P17): roles that can manage a workspace — assign visits, approve trips +
+// over-cap spend, review the team. Legacy owner/admin map to the manager tier.
+const MANAGER_ROLES: ReadonlySet<WorkspaceRole> = new Set(["company_admin", "team_manager", "owner", "admin"]);
+export function isManager(ctx: CurrentUserContext): boolean {
+  return MANAGER_ROLES.has(ctx.role);
+}
+export async function requireManager(): Promise<CurrentUserContext> {
+  const ctx = await requireUserContext();
+  if (!isManager(ctx)) throw new Error("Not authorised — this needs a manager or admin role.");
+  return ctx;
+}

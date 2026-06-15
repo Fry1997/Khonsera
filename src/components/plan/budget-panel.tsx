@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setItineraryCap, addTripExpense, attachReceipt, receiptViewUrl, type Budget } from "@/lib/actions/budget";
+import { submitTripForApproval } from "@/lib/actions/approvals";
 
 const TYPES = [
   { v: "food", label: "Food" }, { v: "taxi", label: "Taxi" }, { v: "parking", label: "Parking" },
@@ -63,6 +64,7 @@ export function BudgetPanel({ itineraryId, budget }: { itineraryId: string; budg
         <input className="cc-field" type="number" inputMode="decimal" placeholder="Set a cap" value={capInput} onChange={(e) => setCapInput(e.target.value)} style={{ width: 120 }} />
         <button type="button" className="cc-btn cc-btn-ghost" onClick={saveCap} disabled={pending}>{budget.cap != null ? "Update cap" : "Set cap"}</button>
         <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAdding((v) => !v)} style={{ marginLeft: "auto" }}>{adding ? "Cancel" : "Add expense"}</button>
+        {budget.lines.length > 0 ? <button type="button" className="cc-btn cc-btn-ghost" disabled={pending} onClick={() => startTransition(async () => { await submitTripForApproval(itineraryId); router.refresh(); })}>Submit for approval</button> : null}
       </div>
 
       {adding ? <AddExpense itineraryId={itineraryId} currency={budget.currency} onDone={() => { setAdding(false); router.refresh(); }} /> : null}

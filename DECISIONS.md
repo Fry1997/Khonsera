@@ -823,3 +823,15 @@ Newest at the bottom of each section.
   (AeroDataBox + live spine). *Positioned (own phase, ED-Flight follow-ons):* seat selection (seat_maps,
   at-booking), buy-bags ancillary, multi-city, post-booking change/cancel + airline-change webhook,
   price-track loop, separate-ticket risk surfaced via our fragility engine. Build green · 320 tests.
+
+- **D59 — P17 RBAC + approval routing + a privacy-boundary fix.** Added the workspace **role** to
+  `requireUserContext` (from `memberships`) + `requireManager`/`isManager` — server actions now gate on
+  the role (client role never trusted); manager-tier = company_admin/team_manager (legacy owner/admin
+  map in). Built **over-cap/trip approval routing**: traveller `submitTripForApproval` → manager
+  `loadApprovalsQueue` + `reviewExpense` (approve/reject) on `/workspace`, + a Submit button on the
+  BudgetPanel. **Privacy find + fix (mig 0039):** `expense_records`/`mileage_expenses` SELECT was
+  workspace-broad (`is_workspace_member`), which would have exposed a **personal-trip** expense (it
+  carries workspace_id) to any workspace member — a boundary breach. Tightened to **owner-always OR
+  work-trip + workspace-member** (mirrors `can_access_itinerary`); the approval queue is also work-filtered
+  in-app. Verified owner reads (/expenses, BudgetPanel) still work. *Positioned:* visit assignment (via
+  visit_plans — RLS blocks itinerary-insert-for-another-user), full team review, trip approval, per-diem.

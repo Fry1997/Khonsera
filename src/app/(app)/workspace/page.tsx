@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { requireUserContext } from "@/lib/auth";
+import { requireUserContext, isManager } from "@/lib/auth";
+import { loadApprovalsQueue } from "@/lib/actions/approvals";
+import { ApprovalsQueue } from "@/components/workspace/approvals-queue";
 
 // Workspace / admin (handover §15) — Design Round 2. Work-mode only; in Personal
 // mode it's the .cc-boundary privacy note (the §2 boundary made visible).
@@ -42,8 +44,9 @@ export default async function WorkspacePage() {
   ]);
 
   const roleLabel = ROLE_LABEL[membership?.role ?? "traveller"] ?? "Traveller";
+  const manager = isManager(ctx);
+  const approvals = manager ? await loadApprovalsQueue() : [];
   const stubs = [
-    { t: "Approvals", b: "Bookings route to an approver before they're confirmed — booker initiates, approver approves or rejects." },
     { t: "Allowance & per-diem", b: "A daily allowance tracker: receipts auto-submit, expenses deduct, the balance counts down." },
     { t: "Travel policy", b: "Fare caps, approved providers, cost centres — kept without anyone having to read them." },
   ];
@@ -59,6 +62,8 @@ export default async function WorkspacePage() {
         <div className="cc-settings-row"><span className="l">Your role</span><span className="v">{roleLabel}</span></div>
         <div className="cc-settings-row"><span className="l">Members</span><span className="v">{memberCount ?? 1}</span></div>
       </div>
+
+      {manager ? <ApprovalsQueue items={approvals} /> : null}
 
       <section className="cc-section">
         <div className="cc-section-head"><span className="cc-section-title">Coming with teams</span></div>

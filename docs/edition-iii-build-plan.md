@@ -459,15 +459,25 @@ green · **316 tests**. Design handoff (`.cc-mileage*`) added.
 **Done when:** expenses capture receipts and track against a cap with over-cap surfaced. ✓ — receipts
 upload + view, spend-vs-cap with over-cap in rust, mileage folds in. Build green · 322 tests.
 
-### Phase 17 — Org / B2B + approvals (L6, Part D)  `[ ]`
-**Depends on:** P3 (outcome notes), P16 (caps). 
-- [ ] **Set visits for staff** (already-restored `visit_plans`) appearing in the assignee's unified
-      day as work commitments.
-- [ ] **Track the work slice** + **review outcome notes** (work only; RLS-bounded).
-- [ ] **Approval routing** for trips and over-cap spend; **RBAC enforcement** of the
-      company_admin/team_manager/traveller roles (currently display-only).
-**Done when:** an org assigns a visit, sees only the work slice + outcome, and routes trips/over-cap
-through approval; roles gate actions.
+### Phase 17 — Org / B2B + approvals (L6, Part D)  `[~]` core DONE 2026-06-15
+**Depends on:** P3 (outcome notes), P16 (caps).
+- [x] **RBAC enforcement** — `ctx.role` (from membership) + `requireManager`/`isManager` (auth.ts);
+      manager-tier = company_admin/team_manager (legacy owner/admin map in). Server actions gate on it;
+      the client role is never trusted.
+- [x] **Approval routing** (over-cap / trip spend) — `submitTripForApproval` (traveller) →
+      `loadApprovalsQueue` + `reviewExpense` approve/reject (manager-gated) on `/workspace`; a "Submit
+      for approval" on the `BudgetPanel`.
+- [x] **Privacy hardening (mig 0039)** — `expense_records`/`mileage_expenses` SELECT was workspace-broad
+      (`is_workspace_member`), which would expose a **personal-trip** expense (it carries workspace_id) to
+      the workspace. Tightened to: owner-always **OR work-trip + workspace member**. The approval queue is
+      also work-filtered in-app (defence-in-depth). *(Boundary fix — a real find.)*
+- [→ positioned] **Assign a visit** to staff (via `visit_plans` + `visit_plan_transition` — itineraries
+      can't be inserted for another user by RLS, so assignment goes through visit_plans).
+- [→ positioned] **Full team work-slice + outcome-note review** (beyond the approvals queue); **trip
+      approval** (itinerary_status); **per-diem / allowance** tracker; broader RBAC on other mutations.
+**Done when:** an org assigns a visit, sees the work slice + outcome, and routes trips/over-cap through
+approval; roles gate actions. ✓ for RBAC + over-cap approval + the privacy fix; assignment + full review
++ per-diem positioned. Build green · 322 tests.
 
 ### Phase 18 — Two-tier sharing + comms + safety (C14 / D4)  `[ ]`
 **Depends on:** P9 (ETA), P17.
@@ -810,7 +820,9 @@ it's sequenced, not dropped.*
 ### Expenses / org
 - **Cost-intelligence proposal** (P16) — "a £12 taxi unlocks the meeting": a decision/expense-aware
   rule on the P12 context framework. Buildable now.
-- **Spend-vs-cap approvals routing + per-diem** (P17) — manager approval of over-cap; HMRC scale-rate per-diem.
+- **Assign a visit to staff** (P17) — via `visit_plans` + `visit_plan_transition` (RLS blocks
+  inserting an itinerary for another user; assignment is the visit_plan path). Buildable now.
+- **Full team work-slice + outcome review**, **trip approval**, **per-diem / allowance** (P17) — buildable now.
 
 ### Earlier phases owed
 - **P6** transition-pattern inference; **P7** commitment-aware navigation; **P8b** TfL network maps —
