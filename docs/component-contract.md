@@ -186,6 +186,19 @@ classes in `docs/design-handoff-edition-iii.md` (Rounds 11, 12, + manage-booking
 
 ---
 
+### Ledger & teams (P15 mileage · P16 budget · P17 approvals) · 🟡 Ledger pack
+- **Mileage** (`/mileage`) — `DriveRecorder` (`.cc-mileage-rec`) + `MileageLedger` (`.cc-mileage*`):
+  claimable-£ summary + CSV, trips with a Business|Personal toggle (`-trip[data-class]`), purpose-needed
+  flag, manual add.
+- **Budget** (`/plan/[id]`) — `BudgetPanel` (`.cc-budget*`): spend-vs-cap bar (`-bar[data-over]`), cap,
+  expense lines + receipt attach/view, quick-add, submit-for-approval.
+- **Approvals** (`/workspace`, managers) — `ApprovalsQueue` (`.cc-approvals*`): submitted work-trip spend,
+  approve/reject. Personal spend never appears (RLS + in-app work filter).
+- **Tone:** numbers-led, the headline figure confident, over-cap/needs-purpose a calm rust nudge, sage
+  for done/approved.
+
+---
+
 ## Cross-cutting rules
 - **Tokens only** (`design-tokens.md`); no raw hex/px in components.
 - **Calm by default;** gold/accent is punctuation — the single live "now" pulse or the one action.
