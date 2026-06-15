@@ -881,3 +881,19 @@ Newest at the bottom of each section.
   into one collapsed **Trip tools** `<details>` region. Encoded a "coherence is part of done" standing
   order. *Still Design's:* the visual coherence round (finished cabin treatment, plan-page weighting,
   rail section-label rhythm) — a handoff pack to follow.
+
+- **D64 — Deep audit: a personal-mode RLS BREACH found and closed (migs 0043–0045).** Seven parallel
+  audit agents sense-checked every feature/function vs CLAUDE.md. The critical find: migration 0010's
+  pre-Mode `*_member_*` RLS policies (broad `is_workspace_member(workspace_id)`, no owner/mode guard)
+  were never dropped when 0030 added the correct mode-aware policies — and RLS is PERMISSIVE (OR'd),
+  so the broad policy won. Any workspace member could read/modify a colleague's PERSONAL-mode data
+  across ~20 tables (the 0039 sweep had fixed only expense_records SELECT). Personal rows confirmed to
+  carry workspace_id in prod, so the leak was live. Closed: **0043** core spine (itineraries/stops/
+  transitions, safe drop — companion policies existed), **0044** user-scoped private → owner-only +
+  itinerary-scoped → can_access_itinerary + expense write-side, **0045** legacy trip tables (journey_legs,
+  travel_bookings) gated via their linked itinerary. Verified via get_advisors. Also reconciled
+  migration-file drift (0038–0045 existed only in the DB → written back to supabase/migrations/).
+  **Outstanding (need a decision):** `contacts` has `mode` but no `user_id` (personal contact still
+  workspace-visible — needs an owner column); `expense_caps` writes aren't manager-gated in RLS;
+  gate-change/parking nudges false-fire on mock data (sample flag dropped before the nudge). Full
+  register in `docs/deep-audit-2026-06-15.md`.
