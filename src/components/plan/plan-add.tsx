@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addManualAnchor, addTransport } from "@/lib/actions/plan-edit";
+import { addManualAnchor, addBookingRun } from "@/lib/actions/plan-edit";
 import {
   type AccommodationDetails,
   type BoardBasis,
@@ -63,7 +63,8 @@ export function PlanAdd({
   const [accMore, setAccMore] = useState(false);
   const setA = (patch: Partial<AccommodationDetails>) => setAcc((p) => ({ ...p, ...patch }));
 
-  // transport fields
+  // transport fields — parity with the brief's booking card (One Toolkit, Two Views):
+  // changeovers, service number, seat, class, price.
   const [tmode, setTmode] = useState<TMode>("train");
   const [from, setFrom] = useState<Hub>({ id: null, label: null });
   const [to, setTo] = useState<Hub>({ id: null, label: null });
@@ -71,6 +72,14 @@ export function PlanAdd({
   const [depart, setDepart] = useState("");
   const [arrive, setArrive] = useState("");
   const [reference, setReference] = useState("");
+  const [serviceNumber, setServiceNumber] = useState("");
+  const [seatNo, setSeatNo] = useState("");
+  const [ticketClass, setTicketClass] = useState("");
+  const [tprice, setTprice] = useState("");
+  type Changeover = { hub: Hub; arriveTime: string; departTime: string };
+  const [changeovers, setChangeovers] = useState<Changeover[]>([]);
+  const setCo = (idx: number, patch: Partial<Changeover>) =>
+    setChangeovers((cs) => cs.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
 
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -79,6 +88,7 @@ export function PlanAdd({
     setTitle(""); setPlace(null); setArriveBy(""); setLeaveBy("");
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
+    setServiceNumber(""); setSeatNo(""); setTicketClass(""); setTprice(""); setChangeovers([]);
     setCheckInDate(journeyDate); setCheckInTime("15:00"); setCheckOutDate(journeyDate); setCheckOutTime("11:00");
     setAcc({}); setAccMore(false);
     setError(null);
@@ -106,18 +116,31 @@ export function PlanAdd({
         setError("Set depart and arrive times.");
         return;
       }
+      for (const c of changeovers) {
+        if (!c.hub.label) { setError("Pick the changeover station."); return; }
+        if (!c.arriveTime || !c.departTime) { setError("Set the changeover's arrive and depart times."); return; }
+      }
+      // Build the run's segments: from → co1 → … → coN → to. Each changeover is
+      // the join between two segments (arrive on one, depart on the next).
+      const segments = [] as Parameters<typeof addBookingRun>[0]["segments"];
+      let legFrom = from;
+      let legDepart = depart;
+      for (const c of changeovers) {
+        segments.push({ fromHubId: legFrom.id, fromLabel: legFrom.label!, toHubId: c.hub.id, toLabel: c.hub.label!, date, departTime: legDepart, arriveTime: c.arriveTime });
+        legFrom = c.hub;
+        legDepart = c.departTime;
+      }
+      segments.push({ fromHubId: legFrom.id, fromLabel: legFrom.label!, toHubId: to.id, toLabel: to.label!, date, departTime: legDepart, arriveTime: arrive, serviceNumber: serviceNumber || null, seat: seatNo || null });
+      // Service number / seat sit on the FIRST segment when there are no changeovers.
+      if (changeovers.length === 0) { segments[0].serviceNumber = serviceNumber || null; segments[0].seat = seatNo || null; }
       setPending(true);
-      void addTransport({
+      void addBookingRun({
         itineraryId: journeyId,
         mode: tmode,
-        fromHubId: from.id,
-        fromLabel: from.label,
-        toHubId: to.id,
-        toLabel: to.label,
-        date,
-        departTime: depart,
-        arriveTime: arrive,
         reference: reference || null,
+        price: tprice || null,
+        ticketType: ticketClass || null,
+        segments,
       }).then(done);
       return;
     }
@@ -217,6 +240,52 @@ export function PlanAdd({
                   <label>
                     <span className="cc-var-label">Arrive</span>
                     <input type="time" value={arrive} onChange={(e) => setArrive(e.target.value)} />
+                  </label>
+                </div>
+
+                {/* Changeovers — each splits the journey into two booked legs, like the
+                    brief's booking card. */}
+                {changeovers.map((co, idx) => (
+                  <div key={idx} className="cc-co-row">
+                    <div className="cc-co-head">
+                      <span className="cc-var-label">{tmode === "flight" ? "Connection" : "Changeover"} {idx + 1}</span>
+                      <button type="button" className="cc-co-remove" onClick={() => setChangeovers((cs) => cs.filter((_, i) => i !== idx))} aria-label="Remove changeover">Remove</button>
+                    </div>
+                    <TransportHubPicker kind={hubKind} value={co.hub} onChange={(h) => setCo(idx, { hub: h })} name={`co-${idx}`} placeholder={tmode === "flight" ? "Connecting airport" : "Changeover station"} />
+                    <div className="cc-dur-row">
+                      <label>
+                        <span className="cc-var-label">Arrive</span>
+                        <input type="time" value={co.arriveTime} onChange={(e) => setCo(idx, { arriveTime: e.target.value })} />
+                      </label>
+                      <label>
+                        <span className="cc-var-label">Depart onward</span>
+                        <input type="time" value={co.departTime} onChange={(e) => setCo(idx, { departTime: e.target.value })} />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+                <button type="button" className="cc-co-add" onClick={() => setChangeovers((cs) => [...cs, { hub: { id: null, label: null }, arriveTime: "", departTime: "" }])}>
+                  + Add {tmode === "flight" ? "connection" : "changeover"}
+                </button>
+
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">{tmode === "flight" ? "Flight no." : "Service no."} (optional)</span>
+                    <input type="text" value={serviceNumber} onChange={(e) => setServiceNumber(e.target.value)} placeholder={tmode === "flight" ? "BA2772" : "1F23"} />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Seat (optional)</span>
+                    <input type="text" value={seatNo} onChange={(e) => setSeatNo(e.target.value)} placeholder="12A" />
+                  </label>
+                </div>
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">{tmode === "flight" ? "Cabin" : "Class"} (optional)</span>
+                    <input type="text" value={ticketClass} onChange={(e) => setTicketClass(e.target.value)} placeholder={tmode === "flight" ? "Economy" : "Standard"} />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Price (optional)</span>
+                    <input type="text" value={tprice} onChange={(e) => setTprice(e.target.value)} placeholder="£48.50" />
                   </label>
                 </div>
                 <label className="cc-time-field">

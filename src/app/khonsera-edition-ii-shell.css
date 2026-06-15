@@ -504,6 +504,16 @@
   border-radius: var(--radius-md); padding: 12px 14px; font-family: var(--mono); font-size: 16px; color: var(--ink); }
 .cc-dur-row input:focus, .cc-time-field input:focus { outline: none; border-color: var(--gold); }
 .cc-sheet-note { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-dim); margin: 0; }
+
+/* Changeover rows in the plan-page booking add (One Toolkit parity) */
+.cc-co-row { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3);
+  border: 1px dashed var(--rule-2); border-radius: var(--radius-md); }
+.cc-co-head { display: flex; align-items: baseline; justify-content: space-between; }
+.cc-co-remove { background: none; border: none; cursor: pointer; font-family: var(--mono); font-size: 10px;
+  letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--ink-faint); }
+.cc-co-remove:hover { color: var(--danger); }
+.cc-co-add { align-self: flex-start; background: none; border: none; cursor: pointer; padding: 0;
+  font-family: var(--sans); font-size: 13px; color: var(--gold-2); }
 .cc-sheet-error { font-size: 13px; color: var(--rust); margin: 0; }
 .cc-sheet-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-2); }
 

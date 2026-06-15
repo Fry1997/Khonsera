@@ -421,6 +421,113 @@ export async function addTransport(input: {
   return { ok: true };
 }
 
+// One Toolkit, Two Views (deep audit 2026-06-15): the plan page must capture a
+// booked train/flight as richly as the brief — multiple changeover segments,
+// service number, seat, class, price. This is the manual twin of importBookingAsRun:
+// same departure → changeover(s) → arrival + locked-rides structure, but it takes
+// the hub IDs the user PICKED (precise) rather than re-resolving by name. addTransport
+// stays the single-leg path the Duffel flight booking lands through.
+export type BookingSegmentInput = {
+  fromHubId: string | null;
+  fromLabel: string;
+  toHubId: string | null;
+  toLabel: string;
+  date: string; // YYYY-MM-DD
+  departTime: string; // HH:MM
+  arriveTime: string; // HH:MM
+  serviceNumber?: string | null;
+  seat?: string | null;
+};
+
+export async function addBookingRun(input: {
+  itineraryId: string;
+  mode: "train" | "flight" | "bus" | "tube";
+  reference?: string | null;
+  price?: string | null;
+  ticketType?: string | null; // class / fare type
+  segments: BookingSegmentInput[];
+}): Promise<{ ok: boolean; error?: string }> {
+  const segs = input.segments;
+  if (segs.length === 0) return { ok: false, error: "Add at least one leg." };
+  for (const s of segs) {
+    if (!s.fromLabel.trim() || !s.toLabel.trim()) return { ok: false, error: "Each leg needs a from and a to." };
+    if (!s.departTime || !s.arriveTime) return { ok: false, error: "Each leg needs depart and arrive times." };
+  }
+  await requireUserContext();
+
+  const iso = (date: string, time: string) => wallClockToIso(date, time);
+  const first = segs[0];
+  const depIso = iso(first.date, first.departTime);
+  if (!depIso) return { ok: false, error: "Pick a valid departure time." };
+
+  const dep = await createStop({
+    itinerary_id: input.itineraryId,
+    type: "transit_departure",
+    title: first.fromLabel.trim(),
+    start_time: depIso,
+    is_time_fixed: true,
+    transport_hub_id: first.fromHubId ?? null,
+    metadata: {
+      kind: "transit_departure",
+      transport_mode: input.mode,
+      booking_reference: input.reference?.trim() || null,
+      price: input.price?.trim() || null,
+      ticket_type: input.ticketType?.trim() || null,
+      service_number: first.serviceNumber?.trim() || null,
+      seat: first.seat?.trim() || null,
+    },
+  });
+  if (!dep.ok) return { ok: false, error: "Couldn't add the booking." };
+  const runStopIds: string[] = [dep.value.id];
+
+  // Each subsequent segment's origin is a changeover: arrive on the previous leg,
+  // depart onward on this one.
+  for (let k = 1; k < segs.length; k++) {
+    const prev = segs[k - 1];
+    const cur = segs[k];
+    const co = await createStop({
+      itinerary_id: input.itineraryId,
+      type: "transit_changeover",
+      title: cur.fromLabel.trim(),
+      start_time: iso(prev.date, prev.arriveTime),
+      end_time: iso(cur.date, cur.departTime),
+      is_time_fixed: true,
+      transport_hub_id: cur.fromHubId ?? null,
+      metadata: { kind: "transit_changeover", transport_mode: input.mode, service_number: cur.serviceNumber?.trim() || null, seat: cur.seat?.trim() || null },
+    });
+    if (co.ok) runStopIds.push(co.value.id);
+  }
+
+  const last = segs[segs.length - 1];
+  const arr = await createStop({
+    itinerary_id: input.itineraryId,
+    type: "transit_arrival",
+    title: last.toLabel.trim(),
+    start_time: iso(last.date, last.arriveTime),
+    is_time_fixed: true,
+    transport_hub_id: last.toHubId ?? null,
+    metadata: { kind: "transit_arrival", transport_mode: input.mode, service_number: last.serviceNumber?.trim() || null },
+  });
+  if (!arr.ok) return { ok: false, error: "Couldn't add the booking arrival." };
+  runStopIds.push(arr.value.id);
+
+  for (let k = 0; k + 1 < runStopIds.length; k++) {
+    await upsertTransition({
+      itinerary_id: input.itineraryId,
+      from_stop_id: runStopIds[k],
+      to_stop_id: runStopIds[k + 1],
+      mode: input.mode as TransitionMode,
+      is_locked: true,
+    });
+  }
+
+  await ensureHomeBookend(input.itineraryId, { create: true });
+  await resequenceAndSolve(input.itineraryId);
+  revalidatePath(`/plan/${input.itineraryId}`);
+  revalidatePath("/wallet");
+  return { ok: true };
+}
+
 // Shared: re-sequence every stop in an Event chronologically (insert-by-time),
 // then re-solve + re-infer the span. Used by every Plan-flow mutation.
 async function resequenceAndSolve(itineraryId: string): Promise<void> {

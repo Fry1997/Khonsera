@@ -922,3 +922,15 @@ Newest at the bottom of each section.
   consolidation re-assessed:** not a safe blind sweep — inline money() is major-unit vs canonical
   minor-unit (÷100 risk), haversine copies use different radius constants in pure tested logic,
   flight-status-card needs the airport's tz not a blanket London. Deferred as deliberate, tested work.
+
+- **D67 — One Toolkit parity (transport) + haversine consolidation.** Closed the real "One Toolkit,
+  Two Views" gap: `PlanAdd`'s transport now captures changeovers (multi-segment), service/flight
+  number, seat, class/cabin and price — at parity with the brief's booking card — via a new
+  `addBookingRun` action that builds the same transit_departure → changeover(s) → arrival locked run
+  the brief + Gmail-import produce (takes the picker's hub IDs directly, so it doesn't re-resolve by
+  name like importBookingAsRun). The finders/calendar-import staying plan-only is a JUSTIFIED
+  asymmetry (they need an itineraryId; the brief is pre-creation) — documented, not closed.
+  Consolidated `haversine` (×4 forks, all 6371 km) onto the canonical `geo.haversineMeters` — mileage
+  engine + rail-network now share it; value-preserving (green mileage tests). Left as deliberate
+  (not blind) work: money major-vs-minor unit formatter, flight-status airport-tz, duration cosmetic
+  split. tsc + 326 tests + build green. Deep audit register fully actioned (D64–D67).

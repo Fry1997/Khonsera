@@ -3,6 +3,8 @@
 // feeds it trips, this values them. Rates + the 10,000-mile threshold are FIXED
 // statutory defaults (never learned): change them here when HMRC changes them.
 
+import { haversineMeters } from "@/lib/geo";
+
 export type Vehicle = "car" | "motorcycle" | "bicycle";
 
 // HMRC AMAP rates (pence/mile) are now YEAR-EFFECTIVE — the car/van rate rose to
@@ -56,17 +58,10 @@ export function passengerAmountPence(miles: number, passengers: number, taxYear:
 export function trackDistanceMeters(points: { lat: number; lng: number }[]): number {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
-    total += haversine(points[i - 1], points[i]);
+    // One canonical great-circle helper (geo.ts) — same 6371 km radius, no fork.
+    total += haversineMeters(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng);
   }
   return total;
-}
-
-const EARTH_M = 6_371_000;
-function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const s = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * EARTH_M * Math.asin(Math.sqrt(s));
 }
 
 // The UK tax year an instant falls in (6 April → 5 April). Returns the start

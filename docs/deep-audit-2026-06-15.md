@@ -61,24 +61,27 @@ reconciled migration-file drift — **0038–0045 existed only in the DB; writte
   convention; the per-leg CompareSheet + FlightFinder are the real comparison surfaces.
 - **Stale legacy nav cluster — FIXED (deleted).** `mobile-topbar.tsx`/`mobile-nav.tsx`/`nav-tabs.tsx`
   were a closed, never-mounted cluster referencing the retired `/dashboard`; removed (git preserves).
-- **"One Toolkit, Two Views" — PARTIALLY a justified asymmetry, partly real debt.** The flight/stay
-  finders + calendar import are plan-only *by architecture*: they require an `itineraryId` and the
-  brief is pre-creation (you book after build), so this asymmetry is legitimate — documented, not a
-  bug. The real gap is the plan page's transport-add (`PlanAdd`) being thinner than the brief's
-  `transport-booking-card` (no changeover/service/seat/class/price). Closing it cleanly = sharing the
-  one transport card across both flows — a scoped component refactor, OUTSTANDING.
+- **"One Toolkit, Two Views" — FIXED (the real gap) + a documented justified asymmetry.** The
+  flight/stay finders + calendar import are plan-only *by architecture* (they need an `itineraryId`;
+  the brief is pre-creation), so that asymmetry is legitimate — documented, not a bug. The real gap —
+  the plan page's transport-add being thinner than the brief's card — is **closed**: `PlanAdd`'s
+  transport now captures changeovers (multi-segment), service/flight number, seat, class/cabin, and
+  price, routed through a new `addBookingRun` action that builds the same departure → changeover(s) →
+  arrival locked run the brief and Gmail-import produce. A booked train added on the plan page is now
+  as rich as one added on the brief.
 
-## Utility consolidation — re-assessed: NOT a safe blind sweep
+## Utility consolidation — haversine FIXED; the rest documented as deliberate work
 
-The architecture agent flagged duplicate `haversine`/`money`/`time`/`duration` helpers. On
-inspection each has a wrinkle that makes mechanical consolidation risky, so it's deferred as
-*careful* work, not a quick win: the inline `money()` copies format **major-unit** amounts while the
-canonical `formatMoney` takes **minor units** (a blind swap = ÷100 bugs); the `haversine` copies use
-different earth-radius constants inside **pure, tested** mileage/rail logic (consolidating could shift
-computed distances); `flight-status-card`'s tz-less time formatter needs the **airport's** local zone,
-not a blanket Europe/London (wrong for international flights). The duration "12m"/"12 min" split is the
-only purely-cosmetic one. Recommendation: consolidate deliberately with a shared major-unit money
-formatter + a single radius constant, each with a test, rather than in one sweep.
+- **`haversine` ×4 → consolidated (FIXED).** All forks used the same 6371 km radius, so routing the
+  mileage engine and rail-network through the canonical `haversineMeters` (`geo.ts`) is
+  value-preserving — confirmed by the green mileage tests. (`from-stops`'s display-miles variant kept
+  its antipode guard; geo is the shared core.)
+- **The rest stay documented (NOT a blind sweep), each for a real reason:** the inline `money()`
+  copies format **major-unit** amounts while the canonical `formatMoney` takes **minor units** (a
+  blind swap = ÷100 bugs); `flight-status-card`'s tz-less formatter needs the **airport's** local
+  zone, not a blanket Europe/London (wrong for international flights); the duration "12m"/"12 min"
+  split is purely cosmetic. Each wants a deliberate fix (a shared major-unit money formatter; an
+  airport-tz lookup), not a mechanical merge.
 - **Mock-booked flights show a real "Manage / cancel"** with no "· sample" cue (ManageBookings).
 - **Stay free-cancellation deadline computed wrong** (`duffel.ts` `mapStayRates`) — picks the first
   partial-refund window, not the last fully-refundable one (inert behind the Stays 403 today).
