@@ -377,3 +377,20 @@ surface. Additive over the `.cc-conn*` shell. Surfaces to skin:
   with **Manage → See refund → Confirm cancel / Keep it** (flights show the refund quote *before* committing;
   stays cancel + report the refund). *Tone:* calm, reversible-feeling, the refund honest and up-front; rust
   only on a genuine error. Change-flight is positioned. *Design owns `.cc-manage*`.*
+
+## DESIGN ROUND 12 (connections) — INTEGRATED (2026-06-15) ✓
+`for-code-r12` applied — **replaced** the R9 `khonsera-edition-iii-connections.css` (same filename + last
+import slot). Reconciled all three flows to the superseding contract; stripped every inline placeholder
+style (the skin owns it now):
+- **FlightFinder** — `.cc-conn-title`, `.cc-conn-triptype`, `--airport`/`--num` fields, `.cc-conn-suggest`
+  (with `-suggest-iata`/`-suggest-name`/`.city`, `data-type`), `.cc-conn-controls`/`-control`, depth chips
+  as `.cc-conn-chip[data-tone]` (good = baggage/refundable/changeable/return, dim = carbon/non-refundable),
+  `.stops[data-direct]`, seat picker (`.cc-conn-seatgrid` flat 7-col grid + `.aisle`, `.cc-conn-seat[data-state]`,
+  `.cc-conn-seats-lead .title/.note`), `.cc-conn-checkin` handoff line.
+- **StayFinder** — `.cc-stay-card` (`.rating`/`.board` in summary, `.per` + `.cc-conn-offer-total`),
+  `.cc-stay-detail` (`-detail-meta` `.rating/.score/.addr/.n`, `.cc-stay-amenities`), `.cc-stay-rate`
+  (`-name/-chips/-right/-price/.per/-book`), `.cc-stay-limit` honest line.
+- **ManageBookings** — `.cc-manage` (`-head/-row/-kind/-label/-ref/-action`), `.cc-manage-refund`
+  (`-line/.amt/-actions`), `.cc-manage-cancel`/`-keep`, `.cc-manage-done/-error`.
+- No token requests; all tokens verified. Redlines + map saved to `docs/design/edition-iii-r12-*`.
+  Build green · 322 tests · tsc clean.

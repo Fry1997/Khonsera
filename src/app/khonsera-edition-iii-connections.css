@@ -1,123 +1,141 @@
 /* ============================================================================
- * KHONSERA · EDITION III — CONNECTIONS / BOOKING  ·  P14  (Round 9)
+ * KHONSERA · EDITION III — CONNECTIONS / BOOKING  ·  P14 + ED-Flight + ED-Stay
+ * SUPERSEDES the Round-9 connections skin. Same filename → replaces it in the
+ * repo. The Flights|Stays toggle is gone: two independent flows (FlightFinder,
+ * StayFinder) that share this `.cc-conn*` shell, plus ManageBookings.
  * ----------------------------------------------------------------------------
- * ADDITIVE. Import LAST, after the round-8 care layer:
+ * ADDITIVE. Import LAST, after khonsera-edition-iii-care.css. Tokens only;
+ * no markup/JS/class changes; globals.css untouched. The honesty cue "· sample"
+ * stays legible-but-secondary while a provider is mocked.
  *
- *   …
- *   import "./khonsera-edition-iii-live.css";    // round 7
- *   import "./khonsera-edition-iii-care.css";    // round 8
- *   import "./khonsera-edition-iii-connections.css";  // ← THIS FILE (round 9)
- *
- * Skins the ConnectionsFinder — search → compare → book for flights + stays,
- * on /plan/[id]. The "buy without leaving Khonsera" moment. Concierge restraint:
- * the comparison legible at a glance, price in mono, ONE primary action per row,
- * the passenger step unhurried, the "· sample" honesty cue kept while mocked.
- *
- * Tokens only; no markup/JS/class changes; globals.css untouched.
+ * Tone — a considered travel desk, not a metasearch wall. Comparison glanceable;
+ * price always mono + the dominant figure; ONE primary action per row; fare
+ * honesty (baggage/refundable) prominent because it's the edge; seats calm; the
+ * airline check-in handoff stated plainly. Severity discipline: sage = relief,
+ * gold = the one action / not-live-yet, rust = a genuine error only.
  * ========================================================================== */
 
-/* ───────────────────────────────────────────────────────────────────────────
- * Shell — the finder opens as a calm panel in the action row (a sheet-like
- * surface), not a modal takeover. It's a considered desk, not a search engine.
- * ───────────────────────────────────────────────────────────────────────── */
-.cc-conn {
-  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
-  box-shadow: var(--shadow); overflow: hidden;
-}
-
-/* head + tabs ------------------------------------------------------------- */
-.cc-conn-head {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-4) var(--space-5) 0;
-}
-.cc-conn-tabs { display: inline-flex; gap: 2px; background: var(--card-2);
-  border: 1px solid var(--rule); border-radius: 999px; padding: 3px; }
-.cc-conn-tab {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink-dim); padding: 8px 16px; border-radius: 999px; border: none; background: none;
-  cursor: pointer; transition: color var(--dur-base) var(--ease-standard);
-}
-.cc-conn-tab[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+/* ── shell ─────────────────────────────────────────────────────────────────── */
+.cc-conn { background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  box-shadow: var(--shadow); overflow: hidden; }
+.cc-conn-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5) 0; }
+.cc-conn-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 16px;
+  letter-spacing: -0.02em; color: var(--ink); }
 .cc-conn-sample { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--ink-faint); }
 .cc-conn-close { margin-left: auto; background: none; border: none; color: var(--ink-dim); cursor: pointer;
   width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
 .cc-conn-close:hover { background: var(--ink-soft); color: var(--ink); }
 
-/* search form ------------------------------------------------------------- */
-.cc-conn-form {
-  display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3);
-  padding: var(--space-4) var(--space-5) var(--space-4-5);
-  border-bottom: 1px solid var(--rule);
-}
-.cc-conn-field { display: flex; flex-direction: column; gap: var(--space-1-5); min-width: 0; }
+/* trip-type segmented control (Return | One-way) */
+.cc-conn-triptype { display: inline-flex; gap: 2px; background: var(--card-2); border: 1px solid var(--rule);
+  border-radius: 999px; padding: 3px; }
+.cc-conn-triptype .cc-conn-tab { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-dim); padding: 7px 15px; border-radius: 999px; border: none;
+  background: none; cursor: pointer; }
+.cc-conn-triptype .cc-conn-tab[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* ── search form ───────────────────────────────────────────────────────────── */
+.cc-conn-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-4-5); border-bottom: 1px solid var(--rule); }
+.cc-conn-field { display: flex; flex-direction: column; gap: var(--space-1-5); min-width: 0; position: relative; }
 .cc-conn-lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--ink-dim); }
-.cc-conn-form .cc-field, .cc-conn-field .cc-field {
-  background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
-  padding: 11px 13px; font-family: var(--sans); font-size: 14px; color: var(--ink); min-width: 0;
-}
-.cc-conn-field--iata .cc-field { font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
-  width: 84px; }
-.cc-conn-near { flex: 1 1 200px; }
-.cc-conn-near .cc-field { width: 100%; }
-.cc-conn-form .cc-btn, .cc-conn-form .cc-btn-gold {
-  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
-  padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px; cursor: pointer;
-}
+.cc-conn-field .cc-field { background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
+  padding: 11px 13px; font-family: var(--sans); font-size: 14px; color: var(--ink); min-width: 0; width: 100%; }
+.cc-conn-field--num .cc-field { width: 72px; }
+.cc-conn-form .cc-btn, .cc-conn-form .cc-btn-gold { background: var(--gold); color: #fff; border: 1px solid var(--gold);
+  border-radius: 5px; padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px;
+  cursor: pointer; }
 
-/* ───────────────────────────────────────────────────────────────────────────
- * Compare list — one fare / stay per row, legible at a glance.
- * Title (what it is) · mono summary (the shape) · mono price · one action.
- * ───────────────────────────────────────────────────────────────────────── */
-.cc-conn-list { display: flex; flex-direction: column; }
-.cc-conn-list-head { display: flex; align-items: baseline; justify-content: space-between;
-  padding: var(--space-4) var(--space-5) var(--space-2); }
+/* ── airport / location autocomplete — the headline UX win (type a name) ───── */
+.cc-conn-field--airport, .cc-conn-near { flex: 1 1 220px; }
+.cc-conn-field--airport .cc-field, .cc-conn-near .cc-field { width: 100%; }
+.cc-conn-suggest { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  background: var(--card); border: 1px solid var(--rule-2); border-radius: 6px; box-shadow: var(--shadow-lg);
+  overflow: hidden; max-height: 260px; overflow-y: auto; }
+.cc-conn-suggest-item { display: flex; align-items: baseline; gap: var(--space-3); width: 100%; text-align: left;
+  padding: 11px 14px; border: none; background: none; cursor: pointer; border-top: 1px solid var(--rule); }
+.cc-conn-suggest-item:first-child { border-top: none; }
+.cc-conn-suggest-item:hover, .cc-conn-suggest-item[data-active="true"] { background: var(--sand); }
+.cc-conn-suggest-iata { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--ink);
+  flex: none; width: 42px; }
+.cc-conn-suggest-item[data-type="city"] .cc-conn-suggest-iata { color: var(--gold-2); }   /* the metro/all-airports option */
+.cc-conn-suggest-name { font-size: 13.5px; color: var(--ink-2); min-width: 0; }
+.cc-conn-suggest-name .city { color: var(--ink-dim); }
+
+/* ── controls (filter / sort) in the list head ────────────────────────────── */
+.cc-conn-list-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap;
+  gap: var(--space-2); padding: var(--space-4) var(--space-5) var(--space-2); }
 .cc-conn-list-count { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--ink-dim); }
-.cc-conn-list-sort { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint); }
+.cc-conn-controls { display: inline-flex; align-items: center; gap: var(--space-3); }
+.cc-conn-control { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.04em; color: var(--ink-2); cursor: pointer; }
+.cc-conn-control input { accent-color: var(--gold); }
+.cc-conn-control select, .cc-conn-control .cc-field { font-family: var(--mono); font-size: 11px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px; padding: 6px 9px; cursor: pointer; }
 
-.cc-conn-offer {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2) var(--space-4);
-  padding: var(--space-4) var(--space-5); border-top: 1px solid var(--rule);
-  transition: background var(--dur-base) var(--ease-standard);
-}
+/* ── compare list — one offer per row ──────────────────────────────────────── */
+.cc-conn-list { display: flex; flex-direction: column; }
+.cc-conn-offer { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) var(--space-5); border-top: 1px solid var(--rule); width: 100%; text-align: left;
+  background: none; border-left: none; border-right: none; border-bottom: none; cursor: pointer;
+  transition: background var(--dur-base) var(--ease-standard); }
 .cc-conn-offer:hover { background: var(--sand); }
 .cc-conn-offer-main { min-width: 0; }
 .cc-conn-offer-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15.5px;
   letter-spacing: -0.015em; color: var(--ink); display: flex; align-items: baseline; gap: var(--space-2); }
-/* the carrier/operator badge — quiet */
 .cc-conn-offer-op { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--ink-dim); }
-/* the shape line: times, stops, duration — all mono, the scannable spine */
 .cc-conn-offer-summary { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-top: 4px;
   font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
 .cc-conn-offer-summary .stops { color: var(--ink-dim); }
-.cc-conn-offer-summary .stops[data-direct="true"] { color: var(--success); }   /* direct = quiet relief */
-.cc-conn-offer-summary .layover { color: var(--ink-dim); }
-/* fare brand chips (Economy / flexible) — faint */
-.cc-conn-offer-fare { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-faint); margin-top: 5px; }
-/* price + action, right-aligned, price the dominant figure */
+.cc-conn-offer-summary .stops[data-direct="true"] { color: var(--success); }    /* direct = quiet relief */
+.cc-conn-offer-summary .layover, .cc-conn-offer-summary .board { color: var(--ink-dim); }
+.cc-conn-offer-summary .rating { color: var(--gold-2); }
 .cc-conn-offer-right { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
 .cc-conn-offer-price { font-family: var(--mono); font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em; }
 .cc-conn-offer-price .per { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em; }
-.cc-conn-offer-action {
-  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+.cc-conn-offer-total { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-align: right; }
+.cc-conn-offer-action { background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
   padding: 9px 16px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer;
-  white-space: nowrap;
-}
+  white-space: nowrap; }
 .cc-conn-offer-action[data-variant="quiet"] { background: transparent; color: var(--gold-2); border-color: var(--rule-2); }
 
-/* stays-specific: the rating + board line reads in the summary slot */
-.cc-conn-offer-summary .rating { color: var(--gold-2); }
-.cc-conn-offer-summary .board { color: var(--ink-2); }
+/* ── depth chips — fare honesty, our edge. baggage / refundable / carbon ───── */
+.cc-conn-offer-chips { display: flex; flex-wrap: wrap; gap: var(--space-1-5); margin-top: var(--space-2-5); }
+.cc-conn-chip { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; color: var(--ink-2);
+  background: var(--card-2); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 8px; white-space: nowrap; }
+.cc-conn-chip[data-tone="good"] { color: var(--success); border-color: color-mix(in oklab, var(--success) 30%, var(--rule)); }
+.cc-conn-chip[data-tone="dim"] { color: var(--ink-faint); }
 
-/* ───────────────────────────────────────────────────────────────────────────
- * Passenger capture — the step before a flight order. Unhurried, considered;
- * a clean form, not a checkout wall.
- * ───────────────────────────────────────────────────────────────────────── */
+/* ── seat picker — best-effort grid; honest "assigned at check-in" otherwise ─ */
+.cc-conn-seats { padding: var(--space-5); }
+.cc-conn-seats-lead { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-4); }
+.cc-conn-seats-lead .title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 17px;
+  letter-spacing: -0.02em; color: var(--ink); }
+.cc-conn-seats-lead .note { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-dim);
+  margin-left: auto; }
+.cc-conn-seatgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); max-width: 320px; }
+.cc-conn-seatgrid .aisle { grid-column: 4; }
+.cc-conn-seat { aspect-ratio: 1; border-radius: 5px 5px 7px 7px; border: 1px solid var(--rule-2);
+  background: var(--card); font-family: var(--mono); font-size: 9px; color: var(--ink-dim); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; min-height: 30px; }
+.cc-conn-seat[data-state="free"] { border-color: color-mix(in oklab, var(--success) 36%, var(--rule)); color: var(--success); }
+.cc-conn-seat[data-state="paid"] { border-color: var(--gold-soft); color: var(--gold-2); background: var(--gold-tint); }
+.cc-conn-seat[data-state="taken"] { background: var(--card-2); color: var(--ink-faint); border-style: dashed; cursor: not-allowed; }
+.cc-conn-seat[data-state="selected"] { background: var(--gold); border-color: var(--gold); color: #fff; }
+.cc-conn-seats-legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4);
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; color: var(--ink-dim); }
+.cc-conn-seats-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cc-conn-seats-legend i { width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--rule-2); }
+.cc-conn-seats-legend .free i { border-color: var(--success); }
+.cc-conn-seats-legend .paid i { background: var(--gold-tint); border-color: var(--gold-soft); }
+.cc-conn-seats-legend .sel i { background: var(--gold); border-color: var(--gold); }
+
+/* ── passenger capture ─────────────────────────────────────────────────────── */
 .cc-conn-pax { padding: var(--space-5); }
 .cc-conn-pax-lead { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-2); }
 .cc-conn-pax-lead .title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 18px;
@@ -127,54 +145,35 @@
 .cc-conn-pax-note { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--ink-dim);
   margin-bottom: var(--space-4); }
 .cc-conn-pax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
-.cc-conn-pax-grid .cc-conn-field { gap: var(--space-1); }
 .cc-conn-pax-grid .span-2 { grid-column: 1 / -1; }
-.cc-conn-pax-grid .cc-field {
-  background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
-  padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--sans); width: 100%;
-}
+.cc-conn-pax-grid .cc-field { background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
+  padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--sans); width: 100%; }
 .cc-conn-pax-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5);
   padding-top: var(--space-4); border-top: 1px solid var(--rule); }
-.cc-conn-pax-actions .cc-conn-confirm {
-  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
-  padding: 13px 22px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 14px; cursor: pointer;
-}
-.cc-conn-pax-actions .cc-conn-confirm .price { font-family: var(--mono); margin-left: 8px; font-variant-numeric: tabular-nums; }
-.cc-conn-pax-actions .cc-conn-back { background: none; border: none; color: var(--ink-dim);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.cc-conn-confirm { background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  padding: 13px 22px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 14px; cursor: pointer; }
+.cc-conn-confirm .price { font-family: var(--mono); margin-left: 8px; font-variant-numeric: tabular-nums; }
+.cc-conn-back { background: none; border: none; color: var(--ink-dim); font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
 .cc-conn-pax-secure { margin-left: auto; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--ink-faint); display: inline-flex; align-items: center; gap: 6px; }
 
-/* ───────────────────────────────────────────────────────────────────────────
- * States — error / pending / confirmed / empty. Severity discipline holds.
- * ───────────────────────────────────────────────────────────────────────── */
-.cc-conn-error {
-  display: flex; align-items: flex-start; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
-  padding: var(--space-3-5) var(--space-4); border-radius: 6px;
-  background: var(--rust-2); color: var(--ink); font-size: 13.5px; line-height: 1.45;
-}
+/* ── states ────────────────────────────────────────────────────────────────── */
+.cc-conn-error { display: flex; align-items: flex-start; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
+  padding: var(--space-3-5) var(--space-4); border-radius: 6px; background: var(--rust-2); color: var(--ink);
+  font-size: 13.5px; line-height: 1.45; }
 .cc-conn-error::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--rust);
   flex: none; margin-top: 6px; }
 .cc-conn-error strong { color: var(--rust); font-weight: var(--fw-medium); }
-
-/* pending — "Stays not activated, sample". Gold (informational, not failure). */
-.cc-conn-pending {
-  display: flex; align-items: center; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
-  padding: var(--space-3-5) var(--space-4); border-radius: 6px;
-  background: var(--gold-tint); color: var(--ink-2); font-size: 13.5px; line-height: 1.45;
-}
-.cc-conn-pending::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold);
-  flex: none; }
+.cc-conn-pending { display: flex; align-items: center; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
+  padding: var(--space-3-5) var(--space-4); border-radius: 6px; background: var(--gold-tint); color: var(--ink-2);
+  font-size: 13.5px; line-height: 1.45; }
+.cc-conn-pending::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex: none; }
 .cc-conn-pending .sample { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--ink-faint); }
-
-/* confirmed — the booked moment. Sage, calm, final; it lands in the day. */
-.cc-conn-confirmed {
-  display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-5);
-}
-.cc-conn-confirmed-mark { flex: none; width: 30px; height: 30px; border-radius: 50%;
-  border: 1.5px solid var(--success); color: var(--success); display: flex; align-items: center; justify-content: center;
-  margin-top: 1px; }
+.cc-conn-confirmed { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-5); }
+.cc-conn-confirmed-mark { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--success);
+  color: var(--success); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
 .cc-conn-confirmed-mark::before { content: "✓"; font-size: 14px; }
 .cc-conn-confirmed-title { font-family: var(--display); font-weight: var(--fw-medium); font-size: 17px;
   letter-spacing: -0.02em; color: var(--ink); }
@@ -182,11 +181,82 @@
 .cc-conn-confirmed-detail .ref { font-family: var(--mono); color: var(--ink); }
 .cc-conn-confirmed-tail { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint);
   margin-top: var(--space-2); }
-
-/* empty — a single calm line, never a dead panel. */
-.cc-conn-empty {
-  padding: var(--space-8) var(--space-5); text-align: center;
-  font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-dim);
-}
+/* the honest check-in handoff — matter-of-fact, not an apology */
+.cc-conn-checkin { display: flex; align-items: flex-start; gap: var(--space-2-5); margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-3-5); border-radius: 6px; background: var(--sand); border: 1px solid var(--rule);
+  font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+.cc-conn-checkin::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink-dim);
+  flex: none; margin-top: 6px; }
+.cc-conn-empty { padding: var(--space-8) var(--space-5); text-align: center; font-family: var(--serif);
+  font-style: italic; font-size: 15px; color: var(--ink-dim); }
 .cc-conn-empty .hint { display: block; font-family: var(--mono); font-style: normal; font-size: 10px;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-top: var(--space-2); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ED-Stay · the hotel flow (.cc-stay*) — result card → property → rates
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.cc-stay-card { /* a clickable .cc-conn-offer; price-per-night dominant, total beneath */ }
+.cc-stay-card .cc-conn-offer-price .per { display: inline; }
+
+.cc-stay-detail { padding: var(--space-5); }
+.cc-stay-gallery { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: repeat(2, 78px); gap: 4px;
+  border-radius: 8px; overflow: hidden; margin-bottom: var(--space-4); }
+.cc-stay-gallery .shot { background: var(--card-2); border: 1px solid var(--rule); }
+.cc-stay-gallery .shot:first-child { grid-row: 1 / 3; }
+.cc-stay-detail-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3); }
+.cc-stay-detail-meta .name { font-family: var(--display); font-weight: var(--fw-medium); font-size: 22px;
+  letter-spacing: -0.025em; color: var(--ink); flex: 1 1 100%; }
+.cc-stay-detail-meta .rating { font-family: var(--mono); font-size: 12px; color: var(--gold-2); }
+.cc-stay-detail-meta .score { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.cc-stay-detail-meta .score .n { color: var(--success); }
+.cc-stay-detail-meta .addr { font-size: 13px; color: var(--ink-dim); flex: 1 1 100%; }
+.cc-stay-amenities { display: flex; flex-wrap: wrap; gap: var(--space-1-5); margin-bottom: var(--space-4); }
+.cc-stay-rate { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) 0; border-top: 1px solid var(--rule); }
+.cc-stay-rate-name { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15px;
+  letter-spacing: -0.015em; color: var(--ink); }
+.cc-stay-rate-chips { display: flex; flex-wrap: wrap; gap: var(--space-1-5); margin-top: var(--space-2); }
+.cc-stay-rate-right { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
+.cc-stay-rate-price { font-family: var(--mono); font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cc-stay-rate-price .per { font-size: 10px; color: var(--ink-faint); }
+.cc-stay-rate-book { background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  padding: 9px 16px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer; }
+.cc-stay-limit { display: flex; align-items: flex-start; gap: var(--space-2-5); margin-top: var(--space-4);
+  padding-top: var(--space-4); border-top: 1px solid var(--rule); font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); }
+.cc-stay-limit::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint);
+  flex: none; margin-top: 6px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ED · ManageBookings (.cc-manage*) — booked connections + cancel/refund
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.cc-manage { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.cc-manage-head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-dim); padding: var(--space-4) var(--space-5) var(--space-2); }
+.cc-manage-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-1) var(--space-4);
+  padding: var(--space-4) var(--space-5); border-top: 1px solid var(--rule); }
+.cc-manage-kind { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-dim); }
+.cc-manage-label { font-family: var(--display); font-weight: var(--fw-medium); font-size: 15px; letter-spacing: -0.015em;
+  color: var(--ink); }
+.cc-manage-ref { grid-column: 2; font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+.cc-manage-action { background: transparent; color: var(--gold-2); border: 1px solid var(--rule-2); border-radius: 5px;
+  padding: 8px 14px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+/* the refund quote shown BEFORE committing — calm, reversible-feeling */
+.cc-manage-refund { grid-column: 1 / -1; margin-top: var(--space-3); padding: var(--space-3-5) var(--space-4);
+  border-radius: 6px; background: var(--sand); border: 1px solid var(--rule); }
+.cc-manage-refund-line { font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+.cc-manage-refund-line .amt { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.cc-manage-refund-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); }
+.cc-manage-cancel { background: var(--rust); color: #fff; border: 1px solid var(--rust); border-radius: 5px;
+  padding: 10px 16px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer; }
+.cc-manage-keep { background: none; border: none; color: var(--ink-dim); font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.cc-manage-done { display: flex; align-items: flex-start; gap: var(--space-2-5); grid-column: 1 / -1; margin-top: var(--space-2);
+  font-size: 13px; color: var(--ink-2); }
+.cc-manage-done::before { content: "✓"; color: var(--success); flex: none; }
+.cc-manage-error { grid-column: 1 / -1; margin-top: var(--space-2); font-size: 12.5px; color: var(--ink);
+  display: flex; align-items: flex-start; gap: var(--space-2); }
+.cc-manage-error::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--rust);
+  flex: none; margin-top: 6px; }
+.cc-manage-error strong { color: var(--rust); font-weight: var(--fw-medium); }

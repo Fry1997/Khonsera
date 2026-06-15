@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { cancelFlightPreview, cancelFlightConfirm, cancelStayBooking, type BookedConnection } from "@/lib/actions/connections";
 
 // Manage booking (ED-Flight/Stay) — view + cancel the day's Duffel-booked flights
-// and stays, with the **refund shown before you commit** (the honest two-step:
-// quote → confirm). Change-flight (search new slices) is the positioned next step.
-// Functional + `.cc-manage*` contract classes; Design skins later.
+// and stays, with the refund shown before you commit (quote → confirm). Skin =
+// Design Round 12 (`.cc-manage*`); NO inline styles. Change-flight is positioned.
 export function ManageBookings({ itineraryId, bookings }: { itineraryId: string; bookings: BookedConnection[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -34,8 +33,7 @@ export function ManageBookings({ itineraryId, bookings }: { itineraryId: string;
       const res = await cancelFlightConfirm({ cancellationId: quote.cancellationId, departureStopId: b.stopId, itineraryId });
       setBusy(null); setQuote(null); setOpenId(null);
       if (!res.ok) return setError(res.error ?? "Cancellation failed.");
-      setDone(`${b.label} cancelled.`);
-      router.refresh();
+      setDone(`${b.label} cancelled.`); router.refresh();
     });
   }
   function cancelStay(b: Extract<BookedConnection, { kind: "stay" }>) {
@@ -44,41 +42,43 @@ export function ManageBookings({ itineraryId, bookings }: { itineraryId: string;
       const res = await cancelStayBooking({ bookingId: b.bookingId, stopId: b.stopId, itineraryId });
       setBusy(null); setOpenId(null);
       if (!res.ok) return setError(res.error ?? "Cancellation failed.");
-      setDone(`${b.label} cancelled${res.refund ? ` — ${money(res.refund.amount, res.refund.currency)} refunded` : ""}.`);
-      router.refresh();
+      setDone(`${b.label} cancelled${res.refund ? ` — ${money(res.refund.amount, res.refund.currency)} refunded` : ""}.`); router.refresh();
     });
   }
 
   return (
-    <section className="cc-manage" style={{ border: "1px solid var(--rule)", borderRadius: "var(--radius-lg, 12px)", padding: "var(--space-3) var(--space-4)", background: "var(--card)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-      <span className="cc-eyebrow">Booked connections</span>
-      {done ? <p className="cc-manage-done" style={{ color: "var(--sage, var(--ink))", fontSize: "var(--fs-label)" }}>{done}</p> : null}
-      {error ? <p className="cc-manage-error" style={{ color: "var(--rust)", fontSize: "var(--fs-label)" }}>{error}</p> : null}
+    <section className="cc-manage">
+      <div className="cc-manage-head">Booked connections</div>
+      {done ? <p className="cc-manage-done">{done}</p> : null}
+      {error ? <p className="cc-manage-error">{error}</p> : null}
       {bookings.map((b) => (
-        <div key={b.stopId} className="cc-manage-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-2)" }}>
-          <span style={{ color: "var(--ink)" }}><span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 8 }}>{b.kind}</span>{b.label}</span>
-          <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)" }}>{b.reference}</span>
-          <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8 }}>
-            {openId === b.stopId ? (
-              b.kind === "flight" && quote?.stopId === b.stopId ? (
-                <>
-                  <span style={{ fontSize: "var(--fs-label)", color: "var(--ink)" }}>Refund {quote.refund ? money(quote.refund.amount, quote.refund.currency) : "£0"} — confirm?</span>
-                  <button type="button" className="cc-btn cc-btn-gold" disabled={pending} onClick={() => confirmFlight(b)}>{busy === b.stopId ? "Cancelling…" : "Confirm cancel"}</button>
-                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setQuote(null); setOpenId(null); }}>Keep it</button>
-                </>
-              ) : b.kind === "stay" ? (
-                <>
-                  <span style={{ fontSize: "var(--fs-label)", color: "var(--ink)" }}>Cancel this stay?</span>
-                  <button type="button" className="cc-btn cc-btn-gold" disabled={pending} onClick={() => cancelStay(b)}>{busy === b.stopId ? "Cancelling…" : "Confirm cancel"}</button>
-                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpenId(null)}>Keep it</button>
-                </>
-              ) : (
-                <button type="button" className="cc-btn cc-btn-ghost" disabled={pending} onClick={() => previewFlight(b as Extract<BookedConnection, { kind: "flight" }>)}>{busy === b.stopId ? "Checking…" : "See refund"}</button>
-              )
+        <div key={b.stopId} className="cc-manage-row">
+          <span className="cc-manage-kind">{b.kind}</span>
+          <span className="cc-manage-label">{b.label}</span>
+          <span className="cc-manage-ref">{b.reference}</span>
+          {openId === b.stopId ? (
+            b.kind === "flight" && quote?.stopId === b.stopId ? (
+              <span className="cc-manage-refund">
+                <span className="cc-manage-refund-line">Refund <span className="amt">{quote.refund ? money(quote.refund.amount, quote.refund.currency) : "£0"}</span> — confirm?</span>
+                <span className="cc-manage-refund-actions">
+                  <button type="button" className="cc-manage-cancel" disabled={pending} onClick={() => confirmFlight(b)}>{busy === b.stopId ? "Cancelling…" : "Confirm cancel"}</button>
+                  <button type="button" className="cc-manage-keep" onClick={() => { setQuote(null); setOpenId(null); }}>Keep it</button>
+                </span>
+              </span>
+            ) : b.kind === "stay" ? (
+              <span className="cc-manage-refund">
+                <span className="cc-manage-refund-line">Cancel this stay?</span>
+                <span className="cc-manage-refund-actions">
+                  <button type="button" className="cc-manage-cancel" disabled={pending} onClick={() => cancelStay(b)}>{busy === b.stopId ? "Cancelling…" : "Confirm cancel"}</button>
+                  <button type="button" className="cc-manage-keep" onClick={() => setOpenId(null)}>Keep it</button>
+                </span>
+              </span>
             ) : (
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setOpenId(b.stopId); setQuote(null); setError(null); }}>Manage</button>
-            )}
-          </span>
+              <button type="button" className="cc-manage-action" disabled={pending} onClick={() => previewFlight(b as Extract<BookedConnection, { kind: "flight" }>)}>{busy === b.stopId ? "Checking…" : "See refund"}</button>
+            )
+          ) : (
+            <button type="button" className="cc-manage-action" onClick={() => { setOpenId(b.stopId); setQuote(null); setError(null); }}>Manage</button>
+          )}
         </div>
       ))}
     </section>
