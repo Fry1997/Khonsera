@@ -1,0 +1,78 @@
+name: Build UK basemap (PMTiles → R2)
+
+# Builds a UK-only Protomaps vector basemap extract on GitHub's servers (which can
+# reach the Protomaps build server) and uploads it straight to your Cloudflare R2
+# bucket. No local terminal needed — trigger it from the Actions tab with the
+# "Run workflow" button. Re-run monthly to refresh the map data.
+#
+# Requires four repository secrets (Settings → Secrets and variables → Actions):
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+
+on:
+  workflow_dispatch:
+    inputs:
+      bbox:
+        description: "Bounding box: minLon,minLat,maxLon,maxLat (default = GB + NI + margin)"
+        default: "-8.65,49.85,1.95,60.90"
+        required: true
+      maxzoom:
+        description: "Max zoom (15 = full detail the app uses; lower = much smaller file)"
+        default: "15"
+        required: true
+      objectkey:
+        description: "Object name in the bucket"
+        default: "uk.pmtiles"
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install the Protomaps CLI (go-pmtiles)
+        run: |
+          set -euo pipefail
+          url=$(curl -fsSL https://api.github.com/repos/protomaps/go-pmtiles/releases/latest \
+            | grep -o 'https://[^"]*Linux_x86_64\.tar\.gz' | head -n1)
+          echo "Downloading $url"
+          curl -fsSL "$url" -o pmtiles.tar.gz
+          tar -xzf pmtiles.tar.gz pmtiles
+          chmod +x pmtiles
+          ./pmtiles version
+
+      - name: Find the newest planet build
+        id: build
+        run: |
+          set -euo pipefail
+          for back in $(seq 1 14); do
+            d=$(date -u -d "$back days ago" +%Y%m%d)
+            code=$(curl -s -o /dev/null -w "%{http_code}" -r 0-15 "https://build.protomaps.com/$d.pmtiles")
+            if [ "$code" = "206" ] || [ "$code" = "200" ]; then
+              echo "url=https://build.protomaps.com/$d.pmtiles" >> "$GITHUB_OUTPUT"
+              echo "Using build $d"
+              exit 0
+            fi
+          done
+          echo "No recent Protomaps build found in the last 14 days" >&2
+          exit 1
+
+      - name: Extract the UK region
+        run: |
+          set -euo pipefail
+          ./pmtiles extract "${{ steps.build.outputs.url }}" "${{ github.event.inputs.objectkey }}" \
+            --bbox="${{ github.event.inputs.bbox }}" \
+            --maxzoom="${{ github.event.inputs.maxzoom }}"
+          ls -lh "${{ github.event.inputs.objectkey }}"
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          set -euo pipefail
+          aws s3 cp "${{ github.event.inputs.objectkey }}" \
+            "s3://${{ secrets.R2_BUCKET }}/${{ github.event.inputs.objectkey }}" \
+            --endpoint-url "https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com" \
+            --content-type "application/octet-stream" \
+            --cache-control "public, max-age=86400"
+          echo "Uploaded ${{ github.event.inputs.objectkey }} to R2 bucket ${{ secrets.R2_BUCKET }}"
