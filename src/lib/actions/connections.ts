@@ -9,9 +9,48 @@ import {
   searchStays as duffelSearchStays,
   refreshOffer,
   createFlightOrder,
+  placeSuggestions,
   type FlightPassenger,
+  type PlaceSuggestion,
 } from "@/lib/integrations/duffel";
+import { textSearchPlaces } from "@/lib/google/places";
 import type { Offer, Booking } from "@/lib/connections/types";
+
+// Airport autocomplete — type "Heathrow"/"Edinburgh", get the IATA code, so the
+// user NEVER types a short-code. Real via Duffel Places; a small mock list when
+// unkeyed so the flow still works.
+const MOCK_AIRPORTS: PlaceSuggestion[] = [
+  { iataCode: "LHR", name: "Heathrow", cityName: "London", type: "airport" },
+  { iataCode: "LGW", name: "Gatwick", cityName: "London", type: "airport" },
+  { iataCode: "STN", name: "Stansted", cityName: "London", type: "airport" },
+  { iataCode: "MAN", name: "Manchester", cityName: "Manchester", type: "airport" },
+  { iataCode: "EDI", name: "Edinburgh", cityName: "Edinburgh", type: "airport" },
+  { iataCode: "BHX", name: "Birmingham", cityName: "Birmingham", type: "airport" },
+  { iataCode: "JFK", name: "John F. Kennedy", cityName: "New York", type: "airport" },
+  { iataCode: "CDG", name: "Charles de Gaulle", cityName: "Paris", type: "airport" },
+  { iataCode: "DUB", name: "Dublin", cityName: "Dublin", type: "airport" },
+  { iataCode: "AMS", name: "Schiphol", cityName: "Amsterdam", type: "airport" },
+];
+
+export async function airportSuggest(query: string): Promise<PlaceSuggestion[]> {
+  await requireUserContext();
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const real = await placeSuggestions(q);
+  if (real) return real.filter((p) => p.type === "airport").slice(0, 6);
+  const lc = q.toLowerCase();
+  return MOCK_AIRPORTS.filter((a) => a.name.toLowerCase().includes(lc) || a.iataCode.toLowerCase().includes(lc) || (a.cityName ?? "").toLowerCase().includes(lc)).slice(0, 6);
+}
+
+// Stay location lookup — type any city/hotel, geocode to coords (independent of the
+// day). Uses the Google Text Search geocoder (fast, complete).
+export type StayLocation = { label: string; lat: number; lng: number };
+export async function stayLocationSuggest(query: string): Promise<StayLocation[]> {
+  await requireUserContext();
+  if (query.trim().length < 2) return [];
+  const places = await textSearchPlaces({ query, limit: 6 });
+  return places.map((p) => ({ label: p.address ? `${p.name} · ${p.address}` : p.name, lat: p.latitude, lng: p.longitude }));
+}
 
 // Connections actions (Phase 14) — the search → compare → book → land orchestration.
 // Flights run LIVE against Duffel test mode (offer→order); the booked result lands

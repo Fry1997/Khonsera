@@ -28,11 +28,49 @@ function hhmm(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(iso));
 }
 
+// ───────────────────────── Places: airport/city autocomplete ─────────────────────────
+
+// Duffel Places suggestions — type "Heathrow" / "Edinburgh", get the IATA code.
+// This is what frees the user from knowing airport short-codes. Returns null when
+// unkeyed so the caller can fall back.
+export type PlaceSuggestion = { iataCode: string; name: string; cityName: string | null; type: "airport" | "city" };
+
+export async function placeSuggestions(query: string): Promise<PlaceSuggestion[] | null> {
+  const token = duffelToken();
+  if (!token || query.trim().length < 2) return token ? [] : null;
+  try {
+    const res = await fetch(`${BASE}/places/suggestions?query=${encodeURIComponent(query)}`, { headers: headers(token), signal: AbortSignal.timeout(8000), cache: "no-store" });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data?: Array<{ iata_code?: string; name?: string; city_name?: string; type?: string }> };
+    return (json.data ?? [])
+      .filter((p) => p.iata_code && p.name)
+      .map((p) => ({ iataCode: p.iata_code!, name: p.name!, cityName: p.city_name ?? null, type: p.type === "city" ? "city" : "airport" as const }));
+  } catch {
+    return [];
+  }
+}
+
 // ───────────────────────────── Flights: types ─────────────────────────────
 
 export type FlightSlice = { origin: string; destination: string; departureDate: string };
 export type FlightSearch = { slices: FlightSlice[]; adults: number; cabin?: "economy" | "premium_economy" | "business" | "first" };
 
+// The depth we surface per flight offer (Duffel schema): fare brand, cabin, the
+// included baggage, whether it's refundable/changeable, the carbon, the shape.
+export type FlightDetail = {
+  fareBrand: string | null;
+  cabin: string | null;
+  carryOn: number;
+  checked: number;
+  refundable: boolean | null;
+  changeable: boolean | null;
+  emissionsKg: string | null;
+  durationLabel: string | null;
+  stops: number;
+};
+
+type DuffelBaggage = { type?: "carry_on" | "checked"; quantity?: number };
+type DuffelSegmentPassenger = { cabin_class_marketing_name?: string; baggages?: DuffelBaggage[] };
 type DuffelSegment = {
   origin?: { iata_code?: string };
   destination?: { iata_code?: string };
@@ -40,21 +78,36 @@ type DuffelSegment = {
   arriving_at?: string;
   marketing_carrier?: { iata_code?: string; name?: string };
   marketing_carrier_flight_number?: string;
+  passengers?: DuffelSegmentPassenger[];
 };
-type DuffelSlice = { origin?: { iata_code?: string }; destination?: { iata_code?: string }; duration?: string; segments?: DuffelSegment[] };
+type DuffelSlice = { origin?: { iata_code?: string }; destination?: { iata_code?: string }; duration?: string; fare_brand_name?: string; segments?: DuffelSegment[] };
+type DuffelCondition = { allowed?: boolean } | null;
 export type DuffelOffer = {
   id: string;
   total_amount?: string;
   total_currency?: string;
+  total_emissions_kg?: string;
   owner?: { iata_code?: string; name?: string };
   expires_at?: string;
+  conditions?: { refund_before_departure?: DuffelCondition; change_before_departure?: DuffelCondition };
   slices?: DuffelSlice[];
   passengers?: { id?: string; type?: string }[];
 };
 
+// ISO 8601 duration "PT2H30M" → "2h 30m".
+function durationLabel(iso?: string | null): string | null {
+  if (!iso) return null;
+  const m = /PT(?:(\d+)H)?(?:(\d+)M)?/.exec(iso);
+  if (!m) return null;
+  const h = m[1] ? `${m[1]}h` : "";
+  const min = m[2] ? `${m[2]}m` : "";
+  return [h, min].filter(Boolean).join(" ") || null;
+}
+
 // ───────────────────────────── Flights: pure mappers ─────────────────────────────
 
-// A Duffel offer → our provider-agnostic Offer. Pure — the unit-test anchor.
+// A Duffel offer → our provider-agnostic Offer, carrying the FULL useful depth
+// (fare brand, cabin, baggage, refundable/changeable, carbon, shape). Pure.
 export function mapDuffelOffer(o: DuffelOffer): Offer {
   const first = o.slices?.[0];
   const firstSeg = first?.segments?.[0];
@@ -63,18 +116,36 @@ export function mapDuffelOffer(o: DuffelOffer): Offer {
   const carrier = o.owner?.name ?? firstSeg?.marketing_carrier?.name ?? "Airline";
   const from = first?.origin?.iata_code ?? firstSeg?.origin?.iata_code ?? "—";
   const to = first?.destination?.iata_code ?? "—";
-  const stops = (first?.segments?.length ?? 1) - 1;
+  const stops = Math.max(0, (first?.segments?.length ?? 1) - 1);
   const dep = firstSeg?.departing_at ?? null;
   const arr = lastSeg?.arriving_at ?? null;
   const stopLabel = stops <= 0 ? "direct" : `${stops} stop${stops > 1 ? "s" : ""}`;
+
+  const segPax = firstSeg?.passengers?.[0];
+  const bags = segPax?.baggages ?? [];
+  const carryOn = bags.filter((b) => b.type === "carry_on").reduce((n, b) => n + (b.quantity ?? 0), 0);
+  const checked = bags.filter((b) => b.type === "checked").reduce((n, b) => n + (b.quantity ?? 0), 0);
+  const detail: FlightDetail = {
+    fareBrand: first?.fare_brand_name ?? null,
+    cabin: segPax?.cabin_class_marketing_name ?? null,
+    carryOn,
+    checked,
+    refundable: o.conditions?.refund_before_departure ? !!o.conditions.refund_before_departure.allowed : null,
+    changeable: o.conditions?.change_before_departure ? !!o.conditions.change_before_departure.allowed : null,
+    emissionsKg: o.total_emissions_kg ?? null,
+    durationLabel: durationLabel(first?.duration),
+    stops,
+  };
+
+  const dur = detail.durationLabel ? ` · ${detail.durationLabel}` : "";
   return {
     id: o.id,
     kind: "flight",
     provider: "duffel",
     title: `${carrier} · ${from} → ${to}`,
     price: { amount: o.total_amount ?? "0", currency: o.total_currency ?? "GBP" },
-    summary: dep && arr ? `${hhmm(dep)}–${hhmm(arr)} · ${stopLabel}` : stopLabel,
-    detail: { slices: o.slices, owner: o.owner, passengers: o.passengers },
+    summary: dep && arr ? `${hhmm(dep)}–${hhmm(arr)} · ${stopLabel}${dur}` : stopLabel,
+    detail: { ...detail, slices: o.slices, passengers: o.passengers },
     startIso: dep ?? undefined,
     endIso: arr ?? undefined,
     expiresAt: o.expires_at,
@@ -257,17 +328,31 @@ function mockFlightOffers(s: FlightSearch): Offer[] {
   const sl = s.slices[0];
   const base = `${sl?.departureDate ?? "2026-07-21"}T`;
   const carriers = ["British Airways", "Vueling", "Aer Lingus"];
-  return [0, 1, 2].map((i) => ({
-    id: `off_mock_${i}`,
-    kind: "flight" as const,
-    provider: "duffel",
-    title: `${carriers[i]} · ${sl?.origin ?? "LHR"} → ${sl?.destination ?? "JFK"}`,
-    price: money(120 + i * 55),
-    summary: `${["07:25", "11:10", "17:40"][i]}–${["10:40", "14:05", "21:05"][i]} · ${i === 1 ? "1 stop" : "direct"}`,
-    startIso: `${base}${["07:25", "11:10", "17:40"][i]}:00`,
-    endIso: `${base}${["10:40", "14:05", "21:05"][i]}:00`,
-    sample: true,
-  }));
+  return [0, 1, 2].map((i) => {
+    const detail: FlightDetail = {
+      fareBrand: ["Economy Basic", "Standard", "Economy Flex"][i],
+      cabin: "Economy",
+      carryOn: 1,
+      checked: i === 2 ? 1 : 0,
+      refundable: i === 2,
+      changeable: i >= 1,
+      emissionsKg: String(180 + i * 20),
+      durationLabel: ["3h 15m", "5h 55m", "3h 25m"][i],
+      stops: i === 1 ? 1 : 0,
+    };
+    return {
+      id: `off_mock_${i}`,
+      kind: "flight" as const,
+      provider: "duffel",
+      title: `${carriers[i]} · ${sl?.origin ?? "LHR"} → ${sl?.destination ?? "JFK"}`,
+      price: money(120 + i * 55),
+      summary: `${["07:25", "11:10", "17:40"][i]}–${["10:40", "14:05", "21:05"][i]} · ${i === 1 ? "1 stop" : "direct"} · ${detail.durationLabel}`,
+      detail: { ...detail },
+      startIso: `${base}${["07:25", "11:10", "17:40"][i]}:00`,
+      endIso: `${base}${["10:40", "14:05", "21:05"][i]}:00`,
+      sample: true,
+    };
+  });
 }
 function mockFlightBooking(o: Offer): Booking {
   return { id: `ord_mock_${o.id}`, kind: "flight", provider: "duffel", reference: `MOCK${o.id.slice(-4).toUpperCase()}`, price: o.price, title: o.title, startIso: o.startIso, endIso: o.endIso, documents: [{ type: "electronic_ticket", id: "000-MOCK" }], sample: true };

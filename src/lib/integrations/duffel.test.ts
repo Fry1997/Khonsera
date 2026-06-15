@@ -6,13 +6,17 @@ const offer: DuffelOffer = {
   id: "off_123",
   total_amount: "243.50",
   total_currency: "GBP",
+  total_emissions_kg: "412",
   owner: { iata_code: "BA", name: "British Airways" },
   expires_at: "2026-07-01T10:30:00Z",
   passengers: [{ id: "pas_1", type: "adult" }],
+  conditions: { refund_before_departure: { allowed: false }, change_before_departure: { allowed: true } },
   slices: [
     {
       origin: { iata_code: "LHR" },
       destination: { iata_code: "JFK" },
+      duration: "PT7H15M",
+      fare_brand_name: "Economy Basic",
       segments: [
         {
           origin: { iata_code: "LHR" },
@@ -21,6 +25,7 @@ const offer: DuffelOffer = {
           arriving_at: "2026-07-21T10:40:00",
           marketing_carrier: { iata_code: "BA", name: "British Airways" },
           marketing_carrier_flight_number: "115",
+          passengers: [{ cabin_class_marketing_name: "Economy", baggages: [{ type: "carry_on", quantity: 1 }, { type: "checked", quantity: 1 }] }],
         },
       ],
     },
@@ -28,14 +33,17 @@ const offer: DuffelOffer = {
 };
 
 describe("Duffel flight mappers", () => {
-  it("maps an offer to a comparable Offer", () => {
+  it("maps an offer to a comparable Offer with full depth", () => {
     const o = mapDuffelOffer(offer);
     expect(o).toMatchObject({ id: "off_123", kind: "flight", provider: "duffel", sample: false });
     expect(o.price).toEqual({ amount: "243.50", currency: "GBP" });
     expect(o.title).toContain("British Airways");
     expect(o.title).toContain("LHR → JFK");
     expect(o.summary).toContain("direct");
+    expect(o.summary).toContain("7h 15m");
     expect(o.startIso).toBe("2026-07-21T07:25:00");
+    // depth from the Duffel schema
+    expect(o.detail).toMatchObject({ fareBrand: "Economy Basic", cabin: "Economy", carryOn: 1, checked: 1, refundable: false, changeable: true, emissionsKg: "412", durationLabel: "7h 15m" });
   });
 
   it("counts stops from segments", () => {
