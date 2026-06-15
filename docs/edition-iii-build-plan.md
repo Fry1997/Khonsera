@@ -381,6 +381,32 @@ live against test mode**; other adapters are env-gated real-shaped mocks. ✓ fo
 flight path; the follow-ons above are positioned. Build green · 308 tests. **New env:** `DUFFEL_API_TOKEN`
 (test now), `ASSERTIS_KEY`/`PARKOPEDIA_KEY` (pending). Design handoff (`.cc-conn*`) added.
 
+### Phase ED-Flight — Flight entity to operator-app-redundant depth (L5)  `[~]` booking surface DONE 2026-06-15
+*Spun out of P14 per the entity-depth rule + a flight-platform benchmark (Google Flights/Skyscanner/
+Kayak/Hopper + airline apps + the full Duffel capability map). Catalogue: `docs/edition-iii-entity-
+catalogue.md` (operate/refer/honest-limit).*
+- [x] **Separate flight & stay flows** (killed the conflated toggle); **airport autocomplete** incl.
+      **city/all-airports** options (LON/NYC/PAR — no IATA typing).
+- [x] **Search depth**: one-way / **return**, adults + children, cabin.
+- [x] **Compare depth** (our fare-honesty edge): fare brand, **baggage** (cabin/checked),
+      **refundable/changeable**, **carbon**, round-trip — at compare time; **filters** (direct, airline)
+      + **sort** (cheapest/fastest).
+- [x] **Seat selection** — Duffel seat maps (`parseSeatMap`, +test) → a seat-grid picker at booking,
+      best-effort with an honest "assigned at check-in" fallback.
+- [x] **Real booking + rich ticket card** from Duffel order data (PNR, e-ticket, cabin, baggage, seat,
+      order id) — **no email decode**; honest confirmation with the **airline check-in deep-link**.
+- [→ positioned] **Manage booking** (change/cancel + refund quote) — order id now persisted, unblocked.
+- [→ positioned] **Extra bags** ancillary (available_services); **multi-city**; **country-wide origin
+      fan-out** ("any UK airport"); **airline-initiated-change webhook**; **price-track loop** (Duffel
+      has no price intel — our own cache); wire the booked flight into **live status/gate** (AeroDataBox +
+      live spine, already ours); **separate-ticket risk** via the fragility engine.
+- [→ refer / honest limit] **Online check-in + boarding-pass barcode** are airline-DCS-only — deep-link
+      check-in; reproduce the pass only once held (barcode rule). **Price prediction** needs a non-Duffel
+      source. *(Verified — not faked.)*
+**Done when:** the flight surface searches/compares/books to platform-credible depth with seats + a real
+ticket card; servicing + ancillaries follow. ✓ for the **booking surface** (ready for Design); servicing/
+ancillaries/multi-city positioned. Build green · 321 tests.
+
 ### Phase 15 — Mileage tracker (L6)  `[x]` DONE 2026-06-15
 **Depends on:** P0 (day-object + routing). *Parallelisable, sequenced here for linear cadence.*
 - [x] **Opt-in GPS drive capture** — `DriveRecorder` (watchPosition, high-accuracy, noise-filtered)

@@ -329,3 +329,25 @@ independent flows, each its own button. New/changed surfaces to skin (additive o
   in on the airline's app ~24–48h before — your boarding pass is issued there, then add it to Wallet").
   *Tone:* matter-of-fact honesty, not an apology — we operate everything except the airline's credential.
 - *Placeholder inline token styles on the new bits; Round 9's `.cc-conn*` still skins the shared shell.*
+
+## ED-Flight · Full flight booking surface — 🟡 ROUND 11 REQUEST (supersedes the FlightFinder part of R10)
+
+The flight finder is now a complete search→compare→seat→book surface (`plan/flight-finder.tsx`), built
+on the platform benchmark. Additive over the `.cc-conn*` shell; new hooks to skin:
+- **Trip-type + search row** — `.cc-conn-triptype` (`.cc-conn-tab[data-active]` Return|One-way) above
+  the `.cc-conn-form` (From/To **airport autocomplete**, Depart, Return, Adults, Children, Cabin).
+- **Airport autocomplete** 🟡 — `.cc-conn-field--airport` + `.cc-conn-suggest` / `-item[data-type=city|airport]`.
+  City rows read "LON · all airports" (the metro option); airports show "Heathrow · London". The headline
+  UX win — never type IATA.
+- **Compare list** — the Round-9 `.cc-conn-offer` rows, now with a **filter/sort bar** (`.cc-conn-controls`:
+  Direct-only checkbox + an airline `<select>` + cheapest/fastest) and **depth chips** (`.cc-conn-chip[data-tone]`):
+  Return · fare brand · baggage ("1 cabin + 1 checked") · Refundable/Changeable (sage) · carbon (dim).
+- **Seat picker** 🟡 — `.cc-conn-seats` (+ `-lead`, `.cc-conn-seatgrid`, `.cc-conn-seat[data-state=free|paid|taken|selected]`).
+  A best-effort seat grid at booking; honest "assigned at check-in" when a carrier returns none. *Design
+  owns the seat-map aesthetic* — make the grid legible (free vs paid vs taken vs your pick) without shouting.
+- **Passenger step + confirmation** — Round-9 `.cc-conn-pax*` / `.cc-conn-confirmed*`; the confirmation
+  tail now carries the **airline check-in deep-link** message (honest, matter-of-fact).
+- *Placeholder inline token styles on the new bits (autocomplete, chips, seat grid, controls); Round 9's
+  `.cc-conn*` skins the shared shell.* **Tone:** a considered travel desk — comparison glanceable, fare
+  honesty (baggage/refundable) prominent because it's our edge, seats calm, the check-in handoff stated
+  plainly (we operate everything except the airline's own credential).
