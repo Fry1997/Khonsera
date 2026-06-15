@@ -19,6 +19,8 @@ import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { PlanMap } from "@/components/plan/plan-map";
 import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
 import { PlanTitleEditor } from "@/components/plan/plan-title-editor";
+import { PlanBase } from "@/components/plan/plan-base";
+import { PlanIntention } from "@/components/plan/plan-intention";
 import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
 import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
@@ -39,7 +41,6 @@ import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { ensureHomeBookend } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
-import { IntentionCard } from "@/components/concierge";
 import {
   formatClock,
   type AnchorVM,
@@ -544,6 +545,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
   // Decision-clock (P9) — the day's single reassuring number: when to set off.
   const startStop = stops.find((s) => s.type === "start");
+  const baseLabel =
+    startStop?.location?.name ?? startStop?.customer_site?.name ?? startStop?.transport_hub?.name ?? null;
   const leaveByIso = startStop?.end_time ?? null;
   const firstLeg = transitions.find((tr) => tr.from_stop_id === startStop?.id);
   const firstDest = firstLeg ? stopById.get(firstLeg.to_stop_id)?.title ?? null : null;
@@ -698,21 +701,29 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </div>
       </header>
 
+      {/* The day's anchor + purpose — always present (plan elevation): the base it
+          departs from/returns to, and what it's for. */}
+      <div className="cc-plan-frame">
+        <PlanBase
+          itineraryId={id}
+          baseLabel={baseLabel}
+          customers={pickCustomers ?? []}
+          customerSites={pickSites ?? []}
+          locations={(pickLocations ?? []) as PlacePickerLocation[]}
+        />
+        <PlanIntention itineraryId={id} initial={intentions[0]?.description ?? null} />
+      </div>
+
       {stops.length === 0 ? (
         <div className="cc-plan-empty">
-          <p className="cc-plan-empty-lead">An empty spine, ready for the first fact.</p>
-          <p className="cc-plan-empty-sub">Add an appointment or place below to begin.</p>
+          <p className="cc-plan-empty-lead">An empty day, ready to thread.</p>
+          <p className="cc-plan-empty-sub">
+            {baseLabel ? <>Starting from <strong>{baseLabel}</strong>. Add</> : <>Set your base above, then add</>} your
+            first thing below — a meeting, a train, a stay — or import from your inbox, and Khonsera threads the rest.
+          </p>
         </div>
       ) : (
         <>
-          {intentions.length > 0 ? (
-            <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-              {intentions.map((it) => (
-                <IntentionCard key={it.id} intention={it} />
-              ))}
-            </section>
-          ) : null}
-
           {leaveByIso ? (
             <div className="cc-decision-clock">
               <span className="label">Set off by</span>

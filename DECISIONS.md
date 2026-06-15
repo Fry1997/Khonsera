@@ -945,3 +945,15 @@ Newest at the bottom of each section.
   /plan too. Safe because the plan page already carries the full toolkit (D67 gave PlanAdd
   changeover-capable transport; PlanImport = Gmail; FlightFinder/StayFinder). Superseded "One
   Toolkit, Two Views" → one editing surface. CLAUDE.md updated. tsc + 326 tests + build green.
+
+- **D69 — Plan-stage elevations: base, guided empty state, intention (the Brief's worth, on the plan).**
+  Now that the plan IS the intake (D68), brought over what the Brief did well — and made the dead
+  IntentionCard real. (1) **Base** — `setPlanBase` + `PlanBase` control: set/change the day's home/office
+  (the start+end bookend). Closes a real gap — `ensureHomeBookend` only created a base from a
+  profile-default, so a new plan for a user without one had NO origin and couldn't route door-to-door;
+  there was no surface affordance to fix it. (2) **Guided empty state** — a blank plan now invites the
+  first move ("Starting from {base}. Add your first thing…") and prompts to set the base if unset,
+  instead of a bare line. (3) **Intention** — `setDayIntention` + `PlanIntention`: an inline "what's
+  this day for" that writes the `intentions` table (RLS already can_access_itinerary), replacing the
+  dead IntentionCard render path (the card read intentions but nothing wrote them). Dropped: explicit
+  trip dates (span auto-infers) and a spine preview (the plan threads live). tsc + 326 tests + build green.

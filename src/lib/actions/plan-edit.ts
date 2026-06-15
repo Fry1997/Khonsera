@@ -257,6 +257,83 @@ export async function addManualAnchor(input: {
   return { ok: true };
 }
 
+// Set (or change) the day's BASE — the home/office the day departs from and
+// returns to (plan elevation 2026-06-15; the retired Brief had this as its base
+// card). Without a base the door-to-door spine has no origin, so a new plan whose
+// owner has no profile-default home couldn't route. Resolves a picked place or a
+// typed address (→ a `home` location), then points the `start` + `end` bookend
+// stops at it (creating them if absent), and re-solves.
+export async function setPlanBase(input: {
+  itineraryId: string;
+  locationId?: string | null;
+  customerSiteId?: string | null;
+  label?: string | null;
+  address?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+
+  let locationId: string | null = input.locationId ?? null;
+  const customerSiteId = input.customerSiteId ?? null;
+  const address = input.address?.trim();
+  if (!locationId && !customerSiteId && address) {
+    const loc = await createLocation({ name: input.label?.trim() || "Home", type: "home", address });
+    if (loc.ok) locationId = loc.value.id;
+  }
+  if (!locationId && !customerSiteId) return { ok: false, error: "Pick or enter a base location." };
+
+  const { data: rows } = await supabase
+    .from("stops")
+    .select("id, type")
+    .eq("itinerary_id", input.itineraryId)
+    .eq("workspace_id", ctx.workspaceId)
+    .in("type", ["start", "end"]);
+  const start = (rows ?? []).find((s) => s.type === "start");
+  const end = (rows ?? []).find((s) => s.type === "end");
+  const place = { location_id: locationId, customer_site_id: customerSiteId };
+
+  if (start) await supabase.from("stops").update(place).eq("id", start.id).eq("workspace_id", ctx.workspaceId);
+  else await createStop({ itinerary_id: input.itineraryId, type: "start", ...place, is_time_fixed: false });
+
+  if (end) await supabase.from("stops").update(place).eq("id", end.id).eq("workspace_id", ctx.workspaceId);
+  else await createStop({ itinerary_id: input.itineraryId, type: "end", ...place, is_time_fixed: false, metadata: { kind: "return_home" } });
+
+  await resequenceAndSolve(input.itineraryId);
+  revalidatePath(`/plan/${input.itineraryId}`);
+  return { ok: true };
+}
+
+// The day's INTENTION — "what's this day for" (plan elevation; the Intention is a
+// core entity the IntentionCard reads but nothing wrote). One per day: upsert the
+// description, or clear it when blanked. RLS (can_access_itinerary) gates it.
+export async function setDayIntention(input: {
+  itineraryId: string;
+  description: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const description = input.description.trim();
+
+  const { data: existing } = await supabase
+    .from("intentions")
+    .select("id")
+    .eq("itinerary_id", input.itineraryId)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+
+  if (!description) {
+    if (existing) await supabase.from("intentions").delete().eq("id", existing.id);
+  } else if (existing) {
+    await supabase.from("intentions").update({ description }).eq("id", existing.id);
+  } else {
+    const { error } = await supabase.from("intentions").insert({ itinerary_id: input.itineraryId, description });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath(`/plan/${input.itineraryId}`);
+  return { ok: true };
+}
+
 // Remove a single tile (stop) from an Event — clear out a fact you no longer
 // want. Re-solves + re-infers the span after.
 export async function removeStop(
