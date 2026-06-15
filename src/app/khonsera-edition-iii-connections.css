@@ -118,8 +118,22 @@
   letter-spacing: -0.02em; color: var(--ink); }
 .cc-conn-seats-lead .note { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-dim);
   margin-left: auto; }
-.cc-conn-seatgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); max-width: 320px; }
-.cc-conn-seatgrid .aisle { grid-column: 4; }
+/* Plane shape (deep review 2026-06-15) — a fuselage frame with a nose cue, rows
+   numbered down the side, the aisle a real gap. Replaces the flat repeat(7,1fr)
+   grid that read as a spreadsheet. Design to give it the finished cabin treatment. */
+.cc-plane { max-width: 320px; margin: 0 auto; border: 1px solid var(--rule-2); border-radius: 24px 24px 14px 14px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--card) 70%, var(--paper)), var(--card));
+  padding: var(--space-4) var(--space-3) var(--space-5); position: relative; }
+.cc-plane-nose { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); width: 56px; height: 18px;
+  border: 1px solid var(--rule-2); border-bottom: none; border-radius: 28px 28px 0 0; background: var(--card); }
+.cc-plane-cabin { display: flex; flex-direction: column; gap: var(--space-1-5); }
+.cc-plane-row { display: flex; align-items: center; gap: var(--space-2); }
+.cc-plane-rownum { width: 16px; flex: none; text-align: right; font-family: var(--mono); font-size: 9px;
+  color: var(--ink-faint); }
+.cc-plane-seats { display: flex; gap: var(--space-1-5); flex: 1; }
+.cc-plane-aisle { flex: 0 0 var(--space-4); }
+.cc-plane-facility { flex: 1; border-radius: 5px; border: 1px dashed var(--rule); opacity: 0.5; min-height: 30px; }
+.cc-plane-seats .cc-conn-seat { flex: 1; }
 .cc-conn-seat { aspect-ratio: 1; border-radius: 5px 5px 7px 7px; border: 1px solid var(--rule-2);
   background: var(--card); font-family: var(--mono); font-size: 9px; color: var(--ink-dim); cursor: pointer;
   display: flex; align-items: center; justify-content: center; min-height: 30px; }

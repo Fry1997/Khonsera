@@ -32,6 +32,7 @@ import {
   deleteBookedRun,
   type LegOption,
 } from "@/lib/actions/plan-edit";
+import { updateStop } from "@/lib/actions/stops";
 
 // The interactive planner spine (planner master brief §5). Renders the
 // chronological rail of anchors + the leg/gap between each pair, and hosts the
@@ -67,6 +68,7 @@ export type SpineNode = {
 type EditTarget = { anchor: AnchorVM; slot: AnchorVariableSlot };
 type CompareTarget = LegBetween & { title: string };
 type ScanTarget = { summary: string; barcodes: BarcodeVM[] };
+type RenameTarget = { id: string; title: string };
 
 export function PlanSpine({
   nodes,
@@ -83,6 +85,7 @@ export function PlanSpine({
   const [edit, setEdit] = useState<EditTarget | null>(null);
   const [compare, setCompare] = useState<CompareTarget | null>(null);
   const [scan, setScan] = useState<ScanTarget | null>(null);
+  const [rename, setRename] = useState<RenameTarget | null>(null);
 
   const resolving = edit != null || compare != null;
 
@@ -146,6 +149,7 @@ export function PlanSpine({
                     <AnchorCard
                       anchor={n.anchor}
                       onEditVariable={(id, slot) => setEdit({ anchor: n.anchor!, slot })}
+                      onRename={(id) => setRename({ id, title: n.anchor!.title === "Stop" ? "" : n.anchor!.title })}
                     />
                     <button
                       type="button"
@@ -224,7 +228,60 @@ export function PlanSpine({
       {scan ? (
         <ScanView summary={scan.summary} barcodes={scan.barcodes} onClose={() => setScan(null)} />
       ) : null}
+
+      {rename ? (
+        <RenameSheet target={rename} onClose={() => setRename(null)} />
+      ) : null}
     </>
+  );
+}
+
+// Rename an anchor (deep review 2026-06-15) — an event that came in untitled is no
+// longer stuck. Title-only patch via `updateStop`; the solver re-runs server-side.
+function RenameSheet({ target, onClose }: { target: RenameTarget; onClose: () => void }) {
+  const router = useRouter();
+  const [value, setValue] = useState(target.title);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    const next = value.trim();
+    if (!next) { setError("Give it a name."); return; }
+    setError(null);
+    startTransition(async () => {
+      const res = await updateStop({ id: target.id, title: next });
+      if (!res.ok) { setError(("message" in res.error && res.error.message) || "Couldn't rename."); return; }
+      onClose();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="cc-sheet-scrim" onClick={onClose}>
+      <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
+        <div className="cc-sheet-grip" />
+        <header className="cc-sheet-head">
+          <span className="cc-eyebrow">This stop</span>
+          <h3 className="cc-sheet-title">Rename</h3>
+        </header>
+        <label className="cc-time-field">
+          <span className="cc-var-label">Name</span>
+          <input
+            autoFocus
+            className="cc-field"
+            value={value}
+            placeholder="e.g. Lunch with Sarah"
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+          />
+        </label>
+        {error ? <p className="cc-sheet-error">{error}</p> : null}
+        <div className="cc-sheet-actions">
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose} disabled={pending}>Cancel</button>
+          <button type="button" className="cc-btn cc-btn-gold" onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

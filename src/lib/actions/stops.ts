@@ -56,9 +56,12 @@ const createSchema = z.object({
   ...baseStopFields,
 });
 
+// Update is a partial patch: `type` is optional here (unlike create/insert) so a
+// title-only rename (deep review 2026-06-15) doesn't have to restate the type.
 const updateSchema = z.object({
   id: z.string().uuid(),
   ...baseStopFields,
+  type: stopTypeEnum.optional(),
 });
 
 const reorderSchema = z.object({

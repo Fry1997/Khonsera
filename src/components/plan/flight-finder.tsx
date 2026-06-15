@@ -200,22 +200,57 @@ function SeatPicker({ offer, seat, onPick }: { offer: Offer; seat: { id: string;
         {loading ? <span className="note">Loading…</span> : null}
       </div>
       {map && map.rows.length > 0 ? (
-        <div className="cc-conn-seatgrid">
-          {map.rows.flatMap((row, ri) => row.map((c, ci) => <SeatButton key={`${ri}-${ci}`} cell={c} selected={seat?.id === c.serviceId} onPick={() => c.serviceId && onPick(seat?.id === c.serviceId ? null : { id: c.serviceId, label: c.designator })} />))}
-        </div>
+        <>
+          {/* A real cabin (deep review 2026-06-15): a fuselage frame with a nose
+              cue, rows down the aisle, each row numbered, the aisle a true gap. */}
+          <div className="cc-plane">
+            <span className="cc-plane-nose" aria-hidden />
+            <div className="cc-plane-cabin">
+              {map.rows.map((row, ri) => {
+                const rowNum = rowNumberOf(row);
+                return (
+                  <div className="cc-plane-row" key={ri}>
+                    <span className="cc-plane-rownum" aria-hidden>{rowNum}</span>
+                    <div className="cc-plane-seats">
+                      {row.map((c, ci) => (
+                        <SeatButton key={`${ri}-${ci}`} cell={c} selected={seat?.id === c.serviceId} onPick={() => c.serviceId && onPick(seat?.id === c.serviceId ? null : { id: c.serviceId, label: c.designator })} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="cc-conn-seats-legend">
+            <span className="free"><i />Free</span>
+            <span className="paid"><i />Extra</span>
+            <span className="sel"><i />Yours</span>
+          </div>
+        </>
       ) : null}
     </div>
   );
 }
 
+// The row number is the leading digits of the first real seat's designator
+// (e.g. "12A" → "12"). Aisle/facility cells carry no designator.
+function rowNumberOf(row: SeatCell[]): string {
+  for (const c of row) {
+    const m = /^(\d+)/.exec(c.designator);
+    if (m) return m[1];
+  }
+  return "";
+}
+
 function SeatButton({ cell, selected, onPick }: { cell: SeatCell; selected: boolean; onPick: () => void }) {
-  if (cell.kind === "aisle") return <span className="aisle" />;
-  if (cell.kind === "facility") return <span className="aisle" />;
+  if (cell.kind === "aisle") return <span className="cc-plane-aisle" aria-hidden />;
+  if (cell.kind === "facility") return <span className="cc-plane-facility" aria-hidden />;
   const free = cell.price ? Number(cell.price.amount) === 0 : false;
   const state = !cell.available ? "taken" : selected ? "selected" : free ? "free" : "paid";
+  const letter = cell.designator.replace(/^\d+/, "");
   return (
-    <button type="button" className="cc-conn-seat" data-state={state} disabled={!cell.available} onClick={onPick} title={cell.available && cell.price ? (free ? "Free" : `${cell.price.currency} ${cell.price.amount}`) : "Taken"}>
-      {cell.designator.replace(/^\d+/, "")}
+    <button type="button" className="cc-conn-seat" data-state={state} disabled={!cell.available} onClick={onPick} title={cell.available && cell.price ? (free ? `Seat ${cell.designator} · free` : `Seat ${cell.designator} · ${cell.price.currency} ${cell.price.amount}`) : `Seat ${cell.designator} · taken`}>
+      {letter}
     </button>
   );
 }

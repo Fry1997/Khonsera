@@ -72,10 +72,12 @@ export function AnchorCard({
   anchor,
   onSelect,
   onEditVariable,
+  onRename,
 }: {
   anchor: AnchorVM;
   onSelect?: (id: string) => void;
   onEditVariable?: (id: string, slot: AnchorVariableSlot) => void;
+  onRename?: (id: string) => void; // deep review 2026-06-15 — tap the title to rename
 }) {
   // Three-variable model when `vars` is present; else the legacy time fallback.
   const vars = anchor.vars;
@@ -95,7 +97,20 @@ export function AnchorCard({
       <div className="cc-anchor-head">
         <span className="cc-anchor-type">{ANCHOR_LABEL[anchor.type]}</span>
       </div>
-      <h3 className="cc-anchor-title">{anchor.title}</h3>
+      {onRename ? (
+        <button
+          type="button"
+          className="cc-anchor-title cc-anchor-title-edit"
+          data-untitled={anchor.title && anchor.title !== "Stop" ? undefined : ""}
+          onClick={(e) => { e.stopPropagation(); onRename(anchor.id); }}
+          title="Rename"
+        >
+          <span>{anchor.title && anchor.title !== "Stop" ? anchor.title : "Name this stop"}</span>
+          <span className="cc-anchor-title-pen" aria-hidden>Rename</span>
+        </button>
+      ) : (
+        <h3 className="cc-anchor-title">{anchor.title}</h3>
+      )}
       {anchor.place ? <p className="cc-anchor-place">{anchor.place}</p> : null}
 
       {vars ? (

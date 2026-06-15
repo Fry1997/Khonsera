@@ -9,23 +9,43 @@ import type { AppMode } from "@/lib/mode";
 // Desktop rail — Design Round 2 (`.cc-rail`): lockup top, nav list, then a foot
 // with the create action + profile. One unified day (Edition III D1): no mode
 // toggle; `mode` only picks the People↔Clients nav variant for the user's
-// primary context. Today · Plan · Tasks · People→Clients (Work).
+// primary context.
+//
+// Coherence pass (deep review 2026-06-15): the nav is GROUPED, not a flat pile —
+// Day (the trip itself) · Money & travel (the tools) · Account. Every item has a
+// DISTINCT glyph (Mileage + Workspace no longer borrow Navigate's / Clients').
 type NavItem = { href: Route; label: string; icon: keyof typeof Glyphs };
+type NavGroup = { label: string; items: NavItem[] };
 
-function navFor(mode: AppMode): NavItem[] {
+function navFor(mode: AppMode): NavGroup[] {
   return [
-    { href: "/today" as Route, label: "Today", icon: "today" },
-    { href: "/plan" as Route, label: "Plan", icon: "plan" },
-    { href: "/tasks" as Route, label: "Tasks", icon: "tasks" },
-    mode === "work"
-      ? { href: "/customers" as Route, label: "Clients", icon: "clients" }
-      : { href: "/contacts" as Route, label: "People", icon: "people" },
-    { href: "/wallet" as Route, label: "Wallet", icon: "wallet" },
-    { href: "/navigate" as Route, label: "Navigate", icon: "navigate" },
-    { href: "/expenses" as Route, label: "Expenses", icon: "receipt" },
-    { href: "/mileage" as Route, label: "Mileage", icon: "navigate" },
-    ...(mode === "work" ? [{ href: "/workspace" as Route, label: "Workspace", icon: "clients" } as NavItem] : []),
-    { href: "/settings" as Route, label: "Settings", icon: "settings" },
+    {
+      label: "Day",
+      items: [
+        { href: "/today" as Route, label: "Today", icon: "today" },
+        { href: "/plan" as Route, label: "Plan", icon: "plan" },
+        { href: "/tasks" as Route, label: "Tasks", icon: "tasks" },
+        mode === "work"
+          ? { href: "/customers" as Route, label: "Clients", icon: "clients" }
+          : { href: "/contacts" as Route, label: "People", icon: "people" },
+        { href: "/wallet" as Route, label: "Wallet", icon: "wallet" },
+      ],
+    },
+    {
+      label: "Money & travel",
+      items: [
+        { href: "/navigate" as Route, label: "Navigate", icon: "navigate" },
+        { href: "/expenses" as Route, label: "Expenses", icon: "receipt" },
+        { href: "/mileage" as Route, label: "Mileage", icon: "mileage" },
+      ],
+    },
+    {
+      label: "Account",
+      items: [
+        ...(mode === "work" ? [{ href: "/workspace" as Route, label: "Workspace", icon: "workspace" } as NavItem] : []),
+        { href: "/settings" as Route, label: "Settings", icon: "settings" },
+      ],
+    },
   ];
 }
 
@@ -42,7 +62,7 @@ export function AppSidebar({
   mode: AppMode;
 }) {
   const pathname = usePathname();
-  const items = navFor(mode);
+  const groups = navFor(mode);
   const init = initials ?? email[0]?.toUpperCase() ?? "·";
 
   return (
@@ -53,16 +73,21 @@ export function AppSidebar({
         <span className="wm">KHONSERA</span>
       </Link>
 
-      <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {items.map((n) => {
-          const active = pathname === n.href || pathname.startsWith(`${n.href}/`);
-          return (
-            <Link key={n.href} href={n.href} className="cc-rail-item" data-active={active ? "true" : "false"}>
-              <span className="ic"><Glyph name={n.icon} /></span>
-              <span>{n.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="cc-rail-nav">
+        {groups.map((g) => (
+          <div key={g.label} className="cc-rail-group">
+            <span className="cc-rail-group-label">{g.label}</span>
+            {g.items.map((n) => {
+              const active = pathname === n.href || pathname.startsWith(`${n.href}/`);
+              return (
+                <Link key={n.href} href={n.href} className="cc-rail-item" data-active={active ? "true" : "false"}>
+                  <span className="ic"><Glyph name={n.icon} /></span>
+                  <span>{n.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="cc-rail-foot">
@@ -96,6 +121,10 @@ const Glyphs = {
   wallet: "M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2 M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1h-4a2 2 0 0 0 0 4h4 M16 12h.01",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18",
   navigate: "M12 3l8 18-8-5-8 5z",
+  // Mileage — an odometer/gauge (distinct from Navigate's locator arrow).
+  mileage: "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M13.4 10.6L17 7 M4.5 16a8 8 0 1 1 15 0z",
+  // Workspace — a building/office tower (distinct from Clients' briefcase).
+  workspace: "M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16 M15 21V9h4a1 1 0 0 1 1 1v11 M4 21h17 M7.5 8h1M7.5 12h1M7.5 16h1M11 8h1M11 12h1M11 16h1",
   exit: "M9 4H4v16h5 M16 17l5-5-5-5 M21 12H9",
 } as const;
 

@@ -18,6 +18,7 @@ import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { PlanMap } from "@/components/plan/plan-map";
 import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
+import { PlanTitleEditor } from "@/components/plan/plan-title-editor";
 import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
 import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import { listNotesForStops, type NoteVM } from "@/lib/actions/notes";
@@ -533,7 +534,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const planState: "empty" | "sparse" | "threaded" | "at-risk" =
     stops.length === 0 ? "empty" : anyAtRisk ? "at-risk" : stops.length <= 2 ? "sparse" : "threaded";
 
-  const title = journey.title || spanLabel(dateStart, dateStart);
+  const named = !!(journey.title && String(journey.title).trim());
+  const title = named ? (journey.title as string) : spanLabel(dateStart, dateStart);
 
   // Decision-clock (P9) — the day's single reassuring number: when to set off.
   const startStop = stops.find((s) => s.type === "start");
@@ -683,9 +685,9 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           ← Plan
         </Link>
         <span className="cc-eyebrow">{spanLabel(dateStart, dateEnd)}</span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-          {title}
-        </h1>
+        <div style={{ marginTop: 6 }}>
+          <PlanTitleEditor itineraryId={id} title={title} named={named} />
+        </div>
         <div style={{ marginTop: "var(--space-2)" }}>
           <PlanModeFlip itineraryId={id} mode={journey.mode === "work" ? "work" : "personal"} />
         </div>
@@ -726,21 +728,31 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             </p>
           ) : null}
 
+          {/* Primary — the day itself: what to do now, the live picture, the map,
+              and the threaded spine. (Deep review 2026-06-15: the day reads first;
+              the operational tools move below into a single collapsed region so the
+              page is a hierarchy, not a 16-panel pile.) */}
           <PlanNudges itineraryId={id} nudges={nudges} />
-
-          {bookedConnections.length > 0 ? <ManageBookings itineraryId={id} bookings={bookedConnections} /> : null}
-
-          <BudgetPanel itineraryId={id} budget={budget} />
-
-          <ShareControl itineraryId={id} isWork={journey.mode === "work"} shares={locationShares} />
 
           {journeyMap ? <PlanMap journey={journeyMap} /> : null}
 
-          <ReadinessPanel itineraryId={id} items={readiness} />
-
-          <PlanConstraints initial={constraints} />
-
           <PlanSpine nodes={nodes} journeyDate={dateStart} eventId={id} isWork={journey.mode === "work"} />
+
+          {/* Trip tools — bookings, money, sharing, prep, constraints. Present but
+              quiet: collapsed by default, opened when the user wants to manage. */}
+          <details className="cc-plan-tools">
+            <summary className="cc-plan-tools-summary">
+              <span className="cc-plan-tools-title">Trip tools</span>
+              <span className="cc-plan-tools-hint">bookings · budget · sharing · prep · constraints</span>
+            </summary>
+            <div className="cc-plan-tools-body">
+              {bookedConnections.length > 0 ? <ManageBookings itineraryId={id} bookings={bookedConnections} /> : null}
+              <BudgetPanel itineraryId={id} budget={budget} />
+              <ShareControl itineraryId={id} isWork={journey.mode === "work"} shares={locationShares} arriveIso={tripEndIso} multiDay={multiDay} />
+              <ReadinessPanel itineraryId={id} items={readiness} />
+              <PlanConstraints initial={constraints} />
+            </div>
+          </details>
         </>
       )}
 

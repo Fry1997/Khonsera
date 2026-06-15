@@ -864,3 +864,20 @@ Newest at the bottom of each section.
   captured as normal stops/runs. *Positioned:* per-stop **timezones** (tz-from-coords — a correctness
   change touching every time display), **Euro rail no-redirect booking** (Rail Europe/Assertis), an
   **Airalo real eSIM finder** (mock adapter → packages UI). New env `FX_URL?` (defaults Frankfurter).
+
+- **D63 — Deep review: coherence pass, not a new phase.** Connor flagged a "greater pattern of
+  incoherentness" from a glance: repeating sidebar icons + a flat/confused nav; the plan page a stack
+  of ~16 panels with no hierarchy; no way to rename an event/day (untitled sticks); a primitive,
+  shapeless seat map; a share that's a duration timer, not journey-tied. Root cause: every Edition III
+  phase *appended* a panel/row without integrating it. Fixes (`docs/deep-review-2026-06-15.md`): (1)
+  sidebar grouped into **Day / Money & travel / Account** with DISTINCT glyphs (Mileage = odometer,
+  Workspace = building — no more borrowing Navigate's/Clients'); (2) **rename surfaced** — inline plan
+  title (`PlanTitleEditor`→`updateItinerary`) + per-stop rename (`RenameSheet`→`updateStop`; made
+  `updateStop`'s `type` optional for title-only patches); (3) **share scoped to the journey** — "Until I
+  arrive / For today / For the trip / Set hours" deriving the backend's hours, not a bare timer; (4)
+  **seat map rebuilt to a real cabin** — fuselage frame, numbered rows, true aisle gap (data was always
+  `rows[][]`; only the render was a placeholder); (5) **plan-page IA** — the day's spine reads first
+  (nudges, map, threaded spine); operational tools (bookings, budget, sharing, prep, constraints) move
+  into one collapsed **Trip tools** `<details>` region. Encoded a "coherence is part of done" standing
+  order. *Still Design's:* the visual coherence round (finished cabin treatment, plan-page weighting,
+  rail section-label rhythm) — a handoff pack to follow.

@@ -26,6 +26,13 @@ the triage in `docs/foundation-rebuild-triage.md`. Honour these every turn:
 - **Decide and proceed.** Make conventional implementation calls and keep building; log assumptions
   in `DECISIONS.md`, don't interrogate. Pause only for: the triage checkpoint, a genuine spec
   contradiction, or a data-loss/irreversible action.
+- **Coherence is part of done** (deep review 2026-06-15, `docs/deep-review-2026-06-15.md`). A phase
+  is NOT done when the capability works end-to-end — it's done when the capability sits *coherently*
+  in the surface. Definition-of-done for any phase that adds UI: (a) if it adds a sidebar row, it
+  gets a DISTINCT glyph and lands in the right nav group (Day / Money & travel / Account); (b) if it
+  adds a panel to `/plan/[id]`, decide where it belongs in the hierarchy — primary *day* spine vs.
+  the collapsed **Trip tools** region — never just append; (c) anything user-named is renameable
+  (no "untitled" dead-ends). Velocity must not re-accrue coherence debt.
 - **Tokens only, never raw values** (the iron rule above). The `theme` is the single source of truth.
 - **Brand voice:** the concierge is **"Khonsera"** — never a human name. All assistant copy is
   voiced as Khonsera. **No emojis, ever.**

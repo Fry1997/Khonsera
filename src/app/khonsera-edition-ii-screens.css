@@ -44,6 +44,35 @@
   letter-spacing: var(--ls-h1, -0.03em);
   margin: 0;
 }
+
+/* Editable day/event title (deep review 2026-06-15) — the title is no longer a
+   dead <h1>; tap to rename so an untitled day never sticks. Inherits the screen
+   title face; the "Rename" cue surfaces on hover/focus, and an unnamed day reads
+   in a quieter, italic invitation. */
+.cc-plan-title, .cc-plan-title-input {
+  font-family: var(--display); font-weight: var(--fw-medium, 500);
+  font-size: var(--fs-h1, 40px); line-height: var(--lh-h1, 1.05);
+  letter-spacing: var(--ls-h1, -0.03em); color: var(--ink);
+}
+.cc-plan-title { display: inline-flex; align-items: baseline; gap: var(--space-3);
+  background: none; border: none; padding: 0; margin: 0; text-align: left; cursor: text; }
+.cc-plan-title[data-unnamed] > span:first-child { font-family: var(--serif); font-style: italic;
+  color: var(--ink-dim); }
+.cc-plan-title-edit { font-family: var(--mono); font-size: 10px; letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase; color: var(--ink-faint); opacity: 0; transition: opacity var(--dur-base) var(--ease-standard); }
+.cc-plan-title:hover .cc-plan-title-edit, .cc-plan-title:focus-visible .cc-plan-title-edit { opacity: 1; }
+.cc-plan-title-input { background: var(--paper); border: none; border-bottom: 2px solid var(--gold);
+  padding: 0 0 2px; outline: none; width: 100%; max-width: 100%; }
+
+/* Per-stop rename — the anchor title is a tappable button (the variant rendered
+   with onRename); an untitled stop invites a name in italic. */
+.cc-anchor-title-edit { display: inline-flex; align-items: baseline; gap: var(--space-2);
+  background: none; border: none; padding: 0; text-align: left; cursor: text; }
+.cc-anchor-title-edit[data-untitled] > span:first-child { font-family: var(--serif); font-style: italic;
+  color: var(--ink-dim); }
+.cc-anchor-title-pen { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase; color: var(--ink-faint); opacity: 0; transition: opacity var(--dur-base) var(--ease-standard); }
+.cc-anchor-title-edit:hover .cc-anchor-title-pen, .cc-anchor-title-edit:focus-visible .cc-anchor-title-pen { opacity: 1; }
 .cc-serif { font-family: var(--serif); font-style: italic; letter-spacing: -0.01em; }
 
 /* the vertical spine that anchors/legs/gaps thread onto */

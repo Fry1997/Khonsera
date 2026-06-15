@@ -58,6 +58,14 @@
 .cc-share-dur button { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-dim);
   padding: 7px 12px; border-radius: 999px; border: none; background: none; cursor: pointer; white-space: nowrap; }
 .cc-share-dur button[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+/* Scope — a share is tied to THIS journey, not a bare timer (deep review 2026-06-15) */
+.cc-share-scope { display: inline-flex; flex-wrap: wrap; gap: 2px; background: var(--card-2);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 3px; }
+.cc-share-scope button { font-family: var(--sans); font-size: 12px; color: var(--ink-dim);
+  padding: 7px 13px; border-radius: 999px; border: none; background: none; cursor: pointer; white-space: nowrap; }
+.cc-share-scope button[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+.cc-share-scope-note { flex: 1 1 100%; font-family: var(--serif); font-style: italic; font-size: 12.5px;
+  color: var(--ink-dim); }
 .cc-share-go {
   background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
   padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px; cursor: pointer;

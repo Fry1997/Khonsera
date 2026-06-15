@@ -8,12 +8,50 @@ import { createLocationShare, revokeLocationShare, pushSharePosition, type Share
 // time-bounded GIFT. Plus compose-a-message (handed to the OS share sheet) and a
 // safety "arrived" note. The employer tier (status + ETA, never location) is a
 // separate read surface — nothing here shares coordinates to a workspace.
-export function ShareControl({ itineraryId, isWork, shares }: { itineraryId: string; isWork: boolean; shares: ShareVM[] }) {
+// A share is tied to THIS journey, not a free-floating timer (deep review
+// 2026-06-15). The user picks a SCOPE — until they arrive, for the rest of today,
+// or for the whole trip — and we derive the hours the backend still wants. A
+// custom-hours fallback stays for the off-journey case.
+type ShareScope = "arrive" | "today" | "trip" | "custom";
+
+function hoursUntil(iso: string): number {
+  const h = Math.ceil((new Date(iso).getTime() - Date.now()) / 3_600_000);
+  return Math.min(72, Math.max(1, h));
+}
+function hoursUntilEndOfToday(): number {
+  const end = new Date();
+  end.setHours(23, 59, 0, 0);
+  return Math.min(72, Math.max(1, Math.ceil((end.getTime() - Date.now()) / 3_600_000)));
+}
+
+export function ShareControl({
+  itineraryId,
+  isWork,
+  shares,
+  arriveIso,
+  multiDay,
+}: {
+  itineraryId: string;
+  isWork: boolean;
+  shares: ShareVM[];
+  arriveIso?: string | null; // the day's/trip's final stop — "until I arrive"
+  multiDay?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [recipient, setRecipient] = useState("");
-  const [hours, setHours] = useState(4);
+  const [scope, setScope] = useState<ShareScope>(arriveIso ? "arrive" : "today");
+  const [customHours, setCustomHours] = useState(4);
   const [error, setError] = useState<string | null>(null);
+
+  // Resolve the chosen scope to the hours the share lasts + a human label.
+  function scopeHours(s: ShareScope): number {
+    if (s === "arrive" && arriveIso) return hoursUntil(arriveIso);
+    if (s === "trip" && arriveIso) return hoursUntil(arriveIso);
+    if (s === "today") return hoursUntilEndOfToday();
+    return customHours;
+  }
+  const hours = scopeHours(scope);
   const [liveToken, setLiveToken] = useState<string | null>(null); // a share we're actively broadcasting to this session
   const watchId = useRef<number | null>(null);
 
@@ -92,9 +130,23 @@ export function ShareControl({ itineraryId, isWork, shares }: { itineraryId: str
         ) : (
           <div className="cc-share-live-form">
             <input className="cc-field" placeholder="Share with (e.g. Mum)" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
-            <span className="cc-share-dur">
-              {[1, 2, 4, 8].map((h) => <button key={h} type="button" data-active={hours === h ? "true" : "false"} onClick={() => setHours(h)}>{h}h</button>)}
+            {/* Scope — tied to this journey, not a bare timer */}
+            <span className="cc-share-scope">
+              {arriveIso ? (
+                <button type="button" data-active={scope === "arrive" ? "true" : "false"} onClick={() => setScope("arrive")}>Until I arrive</button>
+              ) : null}
+              <button type="button" data-active={scope === "today" ? "true" : "false"} onClick={() => setScope("today")}>For today</button>
+              {multiDay && arriveIso ? (
+                <button type="button" data-active={scope === "trip" ? "true" : "false"} onClick={() => setScope("trip")}>For the trip</button>
+              ) : null}
+              <button type="button" data-active={scope === "custom" ? "true" : "false"} onClick={() => setScope("custom")}>Set hours</button>
             </span>
+            {scope === "custom" ? (
+              <span className="cc-share-dur">
+                {[1, 2, 4, 8].map((h) => <button key={h} type="button" data-active={customHours === h ? "true" : "false"} onClick={() => setCustomHours(h)}>{h}h</button>)}
+              </span>
+            ) : null}
+            <span className="cc-share-scope-note">Ends {scope === "arrive" || scope === "trip" ? "when you arrive" : scope === "today" ? "end of today" : `in ${customHours}h`} · about {hours}h. You can stop it any time.</span>
             <button type="button" className="cc-share-go" onClick={startShare} disabled={pending}>Share live location</button>
           </div>
         )}
