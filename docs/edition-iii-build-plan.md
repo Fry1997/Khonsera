@@ -482,15 +482,24 @@ upload + view, spend-vs-cap with over-cap in rust, mileage folds in. Build green
 approval; roles gate actions. ✓ for RBAC + over-cap approval + the privacy fix; assignment + full review
 + per-diem positioned. Build green · 322 tests.
 
-### Phase 18 — Two-tier sharing + comms + safety (C14 / D4)  `[ ]`
+### Phase 18 — Two-tier sharing + comms + safety (C14 / D4)  `[~]` core DONE 2026-06-15
 **Depends on:** P9 (ETA), P17.
-- [ ] **Employer tier**: status + ETA for work commitments only — never live location.
-- [ ] **Personal tier**: live location as a **gift** to a named recipient — opt-in, per-journey,
-      time-bounded, revocable.
-- [ ] **Compose-message** ("running 15 late, start without me") handed to the OS send-sheet; **safety**
-      reassurance for a lone/after-dark arrival.
-**Done when:** a journey can share status+ETA upward and live-location to a named personal recipient
-(revocable); messages compose to the OS sheet.
+- [x] **Employer tier** — status + ETA for WORK trips only (the existing work-itinerary RLS); **never
+      live location**. `ShareControl` states it plainly; there is no code path that puts coordinates in
+      front of a workspace.
+- [x] **Personal tier** — live location as a revocable, **time-bounded** (1–24h) **gift** to a named
+      recipient. `location_shares` (mig 0041, **owner-only RLS**); the recipient views a secret-token
+      public page (`/share/[token]`) through the **anon-safe `share_position` RPC** that returns ONLY the
+      position + label, ONLY while active. The device broadcasts via `pushSharePosition` (watchPosition,
+      throttled); **Stop** revokes instantly.
+- [x] **Compose-message** — "Running late" / "Arrived safely" / "On my way" handed to the **OS share
+      sheet** (`navigator.share`, sms fallback). Covers the safety "arrived" note.
+- [→ positioned] a **live map** on the recipient page (currently coords + "view on map" link + last-seen);
+      **native background** location (PWA only broadcasts while open); a proactive **lone/after-dark
+      safety nudge** (a P12 context rule); a richer manager **status+ETA** board.
+**Done when:** a journey shares status+ETA upward + live-location to a named recipient (revocable);
+messages compose to the OS sheet. ✓ — core done; live-map + after-dark nudge positioned. Build green ·
+322 tests · advisor-clean (the `share_position` anon RPC is the intended public surface).
 
 ### Phase 19 — International (C9 / C10)  `[ ]`
 **Depends on:** P2 (capture), P8 (transit generalises). **Procurement:** Airalo (mock), Rail Europe/
@@ -830,6 +839,11 @@ it's sequenced, not dropped.*
 ### Earlier phases owed
 - **P6** transition-pattern inference; **P7** commitment-aware navigation; **P8b** TfL network maps —
   off the critical path, buildable on request.
+
+### Sharing / safety (P18 follow-ons)
+- **Live map** on the recipient `/share` page; **native background** location broadcast (PWA limit);
+  a **lone/after-dark safety nudge** (P12 rule); a richer manager **status+ETA** board. Buildable now
+  (map/nudge) / needs-native (background).
 
 ### Provider activations (founder/procurement — flip a feature live, no code change)
 - `DUFFEL_API_TOKEN` (test → flights live), **Duffel Stays** activation, **Parkopedia** key, **Assertis**

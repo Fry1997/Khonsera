@@ -843,3 +843,14 @@ Newest at the bottom of each section.
   the effective cap (per-day × the trip's nights) with a per-category over flag. `BudgetPanel` shows the
   per-category cap bars; managers set the policy via `TravelPolicy` on `/workspace` (`setExpenseCap`,
   manager-gated). The optional overall trip cap stays alongside. Build green · 322 tests.
+
+- **D61 — P18 two-tier sharing: live location is a personal gift, never the employer's.** Built the
+  privacy-critical sharing layer. **Personal tier:** `location_shares` (mig 0041, owner-only RLS) — a
+  revocable, time-bounded (1–24h) live-location gift to a named recipient; the recipient views a
+  secret-token PUBLIC page (`/share/[token]`) via the `share_position` SECURITY DEFINER RPC that returns
+  ONLY position + label, ONLY while active (anon-callable BY DESIGN — the intended public surface, like
+  can_access_itinerary). The device broadcasts via watchPosition→`pushSharePosition` (throttled); Stop
+  revokes. **Employer tier:** status + ETA for work trips via the existing work-itinerary RLS — NEVER
+  location; no code path shares coordinates to a workspace (stated in the UI). **Compose-message** via
+  the OS share sheet (navigator.share). *Positioned:* live map on the recipient page, native background
+  broadcast (PWA only sends while open), a lone/after-dark safety nudge, a richer manager ETA board.

@@ -437,3 +437,14 @@ surfaces sharing the Edition III tokens. Skin `.cc-mileage*`, `.cc-budget*`, `.c
 - **TravelPolicy** 🟡 — `components/workspace/travel-policy.tsx`, `.cc-policy` (+ `-note`, `-row`,
   `-row-type`). On `/workspace` (managers): set a £ cap + per-trip/per-day per category. *Tone:* a quiet
   policy table; the caps then show as the calm rust nudge on every traveller's budget when exceeded.
+
+## P18 · Sharing / comms / safety — 🟡 to skin
+- **ShareControl** 🟡 — `plan/share-control.tsx`, `.cc-share` (+ `-tell`, `-employer`, `-live`, `-error`,
+  `-list`/`-row`/`-link`/`-revoke`). On `/plan/[id]`: compose-message buttons (Running late / Arrived
+  safely / On my way → OS share sheet); a work-trip line "your workspace sees status + ETA, never your
+  live location"; and the personal **live-location gift** (recipient + 1–24h → Share, then "broadcasting",
+  Send link, Stop). *Tone:* trust + control — sharing is calm and obviously revocable; the
+  never-the-location guarantee stated plainly.
+- **Public recipient page** 🟡 — `app/share/[token]/shared-view.tsx` (NO app chrome): "Someone is sharing
+  their journey", last-updated, View-on-map, or "This share has ended". *Tone:* a calm standalone page a
+  non-user opens from a text — warm, minimal, reassuring. *Design owns it end-to-end (it's outside the shell).*
