@@ -163,14 +163,26 @@ running-late→fast-track, layover→lounge, parking→pre-book, gate-change→r
 (`.cc-nudge-done` + `-mark`, `data-rule`) — a quiet "Done" confirmation that doesn't vanish. **Tone:**
 foresight (ahead-of-time, unhurried) vs reaction (moment-of, a touch more weight); once acted, it settles.
 
-### ConnectionsFinder — search / compare / book (P14) · 🟡 Round 9
-`plan/connections-finder.tsx`, `.cc-conn` (+ `-head/-tabs/-tab[data-active]/-sample/-close/-form/-near/`
-`-lbl/-list/-offer/-offer-main/-offer-title/-offer-summary/-offer-price/-pax/-pax-lead/-pax-grid/`
-`-pax-actions/-error/-pending/-confirmed/-empty`). On `/plan/[id]`: Flights|Stays tabs → a search row →
-a **compare** list (title · mono summary · mono price · one primary action) → for flights a
-**passenger-capture** step → the booked item lands in the day. Flights LIVE vs Duffel test mode; stays
-mock until activation. **Tone:** the "buy without leaving Khonsera" moment — calm, comparison glanceable,
-one action per row, the "· sample" cue honest. Reuses `.cc-btn`/`.cc-field`.
+### Connections surface (ED-Flight / ED-Stay) — search / compare / book / manage · 🟡 Rounds 11–12
+*The "buy + service without leaving Khonsera" surface on `/plan/[id]`. Three SEPARATE flows (the old
+Flights|Stays toggle was retired) sharing the `.cc-conn*` shell from Round 9. Full briefs + contract
+classes in `docs/design-handoff-edition-iii.md` (Rounds 11, 12, + manage-booking).*
+
+- **FlightFinder** 🟡 R11 — `plan/flight-finder.tsx`. Trip-type (`.cc-conn-triptype`) → search
+  (`.cc-conn-field--airport` autocomplete incl. city/all-airports, return/pax/cabin) → compare
+  (`.cc-conn-offer` + `.cc-conn-chip[data-tone]` fare-brand/baggage/refundable/carbon + `.cc-conn-controls`
+  filter/sort) → **seat picker** (`.cc-conn-seats` / `.cc-conn-seat[data-state]`) → passenger → confirm
+  (with the airline check-in deep-link). Flights LIVE vs Duffel test mode.
+- **StayFinder** 🟡 R12 — `plan/stay-finder.tsx`. Location autocomplete → result cards (`.cc-stay-card`:
+  star/score/per-night+total) → property detail (`.cc-stay-detail` amenities/check-in) → rooms/rates
+  (`.cc-stay-rate`: board/free-cancel/pay-at-property) → book. Honest chain-app-only limit line.
+- **ManageBookings** 🟡 — `plan/manage-bookings.tsx`, `.cc-manage` (+ `-row/-done/-error`). The "Booked
+  connections" list: each Duffel-booked flight/stay with **Manage → See refund → Confirm cancel / Keep
+  it** (refund shown before committing). Belongs in the same skin pass — booking and managing are one
+  surface.
+- **Tone (all three):** a considered travel desk — comparison glanceable, fare/stay honesty prominent
+  (it's our edge), the airline/hotel handoffs stated plainly, cancellation reversible-feeling with the
+  refund up front, the "· sample" cue honest. Reuses `.cc-btn`/`.cc-field`.
 
 ---
 
