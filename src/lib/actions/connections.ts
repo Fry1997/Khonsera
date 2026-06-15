@@ -69,7 +69,10 @@ const flightSearchSchema = z.object({
   origin: z.string().trim().min(3).max(3),
   destination: z.string().trim().min(3).max(3),
   departureDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  // Set for a return — adds the inbound slice. Omitted = one-way.
+  returnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   adults: z.number().int().min(1).max(9).default(1),
+  children: z.number().int().min(0).max(8).default(0),
   cabin: z.enum(["economy", "premium_economy", "business", "first"]).default("economy"),
 });
 
@@ -78,11 +81,11 @@ export async function searchFlightOffers(input: z.input<typeof flightSearchSchem
   if (!parsed.success) return { offers: [], sample: false, error: "Check the airports and date." };
   const v = parsed.data;
   await requireUserContext();
-  const { offers, sample } = await duffelSearchFlights({
-    slices: [{ origin: v.origin.toUpperCase(), destination: v.destination.toUpperCase(), departureDate: v.departureDate }],
-    adults: v.adults,
-    cabin: v.cabin,
-  });
+  const o = v.origin.toUpperCase();
+  const d = v.destination.toUpperCase();
+  const slices = [{ origin: o, destination: d, departureDate: v.departureDate }];
+  if (v.returnDate) slices.push({ origin: d, destination: o, departureDate: v.returnDate });
+  const { offers, sample } = await duffelSearchFlights({ slices, adults: v.adults, children: v.children, cabin: v.cabin });
   return { offers, sample };
 }
 

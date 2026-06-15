@@ -53,7 +53,7 @@ export async function placeSuggestions(query: string): Promise<PlaceSuggestion[]
 // ───────────────────────────── Flights: types ─────────────────────────────
 
 export type FlightSlice = { origin: string; destination: string; departureDate: string };
-export type FlightSearch = { slices: FlightSlice[]; adults: number; cabin?: "economy" | "premium_economy" | "business" | "first" };
+export type FlightSearch = { slices: FlightSlice[]; adults: number; children?: number; cabin?: "economy" | "premium_economy" | "business" | "first" };
 
 // The depth we surface per flight offer (Duffel schema): fare brand, cabin, the
 // included baggage, whether it's refundable/changeable, the carbon, the shape.
@@ -67,6 +67,8 @@ export type FlightDetail = {
   emissionsKg: string | null;
   durationLabel: string | null;
   stops: number;
+  roundTrip: boolean;
+  carrier: string;
 };
 
 type DuffelBaggage = { type?: "carry_on" | "checked"; quantity?: number };
@@ -135,6 +137,8 @@ export function mapDuffelOffer(o: DuffelOffer): Offer {
     emissionsKg: o.total_emissions_kg ?? null,
     durationLabel: durationLabel(first?.duration),
     stops,
+    roundTrip: (o.slices?.length ?? 1) > 1,
+    carrier,
   };
 
   const dur = detail.durationLabel ? ` · ${detail.durationLabel}` : "";
@@ -194,7 +198,10 @@ export async function searchFlights(s: FlightSearch): Promise<{ offers: Offer[];
     const body = {
       data: {
         slices: s.slices.map((sl) => ({ origin: sl.origin, destination: sl.destination, departure_date: sl.departureDate })),
-        passengers: Array.from({ length: Math.max(1, s.adults) }, () => ({ type: "adult" })),
+        passengers: [
+          ...Array.from({ length: Math.max(1, s.adults) }, () => ({ type: "adult" })),
+          ...Array.from({ length: s.children ?? 0 }, () => ({ age: 8 })),
+        ],
         cabin_class: s.cabin ?? "economy",
       },
     };
@@ -339,6 +346,8 @@ function mockFlightOffers(s: FlightSearch): Offer[] {
       emissionsKg: String(180 + i * 20),
       durationLabel: ["3h 15m", "5h 55m", "3h 25m"][i],
       stops: i === 1 ? 1 : 0,
+      roundTrip: false,
+      carrier: carriers[i],
     };
     return {
       id: `off_mock_${i}`,

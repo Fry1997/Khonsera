@@ -24,12 +24,17 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
   const [origin, setOrigin] = useState<Airport | null>(null);
   const [dest, setDest] = useState<Airport | null>(null);
   const [date, setDate] = useState(defaultDate);
+  const [tripType, setTripType] = useState<"oneway" | "return">("return");
+  const [returnDate, setReturnDate] = useState(defaultDate);
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
   const [cabin, setCabin] = useState<"economy" | "premium_economy" | "business" | "first">("economy");
 
   const [offers, setOffers] = useState<Offer[] | null>(null);
   const [sample, setSample] = useState(false);
   const [sort, setSort] = useState<Sort>("cheapest");
   const [directOnly, setDirectOnly] = useState(false);
+  const [airline, setAirline] = useState<string>("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ title: string; ref: string; eticket: string | null; airport: string } | null>(null);
@@ -42,7 +47,16 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
     setConfirmed(null);
     setBooking(null);
     startTransition(async () => {
-      const res = await searchFlightOffers({ itineraryId, origin: origin.iata, destination: dest.iata, departureDate: date, adults: 1, cabin });
+      const res = await searchFlightOffers({
+        itineraryId,
+        origin: origin.iata,
+        destination: dest.iata,
+        departureDate: date,
+        returnDate: tripType === "return" ? returnDate : undefined,
+        adults,
+        children,
+        cabin,
+      });
       if (res.error) return setError(res.error);
       setOffers(res.offers);
       setSample(res.sample);
@@ -66,7 +80,8 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
     });
   }
 
-  const shown = sortFilter(offers ?? [], sort, directOnly);
+  const airlines = Array.from(new Set((offers ?? []).map((o) => (o.detail as Partial<FlightDetail>)?.carrier).filter((c): c is string => !!c))).sort();
+  const shown = sortFilter(offers ?? [], sort, directOnly, airline);
 
   if (!open) {
     return <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpen(true)}>Find a flight</button>;
@@ -79,10 +94,23 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
         <button type="button" className="cc-conn-close" aria-label="Close" onClick={() => setOpen(false)}>✕</button>
       </div>
 
+      <div className="cc-conn-triptype" style={{ display: "inline-flex", gap: 4, padding: "0 var(--space-5)" }}>
+        <button type="button" className="cc-conn-tab" data-active={tripType === "return" ? "true" : "false"} onClick={() => setTripType("return")}>Return</button>
+        <button type="button" className="cc-conn-tab" data-active={tripType === "oneway" ? "true" : "false"} onClick={() => setTripType("oneway")}>One-way</button>
+      </div>
       <div className="cc-conn-form">
         <AirportField label="From" value={origin} onPick={setOrigin} />
         <AirportField label="To" value={dest} onPick={setDest} />
-        <div className="cc-conn-field"><label className="cc-conn-lbl">Date</label><input className="cc-field" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div className="cc-conn-field"><label className="cc-conn-lbl">Depart</label><input className="cc-field" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        {tripType === "return" ? (
+          <div className="cc-conn-field"><label className="cc-conn-lbl">Return</label><input className="cc-field" type="date" value={returnDate} min={date} onChange={(e) => setReturnDate(e.target.value)} /></div>
+        ) : null}
+        <div className="cc-conn-field"><label className="cc-conn-lbl">Adults</label>
+          <select className="cc-field" value={adults} onChange={(e) => setAdults(Number(e.target.value))}>{[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select>
+        </div>
+        <div className="cc-conn-field"><label className="cc-conn-lbl">Children</label>
+          <select className="cc-field" value={children} onChange={(e) => setChildren(Number(e.target.value))}>{[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}</select>
+        </div>
         <div className="cc-conn-field"><label className="cc-conn-lbl">Cabin</label>
           <select className="cc-field" value={cabin} onChange={(e) => setCabin(e.target.value as typeof cabin)}>
             <option value="economy">Economy</option><option value="premium_economy">Premium</option><option value="business">Business</option><option value="first">First</option>
@@ -109,10 +137,16 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
         <>
           <div className="cc-conn-list-head">
             <span className="cc-conn-list-count">{shown.length} fares</span>
-            <span className="cc-conn-controls" style={{ display: "inline-flex", gap: "var(--space-3)", alignItems: "center" }}>
+            <span className="cc-conn-controls" style={{ display: "inline-flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
               <label className="cc-conn-sort" style={{ display: "inline-flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
                 <input type="checkbox" checked={directOnly} onChange={(e) => setDirectOnly(e.target.checked)} /> Direct only
               </label>
+              {airlines.length > 1 ? (
+                <select className="cc-field" value={airline} onChange={(e) => setAirline(e.target.value)} style={{ padding: "4px 8px" }}>
+                  <option value="">All airlines</option>
+                  {airlines.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              ) : null}
               <select className="cc-field" value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={{ padding: "4px 8px" }}>
                 <option value="cheapest">Cheapest</option><option value="fastest">Fastest</option>
               </select>
@@ -127,6 +161,7 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
                     <span className="cc-conn-offer-title">{o.title.split(" · ")[0]}<span className="cc-conn-offer-op">{o.title.split(" · ").slice(1).join(" · ")}</span></span>
                     <span className="cc-conn-offer-summary">{renderSummary(o, d)}</span>
                     <span className="cc-conn-offer-chips" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+                      {d?.roundTrip ? <Chip tone="good">Return</Chip> : null}
                       {d?.fareBrand ? <Chip>{d.fareBrand}</Chip> : null}
                       <Chip>{bagLabel(d)}</Chip>
                       {d?.refundable ? <Chip tone="good">Refundable</Chip> : d?.refundable === false ? <Chip tone="dim">Non-refundable</Chip> : null}
@@ -246,9 +281,10 @@ function renderSummary(o: Offer, d?: Partial<FlightDetail>): ReactNode {
   return (<><span>{times}</span>{stops ? <span className="stops" data-direct={direct ? "true" : "false"}>{stops}</span> : null}</>);
 }
 
-function sortFilter(offers: Offer[], sort: Sort, directOnly: boolean): Offer[] {
+function sortFilter(offers: Offer[], sort: Sort, directOnly: boolean, airline: string): Offer[] {
   let out = offers;
   if (directOnly) out = out.filter((o) => ((o.detail as Partial<FlightDetail>)?.stops ?? 0) === 0);
+  if (airline) out = out.filter((o) => (o.detail as Partial<FlightDetail>)?.carrier === airline);
   const dur = (o: Offer) => (o.startIso && o.endIso ? new Date(o.endIso).getTime() - new Date(o.startIso).getTime() : Infinity);
   return [...out].sort((a, b) => (sort === "cheapest" ? Number(a.price.amount) - Number(b.price.amount) : dur(a) - dur(b)));
 }
