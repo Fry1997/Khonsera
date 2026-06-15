@@ -11,10 +11,13 @@ import {
   createFlightOrder,
   placeSuggestions,
   getSeatMap,
+  getStayRates,
+  bookStayRate,
   type FlightPassenger,
   type FlightService,
   type PlaceSuggestion,
   type SeatMapVM,
+  type StayRate,
 } from "@/lib/integrations/duffel";
 import { textSearchPlaces } from "@/lib/google/places";
 import type { Offer, Booking } from "@/lib/connections/types";
@@ -213,34 +216,63 @@ export async function searchStayOffers(input: z.input<typeof staySearchSchema>):
   return { offers, sample, pending };
 }
 
-// Book a stay → lands as an accommodation constraint anchor (check-in). Duffel
-// Stays is pending activation, so this is real-shaped; the booking flows through
-// the same Offer→Booking vocabulary as flights.
+// The rooms/rates for a chosen property (board, cancellation, pay-type).
+export async function stayRates(searchResultId: string): Promise<{ rates: StayRate[]; sample: boolean }> {
+  await requireUserContext();
+  if (!searchResultId) return { rates: [], sample: false };
+  return getStayRates(searchResultId);
+}
+
+// Book a chosen RATE (room) → Duffel quote→booking → lands as a rich accommodation
+// anchor (check-in time from the property, board, cancellation, confirmation ref).
 const bookStaySchema = z.object({
   itineraryId: z.string().uuid(),
-  offer: z.object({ id: z.string(), title: z.string(), price: z.object({ amount: z.string(), currency: z.string() }) }),
+  rateId: z.string().min(1),
+  stayTitle: z.string().min(1),
   checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  checkInAfter: z.string().optional(), // "15:00"
+  checkOutBefore: z.string().optional(),
+  board: z.string().optional(),
+  freeCancellationBefore: z.string().nullable().optional(),
+  specialRequests: z.string().trim().max(500).optional(),
 });
 
-export async function bookStayOffer(input: z.input<typeof bookStaySchema>): Promise<{ ok: boolean; error?: string }> {
+export async function bookStayRoom(input: z.input<typeof bookStaySchema>): Promise<{ ok: boolean; reference?: string; error?: string }> {
   const parsed = bookStaySchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Couldn't read that stay." };
-  const { itineraryId, offer, checkIn } = parsed.data;
-  await requireUserContext();
-  // Lands as an accommodation anchor at check-in (15:00 default) carrying the stay
-  // payload. Duffel Stays is pending activation, so the booking is real-shaped.
+  if (!parsed.success) return { ok: false, error: "Couldn't read that room." };
+  const v = parsed.data;
+  const ctx = await requireUserContext();
+  const [given = "Guest", family = "Khonsera"] = String(ctx.fullName ?? "").trim().split(/\s+/);
+
+  const board = (["room_only", "breakfast", "half_board", "full_board", "all_inclusive"] as const).find((b) => b === v.board) ?? null;
+  const booking = await bookStayRate({
+    rateId: v.rateId,
+    guestGiven: given,
+    guestFamily: family || "Khonsera",
+    email: ctx.email ?? "guest@example.com",
+    phone: "+442080160508",
+    stayTitle: v.stayTitle,
+    checkIn: v.checkIn,
+    checkOut: v.checkOut,
+    specialRequests: v.specialRequests,
+  });
+  if (!booking) return { ok: false, error: "The property couldn't confirm that room — try another." };
+
   await addManualAnchor({
-    itineraryId,
+    itineraryId: v.itineraryId,
     kind: "accommodation",
-    title: offer.title,
-    iso: wallClockToIso(checkIn, "15:00"),
+    title: v.stayTitle,
+    iso: wallClockToIso(v.checkIn, v.checkInAfter ?? "15:00"),
     details: {
-      property_name: offer.title,
-      confirmation_ref: `STAY-${offer.id.slice(-6).toUpperCase()}`,
-      price: offer.price.amount,
-      currency: offer.price.currency,
+      property_name: v.stayTitle,
+      confirmation_ref: booking.reference,
+      board_basis: board,
+      price: booking.price.amount,
+      currency: booking.price.currency,
+      free_cancel_until: v.freeCancellationBefore ?? null,
       channel: "other",
     },
   });
-  return { ok: true };
+  return { ok: true, reference: booking.reference };
 }

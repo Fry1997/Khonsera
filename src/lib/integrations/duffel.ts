@@ -472,7 +472,7 @@ export async function getStayRates(searchResultId: string): Promise<{ rates: Sta
 // Quote a rate (locks the price) then book it. Returns a Booking. Mock until
 // Stays activates. (The boarding-pass equivalent doesn't apply — a hotel
 // confirmation reference IS the bookable credential.)
-export async function bookStayRate(args: { rateId: string; guestGiven: string; guestFamily: string; email: string; phone: string; stayTitle: string; checkIn: string; checkOut: string }): Promise<Booking | null> {
+export async function bookStayRate(args: { rateId: string; guestGiven: string; guestFamily: string; email: string; phone: string; stayTitle: string; checkIn: string; checkOut: string; specialRequests?: string }): Promise<Booking | null> {
   const token = duffelToken();
   if (!token) {
     return { id: `sby_mock_${args.rateId.slice(-5)}`, kind: "stay", provider: "duffel", reference: `STAY-${args.rateId.slice(-6).toUpperCase()}`, price: { amount: "0", currency: "GBP" }, title: args.stayTitle, startIso: args.checkIn, endIso: args.checkOut, sample: true };
@@ -486,7 +486,7 @@ export async function bookStayRate(args: { rateId: string; guestGiven: string; g
     const b = await fetch(`${BASE}/stays/bookings`, {
       method: "POST",
       headers: { ...headers(token), "Idempotency-Key": `stay-${quoteId}` },
-      body: JSON.stringify({ data: { quote_id: quoteId, guests: [{ given_name: args.guestGiven, family_name: args.guestFamily }], email: args.email, phone_number: args.phone } }),
+      body: JSON.stringify({ data: { quote_id: quoteId, guests: [{ given_name: args.guestGiven, family_name: args.guestFamily }], email: args.email, phone_number: args.phone, ...(args.specialRequests ? { accommodation_special_requests: args.specialRequests } : {}) } }),
       signal: AbortSignal.timeout(25000),
       cache: "no-store",
     });
