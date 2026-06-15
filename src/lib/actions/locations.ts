@@ -179,6 +179,27 @@ export async function createInlineLocation(
     }
   }
 
+  // Dedup before insert: re-picking the same place (e.g. setting your base again,
+  // or adding home to two plans) must NOT mint a duplicate location. Reuse an
+  // existing one for this user with the same formatted address (stable per Google
+  // place), else the same name sitting at the same coordinates (~55m). Without
+  // this, every pick of "Home" created another row — the duplicate-base bug.
+  const { data: existing } = await supabase
+    .from("locations")
+    .select("*")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("user_id", ctx.userId);
+  const near = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.0005;
+  const match = (existing ?? []).find((l) => {
+    if (address && l.address && String(l.address).toLowerCase() === address.toLowerCase()) return true;
+    return (
+      String(l.name).toLowerCase() === parsed.value.name.toLowerCase() &&
+      near(l.latitude as number | null, latitude) &&
+      near(l.longitude as number | null, longitude)
+    );
+  });
+  if (match) return { ok: true, value: match as Location };
+
   const { data, error } = await supabase
     .from("locations")
     .insert({

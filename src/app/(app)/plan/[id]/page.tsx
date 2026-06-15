@@ -295,12 +295,21 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     };
   };
 
-  const constraints = await loadConstraints();
   const stopById = new Map(stops.map((st) => [st.id, st]));
 
-  // Prep + outcome notes per commitment (P3). RLS already scopes to the viewer.
-  const readiness = await loadReadiness(id);
-  const allNotes = await listNotesForStops(stops.map((st) => st.id));
+  // Independent readers in parallel. This was a 6-deep SERIAL waterfall (and each
+  // reader re-runs its own auth lookup) — ~1s of pure blocking before the cards
+  // could render. They don't depend on each other or on the node graph, so one
+  // Promise.all collapses the wait to the slowest single reader. RLS scopes each
+  // to the viewer. (loadNudges stays separate below — it needs the built nodes.)
+  const [constraints, readiness, allNotes, bookedConnections, budget, locationShares] = await Promise.all([
+    loadConstraints(),
+    loadReadiness(id),
+    listNotesForStops(stops.map((st) => st.id)),
+    loadBookedConnections(id),
+    loadBudget(id),
+    listLocationShares(id),
+  ]);
   const notesByStop = new Map<string, NoteVM[]>();
   for (const n of allNotes) {
     if (!n.stopId) continue;
@@ -674,9 +683,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   // Flight finder (ED-Flight) — passenger defaults from the profile for a quick book.
   const [pgiven = "", pfamily = ""] = String(ctx.fullName ?? "").trim().split(/\s+/);
   const connDefaultPassenger = { givenName: pgiven, familyName: pfamily, email: ctx.email ?? "" };
-  const bookedConnections = await loadBookedConnections(id);
-  const budget = await loadBudget(id);
-  const locationShares = await listLocationShares(id);
+  // bookedConnections, budget, locationShares loaded earlier in the parallel batch.
 
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
