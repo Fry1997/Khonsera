@@ -394,3 +394,12 @@ style (the skin owns it now):
   (`-line/.amt/-actions`), `.cc-manage-cancel`/`-keep`, `.cc-manage-done/-error`.
 - No token requests; all tokens verified. Redlines + map saved to `docs/design/edition-iii-r12-*`.
   Build green · 322 tests · tsc clean.
+
+## P16 · Budget / expenses (spend-vs-cap + receipts) — 🟡 to skin
+- **BudgetPanel** 🟡 — `plan/budget-panel.tsx`, `.cc-budget` (+ `-head/-fig/-note/-bar[data-over]/-cap/`
+  `-list/-row/-row-type/-row-notes/-row-amt/-receipt/-attach/-add`). On `/plan/[id]`: a spend figure
+  ("£420 / £600"), an **over-cap** state (rust fig + note + `-bar[data-over=true]`), a cap input (set/
+  update), the trip's expense lines each with **+ Receipt** (upload) / **Receipt** (view) + amount, and a
+  quick-add row. *Placeholder inline token styles; Design owns `.cc-budget*`.* **Tone:** a calm ledger —
+  the cap reassuring while under, a quiet rust nudge when over (consequence in ink, never alarm); receipts
+  a one-tap attach.

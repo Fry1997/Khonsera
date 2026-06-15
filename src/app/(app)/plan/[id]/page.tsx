@@ -9,6 +9,8 @@ import { FlightFinder } from "@/components/plan/flight-finder";
 import { StayFinder } from "@/components/plan/stay-finder";
 import { ManageBookings } from "@/components/plan/manage-bookings";
 import { loadBookedConnections } from "@/lib/actions/connections";
+import { BudgetPanel } from "@/components/plan/budget-panel";
+import { loadBudget } from "@/lib/actions/budget";
 import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
@@ -661,6 +663,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const [pgiven = "", pfamily = ""] = String(ctx.fullName ?? "").trim().split(/\s+/);
   const connDefaultPassenger = { givenName: pgiven, familyName: pfamily, email: ctx.email ?? "" };
   const bookedConnections = await loadBookedConnections(id);
+  const budget = await loadBudget(id);
 
   // Door-to-door map — the canonical plan view carries the same JourneyMap the
   // legacy editor did, built from the (coord-bearing) stops + transition polylines.
@@ -723,6 +726,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           <PlanNudges itineraryId={id} nudges={nudges} />
 
           {bookedConnections.length > 0 ? <ManageBookings itineraryId={id} bookings={bookedConnections} /> : null}
+
+          <BudgetPanel itineraryId={id} budget={budget} />
 
           {journeyMap ? <PlanMap journey={journeyMap} /> : null}
 

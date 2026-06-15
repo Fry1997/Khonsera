@@ -447,12 +447,17 @@ loyalty follow. ✓ for the booking surface (ready for Design). Build green · 3
 P15 item); auto-distance-from-route on manual add (geocoder + Valhalla); route drawn on a map. Build
 green · **316 tests**. Design handoff (`.cc-mileage*`) added.
 
-### Phase 16 — Expenses depth + caps/spend-vs-cap (L6)  `[ ]`
+### Phase 16 — Expenses depth + caps/spend-vs-cap (L6)  `[x]` DONE 2026-06-15
 **Depends on:** P15.
-- [ ] **Receipt capture** bound to the leg/day (upload + store).
-- [ ] **Spend-vs-cap**: a pre-approved cap, live used-vs-remaining, over-cap flagged.
-- [ ] Cost-intelligence proposal ("a taxi here unlocks the day") — a proposal, never automatic.
-**Done when:** expenses capture receipts and track against a cap with over-cap surfaced.
+- [x] **Receipt capture** — upload to a private `receipts` bucket (owner-folder RLS, mig 0038), bound to
+      the expense; view via a short-lived signed URL. `attachReceipt`/`receiptViewUrl`.
+- [x] **Spend-vs-cap** — a per-trip `expense_cap` on the itinerary; `loadBudget` computes spent (incl.
+      mileage, which is an `expense_record`) vs cap → live remaining + **over-cap flag** (rust). The
+      `BudgetPanel` on `/plan/[id]`: cap (editable), the spend bar, the trip's lines + receipts, quick-add.
+- [→ positioned] **Cost-intelligence proposal** ("a £12 taxi here unlocks the meeting") — a context-engine
+      rule (decision/expense-aware); slots onto the P12 `evaluateContext` framework. *In the queue.*
+**Done when:** expenses capture receipts and track against a cap with over-cap surfaced. ✓ — receipts
+upload + view, spend-vs-cap with over-cap in rust, mileage folds in. Build green · 322 tests.
 
 ### Phase 17 — Org / B2B + approvals (L6, Part D)  `[ ]`
 **Depends on:** P3 (outcome notes), P16 (caps). 
@@ -801,6 +806,11 @@ it's sequenced, not dropped.*
 - **Classification rules** (work-hours / named-location / frequent-route, explicit) — buildable now.
 - **Auto-classify by itinerary leg** (our unique angle) + **trip merge/split** + **postcode capture** +
   **MAR/NIC figures** — buildable now.
+
+### Expenses / org
+- **Cost-intelligence proposal** (P16) — "a £12 taxi unlocks the meeting": a decision/expense-aware
+  rule on the P12 context framework. Buildable now.
+- **Spend-vs-cap approvals routing + per-diem** (P17) — manager approval of over-cap; HMRC scale-rate per-diem.
 
 ### Earlier phases owed
 - **P6** transition-pattern inference; **P7** commitment-aware navigation; **P8b** TfL network maps —
