@@ -296,3 +296,17 @@ styles (the skin owns `.cc-conn*`):
   `-confirmed` (`-mark` ✓ / `-title` / `-detail` with `.ref` / `-tail`), `-empty` (+ `.hint`).
 - **No token requests.** Tokens verified to resolve. Redlines + map saved to `docs/design/edition-iii-r9-*`.
   Build green · 308 tests · tsc clean.
+
+## P15 · Mileage tracker — 🟡 to skin (future round)
+
+- **`/mileage`** 🟡 — `app/(app)/mileage/page.tsx` + `components/mileage/`. The private claim-ready trip
+  ledger. Three pieces:
+  - **DriveRecorder** (`.cc-mileage-rec` + `-live/-error`) — the opt-in GPS capture: "Record a drive" →
+    a live "Recording · N mi" (rust pulse dot) → "Stop & save". Calm, unobtrusive.
+  - **Summary bar** (`.cc-mileage-summary` + `-sum-fig`) — the claimable **£** (mono figure) · business
+    miles · tax year, with **Export CSV** + **Add a trip**.
+  - **Ledger** (`.cc-mileage-list` / `-trip[data-class]` + `-trip-main/-trip-class/-trip-del`) — one
+    drive per row (route or "Drive" · date · miles · GPS/manual), a Business|Personal segmented toggle
+    (`button[data-active]`), delete. Plus `.cc-mileage-add` (manual entry) + `.cc-mileage-empty`.
+  - *Placeholder inline token styles; Design owns `.cc-mileage*`.* Tone: a quiet ledger, the claimable
+    figure the one confident number, classification a clean two-state toggle, recording calm not alarmist.

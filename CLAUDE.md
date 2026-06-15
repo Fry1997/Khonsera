@@ -141,7 +141,9 @@ The barrier is the test: off the train, no signal, you still need your Aztec. Tw
 
 ### Point-to-point navigation (`/navigate`) — see `docs/navigation.md`
 Build spine §6, fully open-source and self-hostable: **Valhalla** routing (`VALHALLA_URL`,
-default FOSSGIS) + **Photon** geocoding (`PHOTON_URL`, default komoot) + MapLibre/OSM render.
+default FOSSGIS) + MapLibre/OSM render. **Geocoding is Google Places Text Search** (fast, complete;
+the public komoot Photon was ~20s + patchy — D54), with **Photon** (`PHOTON_URL`) kept as the no-key
+fallback. Mileage tracker (P15) reuses this geocoder + Valhalla.
 - Provider-agnostic core in `src/lib/nav/` (types/valhalla/shape/guidance/tiles — pure,
   unit-tested). Server actions in `src/lib/actions/nav.ts`. UI in `src/components/nav/`.
 - **Valhalla shapes are polyline precision 6**, not 5 — `nav/shape.ts` takes a precision arg;

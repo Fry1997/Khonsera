@@ -774,3 +774,14 @@ Newest at the bottom of each section.
   powers the brief/plan pickers, so no new procurement), with **Photon kept as the fallback** when no key.
   Fast (~one request) + complete; no UI change (same `GeocodeHit[]`). Self-hosted Photon remains the
   open-source escape hatch. Build green · 308 tests.
+
+- **D55 — Mileage tracker (P15): opt-in GPS capture + tiered HMRC ledger.** Built the full trip ledger
+  (distinct from the existing one-off `mileage_expenses`): `mileage_trips` (mig 0037, owner-only RLS —
+  a mileage ledger is the user's PRIVATE record; employer submission is the explicit P17 step). Pure
+  AMAP engine (`mileage/engine.ts`, ×8 tests): car 45p/25p across the 10,000-mile threshold **per UK tax
+  year** (6 Apr–5 Apr), motorcycle 24p, bicycle 20p; `buildReport` accumulates the tier chronologically.
+  `DriveRecorder` (watchPosition, noise-filtered) captures the actual route + live distance → logs a GPS
+  trip; classification is an explicit toggle (never learned); CSV export at the tiered rates; manual
+  add/edit/delete. *Positioned:* fully-automatic background detection (needs native/Capacitor); Valhalla
+  map-matched road-snapped distance (currently honest straight-segment haversine); route-on-a-map. Build
+  green · 316 tests.

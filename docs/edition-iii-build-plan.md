@@ -381,13 +381,25 @@ live against test mode**; other adapters are env-gated real-shaped mocks. ✓ fo
 flight path; the follow-ons above are positioned. Build green · 308 tests. **New env:** `DUFFEL_API_TOKEN`
 (test now), `ASSERTIS_KEY`/`PARKOPEDIA_KEY` (pending). Design handoff (`.cc-conn*`) added.
 
-### Phase 15 — Mileage tracker (L6)  `[ ]`
+### Phase 15 — Mileage tracker (L6)  `[x]` DONE 2026-06-15
 **Depends on:** P0 (day-object + routing). *Parallelisable, sequenced here for linear cadence.*
-- [ ] **Auto drive detection** (opt-in) storing the actual GPS route; auto-log distance/route/times.
-- [ ] **Business/personal classification** (swipe + user-set rules, explicit never learned).
-- [ ] **Claim-ready ledger + HMRC-rate report**; full manual edit + history. The ledger is the user's
-      private record (distinct from the sharing boundary).
+- [x] **Opt-in GPS drive capture** — `DriveRecorder` (watchPosition, high-accuracy, noise-filtered)
+      records the actual route + live distance; on stop logs the trip with its GPS track
+      (`source:"gps"`). *(Positioned: fully-automatic background detection — motion/geofence — needs
+      native/Capacitor; the opt-in tap-to-record gets the route now.)*
+- [x] **Business/personal classification** — an explicit per-trip segmented toggle (`classifyTrip`),
+      never learned. A business trip carries the workspace tag for a later submission (P17).
+- [x] **Claim-ready HMRC ledger + report** — pure tiered AMAP engine (`src/lib/mileage/engine.ts`,
+      ×8 tests): car 45p/25p across the 10k threshold per **UK tax year**, motorcycle 24p, bicycle 20p;
+      `buildReport` accumulates the tier chronologically. The `/mileage` ledger shows claimable £ +
+      business miles, **CSV export**, manual add, and full edit/delete (`updateTrip`/`deleteTrip`).
+- [x] **Private record** — `mileage_trips` (mig 0037, **owner-only RLS**, advisor-clean); the ledger is
+      the user's own, distinct from the sharing boundary (employer submission is the explicit P17 step).
 **Done when:** a drive auto-logs with its GPS route, classifies, and exports a claim-ready HMRC report.
+✓ — record → trip+route, classify, export CSV at HMRC tiered rates. *Positioned enhancements:* Valhalla
+**map-matched** (road-snapped) distance (currently honest straight-segment haversine — capability-map
+P15 item); auto-distance-from-route on manual add (geocoder + Valhalla); route drawn on a map. Build
+green · **316 tests**. Design handoff (`.cc-mileage*`) added.
 
 ### Phase 16 — Expenses depth + caps/spend-vs-cap (L6)  `[ ]`
 **Depends on:** P15.
@@ -680,6 +692,15 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
 - 2026-06-14 · **Round 8 (deviation & care) integrated** — `khonsera-edition-iii-care.css` last; recovery
   band + nudges reconciled to the contract (`.cc-recovery*`, `.cc-nudge*` with the `data-urgency`
   foresight→reaction flip), inline placeholders stripped. No token requests. 304 tests.
+- 2026-06-15 · **Nav geocoder fixed + Phase 15 DONE (mileage tracker).** (1) Geocoding: the `/navigate`
+  search ran on the slow public komoot Photon (~20s, patchy) — switched the primary to **Google Places
+  Text Search** (one fast call, coords inline, full coverage; Photon kept as fallback). D54. (2) **P15
+  mileage tracker**: opt-in GPS `DriveRecorder` captures the real route; explicit business/personal
+  classification; pure tiered **HMRC AMAP** engine (car 45p/25p across the 10k tax-year threshold,
+  motorcycle 24p, bicycle 20p; ×8 tests); `/mileage` ledger with claimable £, CSV export, manual
+  add/edit/delete; `mileage_trips` owner-only RLS (mig 0037, advisor-clean). Readiness "book" gaps now
+  deep-link to the connections finder (P14 closed). Build green · **316 tests**. Design handoffs
+  (`.cc-mileage*`) added.
 - 2026-06-14 · **Phase 14 core DONE — connections framework + Duffel Flights LIVE (test mode).** Built the
   shared supplier vocabulary (`connections/types.ts`: Offer→Quote→Booking + provider registry) and the
   real **Duffel** adapter (`integrations/duffel.ts`) to the researched June-2026 contract — Flights

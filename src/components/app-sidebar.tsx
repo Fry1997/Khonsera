@@ -23,6 +23,7 @@ function navFor(mode: AppMode): NavItem[] {
     { href: "/wallet" as Route, label: "Wallet", icon: "wallet" },
     { href: "/navigate" as Route, label: "Navigate", icon: "navigate" },
     { href: "/expenses" as Route, label: "Expenses", icon: "receipt" },
+    { href: "/mileage" as Route, label: "Mileage", icon: "navigate" },
     ...(mode === "work" ? [{ href: "/workspace" as Route, label: "Workspace", icon: "clients" } as NavItem] : []),
     { href: "/settings" as Route, label: "Settings", icon: "settings" },
   ];
