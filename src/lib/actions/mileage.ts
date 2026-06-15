@@ -21,6 +21,7 @@ export type TripVM = {
   vehicle: Vehicle;
   source: "gps" | "manual";
   purpose: string | null;
+  passengers: number;
   hasRoute: boolean;
 };
 
@@ -35,6 +36,7 @@ type Row = {
   vehicle: Vehicle;
   source: "gps" | "manual";
   purpose: string | null;
+  passengers: number | null;
   route_polyline: string | null;
 };
 
@@ -50,6 +52,7 @@ function toVM(r: Row): TripVM {
     vehicle: r.vehicle,
     source: r.source,
     purpose: r.purpose,
+    passengers: r.passengers ?? 0,
     hasRoute: !!r.route_polyline,
   };
 }
@@ -69,6 +72,7 @@ const logSchema = z.object({
   vehicle: z.enum(["car", "motorcycle", "bicycle"]).default("car"),
   source: z.enum(["gps", "manual"]).default("manual"),
   purpose: z.string().trim().max(280).optional(),
+  passengers: z.number().int().min(0).max(8).optional(),
   itineraryId: z.string().uuid().optional(),
 });
 
@@ -102,6 +106,7 @@ export async function logTrip(input: z.input<typeof logSchema>): Promise<{ ok: b
       vehicle: v.vehicle,
       source: v.source,
       purpose: v.purpose ?? null,
+      passengers: v.passengers ?? 0,
     })
     .select("id")
     .single();
@@ -115,7 +120,7 @@ export async function listTrips(): Promise<TripVM[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("mileage_trips")
-    .select("id, started_at, ended_at, origin_label, dest_label, distance_meters, classification, vehicle, source, purpose, route_polyline")
+    .select("id, started_at, ended_at, origin_label, dest_label, distance_meters, classification, vehicle, source, purpose, passengers, route_polyline")
     .eq("user_id", ctx.userId)
     .order("started_at", { ascending: false });
   return ((data ?? []) as Row[]).map(toVM);
@@ -140,6 +145,7 @@ const editSchema = z.object({
   distanceMiles: z.number().min(0).max(2000).optional(),
   vehicle: z.enum(["car", "motorcycle", "bicycle"]).optional(),
   purpose: z.string().trim().max(280).nullable().optional(),
+  passengers: z.number().int().min(0).max(8).optional(),
   originLabel: z.string().trim().max(160).nullable().optional(),
   destLabel: z.string().trim().max(160).nullable().optional(),
 });
@@ -154,6 +160,7 @@ export async function updateTrip(input: z.input<typeof editSchema>): Promise<{ o
   if (v.distanceMiles != null) patch.distance_meters = v.distanceMiles * 1609.344;
   if (v.vehicle) patch.vehicle = v.vehicle;
   if (v.purpose !== undefined) patch.purpose = v.purpose;
+  if (v.passengers !== undefined) patch.passengers = v.passengers;
   if (v.originLabel !== undefined) patch.origin_label = v.originLabel;
   if (v.destLabel !== undefined) patch.dest_label = v.destLabel;
   if (Object.keys(patch).length === 0) return { ok: true };
@@ -178,14 +185,16 @@ export async function mileageReport(taxYear?: string): Promise<MileageReport> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("mileage_trips")
-    .select("id, started_at, distance_meters, classification, vehicle")
+    .select("id, started_at, distance_meters, classification, vehicle, passengers, purpose")
     .eq("user_id", ctx.userId);
-  const trips = ((data ?? []) as { id: string; started_at: string; distance_meters: number; classification: TripVM["classification"]; vehicle: Vehicle }[]).map((r) => ({
+  const trips = ((data ?? []) as { id: string; started_at: string; distance_meters: number; classification: TripVM["classification"]; vehicle: Vehicle; passengers: number | null; purpose: string | null }[]).map((r) => ({
     id: r.id,
     startedAt: r.started_at,
     distanceMeters: r.distance_meters,
     classification: r.classification,
     vehicle: r.vehicle,
+    passengers: r.passengers ?? 0,
+    purpose: r.purpose,
   }));
   return buildReport(trips, taxYear ?? taxYearOf(new Date().toISOString()));
 }

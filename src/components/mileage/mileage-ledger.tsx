@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { logTrip, classifyTrip, deleteTrip, type TripVM } from "@/lib/actions/mileage";
+import { logTrip, classifyTrip, deleteTrip, updateTrip, type TripVM } from "@/lib/actions/mileage";
 import type { MileageReport } from "@/lib/mileage/engine";
 
 // Mileage ledger (Phase 15) — the private claim-ready record. An HMRC summary bar
@@ -31,19 +31,29 @@ export function MileageLedger({ trips, report }: { trips: TripVM[]; report: Mile
       router.refresh();
     });
   }
+  function savePurpose(id: string, purpose: string) {
+    startTransition(async () => {
+      await updateTrip({ id, purpose });
+      router.refresh();
+    });
+  }
 
   function exportCsv() {
-    const header = ["Date", "From", "To", "Miles", "Class", "Vehicle", "Claimable £"];
+    const header = ["Date", "From", "To", "Purpose", "Miles", "Class", "Vehicle", "Passengers", "Mileage £", "Passenger £", "Total £"];
     const rows = report.trips.map((t) => {
       const trip = trips.find((x) => x.id === t.id);
       return [
         new Date(t.startedAt).toLocaleDateString("en-GB"),
         trip?.originLabel ?? "",
         trip?.destLabel ?? "",
+        trip?.purpose ?? "",
         t.miles.toFixed(1),
         t.classification,
         t.vehicle,
+        String(trip?.passengers ?? 0),
         (t.amountPence / 100).toFixed(2),
+        (t.passengerPence / 100).toFixed(2),
+        ((t.amountPence + t.passengerPence) / 100).toFixed(2),
       ];
     });
     const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -61,10 +71,18 @@ export function MileageLedger({ trips, report }: { trips: TripVM[]; report: Mile
       {/* HMRC summary */}
       <div className="cc-mileage-summary" style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "var(--space-4)", padding: "var(--space-4) var(--space-5)", border: "1px solid var(--rule)", borderRadius: "var(--radius-lg, 12px)", background: "var(--card)" }}>
         <span className="cc-mileage-sum-fig" style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-h2, 24px)", color: "var(--ink)" }}>£{(report.claimablePence / 100).toFixed(2)}</span>
-        <span style={{ color: "var(--ink-dim)", fontSize: "var(--fs-label)" }}>claimable · {report.businessMiles} business mi · {report.taxYear}</span>
+        <span style={{ color: "var(--ink-dim)", fontSize: "var(--fs-label)" }}>
+          claimable · {report.businessMiles} business mi · {report.taxYear}
+          {report.passengerPence > 0 ? ` · incl. £${(report.passengerPence / 100).toFixed(2)} passenger` : ""}
+        </span>
         <button type="button" className="cc-btn cc-btn-ghost" onClick={exportCsv} style={{ marginLeft: "auto" }} disabled={report.trips.length === 0}>Export CSV</button>
         <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAdding((v) => !v)}>{adding ? "Cancel" : "Add a trip"}</button>
       </div>
+      {report.needsPurposeCount > 0 ? (
+        <p className="cc-mileage-warn" style={{ color: "var(--gold-2)", fontSize: "var(--fs-label)", margin: 0 }}>
+          {report.needsPurposeCount} business {report.needsPurposeCount === 1 ? "trip needs" : "trips need"} a purpose to be claim-ready — HMRC requires the reason for each journey.
+        </p>
+      ) : null}
 
       {adding ? <ManualAdd onDone={() => { setAdding(false); router.refresh(); }} /> : null}
 
@@ -81,7 +99,19 @@ export function MileageLedger({ trips, report }: { trips: TripVM[]; report: Mile
                 </span>
                 <span style={{ display: "block", fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)" }}>
                   {new Date(t.startedAt).toLocaleDateString("en-GB")} · {t.distanceMiles} mi · {t.source === "gps" ? "GPS" : "manual"}
+                  {t.passengers > 0 ? ` · ${t.passengers} passenger${t.passengers > 1 ? "s" : ""}` : ""}
                 </span>
+                {t.purpose ? (
+                  <span style={{ display: "block", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)" }}>{t.purpose}</span>
+                ) : t.classification === "business" ? (
+                  <input
+                    className="cc-mileage-purpose"
+                    placeholder="Add a purpose to claim it…"
+                    defaultValue=""
+                    onBlur={(e) => { const val = e.target.value.trim(); if (val) savePurpose(t.id, val); }}
+                    style={{ display: "block", marginTop: 2, background: "transparent", border: "none", borderBottom: "1px dashed var(--gold-soft, var(--rule))", fontSize: "var(--fs-micro, 11px)", color: "var(--ink)", padding: "1px 0", width: "100%", maxWidth: 260 }}
+                  />
+                ) : null}
               </span>
               <span className="cc-mileage-trip-class" role="group" style={{ display: "inline-flex", gap: 4 }}>
                 <button type="button" data-active={t.classification === "business"} disabled={busy === t.id} onClick={() => classify(t.id, "business")} style={segBtn(t.classification === "business")}>Business</button>
@@ -120,6 +150,7 @@ function ManualAdd({ onDone }: { onDone: () => void }) {
   const [vehicle, setVehicle] = useState<"car" | "motorcycle" | "bicycle">("car");
   const [cls, setCls] = useState<"business" | "personal">("business");
   const [purpose, setPurpose] = useState("");
+  const [passengers, setPassengers] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   function save() {
@@ -135,6 +166,7 @@ function ManualAdd({ onDone }: { onDone: () => void }) {
         classification: cls,
         source: "manual",
         purpose: purpose || undefined,
+        passengers: passengers || undefined,
       });
       if (!res.ok) return setError(res.error ?? "Couldn't add it.");
       onDone();
@@ -153,7 +185,10 @@ function ManualAdd({ onDone }: { onDone: () => void }) {
       <select className="cc-field" value={cls} onChange={(e) => setCls(e.target.value as typeof cls)}>
         <option value="business">Business</option><option value="personal">Personal</option>
       </select>
-      <input className="cc-field" placeholder="Purpose (optional)" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+      <select className="cc-field" value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} title="Fellow employees carried (5p/mile each)">
+        <option value={0}>No passengers</option><option value={1}>1 passenger</option><option value={2}>2 passengers</option><option value={3}>3 passengers</option>
+      </select>
+      <input className="cc-field" placeholder="Purpose (HMRC needs this)" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
       <button type="button" className="cc-btn cc-btn-gold" onClick={save} disabled={pending}>{pending ? "Adding…" : "Add"}</button>
       {error ? <span style={{ color: "var(--rust)", fontSize: "var(--fs-micro, 11px)" }}>{error}</span> : null}
     </div>

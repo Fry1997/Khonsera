@@ -785,3 +785,25 @@ Newest at the bottom of each section.
   add/edit/delete. *Positioned:* fully-automatic background detection (needs native/Capacitor); Valhalla
   map-matched road-snapped distance (currently honest straight-segment haversine); route-on-a-map. Build
   green · 316 tests.
+
+- **D56 — Mileage depth pass (research-corrected): HMRC rate was WRONG (45p→55p).** A research agent on
+  UK mileage surfaced a correctness bug: HMRC raised the **car/van AMAP rate to 55p** (first 10k business
+  miles) effective **6 Apr 2026** — the first change since 2011/12 — and I'd hardcoded 45p. Fixed: rates
+  are now a **year-effective table** (`RATES_BY_TAX_YEAR`: 2026/27 = 55p/25p, 2025/26 = 45p/25p,
+  motorcycle 24p, bicycle 20p), keyed by UK tax year so the 10k tier flips at the 6-Apr boundary. Added
+  **passenger payments** (5p/mile/passenger, on top, tax/NIC-free; `passengers` column, mig) and **claim-
+  readiness**: a business trip with no **purpose** is valued but flagged ("N trips need a purpose — HMRC
+  requires the reason"), with an inline purpose input + purpose/passengers in the CSV. *Positioned (from
+  research):* explicit **classification rules** (work-hours / named-location / frequent-route — the
+  differentiator), **trip merge/split**, postcode auto-capture, the unique **auto-classify-by-itinerary-
+  leg** angle (we already know the planned route), MAR/NIC-divergence figures (work personas), team
+  submit/approve (P17). Build green · 320 tests.
+
+- **D57 — Connections (P14) reopened for depth (founder critique).** Founder rightly flagged the flight
+  flow as a thin slice: IATA codes typed by hand, a near-empty booking confirmation, stays wrongly gated
+  on the day having a destination, and a Flights|Stays toggle that conflates two independent booking
+  flows. A Duffel max-depth research agent returned the full verified schema (offer conditions/baggage/
+  cabin/emissions, `GET /air/seat_maps`, order `pay_later` not `hold`, documents=`electronic_ticket`,
+  order change/cancel flows; Stays `POST /stays/accommodation/suggestions` for name search + coords-only
+  `search`, accommodation/rate depth, quote→booking). Rebuilding: separate flight & stay flows (no
+  toggle), airport autocomplete (no IATA typing), independent hotel search, full offer + booking depth.
