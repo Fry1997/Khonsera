@@ -764,3 +764,13 @@ Newest at the bottom of each section.
   times) — **email sent**; until live, rail fares stay display-only / referred. Booking.com is the
   fallback hotel path behind Duffel Stays. This directly answers the "how do we know the mocks work"
   question: Duffel test mode validates the framework against a real API before we depend on it.
+
+- **D54 — Nav geocoding: Google Places Text Search replaces public Photon (was ~20s + patchy).** The
+  `/navigate` location search ran on the public **komoot Photon** instance — fair-use, throttled from
+  Vercel, ~20s and incomplete coverage (a blocker before the mileage tools, which lean on the same
+  geocoder). Switched the primary to **Google Places Text Search (New)** (`textSearchPlaces` in
+  `google/places.ts` — one call returns name + address + coords inline, full coverage, GB-biased,
+  proximity-biased to the user's anchor). `geocodeSearch` uses it whenever a Maps key is set (it already
+  powers the brief/plan pickers, so no new procurement), with **Photon kept as the fallback** when no key.
+  Fast (~one request) + complete; no UI change (same `GeocodeHit[]`). Self-hosted Photon remains the
+  open-source escape hatch. Build green · 308 tests.

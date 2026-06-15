@@ -5,12 +5,15 @@ import { requireUserContext } from "@/lib/auth";
 import { ok, err, errors, type Result } from "@/lib/errors";
 import { buildValhallaRequest, mapValhallaTrip, type ValhallaTrip } from "@/lib/nav/valhalla";
 import { rankByProximity } from "@/lib/geo";
+import { textSearchPlaces } from "@/lib/google/places";
+import { mapsApiKey } from "@/lib/google/maps";
 import type { GeocodeHit, NavRoute } from "@/lib/nav/types";
 
 // Point-to-point navigation actions. Fully open-source stack, every endpoint
 // self-hostable by env var:
 //   routing  — Valhalla (VALHALLA_URL, default the FOSSGIS community instance)
-//   geocode  — Photon/komoot (PHOTON_URL), OSM data, typo-tolerant autocomplete
+//   geocode  — Google Places Text Search (fast, complete; one call returns coords)
+//              with a Photon/komoot fallback (PHOTON_URL) when no Maps key is set.
 // Calls go server-side so the public instances see one origin (us), we can
 // swap to self-hosted without a client release, and no client CORS variance.
 
@@ -90,6 +93,26 @@ export async function geocodeSearch(
   await requireUserContext();
 
   const { query, near, limit } = parsed.data;
+
+  // Primary: Google Places Text Search — one fast call, coords inline, full
+  // coverage. Falls back to Photon only when no Maps key is configured.
+  if (mapsApiKey()) {
+    const places = await textSearchPlaces({ query, near, limit: limit ?? 6 });
+    const hits = places.map(
+      (p): GeocodeHit & { latitude: number; longitude: number } => ({
+        name: p.name,
+        detail: p.address,
+        lat: p.latitude,
+        lng: p.longitude,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        kind: p.types[0] ?? "place",
+      }),
+    );
+    const ranked = near ? rankByProximity(hits, near) : hits;
+    return ok(ranked.map(({ latitude: _a, longitude: _b, ...h }) => h));
+  }
+
   const params = new URLSearchParams({ q: query, limit: String(limit ?? 6), lang: "en" });
   if (near) {
     params.set("lat", String(near.lat));

@@ -10,7 +10,7 @@ signal** at the platform.
 | Concern | Engine | Endpoint (env var) | Default |
 |---|---|---|---|
 | Routing (walk/cycle/drive) | [Valhalla](https://github.com/valhalla/valhalla) | `VALHALLA_URL` | FOSSGIS community instance (`valhalla1.openstreetmap.de`) |
-| Free-text geocoding | [Photon](https://github.com/komoot/photon) (OSM) | `PHOTON_URL` | `photon.komoot.io` |
+| Free-text geocoding | **Google Places Text Search (New)** — fast, complete, one call returns coords. Fallback: [Photon](https://github.com/komoot/photon) (OSM) when no Maps key. | `GOOGLE_MAPS_API_KEY` (primary) / `PHOTON_URL` (fallback) | Google (the public komoot Photon was ~20s + patchy — replaced as the primary) |
 | Rendering | MapLibre GL + OSM raster tiles | — | (Protomaps upgrade path, as JourneyMap) |
 
 Both public instances are community-run with fair-use policies — fine for development and
