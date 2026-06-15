@@ -403,3 +403,29 @@ style (the skin owns it now):
   quick-add row. *Placeholder inline token styles; Design owns `.cc-budget*`.* **Tone:** a calm ledger —
   the cap reassuring while under, a quiet rust nudge when over (consequence in ink, never alarm); receipts
   a one-tap attach.
+
+## P15 · Mileage tracker — 🟡 LEDGER PACK
+- **DriveRecorder** 🟡 — `components/mileage/drive-recorder.tsx`, `.cc-mileage-rec` (+ `-live` rust pulse
+  "Recording · N mi", `-error`). On `/mileage`: "Record a drive" → live distance → "Stop & save".
+- **MileageLedger** 🟡 — `components/mileage/mileage-ledger.tsx`, `.cc-mileage` (+ `-summary`/`-sum-fig`
+  the claimable £ + business miles + tax year + Export CSV + Add; `-warn` the "N trips need a purpose";
+  `-list`/`-trip[data-class]`/`-trip-main`/`-trip-class` Business|Personal segmented toggle/`-trip-del`;
+  `-add` manual form; `-purpose` inline input; `-empty`). **Tone:** a quiet private ledger — the
+  claimable figure the one confident number, classification a clean two-state toggle, recording calm.
+
+## P17 · Approvals — 🟡 LEDGER PACK
+- **ApprovalsQueue** 🟡 — `components/workspace/approvals-queue.tsx`, `.cc-approvals` (+ `-row`/`-empty`).
+  On `/workspace` (managers only): submitted WORK-trip spend — traveller · trip · amount · Approve/Reject.
+  **Tone:** a calm review desk; approve is the gold action, reject quiet. Personal spend NEVER appears here.
+
+---
+
+# LEDGER & TEAMS PACK (request) — P15 mileage · P16 budget · P17 approvals
+*The private-ledger + money + teams surfaces, new since the connections pack. Three calm, numbers-led
+surfaces sharing the Edition III tokens. Skin `.cc-mileage*`, `.cc-budget*`, `.cc-approvals*`.*
+- **Mileage** (`/mileage`): DriveRecorder + MileageLedger (above).
+- **Budget** (`/plan/[id]`): BudgetPanel — spend-vs-cap bar (`-bar[data-over]` rust when over), cap,
+  expense lines + receipts, quick-add (entry above in the P16 section).
+- **Approvals** (`/workspace`, managers): ApprovalsQueue (above).
+- **The rule:** numbers in mono, the headline figure confident, **over-cap / needs-purpose a calm rust
+  nudge (consequence in ink, never alarm)**, sage for done/approved. As calm as the rest of the app.
