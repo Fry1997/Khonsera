@@ -1,9 +1,11 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { requireUserContext } from "@/lib/auth";
 import { wallClockToIso } from "@/lib/time-zone";
-import { addTransport, addManualAnchor } from "@/lib/actions/plan-edit";
+import { addTransport, addManualAnchor, deleteBookedRun, removeStop } from "@/lib/actions/plan-edit";
+import { flightCancelQuote, flightCancelConfirm, stayCancel } from "@/lib/integrations/duffel";
 import {
   searchFlights as duffelSearchFlights,
   searchStays as duffelSearchStays,
@@ -20,6 +22,8 @@ import {
   type StayRate,
 } from "@/lib/integrations/duffel";
 import { textSearchPlaces } from "@/lib/google/places";
+import { createClient } from "@/lib/supabase/server";
+import { accommodationFromMetadata } from "@/lib/accommodation/types";
 import type { Offer, Booking } from "@/lib/connections/types";
 
 // Airport autocomplete — type "Heathrow"/"London"/"Edinburgh", get the IATA code,
@@ -267,6 +271,7 @@ export async function bookStayRoom(input: z.input<typeof bookStaySchema>): Promi
     details: {
       property_name: v.stayTitle,
       confirmation_ref: booking.reference,
+      provider_booking_id: booking.id || null,
       board_basis: board,
       price: booking.price.amount,
       currency: booking.price.currency,
@@ -275,4 +280,58 @@ export async function bookStayRoom(input: z.input<typeof bookStaySchema>): Promi
     },
   });
   return { ok: true, reference: booking.reference };
+}
+
+// ───────────────────────── Manage booking (cancel) ─────────────────────────
+
+export type BookedConnection =
+  | { kind: "flight"; stopId: string; label: string; reference: string; orderId: string }
+  | { kind: "stay"; stopId: string; label: string; reference: string; bookingId: string };
+
+// The day's manageable connections — Duffel-booked flights (the departure stop
+// carries duffel_order_id) and stays (the accommodation anchor carries the
+// provider_booking_id). Read straight from stop metadata.
+export async function loadBookedConnections(itineraryId: string): Promise<BookedConnection[]> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const { data } = await supabase.from("stops").select("id, type, title, metadata").eq("itinerary_id", itineraryId);
+  const out: BookedConnection[] = [];
+  for (const s of (data ?? []) as { id: string; type: string; title: string | null; metadata: Record<string, unknown> | null }[]) {
+    const m = s.metadata ?? {};
+    if (m.provider === "duffel" && typeof m.duffel_order_id === "string") {
+      out.push({ kind: "flight", stopId: s.id, label: s.title ?? "Flight", reference: (m.booking_reference as string) ?? "—", orderId: m.duffel_order_id });
+    } else if (s.type === "accommodation") {
+      const a = accommodationFromMetadata(s.metadata);
+      if (a?.provider_booking_id) out.push({ kind: "stay", stopId: s.id, label: a.property_name ?? s.title ?? "Stay", reference: a.confirmation_ref ?? "—", bookingId: a.provider_booking_id });
+    }
+  }
+  return out;
+}
+
+// Step 1: preview the flight refund (so the traveller sees it before committing).
+export async function cancelFlightPreview(orderId: string): Promise<{ ok: boolean; cancellationId?: string; refund?: { amount: string; currency: string } | null; error?: string }> {
+  await requireUserContext();
+  const q = await flightCancelQuote(orderId);
+  if (!q) return { ok: false, error: "Couldn't get a cancellation quote — the airline may not allow it." };
+  return { ok: true, cancellationId: q.id, refund: q.refund };
+}
+
+// Step 2: confirm — cancels with the airline, then removes the run from the day.
+export async function cancelFlightConfirm(input: { cancellationId: string; departureStopId: string; itineraryId: string }): Promise<{ ok: boolean; error?: string }> {
+  await requireUserContext();
+  const done = await flightCancelConfirm(input.cancellationId);
+  if (!done) return { ok: false, error: "The airline couldn't confirm the cancellation." };
+  await deleteBookedRun(input.departureStopId);
+  revalidatePath(`/plan/${input.itineraryId}`);
+  return { ok: true };
+}
+
+// Stays: cancel (the refund was shown via the cancellation timeline at booking).
+export async function cancelStayBooking(input: { bookingId: string; stopId: string; itineraryId: string }): Promise<{ ok: boolean; refund?: { amount: string; currency: string } | null; error?: string }> {
+  await requireUserContext();
+  const res = await stayCancel(input.bookingId);
+  if (!res.ok) return { ok: false, error: "The property couldn't confirm the cancellation." };
+  await removeStop(input.stopId, input.itineraryId);
+  revalidatePath(`/plan/${input.itineraryId}`);
+  return { ok: true, refund: res.refund };
 }

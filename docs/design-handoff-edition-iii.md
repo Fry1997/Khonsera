@@ -370,3 +370,10 @@ surface. Additive over the `.cc-conn*` shell. Surfaces to skin:
   **Tone:** a calm hotel desk — photo-led where photos exist (gallery positioned), the guest score + free-
   cancellation the trust signals, the rate choice clear (board × cancellation), the chain-app limit matter-
   of-fact. *Design owns the `.cc-stay*` aesthetic + the eventual photo gallery.*
+
+## ED-Flight/Stay · Manage booking (cancel) — 🟡 (fold into R11/R12)
+- **ManageBookings** 🟡 — `plan/manage-bookings.tsx`, `.cc-manage` (+ `-row/-done/-error`). On `/plan/[id]`
+  beneath the nudges: a "Booked connections" list of Duffel-booked flights/stays (kind · label · ref) each
+  with **Manage → See refund → Confirm cancel / Keep it** (flights show the refund quote *before* committing;
+  stays cancel + report the refund). *Tone:* calm, reversible-feeling, the refund honest and up-front; rust
+  only on a genuine error. Change-flight is positioned. *Design owns `.cc-manage*`.*

@@ -34,6 +34,7 @@ export type AccommodationDetails = {
   // Booking channel (the handle for future manage/message/cancel)
   channel?: BookingChannel | null;
   confirmation_ref?: string | null;
+  provider_booking_id?: string | null; // the supplier's booking id (Duffel) — the handle for cancel/manage
   loyalty_no?: string | null;
   // Arrival payload (the winnable edge — what you need on the day)
   check_in_method?: string | null; // "front desk" | "lockbox 4821" | "app key"

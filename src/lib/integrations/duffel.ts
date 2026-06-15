@@ -349,6 +349,54 @@ export async function createFlightOrder(args: { offer: Offer; passengers: Flight
   }
 }
 
+// ───────────────────────── Manage booking: cancel (with refund quote) ─────────────────────────
+
+// Cancel is a TWO-STEP, honest flow: quote the refund first (so the traveller sees
+// what they get back before committing), then confirm. Mirrors Duffel's
+// order_cancellations (flights) + stays booking cancel.
+export type CancelQuote = { id: string; refund: Money | null; provider: "duffel"; sample: boolean };
+
+// Flights — POST /air/order_cancellations → refund quote (confirm separately).
+export async function flightCancelQuote(orderId: string): Promise<CancelQuote | null> {
+  const token = duffelToken();
+  if (!token) return { id: `ocl_mock_${orderId.slice(-5)}`, refund: { amount: "0.00", currency: "GBP" }, provider: "duffel", sample: true };
+  try {
+    const res = await fetch(`${BASE}/air/order_cancellations`, { method: "POST", headers: headers(token), body: JSON.stringify({ data: { order_id: orderId } }), signal: AbortSignal.timeout(20000), cache: "no-store" });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { id?: string; refund_amount?: string; refund_currency?: string } };
+    if (!json.data?.id) return null;
+    return { id: json.data.id, refund: json.data.refund_amount ? { amount: json.data.refund_amount, currency: json.data.refund_currency ?? "GBP" } : null, provider: "duffel", sample: false };
+  } catch {
+    return null;
+  }
+}
+
+export async function flightCancelConfirm(cancellationId: string): Promise<boolean> {
+  const token = duffelToken();
+  if (!token) return true; // mock — nothing to charge
+  try {
+    const res = await fetch(`${BASE}/air/order_cancellations/${encodeURIComponent(cancellationId)}/actions/confirm`, { method: "POST", headers: headers(token), signal: AbortSignal.timeout(20000), cache: "no-store" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Stays — cancel a booking (Duffel returns the refund). One step (already quoted
+// by the cancellation_timeline shown before booking).
+export async function stayCancel(bookingId: string): Promise<{ ok: boolean; refund: Money | null; sample: boolean }> {
+  const token = duffelToken();
+  if (!token) return { ok: true, refund: { amount: "0.00", currency: "GBP" }, sample: true };
+  try {
+    const res = await fetch(`${BASE}/stays/bookings/${encodeURIComponent(bookingId)}/actions/cancel`, { method: "POST", headers: headers(token), signal: AbortSignal.timeout(20000), cache: "no-store" });
+    if (!res.ok) return { ok: false, refund: null, sample: false };
+    const json = (await res.json()) as { data?: { refund_amount?: string; refund_currency?: string } };
+    return { ok: true, refund: json.data?.refund_amount ? { amount: json.data.refund_amount, currency: json.data.refund_currency ?? "GBP" } : null, sample: false };
+  } catch {
+    return { ok: false, refund: null, sample: false };
+  }
+}
+
 // ───────────────────────────── Stays: types + mappers ─────────────────────────────
 
 export type StaySearch = { lat: number; lng: number; radiusKm: number; checkIn: string; checkOut: string; rooms: number; adults: number };

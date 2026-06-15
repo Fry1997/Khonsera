@@ -395,7 +395,9 @@ catalogue.md` (operate/refer/honest-limit).*
       best-effort with an honest "assigned at check-in" fallback.
 - [x] **Real booking + rich ticket card** from Duffel order data (PNR, e-ticket, cabin, baggage, seat,
       order id) — **no email decode**; honest confirmation with the **airline check-in deep-link**.
-- [→ positioned] **Manage booking** (change/cancel + refund quote) — order id now persisted, unblocked.
+- [x] **Manage booking — cancel** (refund shown before you commit: quote→confirm) via the
+      `ManageBookings` panel on `/plan/[id]` (reads Duffel order/booking ids off the booked stops).
+      [→ positioned] **change-flight** (search new slices → order change offer → confirm).
 - [→ positioned] **Extra bags** ancillary (available_services); **multi-city**; **country-wide origin
       fan-out** ("any UK airport"); **airline-initiated-change webhook**; **price-track loop** (Duffel
       has no price intel — our own cache); wire the booked flight into **live status/gate** (AeroDataBox +
@@ -416,7 +418,8 @@ Catalogue: `docs/edition-iii-entity-catalogue.md`.*
       free-cancellation deadline, pay-at-property; `stayRates`/`mapStayRates`, +tests).
 - [x] **Real booking** — `bookStayRoom` → Duffel **quote→booking** → a rich accommodation anchor
       (property, ref, board, price, free-cancel-until). Free-cancel filter; nights-aware pricing.
-- [→ positioned] post-booking **view + cancel** (booking id persisted, unblocked); **loyalty-number
+- [x] post-booking **view + cancel** (refund returned) via the shared `ManageBookings` panel.
+- [→ positioned] **loyalty-number
       capture** (gated on rate support); **`key_collection`** on the day-of card; photo gallery +
       reviews-breakdown; map-area search.
 - [→ refer / honest limit] **digital room key, mobile check-in, loyalty points earn/redeem, on-property
