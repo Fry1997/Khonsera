@@ -451,7 +451,10 @@ green · **316 tests**. Design handoff (`.cc-mileage*`) added.
 **Depends on:** P15.
 - [x] **Receipt capture** — upload to a private `receipts` bucket (owner-folder RLS, mig 0038), bound to
       the expense; view via a short-lived signed URL. `attachReceipt`/`receiptViewUrl`.
-- [x] **Spend-vs-cap** — a per-trip `expense_cap` on the itinerary; `loadBudget` computes spent (incl.
+- [x] **Spend-vs-cap — per CATEGORY** (founder insight, D60): a workspace travel policy of caps by
+      type (food/meal often per-day, hotel…; `expense_caps` mig 0040, manager-set via `TravelPolicy` on
+      `/workspace`) → `BudgetPanel` shows per-category spend-vs-cap bars (per-day × nights). PLUS an
+      optional per-trip `expense_cap` on the itinerary; `loadBudget` computes spent (incl.
       mileage, which is an `expense_record`) vs cap → live remaining + **over-cap flag** (rust). The
       `BudgetPanel` on `/plan/[id]`: cap (editable), the spend bar, the trip's lines + receipts, quick-add.
 - [→ positioned] **Cost-intelligence proposal** ("a £12 taxi here unlocks the meeting") — a context-engine

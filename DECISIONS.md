@@ -835,3 +835,11 @@ Newest at the bottom of each section.
   work-trip + workspace-member** (mirrors `can_access_itinerary`); the approval queue is also work-filtered
   in-app. Verified owner reads (/expenses, BudgetPanel) still work. *Positioned:* visit assignment (via
   visit_plans — RLS blocks itinerary-insert-for-another-user), full team review, trip approval, per-diem.
+
+- **D60 — Expense caps are per-CATEGORY (founder insight), as a workspace travel policy.** Real T&E caps
+  by type (a food/meal cap — often per-day per-diem, a hotel cap…), not just one trip total. Added
+  `expense_caps` (mig 0040: workspace_id, expense_type, period per_day|per_trip, amount; member-read,
+  manager-write). `loadBudget` now returns per-category `caps[]` — the trip's spend in each category vs
+  the effective cap (per-day × the trip's nights) with a per-category over flag. `BudgetPanel` shows the
+  per-category cap bars; managers set the policy via `TravelPolicy` on `/workspace` (`setExpenseCap`,
+  manager-gated). The optional overall trip cap stays alongside. Build green · 322 tests.

@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext, isManager } from "@/lib/auth";
 import { loadApprovalsQueue } from "@/lib/actions/approvals";
 import { ApprovalsQueue } from "@/components/workspace/approvals-queue";
+import { loadExpenseCaps } from "@/lib/actions/budget";
+import { TravelPolicy } from "@/components/workspace/travel-policy";
 
 // Workspace / admin (handover §15) — Design Round 2. Work-mode only; in Personal
 // mode it's the .cc-boundary privacy note (the §2 boundary made visible).
@@ -46,9 +48,10 @@ export default async function WorkspacePage() {
   const roleLabel = ROLE_LABEL[membership?.role ?? "traveller"] ?? "Traveller";
   const manager = isManager(ctx);
   const approvals = manager ? await loadApprovalsQueue() : [];
+  const policyCaps = manager ? await loadExpenseCaps() : [];
   const stubs = [
     { t: "Allowance & per-diem", b: "A daily allowance tracker: receipts auto-submit, expenses deduct, the balance counts down." },
-    { t: "Travel policy", b: "Fare caps, approved providers, cost centres — kept without anyone having to read them." },
+    { t: "Approved providers & cost centres", b: "Approved suppliers and cost-centre tagging — kept without anyone having to read them." },
   ];
 
   return (
@@ -64,6 +67,7 @@ export default async function WorkspacePage() {
       </div>
 
       {manager ? <ApprovalsQueue items={approvals} /> : null}
+      {manager ? <TravelPolicy caps={policyCaps} /> : null}
 
       <section className="cc-section">
         <div className="cc-section-head"><span className="cc-section-title">Coming with teams</span></div>

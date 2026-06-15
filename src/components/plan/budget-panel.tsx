@@ -69,6 +69,25 @@ export function BudgetPanel({ itineraryId, budget }: { itineraryId: string; budg
 
       {adding ? <AddExpense itineraryId={itineraryId} currency={budget.currency} onDone={() => { setAdding(false); router.refresh(); }} /> : null}
 
+      {budget.caps.length > 0 ? (
+        <div className="cc-budget-caps" style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+          <span className="cc-budget-caps-head" style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Policy caps</span>
+          {budget.caps.map((c) => {
+            const cpct = c.cap > 0 ? Math.min(100, Math.round((c.spent / c.cap) * 100)) : 0;
+            const cover = c.overBy > 0;
+            return (
+              <div key={c.type} className="cc-budget-cap-row" data-over={cover ? "true" : "false"} style={{ display: "grid", gridTemplateColumns: "70px 1fr auto", gap: "var(--space-2)", alignItems: "center" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)", textTransform: "uppercase" }}>{TYPE_LABEL[c.type] ?? c.type}</span>
+                <span style={{ height: 5, borderRadius: 999, background: "var(--card-2)", overflow: "hidden" }}><span style={{ display: "block", height: "100%", width: `${cpct}%`, background: cover ? "var(--rust)" : "var(--gold)" }} /></span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: cover ? "var(--rust)" : "var(--ink-dim)", fontVariantNumeric: "tabular-nums" }}>
+                  {money(c.spent, c.currency)}/{money(c.cap, c.currency)}{c.period === "per_day" ? " (per day)" : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
       {budget.lines.length > 0 ? (
         <ul className="cc-budget-list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
           {budget.lines.map((l) => (

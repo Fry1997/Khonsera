@@ -429,3 +429,11 @@ surfaces sharing the Edition III tokens. Skin `.cc-mileage*`, `.cc-budget*`, `.c
 - **Approvals** (`/workspace`, managers): ApprovalsQueue (above).
 - **The rule:** numbers in mono, the headline figure confident, **over-cap / needs-purpose a calm rust
   nudge (consequence in ink, never alarm)**, sage for done/approved. As calm as the rest of the app.
+
+## P16 refinement · Per-category caps + Travel policy — 🟡 (fold into Ledger pack)
+- **BudgetPanel — per-category caps** 🟡 — `.cc-budget-caps` (+ `-caps-head`, `-cap-row[data-over]`): under
+  the overall figure, a compact row per policy category (Food/Hotel/…) — a mini spend bar + "£18/£30 (per
+  day)", rust when over. The real T&E shape (caps by type, often per-diem).
+- **TravelPolicy** 🟡 — `components/workspace/travel-policy.tsx`, `.cc-policy` (+ `-note`, `-row`,
+  `-row-type`). On `/workspace` (managers): set a £ cap + per-trip/per-day per category. *Tone:* a quiet
+  policy table; the caps then show as the calm rust nudge on every traveller's budget when exceeded.
