@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
-import Link from "next/link";
-import type { Route } from "next";
 import { PlanCreate } from "@/components/plan/plan-create";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
 import { DeleteEventButton } from "@/components/plan/delete-event-button";
@@ -111,9 +109,7 @@ export default async function PlanIndexPage() {
             from your inbox, and Khonsera threads the rest.
           </p>
           <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold">
-              Plan a day
-            </Link>
+            <PlanCreate label="Plan a day" />
           </div>
         </div>
       ) : (

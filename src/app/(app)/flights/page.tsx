@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// Flights are captured as anchors via manual entry / Gmail import (Edition III
-// P0). The standalone flights page is folded into the one capture surface.
+// Flights are captured on the plan itself — the FlightFinder + manual transport
+// add on /plan/[id]. The standalone flights page folds into the Plan surface.
 export default function FlightsRedirect() {
-  redirect("/itineraries/new");
+  redirect("/plan");
 }

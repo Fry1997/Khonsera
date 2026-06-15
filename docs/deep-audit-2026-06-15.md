@@ -61,6 +61,13 @@ reconciled migration-file drift — **0038–0045 existed only in the DB; writte
   convention; the per-leg CompareSheet + FlightFinder are the real comparison surfaces.
 - **Stale legacy nav cluster — FIXED (deleted).** `mobile-topbar.tsx`/`mobile-nav.tsx`/`nav-tabs.tsx`
   were a closed, never-mounted cluster referencing the retired `/dashboard`; removed (git preserves).
+- **The Brief form is RETIRED; the plan IS the intake (2026-06-15, founder).** The two new-plan
+  flows had diverged — `/plan`'s "Plan something" opened a blank `/plan/[id]`, while Today's "Plan a
+  day" dropped into the old Brief *form* (`/itineraries/new`), which "didn't land right." Now every
+  "Plan a day" entry point (Today, Plan, sidebar, mobile, welcome) routes through `PlanCreate` →
+  `createEvent` → a blank `/plan/[id]`; `/itineraries/new` redirects to `/plan` and the form is
+  dormant. The transport-parity work below is what made this safe — the plan page now captures
+  everything the Brief did.
 - **"One Toolkit, Two Views" — FIXED (the real gap) + a documented justified asymmetry.** The
   flight/stay finders + calendar import are plan-only *by architecture* (they need an `itineraryId`;
   the brief is pre-creation), so that asymmetry is legitimate — documented, not a bug. The real gap —

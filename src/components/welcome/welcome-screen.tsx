@@ -60,7 +60,7 @@ export function WelcomeScreen({ mode }: { mode: Mode }) {
                 </div>
                 <span className="ic"><Chevron /></span>
               </button>
-              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/itineraries/new")}>
+              <button type="button" className="cc-fork-option" disabled={pending} onClick={() => go("/plan")}>
                 <div>
                   <span className="t">I&apos;ll add it by hand</span>
                   <span className="s">Enter the trains, stays and meetings yourself.</span>

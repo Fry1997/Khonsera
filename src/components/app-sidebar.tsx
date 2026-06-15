@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import { signOut } from "@/app/login/actions";
+import { PlanCreate } from "@/components/plan/plan-create";
 import type { AppMode } from "@/lib/mode";
 
 // Desktop rail — Design Round 2 (`.cc-rail`): lockup top, nav list, then a foot
@@ -91,9 +92,7 @@ export function AppSidebar({
       </nav>
 
       <div className="cc-rail-foot">
-        <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold cc-btn-block">
-          Plan a day
-        </Link>
+        <PlanCreate label="Plan a day" className="cc-btn cc-btn-gold cc-btn-block" />
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 8, borderTop: "1px solid var(--rule)" }}>
           <span className="cc-overflow-avatar" style={{ width: 32, height: 32 }}>{init}</span>
           <div style={{ flex: 1, minWidth: 0 }}>

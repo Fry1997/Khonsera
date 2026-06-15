@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { signOut } from "@/app/login/actions";
+import { PlanCreate } from "@/components/plan/plan-create";
 
 // Mobile app shell header — Design Round 2 (`.cc-appbar`). The fix for the live
 // pile-up: emblem-only lockup left (no wordmark → no "KHONSER" clip), exactly two
@@ -54,9 +55,9 @@ export function MobileAppbar({
           </Link>
         </div>
         <div className="cc-appbar-right">
-          <Link href={"/itineraries/new" as Route} className="cc-iconbtn" data-variant="ghost" title="Plan a day">
+          <PlanCreate className="cc-iconbtn" title="Plan a day">
             <span style={{ width: 20, height: 20 }}><Ico d={I.plus} /></span>
-          </Link>
+          </PlanCreate>
           <button type="button" className="cc-iconbtn" data-variant="ghost" aria-label="Menu" onClick={() => setOpen(true)}>
             <span style={{ width: 20, height: 20 }}><Ico d={I.more} /></span>
           </button>

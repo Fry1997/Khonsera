@@ -9,6 +9,7 @@ import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/plan
 import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { buildDayReview } from "@/lib/actions/review";
 import { DayReviewCard } from "@/components/plan/day-review";
+import { PlanCreate } from "@/components/plan/plan-create";
 import { TflLineStatus } from "@/components/today/tfl-line-status";
 import { TodayDisruption, type TodayDisruptionItem } from "@/components/today/today-disruption";
 import { liveDeparture } from "@/lib/integrations/darwin";
@@ -347,9 +348,7 @@ export default async function TodayPage({
             from your inbox, and Khonsera threads the day: the next move, the leave-by, the chain ahead.
           </p>
           <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            <Link href={"/itineraries/new" as Route} className="cc-btn cc-btn-gold">
-              Plan a day
-            </Link>
+            <PlanCreate label="Plan a day" />
             <Link href={"/plan" as Route} className="cc-btn">
               Open the plan
             </Link>

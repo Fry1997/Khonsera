@@ -934,3 +934,14 @@ Newest at the bottom of each section.
   engine + rail-network now share it; value-preserving (green mileage tests). Left as deliberate
   (not blind) work: money major-vs-minor unit formatter, flight-status airport-tz, duration cosmetic
   split. tsc + 326 tests + build green. Deep audit register fully actioned (D64–D67).
+
+- **D68 — Unified new-plan flow: the Brief form is retired, the plan IS the intake.** The two
+  create-a-day flows had diverged: /plan's "Plan something" → blank /plan/[id]; Today's "Plan a day"
+  → the old Brief form (/itineraries/new), which the founder confirmed "didn't land right — it was
+  meant to go straight into plan." Now every entry point (Today empty-state, Plan empty-state,
+  sidebar foot, mobile topbar +, welcome fork) routes through a generalised `PlanCreate` (createEvent
+  → blank /plan/[id]). `/itineraries/new` redirects to /plan; new-itinerary-form.tsx stays dormant
+  (like the legacy editor). Orphan redirects /flights, /compare, /capture(+/drafts) now point to
+  /plan too. Safe because the plan page already carries the full toolkit (D67 gave PlanAdd
+  changeover-capable transport; PlanImport = Gmail; FlightFinder/StayFinder). Superseded "One
+  Toolkit, Two Views" → one editing surface. CLAUDE.md updated. tsc + 326 tests + build green.

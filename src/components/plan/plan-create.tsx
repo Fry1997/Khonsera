@@ -5,16 +5,29 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { createEvent } from "@/lib/actions/events";
 
-// Start a new Event from the Plan index (proposal §3a). Needs a start date (the
-// hinge) + an optional name; opens straight into the Event detail. Single-day by
-// default — a bounding fact (return travel) extends the span later (§5).
+// Start a new Event from any "plan a day" entry point (proposal §3a; unified
+// 2026-06-15). Needs a start date (the hinge) + an optional name; opens straight
+// into the Event detail (/plan/[id]) — the blank plan IS the intake now (the old
+// Brief form is retired). Single-day by default — a bounding fact (return travel)
+// extends the span later (§5). The trigger is themeable so this same flow backs
+// every "Plan a day"/"Plan something" button (Today, Plan, sidebar, mobile).
 
 function todayYMD(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function PlanCreate() {
+export function PlanCreate({
+  label = "Plan something",
+  className = "cc-btn cc-btn-gold cc-plan-new",
+  title,
+  children,
+}: {
+  label?: string;
+  className?: string;
+  title?: string; // for an icon-only trigger
+  children?: React.ReactNode; // override the trigger's inner content (e.g. an icon)
+} = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(todayYMD());
@@ -41,9 +54,15 @@ export function PlanCreate() {
 
   return (
     <>
-      <button type="button" className="cc-btn cc-btn-gold cc-plan-new" onClick={() => setOpen(true)}>
-        <span aria-hidden>+</span> Plan something
-      </button>
+      {children ? (
+        <button type="button" className={className} title={title ?? label} aria-label={title ?? label} onClick={() => setOpen(true)}>
+          {children}
+        </button>
+      ) : (
+        <button type="button" className={className} onClick={() => setOpen(true)}>
+          <span aria-hidden>+</span> {label}
+        </button>
+      )}
 
       {open ? (
         <div className="cc-sheet-scrim" onClick={() => setOpen(false)}>

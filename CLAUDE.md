@@ -260,13 +260,21 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
 
 ## Design Principles
 
-### One Toolkit, Two Views
-The brief (`/itineraries/new`) and planning (`/itineraries/[id]`) share the same edit capabilities. Planning adds visual/mapping on top but never withholds a tool the brief offers, and the brief never withholds a tool planning has. If you add a feature to one page, it must exist on the other.
+### One surface — the plan IS the intake (2026-06-15, founder direction)
+The separate **Brief intake form (`/itineraries/new`) is RETIRED** — it "didn't land right": a new
+day was meant to open straight into the plan, not a standalone form. Every "Plan a day" entry point
+(Today, Plan index, sidebar foot, mobile topbar, welcome fork) now routes through **`PlanCreate`**
+(`createEvent` → a blank `/plan/[id]`); `/itineraries/new` **redirects to `/plan`** and
+`new-itinerary-form.tsx` is **dormant** (kept in the tree, not deleted). The canonical surface
+`/plan/[id]` carries the **full toolkit** — manual add with **changeover-capable transport** (`PlanAdd`
+→ `addBookingRun`), Gmail import (`PlanImport`), flight/stay finders. (Superseded the old "One
+Toolkit, Two Views": there is now ONE editing surface, so a tool can't be withheld from "the other"
+page — there is no other page. Add capability to the plan.)
 
 ### Bookings Are Facts, Stops Are Events
 - **Transport bookings** (train tickets) create timeline events (departure + arrival stops)
 - **Accommodation bookings** are constraints (check-in-from, check-out-by), NOT fixed journey points. The user places hotel visit stops on the timeline as needed.
-- One way to add booked transport. One way to add accommodation. Same pattern on both pages.
+- One way to add booked transport (`PlanAdd` → `addBookingRun`). One way to add accommodation.
 
 ### No Emojis
 The app does not use emojis anywhere. Ever. This has been explicitly stated by the user multiple times.
@@ -335,12 +343,15 @@ reproduce legitimately-held credentials (the barcode rule), and be honest about 
 entity is **not "handled" until it meets its catalogue depth** — capture *flowing* ≠ the entity
 *serviced* (the P2 accommodation card is a thin placeholder; ED1 deepens it next).
 
-- **`/plan/[id]` is the single canonical itinerary detail surface** (threaded spine + door-to-door
-  JourneyMap + home-as-base). The Brief (`/itineraries/new`) lands there after build.
-- The **legacy `/itineraries/[id]` editor is retired** — its route redirects to `/plan/[id]`;
-  `itinerary-editor.tsx` stays **dormant** in the tree. Don't add features there.
+- **`/plan/[id]` is the single canonical itinerary surface AND the intake** (threaded spine +
+  door-to-door JourneyMap + home-as-base + the full add/import toolkit). A new day is created blank
+  via `PlanCreate` (`createEvent`) and opens straight here — there is no separate brief step.
+- The **legacy `/itineraries/[id]` editor AND the Brief form `/itineraries/new` are retired** — both
+  redirect (`[id]`→`/plan/[id]`, `new`→`/plan`); `itinerary-editor.tsx` + `new-itinerary-form.tsx`
+  stay **dormant** in the tree. Don't add features there — add to the plan.
 - **Orphans redirect** to canonical: `/dashboard`→`/today`, `/bookings`→`/wallet`,
-  `/itineraries`(list)→`/plan`, `/flights`→`/itineraries/new`. Originals dormant, not deleted.
+  `/itineraries`(list)→`/plan`, `/itineraries/new`→`/plan`, `/flights`→`/plan`, `/compare`→`/plan`,
+  `/capture`(+`/drafts`)→`/plan`. Originals dormant, not deleted.
 - The **JourneyMap** is built from stops+transitions by the shared `journey-map/from-stops.ts`
   (`buildJourneyFromStops`), rendered on `/plan/[id]` via the client wrapper `plan/plan-map.tsx`.
 - Home (`start`/`end` stops) renders as a **base** card via `isBase` on `SpineNode`, never an anchor.
