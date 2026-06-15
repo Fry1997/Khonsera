@@ -407,6 +407,23 @@ catalogue.md` (operate/refer/honest-limit).*
 ticket card; servicing + ancillaries follow. ✓ for the **booking surface** (ready for Design); servicing/
 ancillaries/multi-city positioned. Build green · 321 tests.
 
+### Phase ED-Stay — Hotel/stay entity to operator-app-redundant depth (L5)  `[~]` booking surface DONE 2026-06-15
+*Spun out of P14; benchmarked (Booking.com/Hotels.com/Expedia/Google/Airbnb + chain apps + Duffel Stays).
+Catalogue: `docs/edition-iii-entity-catalogue.md`.*
+- [x] **Independent location search** (geocoder) → search → **result cards** (star, guest review score,
+      per-night + total, address).
+- [x] **Property detail** (amenities, check-in time, special-requests) → **rooms/rates** (board,
+      free-cancellation deadline, pay-at-property; `stayRates`/`mapStayRates`, +tests).
+- [x] **Real booking** — `bookStayRoom` → Duffel **quote→booking** → a rich accommodation anchor
+      (property, ref, board, price, free-cancel-until). Free-cancel filter; nights-aware pricing.
+- [→ positioned] post-booking **view + cancel** (booking id persisted, unblocked); **loyalty-number
+      capture** (gated on rate support); **`key_collection`** on the day-of card; photo gallery +
+      reviews-breakdown; map-area search.
+- [→ refer / honest limit] **digital room key, mobile check-in, loyalty points earn/redeem, on-property
+      ordering** are chain-app-only — stated plainly in the surface (the stay-side boarding-pass limit).
+**Done when:** the stay surface searches/compares/details/books to platform-credible depth; servicing +
+loyalty follow. ✓ for the booking surface (ready for Design). Build green · 322 tests.
+
 ### Phase 15 — Mileage tracker (L6)  `[x]` DONE 2026-06-15
 **Depends on:** P0 (day-object + routing). *Parallelisable, sequenced here for linear cadence.*
 - [x] **Opt-in GPS drive capture** — `DriveRecorder` (watchPosition, high-accuracy, noise-filtered)

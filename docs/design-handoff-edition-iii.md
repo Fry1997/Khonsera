@@ -351,3 +351,22 @@ on the platform benchmark. Additive over the `.cc-conn*` shell; new hooks to ski
   `.cc-conn*` skins the shared shell.* **Tone:** a considered travel desk — comparison glanceable, fare
   honesty (baggage/refundable) prominent because it's our edge, seats calm, the check-in handoff stated
   plainly (we operate everything except the airline's own credential).
+
+## ED-Stay · Full hotel booking surface — 🟡 ROUND 12 REQUEST
+
+The StayFinder (`plan/stay-finder.tsx`) is now a complete search → compare → property → rate → book
+surface. Additive over the `.cc-conn*` shell. Surfaces to skin:
+- **Search row** — `.cc-conn-form`: location autocomplete (`.cc-conn-near` + `.cc-conn-suggest`), check
+  in/out, a **Free cancellation** filter. (Map-area search positioned.)
+- **Result cards** 🟡 — `.cc-stay-card` (a clickable `.cc-conn-offer`): title, `.rating` star + guest
+  score + address in the summary, **per-night price** as the dominant figure with the **total · N nights**
+  beneath. Tapping opens the property.
+- **Property detail** 🟡 — `.cc-stay-detail` (`.cc-stay-detail-meta` star/score/address/check-in; amenity
+  chips; a special-requests field) → **rooms/rates** list (`.cc-stay-rate`): room name + board/free-cancel/
+  pay-at-property chips (`.cc-conn-chip[data-tone]`) + total price + Book. A plain honest-limit line at the
+  foot (digital key / mobile check-in / loyalty = the hotel's own app).
+- **Confirmed** — `.cc-conn-confirmed*` (ref + "free-cancellation and check-in time on the card").
+- *Placeholder inline token styles on the new `.cc-stay*` bits; the `.cc-conn*` shell carries over.*
+  **Tone:** a calm hotel desk — photo-led where photos exist (gallery positioned), the guest score + free-
+  cancellation the trust signals, the rate choice clear (board × cancellation), the chain-app limit matter-
+  of-fact. *Design owns the `.cc-stay*` aesthetic + the eventual photo gallery.*

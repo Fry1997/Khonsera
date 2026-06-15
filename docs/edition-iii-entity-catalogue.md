@@ -273,3 +273,32 @@ credentials, be honest about the limits.*
 depth is its own phase — **ED-Flight** — sequenced next on the connections track. The structural fixes
 (separate flight/stay flows, airport autocomplete, conditions/baggage upfront, real confirmation +
 check-in deep-link) land first; seat/bags/multi-city/servicing/price-intel are tagged follow-ons.
+
+---
+
+## Hotel / Stay — operator-app-redundant depth (researched 2026-06-15)
+
+*Benchmarked against Booking.com / Hotels.com / Expedia / Google Hotels / Airbnb (booking) + Hilton
+Honors / Marriott Bonvoy / IHG One Rewards apps (post-booking), mapped to the Duffel Stays schema.*
+
+### OPERATE (build on Duffel Stays — confirmed)
+| Capability | Duffel | Status |
+|---|---|---|
+| Search by location (geocoded) / dates / rooms / guests | ✅ | ✓ |
+| Result depth: star, **guest review score**, photos, **per-night + total**, board, free-cancel | ✅ | ✓ (filter/sort client-side) |
+| Property detail: amenities, room types + **bed config**, **cancellation timeline**, check-in/out times, address | ✅ | ✓ (amenities/rates/check-in done; gallery + reviews-breakdown *positioned*) |
+| Rooms → **rates** (board, free-cancellation deadline, pay-now vs pay-at-property) | ✅ | ✓ |
+| Book: guest, **special requests**, confirmation ref + policy | ✅ | ✓ (quote→booking) |
+| Post-booking **view + cancel** (refund quote) | ✅ | *positioned* (booking id persisted) |
+| **Loyalty number capture** (relay to hotel, best-effort) | ✅ capture only | *positioned* (gated on rate `supported_loyalty_programme`) |
+| `key_collection` text instructions (no-front-desk) | ✅ text | *positioned* on the day-of card |
+| Directions / contact the property | ✅ (we own nav + phone) | *positioned* |
+
+### REFER / HONEST LIMITS (chain-app-only — the stay-side boarding-pass limit)
+- **Digital room key** (door unlock) — chain-app-only (proprietary BLE/NFC + lock vendor). `key_collection`
+  is text, not a key. → surface the instructions; never imply we unlock the door.
+- **Mobile check-in / room selection** — chain-app-only (direct PMS). → front-desk / the chain app.
+- **Loyalty points earn / redeem / balance / tier**, **paid/status upgrades**, **on-property ordering**
+  (dining/spa/parking) — chain-app-only. → capture the loyalty number so the hotel can credit; refer the rest.
+
+**Re-scope:** ED-Stay (this) is the stay's depth phase, beside ED-Flight on the connections track.
