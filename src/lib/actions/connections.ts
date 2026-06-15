@@ -158,11 +158,14 @@ export async function bookFlightOffer(input: z.input<typeof bookFlightSchema>): 
   const booking = await createFlightOrder({ offer: liveOffer, passengers, services });
   if (!booking) return { ok: false, error: "The airline couldn't confirm that fare — try another." };
 
-  // Land it in the day as a flight run.
+  // Land it in the day as a flight run — a RICH ticket card built straight from
+  // Duffel's order data (no email decode): operator, PNR, e-ticket, cabin, seat,
+  // and the order id so it can be managed (change/cancel) later.
   const dep = dateTime(booking.startIso ?? liveOffer.startIso);
   const arr = dateTime(booking.endIso ?? liveOffer.endIso);
   const [, route] = booking.title.split(" · ");
   const [fromLabel = "Origin", toLabel = "Destination"] = (route ?? "").split(" → ");
+  const d = liveOffer.detail as Partial<import("@/lib/integrations/duffel").FlightDetail> | undefined;
   if (dep && arr) {
     await addTransport({
       itineraryId,
@@ -174,6 +177,17 @@ export async function bookFlightOffer(input: z.input<typeof bookFlightSchema>): 
       arriveTime: arr.time,
       operator: booking.title.split(" · ")[0],
       reference: booking.reference,
+      seat: seatServiceIds?.length ? "selected" : null,
+      metadata: {
+        provider: "duffel",
+        duffel_order_id: booking.id,
+        e_ticket: booking.documents?.[0]?.id ?? null,
+        cabin: d?.cabin ?? null,
+        baggage: d ? { carryOn: d.carryOn ?? 0, checked: d.checked ?? 0 } : null,
+        // The boarding pass is airline-issued at check-in (barcode rule); store
+        // the check-in handle, not a minted pass.
+        checkin: { via: "airline", pnr: booking.reference },
+      },
     });
   }
   return { ok: true, booking };

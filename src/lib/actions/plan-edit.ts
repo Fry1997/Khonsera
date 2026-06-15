@@ -370,6 +370,10 @@ export async function addTransport(input: {
   operator?: string | null;
   reference?: string | null;
   seat?: string | null;
+  // Extra structured payload to merge into the departure stop's metadata — e.g.
+  // the Duffel order id / e-ticket / cabin for a flight, so the run is a rich
+  // ticket card built from real data (no email decode) + manageable later.
+  metadata?: Record<string, unknown> | null;
 }): Promise<{ ok: boolean; error?: string }> {
   const from = input.fromLabel.trim();
   const to = input.toLabel.trim();
@@ -378,7 +382,7 @@ export async function addTransport(input: {
   const arriveIso = wallClockToIso(input.date, input.arriveTime);
   if (!departIso || !arriveIso) return { ok: false, error: "Pick depart and arrive times." };
 
-  const meta: Record<string, unknown> = { transport_mode: input.mode };
+  const meta: Record<string, unknown> = { transport_mode: input.mode, ...(input.metadata ?? {}) };
   if (input.operator?.trim()) meta.operator = input.operator.trim();
   if (input.reference?.trim()) meta.booking_reference = input.reference.trim();
   if (input.seat?.trim()) meta.seat = input.seat.trim();
