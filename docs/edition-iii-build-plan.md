@@ -758,3 +758,54 @@ it corrects the thinnest, highest-traffic entity and sets the template all other
   not just mocks. Positioned follow-ons: passenger-details capture, readiness-gap wiring, stay surface,
   Assertis rail, hold orders. Build green · **308 tests**. New env `DUFFEL_API_TOKEN` (set in Vercel).
   Design handoff (`.cc-conn*`) added.
+
+---
+
+## POSITIONED QUEUE — everything not-done-now, with its unblocker (2026-06-15)
+
+*The single place deferred work is tracked. Each item names what unblocks it. Nothing here is forgotten;
+it's sequenced, not dropped.*
+
+### Connections — ED-Flight (booking surface DONE; these follow)
+- **Change-flight** (search new slices → order_change_request → offer → confirm) — buildable now (own UI).
+- **Buy extra bags** ancillary (available_services at/post-booking) — buildable now.
+- **Multi-city** search (3+ slices) — buildable now (UI for N slices).
+- **Country-wide origin fan-out** ("any UK airport") — buildable now (loop airports → merge).
+- **Airline-initiated-change webhook** (`order.airline_initiated_change_detected`) — needs a webhook
+  endpoint + the order persisted (order id is persisted ✓).
+- **Wire booked flight into live status/gate** — *we already own this* (AeroDataBox + live spine); just
+  connect the booked flight's number to the gate-change rule.
+- **Separate-ticket / self-transfer risk** surfaced via the fragility engine — buildable now.
+- **Price-track loop** (Duffel has no price intel) — our own repeated-search cache; needs a scheduler.
+
+### Connections — ED-Stay (booking surface DONE; these follow)
+- **Loyalty-number capture** — gated on rate `supported_loyalty_programme`; buildable now.
+- **`key_collection`** instructions on the day-of card — buildable now (surface the text).
+- **Photo gallery + reviews-breakdown** on property detail — buildable now (more Duffel fields).
+- **Post-booking change** (effectively cancel-and-rebook) + **map-area search** — buildable now.
+
+### Honest limits (verified — REFER, never fake)
+- Flight **online check-in** + **boarding-pass barcode** → airline-DCS-only (deep-link + barcode rule).
+- Stay **digital room key / mobile check-in / loyalty points earn-redeem** → chain-app-only.
+- **Price prediction** (flights) → needs a non-Duffel data source.
+
+### Live / disruption / care (P9–P13)
+- **Protect-target ranking** (P11) — founder decision (`rankFor` built, switches on when set).
+- **OTP hosting** (P11 detours) — infra, parked (D49); code inert on `OTP_URL`.
+- **Gate-change day-of poll loop** (P13) — needs the day-of live loop (source + rule + diff built).
+- **Live security-queue** + **multi-point corridor weather** (P12) — vendor/data, P12-scope.
+
+### Mileage (P15 DONE; depth follows)
+- **Auto background drive detection** (motion/geofence) — needs native/Capacitor.
+- **Valhalla map-matched** (road-snapped) distance — buildable now (Valhalla trace).
+- **Classification rules** (work-hours / named-location / frequent-route, explicit) — buildable now.
+- **Auto-classify by itinerary leg** (our unique angle) + **trip merge/split** + **postcode capture** +
+  **MAR/NIC figures** — buildable now.
+
+### Earlier phases owed
+- **P6** transition-pattern inference; **P7** commitment-aware navigation; **P8b** TfL network maps —
+  off the critical path, buildable on request.
+
+### Provider activations (founder/procurement — flip a feature live, no code change)
+- `DUFFEL_API_TOKEN` (test → flights live), **Duffel Stays** activation, **Parkopedia** key, **Assertis**
+  (rail booking), **DragonPass** key, **TFL_APP_KEY**, **AERODATABOX_KEY**, **Open-Meteo** commercial plan.
