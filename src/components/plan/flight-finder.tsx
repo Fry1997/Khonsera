@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { searchFlightOffers, bookFlightOffer, airportSuggest } from "@/lib/actions/connections";
-import type { PlaceSuggestion } from "@/lib/integrations/duffel";
-import type { FlightDetail } from "@/lib/integrations/duffel";
+import { searchFlightOffers, bookFlightOffer, airportSuggest, flightSeatMap } from "@/lib/actions/connections";
+import type { PlaceSuggestion, FlightDetail, SeatMapVM, SeatCell } from "@/lib/integrations/duffel";
 import type { Offer } from "@/lib/connections/types";
 
 export type DefaultPassenger = { givenName: string; familyName: string; email: string };
@@ -40,6 +39,7 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
   const [confirmed, setConfirmed] = useState<{ title: string; ref: string; eticket: string | null; airport: string } | null>(null);
   const [pax, setPax] = useState<Passenger>({ title: "mr", givenName: defaultPassenger.givenName, familyName: defaultPassenger.familyName, bornOn: "", gender: "m", email: defaultPassenger.email, phoneNumber: "" });
   const [booking, setBooking] = useState<Offer | null>(null);
+  const [seat, setSeat] = useState<{ id: string; label: string } | null>(null);
 
   function search() {
     if (!origin || !dest) return setError("Pick a from and to airport.");
@@ -69,13 +69,14 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
     setBusyId(booking.id);
     setError(null);
     startTransition(async () => {
-      const res = await bookFlightOffer({ itineraryId, offer: { id: booking.id, title: booking.title, price: booking.price, startIso: booking.startIso, endIso: booking.endIso, detail: booking.detail }, passenger: pax });
+      const res = await bookFlightOffer({ itineraryId, offer: { id: booking.id, title: booking.title, price: booking.price, startIso: booking.startIso, endIso: booking.endIso, detail: booking.detail }, passenger: pax, seatServiceIds: seat ? [seat.id] : undefined });
       setBusyId(null);
       if (!res.ok) return setError(res.error ?? "The airline couldn't confirm that fare — try another.");
       const [carrier] = booking.title.split(" · ");
       setConfirmed({ title: `Booked — ${carrier}`, ref: res.booking?.reference ?? "—", eticket: res.booking?.documents?.[0]?.id ?? null, airport: origin?.label ?? dest?.label ?? "the airport" });
       setOffers(null);
       setBooking(null);
+      setSeat(null);
       router.refresh();
     });
   }
@@ -132,7 +133,10 @@ export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { i
       ) : null}
 
       {booking ? (
-        <PassengerForm offer={booking} pax={pax} setPax={setPax} busy={busyId === booking.id} onConfirm={confirmFlight} onBack={() => setBooking(null)} />
+        <>
+          <SeatPicker offer={booking} seat={seat} onPick={setSeat} />
+          <PassengerForm offer={booking} seat={seat} pax={pax} setPax={setPax} busy={busyId === booking.id} onConfirm={confirmFlight} onBack={() => { setBooking(null); setSeat(null); }} />
+        </>
       ) : offers && offers.length > 0 ? (
         <>
           <div className="cc-conn-list-head">
@@ -232,10 +236,75 @@ function AirportField({ label, value, onPick }: { label: string; value: Airport 
   );
 }
 
-function PassengerForm({ offer, pax, setPax, busy, onConfirm, onBack }: { offer: Offer; pax: Passenger; setPax: (p: Passenger) => void; busy: boolean; onConfirm: () => void; onBack: () => void }) {
+// Seat selection (best-effort — not every carrier returns a map). Loads on demand;
+// pick one seat for the lead passenger. A `· sample` cue when the map is mocked.
+function SeatPicker({ offer, seat, onPick }: { offer: Offer; seat: { id: string; label: string } | null; onPick: (s: { id: string; label: string } | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const [map, setMap] = useState<SeatMapVM | null>(null);
+  const [loading, setLoading] = useState(false);
+  const passengerId = (offer.detail?.passengers as { id?: string }[] | undefined)?.[0]?.id ?? "pas_0";
+
+  function load() {
+    setOpen(true);
+    if (map || loading) return;
+    setLoading(true);
+    flightSeatMap(offer.id, passengerId).then((m) => { setMap(m); setLoading(false); });
+  }
+
+  return (
+    <div className="cc-conn-seats" style={{ padding: "var(--space-3) var(--space-5) 0" }}>
+      {!open ? (
+        <button type="button" className="cc-conn-back" onClick={load}>{seat ? `Seat ${seat.label} · change` : "Choose a seat (optional)"}</button>
+      ) : (
+        <div>
+          <p className="cc-conn-seats-lead" style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "var(--space-2)" }}>
+            Pick a seat{map?.sample ? " · sample" : ""}
+          </p>
+          {loading ? <p style={{ color: "var(--ink-dim)", fontSize: "var(--fs-label)" }}>Loading seat map…</p> : null}
+          {map && map.rows.length === 0 && !loading ? <p style={{ color: "var(--ink-dim)", fontSize: "var(--fs-label)" }}>No seat map for this flight — seats are assigned at check-in.</p> : null}
+          {map && map.rows.length > 0 ? (
+            <div className="cc-conn-seatgrid" style={{ display: "flex", flexDirection: "column", gap: 4, overflowX: "auto", paddingBottom: 6 }}>
+              {map.rows.map((row, ri) => (
+                <div key={ri} style={{ display: "flex", gap: 4 }}>
+                  {row.map((c, ci) => <SeatButton key={ci} cell={c} selected={seat?.id === c.serviceId} onPick={() => c.serviceId && onPick(seat?.id === c.serviceId ? null : { id: c.serviceId, label: c.designator })} />)}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SeatButton({ cell, selected, onPick }: { cell: SeatCell; selected: boolean; onPick: () => void }) {
+  if (cell.kind === "aisle") return <span style={{ width: 14 }} />;
+  if (cell.kind === "facility") return <span style={{ width: 26, height: 26, opacity: 0.3 }} />;
+  const free = cell.price ? Number(cell.price.amount) === 0 : false;
+  return (
+    <button
+      type="button"
+      className="cc-conn-seat"
+      data-state={!cell.available ? "taken" : selected ? "selected" : free ? "free" : "paid"}
+      disabled={!cell.available}
+      onClick={onPick}
+      title={cell.available && cell.price ? (free ? "Free" : `${cell.price.currency} ${cell.price.amount}`) : "Taken"}
+      style={{
+        width: 26, height: 26, borderRadius: 5, fontSize: 9, fontFamily: "var(--mono)", cursor: cell.available ? "pointer" : "not-allowed",
+        border: `1px solid ${selected ? "var(--gold)" : "var(--rule)"}`,
+        background: !cell.available ? "var(--card-2)" : selected ? "var(--gold)" : free ? "transparent" : "var(--gold-tint)",
+        color: selected ? "#fff" : !cell.available ? "var(--ink-faint)" : "var(--ink-dim)",
+      }}
+    >
+      {cell.designator.replace(/^\d+/, "")}
+    </button>
+  );
+}
+
+function PassengerForm({ offer, seat, pax, setPax, busy, onConfirm, onBack }: { offer: Offer; seat: { id: string; label: string } | null; pax: Passenger; setPax: (p: Passenger) => void; busy: boolean; onConfirm: () => void; onBack: () => void }) {
   return (
     <div className="cc-conn-pax">
-      <div className="cc-conn-pax-lead"><span className="title">Who&rsquo;s travelling?</span><span className="fare">{offer.title.split(" · ")[0]} · {money(offer.price.amount, offer.price.currency)}</span></div>
+      <div className="cc-conn-pax-lead"><span className="title">Who&rsquo;s travelling?</span><span className="fare">{offer.title.split(" · ")[0]} · {money(offer.price.amount, offer.price.currency)}{seat ? ` · seat ${seat.label}` : ""}</span></div>
       <p className="cc-conn-pax-note">Just what the airline needs to issue the ticket.</p>
       <div className="cc-conn-pax-grid">
         <div className="cc-conn-field"><label className="cc-conn-lbl">Title</label>

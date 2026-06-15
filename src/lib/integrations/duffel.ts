@@ -235,12 +235,93 @@ export async function refreshOffer(offerId: string): Promise<Offer | null> {
   }
 }
 
+// ───────────────────────── Seat maps ─────────────────────────
+
+export type SeatCell = { designator: string; available: boolean; price: Money | null; serviceId: string | null; kind: "seat" | "aisle" | "facility" };
+export type SeatMapVM = { rows: SeatCell[][]; sample: boolean };
+
+type DuffelSeatService = { id?: string; passenger_id?: string; total_amount?: string; total_currency?: string; type?: string };
+type DuffelSeatElement = { type?: string; designator?: string; available_services?: DuffelSeatService[] };
+type DuffelSeatSection = { elements?: DuffelSeatElement[] };
+type DuffelSeatRow = { sections?: DuffelSeatSection[] };
+type DuffelSeatCabin = { deck?: number; rows?: DuffelSeatRow[] };
+type DuffelSeatMap = { segment_id?: string; cabins?: DuffelSeatCabin[] };
+
+// Parse Duffel's seat map (first segment, main deck) into a simple grid for the
+// passenger. A seat is selectable when it carries a seat service for them; price
+// comes from that service (0.00 = free). Pure — the unit-test anchor.
+export function parseSeatMap(maps: DuffelSeatMap[], passengerId: string): SeatMapVM {
+  const map = maps[0];
+  const cabin = (map?.cabins ?? []).find((c) => (c.deck ?? 0) === 0) ?? map?.cabins?.[0];
+  const rows: SeatCell[][] = [];
+  for (const row of cabin?.rows ?? []) {
+    const cells: SeatCell[] = [];
+    for (const section of row.sections ?? []) {
+      for (const el of section.elements ?? []) {
+        if (el.type === "seat" || el.type === "restricted_seat_general") {
+          const svc = (el.available_services ?? []).find((s) => s.passenger_id === passengerId && s.type === "seat");
+          cells.push({
+            designator: el.designator ?? "",
+            available: !!svc,
+            price: svc ? { amount: svc.total_amount ?? "0", currency: svc.total_currency ?? "GBP" } : null,
+            serviceId: svc?.id ?? null,
+            kind: "seat",
+          });
+        } else if (el.type === "empty" || el.type === "exit_row") {
+          cells.push({ designator: "", available: false, price: null, serviceId: null, kind: "aisle" });
+        } else {
+          cells.push({ designator: el.type ?? "", available: false, price: null, serviceId: null, kind: "facility" });
+        }
+      }
+    }
+    if (cells.length) rows.push(cells);
+  }
+  return { rows, sample: false };
+}
+
+export async function getSeatMap(offerId: string, passengerId: string): Promise<SeatMapVM> {
+  const token = duffelToken();
+  if (!token) return mockSeatMap();
+  try {
+    const res = await fetch(`${BASE}/air/seat_maps?offer_id=${encodeURIComponent(offerId)}`, { headers: headers(token), signal: AbortSignal.timeout(12000), cache: "no-store" });
+    if (!res.ok) return { rows: [], sample: false };
+    const json = (await res.json()) as { data?: DuffelSeatMap[] };
+    if (!json.data?.length) return { rows: [], sample: false }; // not all carriers return a map
+    return parseSeatMap(json.data, passengerId);
+  } catch {
+    return { rows: [], sample: false };
+  }
+}
+
+function mockSeatMap(): SeatMapVM {
+  const letters = ["A", "B", "C", "D", "E", "F"];
+  const rows: SeatCell[][] = [];
+  for (let r = 10; r <= 22; r++) {
+    const cells: SeatCell[] = [];
+    letters.forEach((l, i) => {
+      if (i === 3) cells.push({ designator: "", available: false, price: null, serviceId: null, kind: "aisle" });
+      const taken = (r + i) % 4 === 0;
+      const extra = r <= 12 || l === "A" || l === "F";
+      cells.push({
+        designator: `${r}${l}`,
+        available: !taken,
+        price: taken ? null : { amount: extra ? "12.00" : "0.00", currency: "GBP" },
+        serviceId: taken ? null : `mock-seat-${r}${l}`,
+        kind: "seat",
+      });
+    });
+    rows.push(cells);
+  }
+  return { rows, sample: true };
+}
+
+export type FlightService = { id: string; quantity: number };
 export type FlightPassenger = { id: string; given_name: string; family_name: string; born_on: string; gender: "m" | "f"; title: "mr" | "ms" | "mrs" | "miss"; email: string; phone_number: string };
 
 // Create the order (the booking). In TEST mode pay from the unlimited test balance —
 // a real order against the real lifecycle, no real money. The money step is the stub
 // only in the sense that test mode mints no charge; the API path is genuine.
-export async function createFlightOrder(args: { offer: Offer; passengers: FlightPassenger[] }): Promise<Booking | null> {
+export async function createFlightOrder(args: { offer: Offer; passengers: FlightPassenger[]; services?: FlightService[] }): Promise<Booking | null> {
   const token = duffelToken();
   if (!token) return mockFlightBooking(args.offer);
   try {
@@ -249,6 +330,7 @@ export async function createFlightOrder(args: { offer: Offer; passengers: Flight
         type: "instant",
         selected_offers: [args.offer.id],
         passengers: args.passengers,
+        ...(args.services?.length ? { services: args.services } : {}),
         payments: [{ type: "balance", currency: args.offer.price.currency, amount: args.offer.price.amount }],
       },
     };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapDuffelOffer, mapDuffelOrder, mapDuffelStay, type DuffelOffer } from "./duffel";
+import { mapDuffelOffer, mapDuffelOrder, mapDuffelStay, parseSeatMap, type DuffelOffer } from "./duffel";
 
 // Fixtures mirror the real Duffel v2 shapes (research, June 2026).
 const offer: DuffelOffer = {
@@ -67,6 +67,39 @@ describe("Duffel flight mappers", () => {
     expect(b.reference).toBe("RKM5TY");
     expect(b.documents).toEqual([{ type: "electronic_ticket", id: "125-1234567890" }]);
     expect(b.startIso).toBe("2026-07-21T07:25:00");
+  });
+});
+
+describe("Duffel seat map parser", () => {
+  it("flattens cabins→rows→sections into seat cells with the passenger's price", () => {
+    const vm = parseSeatMap(
+      [
+        {
+          segment_id: "seg_1",
+          cabins: [
+            {
+              deck: 0,
+              rows: [
+                {
+                  sections: [
+                    { elements: [{ type: "seat", designator: "10A", available_services: [{ id: "svc_1", passenger_id: "pas_1", type: "seat", total_amount: "12.00", total_currency: "GBP" }] }] },
+                    { elements: [{ type: "empty" }] },
+                    { elements: [{ type: "seat", designator: "10C" }] }, // no service → taken
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      "pas_1",
+    );
+    expect(vm.rows).toHaveLength(1);
+    const [seatA, aisle, seatC] = vm.rows[0];
+    expect(seatA).toMatchObject({ designator: "10A", available: true, serviceId: "svc_1", kind: "seat" });
+    expect(seatA.price).toEqual({ amount: "12.00", currency: "GBP" });
+    expect(aisle.kind).toBe("aisle");
+    expect(seatC).toMatchObject({ designator: "10C", available: false, serviceId: null });
   });
 });
 

@@ -10,8 +10,11 @@ import {
   refreshOffer,
   createFlightOrder,
   placeSuggestions,
+  getSeatMap,
   type FlightPassenger,
+  type FlightService,
   type PlaceSuggestion,
+  type SeatMapVM,
 } from "@/lib/integrations/duffel";
 import { textSearchPlaces } from "@/lib/google/places";
 import type { Offer, Booking } from "@/lib/connections/types";
@@ -76,6 +79,13 @@ const flightSearchSchema = z.object({
   cabin: z.enum(["economy", "premium_economy", "business", "first"]).default("economy"),
 });
 
+// Seat map for an offer + passenger (best-effort — not every carrier returns one).
+export async function flightSeatMap(offerId: string, passengerId: string): Promise<SeatMapVM> {
+  await requireUserContext();
+  if (!offerId || !passengerId) return { rows: [], sample: false };
+  return getSeatMap(offerId, passengerId);
+}
+
 export async function searchFlightOffers(input: z.input<typeof flightSearchSchema>): Promise<{ offers: Offer[]; sample: boolean; error?: string }> {
   const parsed = flightSearchSchema.safeParse(input);
   if (!parsed.success) return { offers: [], sample: false, error: "Check the airports and date." };
@@ -120,12 +130,14 @@ const bookFlightSchema = z.object({
       phoneNumber: z.string().trim().min(5),
     })
     .optional(),
+  // Selected seat service ids (from the seat map) to add to the order.
+  seatServiceIds: z.array(z.string()).optional(),
 });
 
 export async function bookFlightOffer(input: z.input<typeof bookFlightSchema>): Promise<{ ok: boolean; booking?: Booking; error?: string }> {
   const parsed = bookFlightSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Couldn't read that offer." };
-  const { itineraryId, offer, passenger } = parsed.data;
+  const { itineraryId, offer, passenger, seatServiceIds } = parsed.data;
   const ctx = await requireUserContext();
 
   // Refresh for the live price + the passenger id Duffel expects on the order.
@@ -142,7 +154,8 @@ export async function bookFlightOffer(input: z.input<typeof bookFlightSchema>): 
       : { id: passengerId, given_name: given, family_name: family || "Khonsera", born_on: "1990-01-01", gender: "m", title: "mr", email: ctx.email ?? "traveller@example.com", phone_number: "+442080160508" },
   ];
 
-  const booking = await createFlightOrder({ offer: liveOffer, passengers });
+  const services: FlightService[] | undefined = seatServiceIds?.length ? seatServiceIds.map((id) => ({ id, quantity: 1 })) : undefined;
+  const booking = await createFlightOrder({ offer: liveOffer, passengers, services });
   if (!booking) return { ok: false, error: "The airline couldn't confirm that fare — try another." };
 
   // Land it in the day as a flight run.
