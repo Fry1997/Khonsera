@@ -141,7 +141,7 @@ export function evaluateReadiness(s: DaySummary): ReadinessCheck[] {
       action: { kind: "link", href: IATA_TRAVEL_CENTRE, label: "Check entry requirements" },
     });
     checks.push({ key: "intl:esim", category: "international", label: "Sort data before you land", severity: "advise", action: { kind: "task", title: "Sort an eSIM for the trip" } });
-    checks.push({ key: "intl:currency", category: "international", label: "Set up your home-currency view", severity: "info", action: { kind: "none" } });
+    checks.push({ key: "intl:currency", category: "international", label: "Set up your home-currency view", severity: "info", action: { kind: "link", href: "/settings", label: "Set home currency" } });
     checks.push({ key: "intl:adapter", category: "devices", label: "Pack a power adapter", severity: "advise", action: { kind: "none" } });
   }
 

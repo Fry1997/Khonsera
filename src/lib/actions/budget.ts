@@ -4,12 +4,13 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext, requireManager } from "@/lib/auth";
+import { convertEach } from "@/lib/integrations/fx";
 
 // Budget / expenses depth (Phase 16). A per-trip spend cap with live used-vs-
 // remaining + over-cap flag, receipt capture bound to the trip, and the trip's
 // expense lines. RLS scopes rows to the workspace; the cap lives on the itinerary.
 
-export type ExpenseLine = { id: string; type: string; amount: number | null; currency: string; notes: string | null; hasReceipt: boolean; receiptPath: string | null };
+export type ExpenseLine = { id: string; type: string; amount: number | null; currency: string; notes: string | null; hasReceipt: boolean; receiptPath: string | null; homeAmount: number | null };
 // A per-CATEGORY cap (the way real T&E policy works), with the trip's spend in
 // that category vs the effective cap (per-day caps × the trip's nights).
 export type CapLine = { type: string; spent: number; cap: number; period: "per_day" | "per_trip"; currency: string; overBy: number };
@@ -21,10 +22,13 @@ export type Budget = {
   overBy: number; // >0 = over the overall cap
   caps: CapLine[]; // per-category, from the workspace travel policy
   lines: ExpenseLine[];
+  homeCurrency: string; // the traveller's home currency
+  spentHome: number | null; // total spend converted to home currency (null if any rate missing)
+  multiCurrency: boolean; // true when a line is in a non-home currency
 };
 
 export async function loadBudget(itineraryId: string): Promise<Budget> {
-  await requireUserContext();
+  const ctx = await requireUserContext();
   const supabase = await createClient();
   const [{ data: itin }, { data: rows }] = await Promise.all([
     supabase.from("itineraries").select("expense_cap, expense_cap_currency, workspace_id, date_start, date_end").eq("id", itineraryId).maybeSingle(),
@@ -33,8 +37,22 @@ export async function loadBudget(itineraryId: string): Promise<Budget> {
   const currency = (itin?.expense_cap_currency as string) ?? "GBP";
   const cap = itin?.expense_cap != null ? Number(itin.expense_cap) : null;
   const lines: ExpenseLine[] = ((rows ?? []) as { id: string; type: string; amount: number | null; currency: string; notes: string | null; receipt_file_path: string | null }[]).map((r) => ({
-    id: r.id, type: r.type, amount: r.amount, currency: r.currency, notes: r.notes, hasReceipt: !!r.receipt_file_path, receiptPath: r.receipt_file_path,
+    id: r.id, type: r.type, amount: r.amount, currency: r.currency, notes: r.notes, hasReceipt: !!r.receipt_file_path, receiptPath: r.receipt_file_path, homeAmount: null,
   }));
+
+  // Home-currency view (P19) — convert any foreign-currency line to the traveller's
+  // home currency (free ECB rates). spentHome is null if any needed rate is missing.
+  const { data: prof } = await supabase.from("profiles").select("home_currency").eq("id", ctx.userId).maybeSingle();
+  const homeCurrency = (prof?.home_currency as string) ?? "GBP";
+  const multiCurrency = lines.some((l) => l.currency.toUpperCase() !== homeCurrency.toUpperCase());
+  if (multiCurrency) {
+    const converted = await convertEach(lines.map((l) => ({ amount: l.amount ?? 0, from: l.currency })), homeCurrency);
+    lines.forEach((l, i) => { l.homeAmount = converted[i]; });
+  } else {
+    lines.forEach((l) => { l.homeAmount = l.amount; });
+  }
+  const spentHome = lines.every((l) => l.homeAmount != null) ? round2(lines.reduce((s, l) => s + (l.homeAmount ?? 0), 0)) : null;
+
   const spent = round2(lines.reduce((sum, l) => sum + (l.amount ?? 0), 0));
   const remaining = cap != null ? round2(cap - spent) : null;
 
@@ -54,7 +72,20 @@ export async function loadBudget(itineraryId: string): Promise<Budget> {
     caps.sort((a, b) => b.overBy - a.overBy || b.spent - a.spent);
   }
 
-  return { cap, currency, spent, remaining, overBy: cap != null && spent > cap ? round2(spent - cap) : 0, caps, lines };
+  return { cap, currency, spent, remaining, overBy: cap != null && spent > cap ? round2(spent - cap) : 0, caps, lines, homeCurrency, spentHome, multiCurrency };
+}
+
+// Settings — the traveller's home currency (the home-currency view everywhere).
+const homeCurrencySchema = z.object({ currency: z.string().trim().length(3) });
+export async function setHomeCurrency(input: z.input<typeof homeCurrencySchema>): Promise<{ ok: boolean; error?: string }> {
+  const parsed = homeCurrencySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Use a 3-letter currency code." };
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ home_currency: parsed.data.currency.toUpperCase() }).eq("id", ctx.userId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings");
+  return { ok: true };
 }
 
 function round2(n: number): number {

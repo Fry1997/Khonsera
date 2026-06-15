@@ -854,3 +854,13 @@ Newest at the bottom of each section.
   location; no code path shares coordinates to a workspace (stated in the UI). **Compose-message** via
   the OS share sheet (navigator.share). *Positioned:* live map on the recipient page, native background
   broadcast (PWA only sends while open), a lone/after-dark safety nudge, a richer manager ETA board.
+
+- **D62 — P19 international: home-currency FX (free), eSIM-in-readiness, captured Euro legs.** Anchored
+  P19 on the concrete, expenses-tying piece: **home-currency view** via Frankfurter (free/keyless ECB
+  rates; `integrations/fx.ts`, pure `applyRate` tested). `home_currency` on the profile (mig 0042) +
+  a Settings control; `loadBudget` converts foreign-currency expenses to home £ (per-line + total),
+  degrading to the original currency if a rate's missing — so a London→Paris day's EUR spend reads in £.
+  International readiness (currency + eSIM checks) now actionable (links to Settings). European legs are
+  captured as normal stops/runs. *Positioned:* per-stop **timezones** (tz-from-coords — a correctness
+  change touching every time display), **Euro rail no-redirect booking** (Rail Europe/Assertis), an
+  **Airalo real eSIM finder** (mock adapter → packages UI). New env `FX_URL?` (defaults Frankfurter).

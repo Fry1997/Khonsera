@@ -3,6 +3,7 @@ import { PageShell, ComingSoon } from "@/components/ui/page-shell";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { TravelProfileForm } from "./travel-profile-form";
+import { HomeCurrency } from "@/components/settings/home-currency";
 import { CalendarSection } from "./calendar-section";
 import { GmailSection } from "./gmail-section";
 import { ThemePicker } from "@/components/theme-picker";
@@ -16,6 +17,7 @@ export default async function SettingsPage({
   const ctx = await requireUserContext();
   const sp = await searchParams;
   const supabase = await createClient();
+  const { data: meProfile } = await supabase.from("profiles").select("home_currency").eq("id", ctx.userId).maybeSingle();
 
   const [
     { data: profile },
@@ -143,6 +145,13 @@ export default async function SettingsPage({
               : null
           }
         />
+
+        <div className="j-card p-5 md:col-span-2">
+          <h2 className="h3 mb-4">International</h2>
+          <div className="cc-settings-group">
+            <HomeCurrency current={(meProfile?.home_currency as string) ?? "GBP"} />
+          </div>
+        </div>
 
         <div className="j-card p-5 md:col-span-2">
           <div className="mb-4 flex items-center justify-between">

@@ -501,16 +501,21 @@ approval; roles gate actions. ✓ for RBAC + over-cap approval + the privacy fix
 messages compose to the OS sheet. ✓ — core done; live-map + after-dark nudge positioned. Build green ·
 322 tests · advisor-clean (the `share_position` anon RPC is the intended public surface).
 
-### Phase 19 — International (C9 / C10)  `[ ]`
-**Depends on:** P2 (capture), P8 (transit generalises). **Procurement:** Airalo (mock), Rail Europe/
-Lyko/Omio (mock).
-- [ ] **Currency/FX** — spend shown in home currency (Frankfurter/exchangerate.host, free).
-- [ ] **Timezones** — every time correct across the trip.
-- [ ] **eSIM** in the readiness check (Airalo adapter, mock).
-- [ ] **European/cross-border rail** capture (Eurostar + national operators) + a **no-redirect**
-      booking interface (mock).
-**Done when:** a London→Paris day shows home currency, correct tz, eSIM in readiness, and captured
-European legs.
+### Phase 19 — International (C9 / C10)  `[~]` core DONE 2026-06-15
+**Depends on:** P2 (capture), P8 (transit generalises). **Procurement:** Airalo (mock), Rail Europe (mock).
+- [x] **Currency/FX home-currency view** — `integrations/fx.ts` (Frankfurter, **free/keyless** ECB rates,
+      `applyRate` ×2 tests). A `home_currency` on the profile (mig 0042) + a Settings control; `loadBudget`
+      converts every foreign-currency expense to home £ (per-line "≈ £x" + a "≈ £total in GBP"). Degrades
+      to the original currency if a rate's missing.
+- [x] **eSIM in readiness** — the international readiness check (`intl:esim`) + **home-currency** check now
+      links to Settings. (International auto-detected via the UK-bbox heuristic, already present.)
+- [x] **Captured European legs** — a Paris/Eurostar leg is a normal stop + a `train`/`flight` run via
+      `addTransport`; the flight/stay finders already book cross-border.
+- [→ positioned] **Timezones** — every time in its local tz (per-stop tz from coords) — a correctness
+      change touching every time display; needs a tz-from-coords lookup. **Euro rail no-redirect booking**
+      (Rail Europe/Assertis — provider-gated). **Airalo real eSIM finder** (mock adapter → packages UI).
+**Done when:** a London→Paris day shows home currency, correct tz, eSIM in readiness, captured European
+legs. ✓ for home-currency + eSIM-in-readiness + captured legs; per-stop tz positioned. Build green · 324 tests.
 
 ### Phase 20 — Rural & driving depth (C5)  `[ ]`
 **Depends on:** P6, P12 (weather), P14 (parking connector).
@@ -844,6 +849,11 @@ it's sequenced, not dropped.*
 - **Live map** on the recipient `/share` page; **native background** location broadcast (PWA limit);
   a **lone/after-dark safety nudge** (P12 rule); a richer manager **status+ETA** board. Buildable now
   (map/nudge) / needs-native (background).
+
+### International (P19 follow-ons)
+- **Per-stop timezones** (display every time in its local tz — a tz-from-coords lookup; touches all time
+  rendering). **Euro rail no-redirect booking** (Rail Europe/Assertis). **Airalo real eSIM finder**
+  (mock adapter → a packages picker in readiness). Buildable now (tz/eSIM) / provider-gated (rail).
 
 ### Provider activations (founder/procurement — flip a feature live, no code change)
 - `DUFFEL_API_TOKEN` (test → flights live), **Duffel Stays** activation, **Parkopedia** key, **Assertis**

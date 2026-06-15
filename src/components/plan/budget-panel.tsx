@@ -52,6 +52,9 @@ export function BudgetPanel({ itineraryId, budget }: { itineraryId: string; budg
             {over ? `${money(budget.overBy, budget.currency)} over cap` : `${money(budget.remaining ?? 0, budget.currency)} remaining`}
           </span>
         ) : null}
+        {budget.multiCurrency && budget.spentHome != null ? (
+          <span className="cc-budget-home" style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>≈ {money(budget.spentHome, budget.homeCurrency)} in {budget.homeCurrency}</span>
+        ) : null}
       </div>
 
       {budget.cap != null ? (
@@ -102,7 +105,10 @@ export function BudgetPanel({ itineraryId, budget }: { itineraryId: string; budg
                   <input ref={(el) => { fileInputs.current[l.id] = el; }} type="file" accept="image/*,application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onReceipt(l.id, f); }} />
                 </>
               ) : null}
-              <span className="cc-budget-row-amt" style={{ fontFamily: "var(--mono)", fontVariantNumeric: "tabular-nums", color: "var(--ink)" }}>{l.amount != null ? money(l.amount, l.currency) : "—"}</span>
+              <span className="cc-budget-row-amt" style={{ fontFamily: "var(--mono)", fontVariantNumeric: "tabular-nums", color: "var(--ink)" }}>
+                {l.amount != null ? money(l.amount, l.currency) : "—"}
+                {l.currency !== budget.homeCurrency && l.homeAmount != null ? <span style={{ display: "block", fontSize: "var(--fs-micro, 11px)", color: "var(--ink-dim)" }}>≈ {money(l.homeAmount, budget.homeCurrency)}</span> : null}
+              </span>
             </li>
           ))}
         </ul>
