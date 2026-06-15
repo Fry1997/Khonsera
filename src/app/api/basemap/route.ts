@@ -78,6 +78,41 @@ const PASS_THROUGH = [
   "last-modified",
 ];
 
+// Warm-lambda range cache. PMTiles re-requests the SAME hot ranges (the archive
+// header at bytes 0-16383, the root + leaf directories) on every map init, and
+// tiles recur across page navigations that land on a warm instance. Caching them
+// in module memory (persists across invocations on a warm lambda) stops each one
+// re-fetching the remote planet — the single biggest win available without moving
+// the archive to a CDN. Keyed by `${upstream}#${range}` so a daily build roll
+// (upstream changes) can never serve stale offsets. Bounded: ≤ MAX_ENTRIES, only
+// bodies ≤ MAX_BYTES (keeps the hot small ranges + modest tiles, not huge reads).
+type CacheEntry = { status: number; headers: [string, string][]; body: ArrayBuffer };
+const MAX_ENTRIES = 400;
+const MAX_BYTES = 1_000_000;
+const rangeCache = new Map<string, CacheEntry>();
+
+function cacheGet(key: string): CacheEntry | undefined {
+  const hit = rangeCache.get(key);
+  if (hit) {
+    rangeCache.delete(key); // LRU: re-insert to mark most-recently-used
+    rangeCache.set(key, hit);
+  }
+  return hit;
+}
+function cacheSet(key: string, entry: CacheEntry): void {
+  if (entry.body.byteLength > MAX_BYTES) return;
+  rangeCache.set(key, entry);
+  while (rangeCache.size > MAX_ENTRIES) {
+    const oldest = rangeCache.keys().next().value;
+    if (oldest === undefined) break;
+    rangeCache.delete(oldest);
+  }
+}
+
+function respond(entry: CacheEntry): Response {
+  return new Response(entry.body, { status: entry.status, headers: new Headers(entry.headers) });
+}
+
 export async function GET(req: NextRequest) {
   const range = req.headers.get("range");
   // PMTiles always sends a Range; refuse a full-archive pull (the planet is
@@ -93,6 +128,11 @@ export async function GET(req: NextRequest) {
     const msg = e instanceof Error ? e.message : "resolve failed";
     return new Response(`basemap: ${msg}`, { status: 502 });
   }
+
+  // Warm-cache hit → serve without touching the upstream planet at all.
+  const cacheKey = `${upstream}#${range}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return respond(cached);
 
   let res: Response;
   try {
@@ -115,12 +155,19 @@ export async function GET(req: NextRequest) {
   }
 
   const body = await res.arrayBuffer();
-  const headers = new Headers();
+  const headers: [string, string][] = [];
   for (const h of PASS_THROUGH) {
     const v = res.headers.get(h);
-    if (v) headers.set(h, v);
+    if (v) headers.push([h, v]);
   }
-  headers.set("Cache-Control", "public, max-age=86400, s-maxage=86400");
+  // Browser/edge caching so a repeat map view serves from cache instantly (fixes
+  // the "have to refresh" feel). A range's bytes are immutable for the life of a
+  // build — so an EXPLICIT, stable archive (PMTILES_UPSTREAM_URL) gets a long TTL;
+  // the auto-resolved daily build stays at a day so a build roll can never serve
+  // mismatched offsets from cache.
+  headers.push(["Cache-Control", EXPLICIT ? "public, max-age=604800, immutable" : "public, max-age=86400"]);
 
-  return new Response(body, { status: res.status, headers });
+  const entry: CacheEntry = { status: res.status, headers, body };
+  cacheSet(cacheKey, entry);
+  return respond(entry);
 }
