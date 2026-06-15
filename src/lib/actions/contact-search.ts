@@ -73,6 +73,7 @@ export async function createContactQuick(
     .from("contacts")
     .insert({
       workspace_id: ctx.workspaceId,
+      user_id: ctx.userId,
       customer_id: null,
       mode: ctx.activeMode,
       name: parsed.data.name,

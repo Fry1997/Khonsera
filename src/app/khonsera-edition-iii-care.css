@@ -113,6 +113,8 @@
 }
 .cc-nudge-foresight::before { content: ""; width: 6px; height: 6px; border-radius: 50%;
   border: 1.5px solid var(--gold); background: transparent; }     /* hollow = looking ahead */
+/* Honest mock cue: the triggering signal is sampled, not live (provider unkeyed). */
+.cc-nudge-sample { color: var(--ink-faint); letter-spacing: 0.16em; }
 .cc-nudge-msg { font-size: 14.5px; line-height: 1.5; color: var(--ink); }   /* the proposal, in ink */
 .cc-nudge-msg .where, .cc-nudge-msg strong { font-weight: var(--fw-medium); color: var(--ink); }
 .cc-nudge-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3-5); }

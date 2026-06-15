@@ -388,9 +388,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   // Day dividers on multi-day Events (proposal §5/chunk 5): label the first node
   // of each calendar day "Day N · Wed 25 Jun".
   const multiDay = dateStart !== dateEnd;
+  // Day key in the DISPLAY timezone (Europe/London), not UTC — a 00:30 BST stop is
+  // 23:30 UTC the day before; a UTC slice would mis-attribute it and mis-number the
+  // day divider. en-CA yields YYYY-MM-DD.
+  const londonDayKey = (iso: string): string =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
   const dayOf = (u: Unit): string | null => {
     const st = stopById.get(u.entryId);
-    return st?.start_time ? new Date(st.start_time).toISOString().slice(0, 10) : null;
+    return st?.start_time ? londonDayKey(st.start_time) : null;
   };
   const fmtDay = (d: string) =>
     new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(new Date(`${d}T12:00:00`));

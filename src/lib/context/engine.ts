@@ -28,6 +28,12 @@ export type Nudge = {
   actionLabel?: string;
   action?: NudgeAction;
   urgency: NudgeUrgency;
+  // True when the triggering SIGNAL came from a gated provider running on mock
+  // (its key is unset). The surface shows a "· sample" cue so it reads as
+  // illustrative, never a false alarm (provider-gating rule). Rules whose mock
+  // signal can't honestly support the nudge (a fabricated gate change) suppress
+  // instead of marking — they return null when sampled.
+  sample?: boolean;
 };
 
 // ───────────────────────── shared time helpers ─────────────────────────
@@ -161,6 +167,7 @@ export type ParkingInput = {
   predictedOccupancyPct: number; // from Parkopedia outlook (mock until keyed)
   departIso: string; // when you set off / park
   untilIso: string; // when you'd retrieve the car (trip end)
+  sample?: boolean; // outlook came from mock (PARKOPEDIA_KEY unset)
 };
 const PARKING_FULL_PCT = 85;
 
@@ -175,6 +182,7 @@ export function parkingLikelyFull(input: ParkingInput, nowIso: string): Nudge | 
     actionLabel: "Pre-book parking",
     action: { kind: "prebook-parking", site: input.site, fromIso: input.departIso, toIso: input.untilIso, provider: "parkopedia" },
     urgency: urgencyFor(input.departIso, nowIso),
+    sample: input.sample,
   };
 }
 
@@ -190,9 +198,14 @@ export type GateChangeInput = {
   toGate: string;
   walkMin: number; // in-terminal walk between the gates
   boardingIso: string;
+  sample?: boolean; // gate came from mock (AERODATABOX_KEY unset)
 };
 
 export function gateChangeReroute(input: GateChangeInput, nowIso: string): Nudge | null {
+  // A gate CHANGE is a factual event, not a forecast. On mock data the "change"
+  // is a fabricated gate diffed against the plan's real baseline — there is no
+  // honest "sample gate change", so suppress entirely rather than cry wolf.
+  if (input.sample) return null;
   if (!input.toGate || input.toGate === input.fromGate) return null;
   const inHand = Math.round((ms(input.boardingIso) - ms(nowIso)) / 60_000) - input.walkMin;
   const tail =

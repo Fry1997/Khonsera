@@ -42,7 +42,7 @@ export async function createContact(
 
   const { data, error } = await supabase
     .from("contacts")
-    .insert({ ...parsed.value, workspace_id: ctx.workspaceId })
+    .insert({ ...parsed.value, workspace_id: ctx.workspaceId, user_id: ctx.userId, mode: ctx.activeMode })
     .select("*")
     .single();
 

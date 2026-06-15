@@ -34,7 +34,7 @@ export function BaseLocationCard({
         >
           <span className="uc">Base</span>
           <a
-            href="/settings/locations"
+            href="/locations"
             className="link"
             style={{ fontSize: 12 }}
           >
@@ -60,7 +60,7 @@ export function BaseLocationCard({
       >
         <span className="uc">Base</span>
         <a
-          href="/settings/locations"
+          href="/locations"
           className="link"
           style={{ fontSize: 12 }}
         >

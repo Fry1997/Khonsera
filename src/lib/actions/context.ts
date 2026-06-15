@@ -95,7 +95,7 @@ export async function loadNudges(args: {
   const parkings: ParkingInput[] = await Promise.all(
     (args.parkings ?? []).map(async (p) => {
       const outlook = await parkingOutlook({ site: p.site, arriveIso: p.arriveIso });
-      return { legId: p.legId, site: p.site, predictedOccupancyPct: outlook.predictedOccupancyPct, departIso: p.departIso, untilIso: p.untilIso };
+      return { legId: p.legId, site: p.site, predictedOccupancyPct: outlook.predictedOccupancyPct, departIso: p.departIso, untilIso: p.untilIso, sample: outlook.sample };
     }),
   );
 
@@ -106,6 +106,8 @@ export async function loadNudges(args: {
       (args.gateFlights ?? []).map(async (g): Promise<GateChangeInput | null> => {
         const status = await flightDepartureStatus({ flightNumber: g.flightNumber, dateIso: g.dateIso });
         if (!status?.gate || status.gate === g.baselineGate) return null;
+        // A mock gate can't honestly signal a real change — don't fire a false alarm.
+        if (status.sample) return null;
         return { flightStopId: g.flightStopId, airport: g.airport, fromGate: g.baselineGate, toGate: status.gate, walkMin: g.walkMin, boardingIso: g.boardingIso };
       }),
     )

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { searchStayOffers, stayRates, bookStayRoom, stayLocationSuggest, type StayLocation } from "@/lib/actions/connections";
 import type { Offer } from "@/lib/connections/types";
 import type { StayDetail, StayRate } from "@/lib/integrations/duffel";
@@ -12,9 +12,19 @@ import type { StayDetail, StayRate } from "@/lib/integrations/duffel";
 // chain-app-only — we book + service, we don't mint a door key.
 export function StayFinder({ itineraryId, defaultDate }: { itineraryId: string; defaultDate: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<StayLocation | null>(null);
+
+  // Readiness's "Find & book" deep-links here via ?find=stay — open the finder,
+  // then clear the param so a refresh doesn't re-open. (Was a dead button.)
+  useEffect(() => {
+    if (searchParams.get("find") === "stay") {
+      setOpen(true);
+      router.replace(window.location.pathname as Parameters<typeof router.replace>[0], { scroll: false });
+    }
+  }, [searchParams, router]);
   const [checkIn, setCheckIn] = useState(defaultDate);
   const [checkOut, setCheckOut] = useState(defaultDate);
   const [freeCancelOnly, setFreeCancelOnly] = useState(false);

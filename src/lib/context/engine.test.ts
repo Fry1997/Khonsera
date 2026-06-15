@@ -80,6 +80,10 @@ describe("context engine — parking likely full", () => {
     expect(n.action).toEqual({ kind: "prebook-parking", site: base.site, fromIso: base.departIso, toIso: base.untilIso, provider: "parkopedia" });
     expect(n.message).toContain("90%");
   });
+  it("marks the nudge as sample when the outlook is mock (honest cue, not a false alarm)", () => {
+    expect(parkingLikelyFull({ ...base, predictedOccupancyPct: 90, sample: true }, now)!.sample).toBe(true);
+    expect(parkingLikelyFull({ ...base, predictedOccupancyPct: 90, sample: false }, now)!.sample).toBe(false);
+  });
 });
 
 describe("context engine — gate change", () => {
@@ -90,6 +94,9 @@ describe("context engine — gate change", () => {
     expect(n.urgency).toBe("now");
     expect(n.message).toContain("12 to 55");
     expect(n.message).toContain("32 min in hand");
+  });
+  it("suppresses entirely on mock data — a fabricated gate change is never surfaced", () => {
+    expect(gateChangeReroute({ ...base, toGate: "55", sample: true }, now)).toBeNull();
   });
 });
 

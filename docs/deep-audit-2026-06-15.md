@@ -32,38 +32,36 @@ Verified with `get_advisors(security)`: no `_member_*` personal-leak policies re
 reconciled migration-file drift — **0038–0045 existed only in the DB; written back into
 `supabase/migrations/`** so the repo is the source of truth again.
 
-## HIGH — outstanding (needs a decision or a follow-up change)
+## HIGH — fixed / outstanding
 
-- **`contacts` personal-contact leak — needs a schema change.** `contacts` has a `mode` column but
-  **no `user_id`**; the one personal contact in prod is workspace-visible with no owner column to
-  scope it. Fix requires adding an owner column (`user_id`) + an owner-or-work-member policy. Not a
-  blind one-liner — flagged for design.
-- **Gate-change nudge false-fires on mock data** (`src/lib/integrations/aerodatabox.ts` +
-  `src/lib/actions/context.ts:104`). With `AERODATABOX_KEY` unset it invents a gate and diffs it
-  against the plan's real gate → a confident "Gate changed" alarm on fiction. Violates the
-  provider-gating "no false alarm" rule. The `sample` flag is dropped before reaching the nudge.
-  Parking nudge has the same class at lower stakes. Fix: thread `sample` through and suppress/soften
-  the nudge when the signal is sampled.
-- **`expense_caps` writes aren't manager-gated in RLS** (only app-layer). A traveller could raise
-  their own per-diem cap via the REST API directly. Needs an `is_workspace_manager()` helper + a
-  manager-gated write policy.
+- **`contacts` personal-contact leak — FIXED (mig 0046).** `contacts` had a `mode` column but no
+  owner column, so the personal contact was workspace-visible. Added `user_id` (backfilled from the
+  workspace owner), and gated: personal contacts → owner-only, work contacts → workspace-shared CRM.
+  `createContact`/`createContactQuick` now stamp `user_id`.
+- **Gate-change nudge false-fired on mock data — FIXED.** Threaded the provider `sample` flag through
+  `ParkingInput`/`GateChangeInput` → `Nudge`. The gate rule now **suppresses entirely when sampled**
+  (a fabricated gate diff can't honestly signal a change); the parking nudge is **marked `sample`**
+  so the surface shows a "· sample" cue instead of a confident alarm. Locked with two new tests.
+- **`expense_caps` writes aren't manager-gated in RLS** (only app-layer) — OUTSTANDING. A traveller
+  could raise their own per-diem cap via the REST API. Needs an `is_workspace_manager()` helper + a
+  manager-gated write policy. (Not a personal-data leak; policy-integrity.)
 
-## MEDIUM — coherence / dead surface (Code, mostly quick)
+## MEDIUM — coherence / dead surface
 
-- **Dead `IntentionCard`** on `/plan/[id]` — rendered behind `intentions`, but **nothing writes the
-  `intentions` table** (no create path). Either build an intention-capture affordance or drop the
-  reader+card until that stage.
-- **Dead "Find & book"** — Readiness's button pushes `?find=flight|stay` but neither finder reads
-  the param, so it silently does nothing. Fix: have the finders open on the param.
+- **Dead "Find & book" — FIXED.** `FlightFinder`/`StayFinder` now read `?find=flight|stay`, open the
+  finder, and clear the param. The Readiness button works.
+- **Day-divider used UTC — FIXED** (`plan/[id]/page.tsx`). Day key now computed in Europe/London
+  (`en-CA`), matching every display formatter, so a late-night stop lands on the right day.
+- **`/settings/locations` 404 — FIXED.** The brief's base-location card now links `/locations`.
+- **Dead `IntentionCard`** on `/plan/[id]` — rendered behind `intentions`, but nothing writes the
+  table, so it never appears (dormant, not a visible malfunction). LEFT as-is: `Intention` is a core
+  entity; either build a capture path or drop the reader. Flagged, not ripped out.
 - **"One Toolkit, Two Views" broken both ways** — plan-page transport-add is thinner than the
   brief's (no changeover/seat/price); the flight/stay finders + calendar import exist only on the
-  plan page, not the brief. The standing principle says they must match.
-- **Two dead routes** — `/settings/locations` (linked from the brief's base card → 404; should be
-  `/locations`) and an orphaned `/compare` stub (superseded by FlightFinder; should redirect).
-- **Day-divider uses UTC** (`plan/[id]/page.tsx:393`) while every display uses Europe/London — a
-  late-night stop can land on the wrong day. The exact UTC-vs-London class CLAUDE.md keeps flagging.
+  plan page, not the brief. OUTSTANDING (parity work).
+- **Orphaned `/compare` stub** (superseded by FlightFinder; should redirect). OUTSTANDING.
 - **Stale legacy nav cluster** (`mobile-topbar.tsx`/`mobile-nav.tsx`/`nav-tabs.tsx`) — never
-  mounted, references the retired `/dashboard`. Delete or mark superseded.
+  mounted, references the retired `/dashboard`. Delete or mark superseded. OUTSTANDING.
 - **Mock-booked flights show a real "Manage / cancel"** with no "· sample" cue (ManageBookings).
 - **Stay free-cancellation deadline computed wrong** (`duffel.ts` `mapStayRates`) — picks the first
   partial-refund window, not the last fully-refundable one (inert behind the Stays 403 today).

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { searchFlightOffers, bookFlightOffer, airportSuggest, flightSeatMap } from "@/lib/actions/connections";
 import type { PlaceSuggestion, FlightDetail, SeatMapVM, SeatCell } from "@/lib/integrations/duffel";
 import type { Offer } from "@/lib/connections/types";
@@ -17,9 +17,19 @@ type Sort = "cheapest" | "fastest";
 // no IATA typing), fare depth at compare time, seat picker, honest check-in handoff.
 export function FlightFinder({ itineraryId, defaultDate, defaultPassenger }: { itineraryId: string; defaultDate: string; defaultPassenger: DefaultPassenger }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [origin, setOrigin] = useState<Airport | null>(null);
+
+  // Readiness's "Find & book" deep-links here via ?find=flight — open the finder,
+  // then clear the param so a refresh doesn't re-open. (Was a dead button.)
+  useEffect(() => {
+    if (searchParams.get("find") === "flight") {
+      setOpen(true);
+      router.replace(window.location.pathname as Parameters<typeof router.replace>[0], { scroll: false });
+    }
+  }, [searchParams, router]);
   const [dest, setDest] = useState<Airport | null>(null);
   const [date, setDate] = useState(defaultDate);
   const [tripType, setTripType] = useState<"oneway" | "return">("return");

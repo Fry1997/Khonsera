@@ -44,7 +44,7 @@ export function PlanNudges({ itineraryId, nudges }: { itineraryId: string; nudge
         const reaction = n.urgency === "now";
         return (
           <div key={n.key} className="cc-nudge" data-urgency={reaction ? "now" : undefined} data-rule={ruleSlug(n.rule)}>
-            <div className="cc-nudge-foresight">{reaction ? "Now" : "Looking ahead"}</div>
+            <div className="cc-nudge-foresight">{reaction ? "Now" : "Looking ahead"}{n.sample ? <span className="cc-nudge-sample"> · sample</span> : null}</div>
             <p className="cc-nudge-msg">{n.message}</p>
             <div className="cc-nudge-actions">
               <button type="button" className="cc-btn-gold" data-busy={busy ? "" : undefined} disabled={busy} onClick={() => act(n, "accepted")}>

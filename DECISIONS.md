@@ -897,3 +897,15 @@ Newest at the bottom of each section.
   workspace-visible — needs an owner column); `expense_caps` writes aren't manager-gated in RLS;
   gate-change/parking nudges false-fire on mock data (sample flag dropped before the nudge). Full
   register in `docs/deep-audit-2026-06-15.md`.
+
+- **D65 — Audit remediation: contacts owner-gate + functional-bug fixes.** Acting on D64's register.
+  **contacts privacy (mig 0046):** added `user_id` (backfilled from each workspace's owner), gated
+  personal contacts owner-only + work contacts workspace-shared; `createContact`/`createContactQuick`
+  now stamp user_id+mode. **Nudge false-alarms:** threaded the provider `sample` flag into the context
+  engine — the gate-change rule SUPPRESSES on sampled data (a fabricated gate diff isn't an honest
+  signal) and parking is MARKED sample (UI shows "· sample"), per the provider-gating "no false alarm"
+  rule; two new engine tests. **Dead "Find & book":** FlightFinder/StayFinder now read `?find=` and
+  open. **UTC day-divider:** day key now computed in Europe/London. **404:** brief base-location card
+  links `/locations`. Left dormant: the IntentionCard reader (core entity, never renders — build or
+  drop later). Still outstanding: expense_caps manager-write RLS gate, One-Toolkit parity, /compare
+  redirect, the stale legacy nav cluster. tsc + 326 tests + build all green.
