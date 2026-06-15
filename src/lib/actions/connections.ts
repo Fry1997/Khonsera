@@ -16,17 +16,22 @@ import {
 import { textSearchPlaces } from "@/lib/google/places";
 import type { Offer, Booking } from "@/lib/connections/types";
 
-// Airport autocomplete — type "Heathrow"/"Edinburgh", get the IATA code, so the
-// user NEVER types a short-code. Real via Duffel Places; a small mock list when
-// unkeyed so the flow still works.
+// Airport autocomplete — type "Heathrow"/"London"/"Edinburgh", get the IATA code,
+// so the user NEVER types a short-code. INCLUDES city options ("London · all
+// airports" → the metro code LON, which Duffel expands to every London airport) —
+// a slice can be a CITY, not just one airport. Real via Duffel Places; a mock list
+// (cities first) when unkeyed.
 const MOCK_AIRPORTS: PlaceSuggestion[] = [
+  { iataCode: "LON", name: "London", cityName: "All airports", type: "city" },
   { iataCode: "LHR", name: "Heathrow", cityName: "London", type: "airport" },
   { iataCode: "LGW", name: "Gatwick", cityName: "London", type: "airport" },
   { iataCode: "STN", name: "Stansted", cityName: "London", type: "airport" },
   { iataCode: "MAN", name: "Manchester", cityName: "Manchester", type: "airport" },
   { iataCode: "EDI", name: "Edinburgh", cityName: "Edinburgh", type: "airport" },
   { iataCode: "BHX", name: "Birmingham", cityName: "Birmingham", type: "airport" },
+  { iataCode: "NYC", name: "New York", cityName: "All airports", type: "city" },
   { iataCode: "JFK", name: "John F. Kennedy", cityName: "New York", type: "airport" },
+  { iataCode: "PAR", name: "Paris", cityName: "All airports", type: "city" },
   { iataCode: "CDG", name: "Charles de Gaulle", cityName: "Paris", type: "airport" },
   { iataCode: "DUB", name: "Dublin", cityName: "Dublin", type: "airport" },
   { iataCode: "AMS", name: "Schiphol", cityName: "Amsterdam", type: "airport" },
@@ -37,9 +42,11 @@ export async function airportSuggest(query: string): Promise<PlaceSuggestion[]> 
   const q = query.trim();
   if (q.length < 2) return [];
   const real = await placeSuggestions(q);
-  if (real) return real.filter((p) => p.type === "airport").slice(0, 6);
+  // Keep BOTH cities (all-airports) and airports; cities lead so "any London
+  // airport" is the easy default.
+  if (real) return [...real].sort((a, b) => Number(b.type === "city") - Number(a.type === "city")).slice(0, 7);
   const lc = q.toLowerCase();
-  return MOCK_AIRPORTS.filter((a) => a.name.toLowerCase().includes(lc) || a.iataCode.toLowerCase().includes(lc) || (a.cityName ?? "").toLowerCase().includes(lc)).slice(0, 6);
+  return MOCK_AIRPORTS.filter((a) => a.name.toLowerCase().includes(lc) || a.iataCode.toLowerCase().includes(lc) || (a.cityName ?? "").toLowerCase().includes(lc)).slice(0, 7);
 }
 
 // Stay location lookup — type any city/hotel, geocode to coords (independent of the

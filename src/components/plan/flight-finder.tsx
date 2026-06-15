@@ -183,10 +183,11 @@ function AirportField({ label, value, onPick }: { label: string; value: Airport 
         <ul className="cc-conn-suggest" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, listStyle: "none", margin: "4px 0 0", padding: 4, background: "var(--card)", border: "1px solid var(--rule)", borderRadius: 8, boxShadow: "var(--shadow)" }}>
           {results.map((r) => (
             <li key={r.iataCode}>
-              <button type="button" className="cc-conn-suggest-item" style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: "8px 10px", cursor: "pointer", borderRadius: 6, color: "var(--ink)" }}
-                onMouseDown={(e) => { e.preventDefault(); onPick({ iata: r.iataCode, label: `${r.name} (${r.iataCode})` }); setQ(""); setOpenList(false); }}>
+              <button type="button" className="cc-conn-suggest-item" data-type={r.type} style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: "8px 10px", cursor: "pointer", borderRadius: 6, color: "var(--ink)" }}
+                onMouseDown={(e) => { e.preventDefault(); onPick({ iata: r.iataCode, label: r.type === "city" ? `${r.name} · all airports` : `${r.name} (${r.iataCode})` }); setQ(""); setOpenList(false); }}>
                 <span style={{ fontFamily: "var(--mono)", color: "var(--gold-2)", marginRight: 8 }}>{r.iataCode}</span>
-                {r.name}{r.cityName && r.cityName !== r.name ? <span style={{ color: "var(--ink-dim)" }}> · {r.cityName}</span> : null}
+                {r.name}
+                {r.type === "city" ? <span style={{ color: "var(--gold-2)" }}> · all airports</span> : r.cityName && r.cityName !== r.name ? <span style={{ color: "var(--ink-dim)" }}> · {r.cityName}</span> : null}
               </button>
             </li>
           ))}
