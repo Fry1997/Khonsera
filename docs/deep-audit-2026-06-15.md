@@ -42,9 +42,10 @@ reconciled migration-file drift — **0038–0045 existed only in the DB; writte
   `ParkingInput`/`GateChangeInput` → `Nudge`. The gate rule now **suppresses entirely when sampled**
   (a fabricated gate diff can't honestly signal a change); the parking nudge is **marked `sample`**
   so the surface shows a "· sample" cue instead of a confident alarm. Locked with two new tests.
-- **`expense_caps` writes aren't manager-gated in RLS** (only app-layer) — OUTSTANDING. A traveller
-  could raise their own per-diem cap via the REST API. Needs an `is_workspace_manager()` helper + a
-  manager-gated write policy. (Not a personal-data leak; policy-integrity.)
+- **`expense_caps` writes are now manager-gated in RLS — FIXED (mig 0047).** Added an
+  `is_workspace_manager()` SECURITY DEFINER helper (manager tier = company_admin/team_manager/owner/
+  admin, matching `MANAGER_ROLES`) and gated `expense_caps` writes with it; members keep SELECT. A
+  traveller can no longer raise their own per-diem via the REST API.
 
 ## MEDIUM — coherence / dead surface
 
@@ -56,12 +57,28 @@ reconciled migration-file drift — **0038–0045 existed only in the DB; writte
 - **Dead `IntentionCard`** on `/plan/[id]` — rendered behind `intentions`, but nothing writes the
   table, so it never appears (dormant, not a visible malfunction). LEFT as-is: `Intention` is a core
   entity; either build a capture path or drop the reader. Flagged, not ripped out.
-- **"One Toolkit, Two Views" broken both ways** — plan-page transport-add is thinner than the
-  brief's (no changeover/seat/price); the flight/stay finders + calendar import exist only on the
-  plan page, not the brief. OUTSTANDING (parity work).
-- **Orphaned `/compare` stub** (superseded by FlightFinder; should redirect). OUTSTANDING.
-- **Stale legacy nav cluster** (`mobile-topbar.tsx`/`mobile-nav.tsx`/`nav-tabs.tsx`) — never
-  mounted, references the retired `/dashboard`. Delete or mark superseded. OUTSTANDING.
+- **Orphaned `/compare` stub — FIXED.** Now redirects to `/plan`, matching the orphan-redirect
+  convention; the per-leg CompareSheet + FlightFinder are the real comparison surfaces.
+- **Stale legacy nav cluster — FIXED (deleted).** `mobile-topbar.tsx`/`mobile-nav.tsx`/`nav-tabs.tsx`
+  were a closed, never-mounted cluster referencing the retired `/dashboard`; removed (git preserves).
+- **"One Toolkit, Two Views" — PARTIALLY a justified asymmetry, partly real debt.** The flight/stay
+  finders + calendar import are plan-only *by architecture*: they require an `itineraryId` and the
+  brief is pre-creation (you book after build), so this asymmetry is legitimate — documented, not a
+  bug. The real gap is the plan page's transport-add (`PlanAdd`) being thinner than the brief's
+  `transport-booking-card` (no changeover/service/seat/class/price). Closing it cleanly = sharing the
+  one transport card across both flows — a scoped component refactor, OUTSTANDING.
+
+## Utility consolidation — re-assessed: NOT a safe blind sweep
+
+The architecture agent flagged duplicate `haversine`/`money`/`time`/`duration` helpers. On
+inspection each has a wrinkle that makes mechanical consolidation risky, so it's deferred as
+*careful* work, not a quick win: the inline `money()` copies format **major-unit** amounts while the
+canonical `formatMoney` takes **minor units** (a blind swap = ÷100 bugs); the `haversine` copies use
+different earth-radius constants inside **pure, tested** mileage/rail logic (consolidating could shift
+computed distances); `flight-status-card`'s tz-less time formatter needs the **airport's** local zone,
+not a blanket Europe/London (wrong for international flights). The duration "12m"/"12 min" split is the
+only purely-cosmetic one. Recommendation: consolidate deliberately with a shared major-unit money
+formatter + a single radius constant, each with a test, rather than in one sweep.
 - **Mock-booked flights show a real "Manage / cancel"** with no "· sample" cue (ManageBookings).
 - **Stay free-cancellation deadline computed wrong** (`duffel.ts` `mapStayRates`) — picks the first
   partial-refund window, not the last fully-refundable one (inert behind the Stays 403 today).

@@ -909,3 +909,16 @@ Newest at the bottom of each section.
   links `/locations`. Left dormant: the IntentionCard reader (core entity, never renders — build or
   drop later). Still outstanding: expense_caps manager-write RLS gate, One-Toolkit parity, /compare
   redirect, the stale legacy nav cluster. tsc + 326 tests + build all green.
+
+- **D66 — Audit remediation cont'd: manager-gated caps, orphan cleanup, consolidation re-assessed.**
+  **expense_caps (mig 0047):** added `is_workspace_manager()` SECURITY DEFINER helper (company_admin/
+  team_manager/owner/admin) and gated cap writes with it — defence-in-depth now matches the app's
+  requireManager(); a traveller can't raise their own per-diem via the REST API. **/compare** retired
+  → redirects to /plan (per-leg CompareSheet + FlightFinder are the real comparison surfaces).
+  **Deleted** the never-mounted legacy nav cluster (mobile-topbar/mobile-nav/nav-tabs). **One Toolkit,
+  Two Views:** the flight/stay finders being plan-only is a JUSTIFIED asymmetry (they need an
+  itineraryId; the brief is pre-creation) — documented, not a bug; the real gap (PlanAdd thinner than
+  the brief's transport-booking-card) is a scoped shared-component refactor, still open. **Utility
+  consolidation re-assessed:** not a safe blind sweep — inline money() is major-unit vs canonical
+  minor-unit (÷100 risk), haversine copies use different radius constants in pure tested logic,
+  flight-status-card needs the airport's tz not a blanket London. Deferred as deliberate, tested work.
