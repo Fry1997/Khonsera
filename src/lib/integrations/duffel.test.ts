@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapDuffelOffer, mapDuffelOrder, mapDuffelStay, parseSeatMap, type DuffelOffer } from "./duffel";
+import { mapDuffelOffer, mapDuffelOrder, mapDuffelStay, parseSeatMap, mapStayRates, type DuffelOffer } from "./duffel";
 
 // Fixtures mirror the real Duffel v2 shapes (research, June 2026).
 const offer: DuffelOffer = {
@@ -104,16 +104,40 @@ describe("Duffel seat map parser", () => {
 });
 
 describe("Duffel stay mapper", () => {
-  it("maps a search result to a comparable Offer", () => {
+  it("maps a search result to a comparable Offer with depth", () => {
     const o = mapDuffelStay({
       id: "ssr_1",
-      accommodation: { name: "The Resident", rating: 4, review_score: 8.9, location: { address: { city_name: "London" } } },
+      accommodation: {
+        name: "The Resident",
+        rating: 4,
+        review_score: 8.9,
+        location: { address: { line_one: "25 Soho St", city_name: "London", postal_code: "W1D 4NF" } },
+        amenities: [{ type: "wifi", description: "Free WiFi" }, { type: "gym" }],
+        check_in_information: { check_in_after_time: "15:00", check_out_before_time: "11:00" },
+        photos: [{ url: "https://x/1.jpg" }],
+      },
       cheapest_rate_total_amount: "312.00",
       cheapest_rate_currency: "GBP",
     });
     expect(o).toMatchObject({ kind: "stay", provider: "duffel", title: "The Resident" });
     expect(o.price).toEqual({ amount: "312.00", currency: "GBP" });
     expect(o.summary).toContain("4★");
-    expect(o.summary).toContain("London");
+    expect(o.summary).toContain("8.9/10");
+    expect(o.detail).toMatchObject({ rating: 4, reviewScore: 8.9, postcode: "W1D 4NF", checkInAfter: "15:00", checkOutBefore: "11:00" });
+    expect((o.detail as { amenities: string[] }).amenities).toContain("Free WiFi");
+  });
+});
+
+describe("Duffel stay rates", () => {
+  it("flattens rooms→rates, sorts cheapest, reads board + free-cancel", () => {
+    const rates = mapStayRates([
+      { name: "Double", rates: [
+        { id: "rat_2", total_amount: "150.00", total_currency: "GBP", board_type: "breakfast", payment_type: "balance", cancellation_timeline: [{ refund_amount: "150.00", currency: "GBP", before: "2026-07-19T14:00:00Z" }] },
+        { id: "rat_1", total_amount: "120.00", total_currency: "GBP", board_type: "room_only", payment_type: "deposit", cancellation_timeline: [] },
+      ] },
+    ]);
+    expect(rates.map((r) => r.id)).toEqual(["rat_1", "rat_2"]); // cheapest first
+    expect(rates[0]).toMatchObject({ roomName: "Double", boardType: "room_only", payAtProperty: true, freeCancellationBefore: null });
+    expect(rates[1]).toMatchObject({ boardType: "breakfast", freeCancellationBefore: "2026-07-19T14:00:00Z" });
   });
 });

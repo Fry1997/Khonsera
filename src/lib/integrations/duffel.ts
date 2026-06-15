@@ -353,14 +353,31 @@ export async function createFlightOrder(args: { offer: Offer; passengers: Flight
 
 export type StaySearch = { lat: number; lng: number; radiusKm: number; checkIn: string; checkOut: string; rooms: number; adults: number };
 
+// The accommodation depth we surface per stay (Duffel Stays schema): the star +
+// guest score, photos, amenities, address, and the check-in/out times.
+export type StayDetail = {
+  rating: number | null; // star rating 1–5
+  reviewScore: number | null; // guest score 1–10
+  photos: string[];
+  amenities: string[];
+  address: string | null;
+  postcode: string | null;
+  checkInAfter: string | null;
+  checkOutBefore: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
 type DuffelStayResult = {
   id: string;
   accommodation?: {
     name?: string;
     rating?: number;
     review_score?: number;
-    location?: { address?: { line_one?: string; city_name?: string } };
+    location?: { address?: { line_one?: string; city_name?: string; postal_code?: string }; geographic_coordinates?: { latitude?: number; longitude?: number } };
     photos?: { url?: string }[];
+    amenities?: { type?: string; description?: string }[];
+    check_in_information?: { check_in_after_time?: string; check_out_before_time?: string };
   };
   cheapest_rate_total_amount?: string;
   cheapest_rate_currency?: string;
@@ -368,18 +385,125 @@ type DuffelStayResult = {
 
 export function mapDuffelStay(r: DuffelStayResult): Offer {
   const a = r.accommodation ?? {};
+  const addr = a.location?.address;
   const stars = a.rating ? `${a.rating}★` : "";
-  const where = a.location?.address?.city_name ?? a.location?.address?.line_one ?? "";
+  const score = a.review_score ? `${a.review_score.toFixed(1)}/10` : "";
+  const where = addr?.city_name ?? addr?.line_one ?? "";
+  const detail: StayDetail = {
+    rating: a.rating ?? null,
+    reviewScore: a.review_score ?? null,
+    photos: (a.photos ?? []).map((p) => p.url).filter((u): u is string => !!u),
+    amenities: (a.amenities ?? []).map((m) => m.description ?? m.type ?? "").filter(Boolean),
+    address: [addr?.line_one, addr?.city_name].filter(Boolean).join(", ") || null,
+    postcode: addr?.postal_code ?? null,
+    checkInAfter: a.check_in_information?.check_in_after_time ?? null,
+    checkOutBefore: a.check_in_information?.check_out_before_time ?? null,
+    lat: a.location?.geographic_coordinates?.latitude ?? null,
+    lng: a.location?.geographic_coordinates?.longitude ?? null,
+  };
   return {
     id: r.id,
     kind: "stay",
     provider: "duffel",
     title: a.name ?? "Hotel",
     price: { amount: r.cheapest_rate_total_amount ?? "0", currency: r.cheapest_rate_currency ?? "GBP" },
-    summary: [stars, where].filter(Boolean).join(" · ") || "stay",
-    detail: { accommodation: a, reviewScore: a.review_score },
+    summary: [stars, score, where].filter(Boolean).join(" · ") || "stay",
+    detail: { ...detail },
     sample: false,
   };
+}
+
+// A bookable room rate within a stay (Duffel rates): the room, board, price, and
+// the free-cancellation deadline — the depth a hotel app shows before you book.
+export type StayRate = {
+  id: string;
+  roomName: string;
+  price: Money;
+  boardType: string; // room_only | breakfast | half_board | …
+  freeCancellationBefore: string | null;
+  payAtProperty: boolean;
+};
+
+type DuffelRate = {
+  id?: string;
+  total_amount?: string;
+  total_currency?: string;
+  board_type?: string;
+  payment_type?: string;
+  cancellation_timeline?: { refund_amount?: string; currency?: string; before?: string }[];
+};
+type DuffelRoom = { name?: string; rates?: DuffelRate[] };
+
+export function mapStayRates(rooms: DuffelRoom[]): StayRate[] {
+  const out: StayRate[] = [];
+  for (const room of rooms) {
+    for (const rate of room.rates ?? []) {
+      if (!rate.id) continue;
+      // Free-cancel = the latest timeline entry whose refund equals the total.
+      const freeCancel = (rate.cancellation_timeline ?? []).find((c) => Number(c.refund_amount) > 0)?.before ?? null;
+      out.push({
+        id: rate.id,
+        roomName: room.name ?? "Room",
+        price: { amount: rate.total_amount ?? "0", currency: rate.total_currency ?? "GBP" },
+        boardType: rate.board_type ?? "room_only",
+        freeCancellationBefore: freeCancel,
+        payAtProperty: rate.payment_type === "deposit" || rate.payment_type === "guarantee",
+      });
+    }
+  }
+  return out.sort((a, b) => Number(a.price.amount) - Number(b.price.amount));
+}
+
+// Fetch the full rooms/rates for a chosen search result. Mock when unkeyed.
+export async function getStayRates(searchResultId: string): Promise<{ rates: StayRate[]; sample: boolean }> {
+  const token = duffelToken();
+  if (!token) return { rates: mockStayRates(), sample: true };
+  try {
+    const res = await fetch(`${BASE}/stays/search_results/${encodeURIComponent(searchResultId)}/rates`, { headers: headers(token), signal: AbortSignal.timeout(20000), cache: "no-store" });
+    if (res.status === 403) return { rates: mockStayRates(), sample: true };
+    if (!res.ok) return { rates: [], sample: false };
+    const json = (await res.json()) as { data?: { accommodation?: { rooms?: DuffelRoom[] } } };
+    return { rates: mapStayRates(json.data?.accommodation?.rooms ?? []), sample: false };
+  } catch {
+    return { rates: [], sample: false };
+  }
+}
+
+// Quote a rate (locks the price) then book it. Returns a Booking. Mock until
+// Stays activates. (The boarding-pass equivalent doesn't apply — a hotel
+// confirmation reference IS the bookable credential.)
+export async function bookStayRate(args: { rateId: string; guestGiven: string; guestFamily: string; email: string; phone: string; stayTitle: string; checkIn: string; checkOut: string }): Promise<Booking | null> {
+  const token = duffelToken();
+  if (!token) {
+    return { id: `sby_mock_${args.rateId.slice(-5)}`, kind: "stay", provider: "duffel", reference: `STAY-${args.rateId.slice(-6).toUpperCase()}`, price: { amount: "0", currency: "GBP" }, title: args.stayTitle, startIso: args.checkIn, endIso: args.checkOut, sample: true };
+  }
+  try {
+    const q = await fetch(`${BASE}/stays/quotes`, { method: "POST", headers: headers(token), body: JSON.stringify({ data: { rate_id: args.rateId } }), signal: AbortSignal.timeout(20000), cache: "no-store" });
+    if (!q.ok) return null;
+    const quote = (await q.json()) as { data?: { id?: string; total_amount?: string; total_currency?: string } };
+    const quoteId = quote.data?.id;
+    if (!quoteId) return null;
+    const b = await fetch(`${BASE}/stays/bookings`, {
+      method: "POST",
+      headers: { ...headers(token), "Idempotency-Key": `stay-${quoteId}` },
+      body: JSON.stringify({ data: { quote_id: quoteId, guests: [{ given_name: args.guestGiven, family_name: args.guestFamily }], email: args.email, phone_number: args.phone } }),
+      signal: AbortSignal.timeout(25000),
+      cache: "no-store",
+    });
+    if (!b.ok) return null;
+    const booking = (await b.json()) as { data?: { id?: string; reference?: string } };
+    return { id: booking.data?.id ?? "", kind: "stay", provider: "duffel", reference: booking.data?.reference ?? "—", price: { amount: quote.data?.total_amount ?? "0", currency: quote.data?.total_currency ?? "GBP" }, title: args.stayTitle, startIso: args.checkIn, endIso: args.checkOut, sample: false };
+  } catch {
+    return null;
+  }
+}
+
+function mockStayRates(): StayRate[] {
+  return [
+    { id: "rat_mock_1", roomName: "Standard Double", price: money(118), boardType: "room_only", freeCancellationBefore: "2026-07-19T14:00:00Z", payAtProperty: false },
+    { id: "rat_mock_2", roomName: "Standard Double", price: money(132), boardType: "breakfast", freeCancellationBefore: "2026-07-19T14:00:00Z", payAtProperty: false },
+    { id: "rat_mock_3", roomName: "Superior King", price: money(176), boardType: "breakfast", freeCancellationBefore: null, payAtProperty: true },
+  ];
 }
 
 // Search stays. Stays is sales-gated, so a 403/forbidden (account lacks Stays) →
@@ -449,14 +573,28 @@ function mockFlightBooking(o: Offer): Booking {
   return { id: `ord_mock_${o.id}`, kind: "flight", provider: "duffel", reference: `MOCK${o.id.slice(-4).toUpperCase()}`, price: o.price, title: o.title, startIso: o.startIso, endIso: o.endIso, documents: [{ type: "electronic_ticket", id: "000-MOCK" }], sample: true };
 }
 function mockStayOffers(s: StaySearch): Offer[] {
-  void s;
-  return [0, 1, 2].map((i) => ({
-    id: `rat_mock_${i}`,
-    kind: "stay" as const,
-    provider: "duffel",
-    title: ["The Resident", "Hotel Indigo", "Premier Inn"][i],
-    price: money(95 + i * 40),
-    summary: `${[4, 4, 3][i]}★ · city centre`,
-    sample: true,
-  }));
+  return [0, 1, 2].map((i) => {
+    const detail: StayDetail = {
+      rating: [4, 4, 3][i],
+      reviewScore: [8.9, 8.4, 8.1][i],
+      photos: [],
+      amenities: ["Free WiFi", "Breakfast available", i === 0 ? "Gym" : "Parking", "24h reception"],
+      address: "City centre",
+      postcode: null,
+      checkInAfter: "15:00",
+      checkOutBefore: "11:00",
+      lat: s.lat,
+      lng: s.lng,
+    };
+    return {
+      id: `ssr_mock_${i}`,
+      kind: "stay" as const,
+      provider: "duffel",
+      title: ["The Resident", "Hotel Indigo", "Premier Inn"][i],
+      price: money(95 + i * 40),
+      summary: `${detail.rating}★ · ${detail.reviewScore?.toFixed(1)}/10 · city centre`,
+      detail: { ...detail },
+      sample: true,
+    };
+  });
 }
