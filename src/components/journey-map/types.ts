@@ -26,6 +26,9 @@ export interface Leg {
   durationMinutes?: number;
   service?: string;        // 'LNER / KX 218', 'BA 287', etc.
   waypoints?: Station[];   // intermediate stops worth labelling
+  // Outbound (away from base) vs the return (heading back) — coloured distinctly so
+  // the two directions don't overlap into one indistinguishable line.
+  direction?: "out" | "back";
 }
 
 export interface Journey {

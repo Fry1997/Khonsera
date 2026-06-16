@@ -7,9 +7,13 @@ export const dusk: JourneyTheme = {
     paperInner: "#f4f0e7",
     ink: "#1a1612",
     inkDim: "#6e6557",
-    gold: "#a07520",
+    gold: "#9a6a12",
     goldGlow: "rgba(160, 117, 32, 0.18)",
     goldMuted: "#b8893f",
+    // Return leg = a cool teal that reads clearly apart from the warm gold + roads.
+    routeReturn: "#1f6f73",
+    // Dark casing lifts both route colours off the pale roads on this light theme.
+    routeCasing: "rgba(20, 16, 10, 0.55)",
     water: "#b8c2a8",
     markerFill: "#a07520",
     markerStroke: "#1a1612",

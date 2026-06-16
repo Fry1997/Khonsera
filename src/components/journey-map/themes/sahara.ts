@@ -7,9 +7,13 @@ export const sahara: JourneyTheme = {
     paperInner: "#f7f0db",
     ink: "#20180e",
     inkDim: "#7a6c52",
-    gold: "#a87826",
+    gold: "#9a6815",
     goldGlow: "rgba(168, 120, 38, 0.20)",
     goldMuted: "#c49432",
+    // Return leg = a deep teal apart from the warm gold + ochre roads.
+    routeReturn: "#1b6566",
+    // Dark casing lifts the route off the pale daylight roads.
+    routeCasing: "rgba(32, 24, 14, 0.5)",
     water: "#c2ccb0",
     markerFill: "#a87826",
     markerStroke: "#20180e",

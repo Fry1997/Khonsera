@@ -131,7 +131,7 @@ function buildGeoJSON(journey: Journey): GeoJSON.FeatureCollection {
       .filter((leg) => leg.track.length >= 2)
       .map((leg) => ({
         type: "Feature" as const,
-        properties: { mode: leg.mode },
+        properties: { mode: leg.mode, direction: leg.direction ?? "out" },
         geometry: {
           type: "LineString" as const,
           coordinates: leg.track.map(([lat, lng]) => [lng, lat]),
@@ -145,12 +145,33 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
 
   map.addSource(SOURCE_ID, { type: "geojson", data: buildGeoJSON(journey) });
 
+  // Outbound = gold, return = the theme's contrasting routeReturn — so the two
+  // directions never merge into one ambiguous line.
+  const dirColor: maplibregl.ExpressionSpecification = [
+    "case",
+    ["==", ["get", "direction"], "back"], theme.colors.routeReturn,
+    theme.colors.gold,
+  ];
+
+  // CASING — a crisp dark outline drawn UNDER every route line, wider than it, so
+  // the route stands clear of similarly-toned basemap roads (the "route blends into
+  // the road" complaint). One casing for all modes; the coloured lines sit on top.
+  map.addLayer({
+    id: "j-casing",
+    type: "line",
+    source: SOURCE_ID,
+    // Not under walk — a solid casing would fill the dashed walk line's gaps.
+    filter: ["!=", ["get", "mode"], "walk"],
+    paint: { "line-color": theme.colors.routeCasing, "line-width": 5, "line-opacity": 0.9 },
+    layout: { "line-cap": "round", "line-join": "round" },
+  });
+
   map.addLayer({
     id: "j-glow",
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: { "line-color": theme.colors.gold, "line-width": 8, "line-opacity": 0.15, "line-blur": 4 },
+    paint: { "line-color": dirColor, "line-width": 9, "line-opacity": 0.15, "line-blur": 4 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -159,7 +180,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: { "line-color": theme.colors.gold, "line-width": 2.5, "line-opacity": 0.85 },
+    paint: { "line-color": dirColor, "line-width": 3, "line-opacity": 1 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -168,7 +189,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "walk"],
-    paint: { "line-color": theme.colors.gold, "line-width": 1.5, "line-opacity": 0.6, "line-dasharray": [2, 4] },
+    paint: { "line-color": dirColor, "line-width": 2, "line-opacity": 0.95, "line-dasharray": [2, 4] },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -177,7 +198,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["in", ["get", "mode"], ["literal", ["road", "transit"]]],
-    paint: { "line-color": theme.colors.gold, "line-width": 1.5, "line-opacity": 0.6 },
+    paint: { "line-color": dirColor, "line-width": 2.5, "line-opacity": 1 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 }
@@ -217,13 +238,22 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
     dot.style.border = `1.5px solid ${theme.colors.markerFill}`;
   }
 
+  // A solid badge, not bare text — our labels (station code, appointment, place)
+  // must sit ABOVE the basemap's town/place names, which they used to merge into
+  // (e.g. "WEL" lost in "Wellingborough"). Ink ground + paper text + a soft lift
+  // reads unmistakably as ours, regardless of what the basemap labels underneath.
   const lbl = document.createElement("span");
   lbl.textContent = label.toUpperCase();
   lbl.style.fontFamily = theme.fonts.mono;
   lbl.style.fontSize = "9px";
+  lbl.style.fontWeight = "600";
   lbl.style.letterSpacing = "0.06em";
-  lbl.style.color = theme.colors.labelText;
+  lbl.style.color = theme.colors.labelHalo;
+  lbl.style.background = theme.colors.markerStroke;
+  lbl.style.padding = "1.5px 5px";
+  lbl.style.borderRadius = "3px";
   lbl.style.whiteSpace = "nowrap";
+  lbl.style.boxShadow = "0 1px 3px rgba(0,0,0,0.35)";
 
   el.appendChild(dot);
   el.appendChild(lbl);

@@ -23,6 +23,11 @@ export interface JourneyTheme {
     gold: string;
     goldGlow: string;
     goldMuted: string;
+    // Outbound route = gold; the return leg gets routeReturn so the two directions
+    // read as distinct lines. routeCasing is the crisp outline drawn UNDER the route
+    // so it stands clear of similarly-toned basemap roads.
+    routeReturn: string;
+    routeCasing: string;
     water: string;
     markerFill: string;
     markerStroke: string;

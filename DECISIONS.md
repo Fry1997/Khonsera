@@ -1114,3 +1114,14 @@ Newest at the bottom of each section.
   Valhalla stays as the routing engine (self-host before traffic); the elevation is the surface + the
   modality, and tube/transit (TfL + OTP) is the near-term build. This supersedes the earlier "hand off
   to Google Maps" suggestion. (Mapping visuals: founder has colour/visibility feedback to give later.)
+
+- **D84 — JourneyMap legibility (founder map feedback).** Three fixes to the day map: (1) INBOUND vs
+  OUTBOUND were one indistinguishable gold line — buildJourneyFromStops now tags each leg out|back (a
+  leg is "back" when it ends closer to the day's base than it began), and the map colours outbound =
+  gold, return = the theme's new `routeReturn` (cool teal / cyan). (2) ROUTE blended into ROAD — added
+  a crisp `routeCasing` outline drawn UNDER every route line (wider than it; excluded from the dashed
+  walk so gaps stay open), and deepened the gold for more separation from the warm basemap. (3) LABELS
+  (station code AND appointment/place names) merged into basemap town names ("WEL" lost in
+  "Wellingborough") — marker labels are now solid badges (ink ground, paper text, shadow) that sit
+  unmistakably above the basemap. New theme colours routeReturn + routeCasing on dusk/midnight/sahara.
+  tsc + 335 + build green.

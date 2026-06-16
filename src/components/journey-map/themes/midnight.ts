@@ -7,9 +7,13 @@ export const midnight: JourneyTheme = {
     paperInner: "#2a2030",
     ink: "#f4e8cf",
     inkDim: "#9a8e7a",
-    gold: "#d4a04d",
+    gold: "#e0a84e",
     goldGlow: "rgba(212, 160, 77, 0.22)",
     goldMuted: "#b8893f",
+    // Return leg = a bright cyan, clearly apart from gold on the dark ground.
+    routeReturn: "#5cc2cf",
+    // Near-black casing separates the route from the slightly-lighter dark roads.
+    routeCasing: "rgba(0, 0, 0, 0.55)",
     water: "#1a2a28",
     markerFill: "#d4a04d",
     markerStroke: "#f4e8cf",

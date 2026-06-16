@@ -108,6 +108,19 @@ export function buildJourneyFromStops(
 
   if (legs.length === 0) return null;
 
+  // Direction: a leg is "back" when it brings you CLOSER to where the day started
+  // (the base) than it began — i.e. you're heading home. This cleanly splits the
+  // outbound half from the return without needing an explicit turnaround marker, so
+  // the two can be coloured distinctly instead of overlapping as one line.
+  const origin = legs[0].from;
+  const distToOrigin = (lat: number, lng: number) =>
+    haversineMi([lat, lng], [origin.lat, origin.lng]);
+  for (const leg of legs) {
+    const startD = distToOrigin(leg.from.lat, leg.from.lng);
+    const endD = distToOrigin(leg.to.lat, leg.to.lng);
+    leg.direction = endD < startD - 0.05 ? "back" : "out";
+  }
+
   return {
     id: meta.id,
     eyebrow: meta.eyebrow,
