@@ -127,6 +127,10 @@ export function PlacePicker({
   const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const sessionTokenRef = useRef<string>(newSessionToken());
+  // Per-mount cache of autocomplete results by query — backspacing/retyping the
+  // same fragment ("wel" → "well" → "wel") then no longer re-hits Google, which
+  // made repeated typing feel like a grind.
+  const suggestCacheRef = useRef<Map<string, GoogleSuggestion[]>>(new Map());
 
   const customerById = useMemo(() => {
     const m = new Map<string, PlacePickerCustomer>();
@@ -201,6 +205,14 @@ export function PlacePicker({
       setGoogleSuggestions([]);
       return;
     }
+    // Serve an identical earlier query from cache — no debounce, no network.
+    const cacheKey = `${googleTypes ?? ""}|${q.toLowerCase()}`;
+    const cached = suggestCacheRef.current.get(cacheKey);
+    if (cached) {
+      setGoogleSuggestions(cached);
+      setGoogleLoading(false);
+      return;
+    }
     let cancelled = false;
     setGoogleLoading(true);
     const timeout = setTimeout(async () => {
@@ -217,6 +229,7 @@ export function PlacePicker({
         };
         if (cancelled) return;
         setGoogleConfigured(data.configured);
+        suggestCacheRef.current.set(cacheKey, data.suggestions ?? []);
         setGoogleSuggestions(data.suggestions ?? []);
       } catch (e) {
         console.error("places autocomplete failed", e);

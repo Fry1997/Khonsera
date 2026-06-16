@@ -160,52 +160,36 @@ export async function searchTransportHubs(
     return { ok: true, value: (data ?? []) as TransportHubHit[] };
   }
 
-  const prefix = `${q.replace(/[%_\\]/g, "\\$&")}%`;
-  // Code matches first — "WLB" resolves a station instantly.
-  const { data: codeHits } = await supabase
+  // ONE trigram-indexed query (mig 0055) covering code prefix, name prefix and
+  // name/city substring — was three serial ilike queries (~90ms + 3 round trips).
+  // Ranking that the three-query order used to give is reproduced in JS below.
+  const esc = q.replace(/[%_\\]/g, "\\$&");
+  const prefix = `${esc}%`;
+  const like = `%${esc}%`;
+  const { data: hits } = await supabase
     .from("transport_hubs")
     .select(HUB_COLS)
     .eq("kind", parsed.value.kind)
-    .ilike("code", prefix)
-    .order("name")
-    .limit(5);
-  // Prefix match on name — "Wel" finds "Wellingborough" before "Abbey Well".
-  const { data: prefixHits } = await supabase
-    .from("transport_hubs")
-    .select(HUB_COLS)
-    .eq("kind", parsed.value.kind)
-    .ilike("name", prefix)
-    .order("name")
-    .limit(15);
-  // Merge: code first, then prefix. Both are strong matches.
-  const seen = new Set<string>();
-  const merged: TransportHubHit[] = [];
-  for (const h of [...(codeHits ?? []), ...(prefixHits ?? [])]) {
-    if (!seen.has(h.id)) {
-      seen.add(h.id);
-      merged.push(h as TransportHubHit);
-    }
-  }
-  // Substring fallback only when prefix found very little — avoids
-  // "Abbey Well" outranking "Wellingborough" for "wel".
-  if (merged.length < 3 && q.length >= 3) {
-    const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
-    const { data: subHits } = await supabase
-      .from("transport_hubs")
-      .select(HUB_COLS)
-      .eq("kind", parsed.value.kind)
-      .or(`name.ilike.${like},city.ilike.${like}`)
-      .order("name")
-      .limit(10);
-    for (const h of subHits ?? []) {
-      if (!seen.has(h.id)) {
-        seen.add(h.id);
-        merged.push(h as TransportHubHit);
-      }
-    }
-  }
-  // With a `near` anchor, re-sort the (already-filtered) matches by distance
-  // so e.g. "Liverpool" surfaces the station closest to the user's other stops.
+    .or(`code.ilike.${prefix},name.ilike.${prefix},name.ilike.${like},city.ilike.${like}`)
+    .limit(60);
+
+  // Rank: exact code → code prefix → name prefix → name substring → city — the
+  // ordering the old multi-pass produced ("Wel" → Wellingborough before Abbey Well).
+  const ql = q.toLowerCase();
+  const rank = (h: TransportHubHit): number => {
+    const name = (h.name ?? "").toLowerCase();
+    const code = (h.code ?? "").toLowerCase();
+    if (code === ql) return 0;
+    if (code.startsWith(ql)) return 1;
+    if (name.startsWith(ql)) return 2;
+    if (name.includes(ql)) return 3;
+    return 4;
+  };
+  const merged = [...((hits ?? []) as TransportHubHit[])].sort(
+    (a, b) => rank(a) - rank(b) || (a.name ?? "").localeCompare(b.name ?? ""),
+  );
+  // With a `near` anchor, re-sort the matches by distance so e.g. "Liverpool"
+  // surfaces the station closest to the user's other stops.
   const out = near ? rankByProximity(merged, near) : merged;
   return { ok: true, value: out.slice(0, 20) };
 }

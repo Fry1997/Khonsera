@@ -1092,3 +1092,25 @@ Newest at the bottom of each section.
   when a next-leg map mounts, into a reserved themed frame (NavMap's exact box) so no layout shift /
   skeleton. /today First Load JS 422 kB → 129 kB. Nav page keeps the eager import (map IS the page).
   tsc + 335 + build green.
+
+- **D82 — Plan edits reflect reliably + the buffer is visible + search speed.** (1) BUFFER DISPLAY
+  (founder): legs showed the whole leave→event window as if travel filled it, labelled vaguely
+  "Comfortable". legOf now computes the REAL arrival (depart + travel = event − buffer) and the spare
+  minutes; LegCard shows the arrival time, a "<n> min spare" badge (for every classification, not just
+  tight), and "Arrive HH:MM — <n> min before <event>". (2) EDIT RELIABILITY: chooseLeg/createLeg only
+  revalidated /plan (the index), never /plan/[id] — the canonical page leaned on router.refresh alone
+  and went intermittently stale. Both now revalidatePath(/plan/<id>). (3) EDIT SPEED: a time-variable
+  edit solved the whole day TWICE (updateStop's internal resolve + setAnchorVariable's resequenceAndSolve);
+  added a skipSolve opt to updateStop so it solves once. (4) STATION SEARCH: 3 serial ilike queries over
+  11k rows (~31ms each + 3 round trips) → ONE trigram-indexed query (mig 0055, pg_trgm GIN on name+code;
+  measured 31ms → 0.6ms) with JS ranking preserved. (5) PLACE AUTOCOMPLETE: per-mount cache by query so
+  backspacing/retyping doesn't re-hit Google. tsc + 335 + build green.
+
+- **D83 (DIRECTION, founder) — Navigation is a first-class in-app experience, NOT a hand-off.** We do
+  not compete with Google/Apple for general nav, but the travel day must NEVER require leaving the app —
+  if it does, we've failed. Navigation gets elevated to a proper, premium UI kit (not a bolted-on
+  widget). The USP is a DIFFERENT MODALITY: entering the Underground switches into an "underground map
+  mode" where you see yourself move through the tube network — a reason to navigate inside our ecosystem.
+  Valhalla stays as the routing engine (self-host before traffic); the elevation is the surface + the
+  modality, and tube/transit (TfL + OTP) is the near-term build. This supersedes the earlier "hand off
+  to Google Maps" suggestion. (Mapping visuals: founder has colour/visibility feedback to give later.)
