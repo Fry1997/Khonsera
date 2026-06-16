@@ -1138,3 +1138,19 @@ Newest at the bottom of each section.
   **D83 underground:** Design's direction — honour TfL canonical line colours, keep the Khonsera ground
   + type + the single gold "you" pulse, and the geo→diagram FOLD (~560ms) is the USP. Design asks Code
   to spec the live-position + line-graph data shape next. tsc + 335 + build green.
+
+- **D86 — Navigation Experience & Engineering Spec (`docs/navigation-experience-spec.md`).** Written to
+  a high bar per founder: nav is a first-class tool, not a tab. TWO bars — (1) match the Goliaths on
+  operational *trust* (lock/glue/manoeuvre/reroute/legibility), explicitly NOT their coverage or — yet —
+  live road traffic (no probe network; a paid feed comes later behind an adapter); (2) WIN on the
+  concierge angle. The core idea: **event-aware ETA** — not "when the car reaches a point" but "will I
+  make my day, and what do I do if I won't", measured to commitments against their D77 buffers and
+  re-derived live. The living-plan loop (snap→project→compare→classify→ACT) turns falling behind / a
+  delayed train / a breaking connection into ONE calm confirmable recommendation, sourced from the
+  recovery engine — reusing the REAL existing engines verbatim (live/engine decisionClock·delayConsequence
+  ·cascade·fragility, recovery buildRecoveryOptions·rankFor, nav guidanceTick·useGuidance, buffers). The
+  only new build is a *navigation session orchestrator*; everything it calls exists. Modalities:
+  geographic turn-by-turn + the underground network fold (D85) + multimodal stitching. Specs the data
+  shapes Design asked for (NavFix, NavSession/NavLeg/EventETA, TubeGraph/TubeLegPlan) + provider gating +
+  a measurable "definition of premium" + phasing N0–N5. Unblocks Design (surface states + data shapes +
+  modality).
