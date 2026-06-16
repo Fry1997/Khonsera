@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setPlanBase } from "@/lib/actions/plan-edit";
 import {
@@ -33,6 +33,13 @@ export function PlanBase({
   const [place, setPlace] = useState<PlaceSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Optimistic base — shown the instant you confirm, so the sheet closes and the
+  // card reads "From <place>" immediately while the (slow, external) door-to-door
+  // routing finishes behind. Cleared once the refreshed server data arrives (the
+  // baseLabel prop changes), so the real value seamlessly takes over — no flash.
+  const [optimistic, setOptimistic] = useState<string | null>(null);
+  useEffect(() => { setOptimistic(null); }, [baseLabel]);
+  const shownBase = optimistic ?? baseLabel;
 
   function save() {
     if (!place?.label) {
@@ -45,29 +52,34 @@ export function PlanBase({
       setError("Pick a home, office or saved place as your base.");
       return;
     }
+    const label = place.label;
     setError(null);
+    // Close + show the base NOW; the routing/solve runs in the background.
+    setOpen(false);
+    setPlace(null);
+    setOptimistic(label);
     startTransition(async () => {
-      const res = await setPlanBase({ itineraryId, locationId, customerSiteId, label: place.label });
+      const res = await setPlanBase({ itineraryId, locationId, customerSiteId, label });
       if (!res.ok) {
+        setOptimistic(null);
         setError(res.error ?? "Couldn't set the base.");
+        setOpen(true);
         return;
       }
-      setOpen(false);
-      setPlace(null);
       router.refresh();
     });
   }
 
   return (
     <>
-      <button type="button" className="cc-plan-base" data-unset={baseLabel ? undefined : ""} onClick={() => setOpen(true)}>
+      <button type="button" className="cc-plan-base" data-unset={shownBase ? undefined : ""} onClick={() => setOpen(true)}>
         <span className="cc-plan-base-pin" aria-hidden />
-        {baseLabel ? (
-          <span className="cc-plan-base-text">From <strong>{baseLabel}</strong></span>
+        {shownBase ? (
+          <span className="cc-plan-base-text">From <strong>{shownBase}</strong></span>
         ) : (
           <span className="cc-plan-base-text">Set your base — where the day starts &amp; ends</span>
         )}
-        <span className="cc-plan-base-edit" aria-hidden>{baseLabel ? "Change" : "Set"}</span>
+        <span className="cc-plan-base-edit" aria-hidden>{pending ? "Threading…" : shownBase ? "Change" : "Set"}</span>
       </button>
 
       {open ? (
@@ -92,8 +104,8 @@ export function PlanBase({
             </div>
             {error ? <p className="cc-sheet-error">{error}</p> : null}
             <div className="cc-sheet-actions">
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</button>
-              <button type="button" className="cc-btn cc-btn-gold" onClick={save} disabled={pending}>{pending ? "Saving…" : "Set base"}</button>
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="button" className="cc-btn cc-btn-gold" onClick={save}>Set base</button>
             </div>
           </div>
         </div>
