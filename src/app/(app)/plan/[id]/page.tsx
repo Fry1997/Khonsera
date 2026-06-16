@@ -359,7 +359,16 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   // could render. They don't depend on each other or on the node graph, so one
   // Promise.all collapses the wait to the slowest single reader. RLS scopes each
   // to the viewer. (loadNudges stays separate below — it needs the built nodes.)
-  const [constraints, readiness, allNotes, bookedConnections, budget, locationShares, { data: profile }] = await Promise.all([
+  // Independent readers in ONE parallel wave — none depend on each other or on the
+  // node graph, so the wait collapses to the slowest single reader. Includes the
+  // PlacePicker data (customers/sites/locations) and the travel profile, which used
+  // to run as their own separate awaited waves AFTER this one. RLS scopes each to
+  // the viewer. (loadNudges stays separate below — it needs the built nodes.)
+  const [
+    constraints, readiness, allNotes, bookedConnections, budget, locationShares,
+    { data: profile },
+    { data: pickCustomers }, { data: pickSites }, { data: pickLocations },
+  ] = await Promise.all([
     loadConstraints(),
     loadReadiness(id),
     listNotesForStops(stops.map((st) => st.id)),
@@ -372,6 +381,9 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       .eq("user_id", ctx.userId)
       .eq("workspace_id", ctx.workspaceId)
       .maybeSingle(),
+    supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
+    supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
+    supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
   ]);
   const notesByStop = new Map<string, NoteVM[]>();
   for (const n of allNotes) {
@@ -380,15 +392,6 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     arr.push(n);
     notesByStop.set(n.stopId, arr);
   }
-
-  // PlacePicker data — saved places pin to the top, then Google autocomplete.
-  // Lets manual Place/Appointment adds bind a real, geocoded location so the
-  // leg to/from it routes (not a bare un-geocoded address string).
-  const [{ data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
-    supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
-    supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
-    supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
-  ]);
 
   // Render each booked rail hop (departure→change, change→arrival, …) as its OWN
   // docked Pass card with that hop's stations, times, platform + live status (user

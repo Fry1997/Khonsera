@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { NavMap } from "@/components/nav/nav-map";
+import { LazyNavMap as NavMap } from "@/components/nav/lazy-nav-map";
 import { useGuidance } from "@/components/nav/use-guidance";
 import { useHeading, requestHeadingPermission } from "@/components/nav/use-heading";
 import { ManeuverGlyph } from "@/components/nav/maneuver-glyph";

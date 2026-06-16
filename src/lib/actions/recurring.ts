@@ -5,8 +5,6 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { createStop } from "@/lib/actions/stops";
-import { ensureHomeBookend } from "@/lib/actions/plan-edit";
-import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { wallClockToIso } from "@/lib/time-zone";
 
 // Recurring events (mig 0050). A recurring COMMITMENT, not a recurring booking:
@@ -241,74 +239,91 @@ async function materializeRecurringInner(): Promise<void> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Every (rule, date) the rules want over the horizon. Runs on every Plan load,
+  // so it is BATCHED to a constant ~4 round trips no matter how many days are due
+  // (was: an insert + createStop + bookend + solve PER occurrence — ~40 round
+  // trips for one rule's 8 weeks, all blocking the index render).
+  type Want = { rule: (typeof rules)[number]; date: string };
+  const wants: Want[] = [];
+  const allDates = new Set<string>();
   for (const rule of rules) {
-    // The next WEEKS_AHEAD dates on this weekday, from today.
-    const dates: string[] = [];
     const cursor = new Date(today);
     while (cursor.getDay() !== (rule.weekday as number)) cursor.setDate(cursor.getDate() + 1);
     for (let i = 0; i < WEEKS_AHEAD; i++) {
-      dates.push(ymd(cursor));
+      const d = ymd(cursor);
+      wants.push({ rule, date: d });
+      allDates.add(d);
       cursor.setDate(cursor.getDate() + 7);
     }
-
-    // Skip any date you ALREADY have a plan on — a recurring rule must never create
-    // a second day on a date that's taken, nor touch an existing plan (e.g. the
-    // Dancing Duck demo on the 25th). This also covers idempotency: a day this rule
-    // already generated is "taken", so it's not recreated.
-    const { data: existing } = await supabase
-      .from("itineraries")
-      .select("date_start")
-      .eq("user_id", ctx.userId)
-      .in("date_start", dates);
-    const taken = new Set((existing ?? []).map((r) => r.date_start as string));
-    const missing = dates.filter((d) => !taken.has(d));
-
-    for (const date of missing) {
-      try {
-        const { data: itin, error: insErr } = await supabase
-          .from("itineraries")
-          .insert({
-            workspace_id: ctx.workspaceId,
-            user_id: ctx.userId,
-            mode: rule.mode,
-            title: rule.title as string,
-            date_start: date,
-            date_end: date,
-            status: "planning",
-            recurring_event_id: rule.id as string,
-          })
-          .select("id")
-          .single();
-        if (insErr || !itin) {
-          console.error("[recurring] itinerary insert failed", date, insErr);
-          continue;
-        }
-
-        const startIso = wallClockToIso(date, rule.start_time as string);
-        const endIso = startIso
-          ? new Date(new Date(startIso).getTime() + (rule.duration_minutes as number) * 60_000).toISOString()
-          : null;
-        await createStop({
-          itinerary_id: itin.id as string,
-          type: "appointment",
-          title: rule.title as string,
-          start_time: startIso,
-          end_time: endIso,
-          duration_minutes: rule.duration_minutes as number,
-          is_time_fixed: true,
-          location_id: (rule.location_id as string | null) ?? null,
-        });
-        // The event + day already exist now; the bookend/solve are enhancements,
-        // so a failure here (e.g. no profile home) must not lose the generated day.
-        try {
-          await ensureHomeBookend(itin.id as string, { create: true });
-          await resolveItineraryTimes(itin.id as string);
-        } catch (e) {
-          console.error("[recurring] solve/bookend failed (day kept)", date, e);
-        }
-      } catch (e) {
-        console.error("[recurring] occurrence failed", date, e);
-      }
-    }
   }
+
+  // One read: which of those dates already have ANY plan. A recurring rule must
+  // never create a second day on a taken date nor touch an existing plan (e.g. the
+  // Dancing Duck demo on the 25th); this also covers idempotency (a day this rule
+  // already generated is "taken"). Keep the first rule per still-free date — a date
+  // can't host two generated days.
+  const { data: existing } = await supabase
+    .from("itineraries")
+    .select("date_start")
+    .eq("user_id", ctx.userId)
+    .in("date_start", Array.from(allDates));
+  const taken = new Set((existing ?? []).map((r) => r.date_start as string));
+  const seen = new Set<string>();
+  const missing = wants.filter((w) => {
+    if (taken.has(w.date) || seen.has(w.date)) return false;
+    seen.add(w.date);
+    return true;
+  });
+  if (missing.length === 0) return;
+
+  // Bulk-insert the day rows in one round trip. The owner-row-direct itineraries
+  // SELECT policy (mig 0054) lets the RETURNING through.
+  const { data: created, error: insErr } = await supabase
+    .from("itineraries")
+    .insert(
+      missing.map((w) => ({
+        workspace_id: ctx.workspaceId,
+        user_id: ctx.userId,
+        mode: w.rule.mode,
+        title: w.rule.title as string,
+        date_start: w.date,
+        date_end: w.date,
+        status: "planning",
+        recurring_event_id: w.rule.id as string,
+      })),
+    )
+    .select("id, date_start, recurring_event_id");
+  if (insErr || !created?.length) {
+    console.error("[recurring] bulk itinerary insert failed", insErr);
+    return;
+  }
+
+  // One appointment stop per generated day, bulk-inserted (no RETURNING, so the
+  // stop SELECT policy never gates it). app_mode is set EXPLICITLY to the rule's
+  // mode — a work rule must stay workspace-visible; leaving it null would fail
+  // closed to personal (mig 0048). Home base + solve are deferred to the day's
+  // first open (same as a blank createEvent day), keeping generation cheap.
+  const ruleById = new Map(rules.map((r) => [r.id as string, r]));
+  const stopRows = created.map((day) => {
+    const rule = ruleById.get(day.recurring_event_id as string)!;
+    const startIso = wallClockToIso(day.date_start as string, rule.start_time as string);
+    const endIso = startIso
+      ? new Date(new Date(startIso).getTime() + (rule.duration_minutes as number) * 60_000).toISOString()
+      : null;
+    return {
+      itinerary_id: day.id as string,
+      workspace_id: ctx.workspaceId,
+      type: "appointment" as const,
+      title: rule.title as string,
+      start_time: startIso,
+      end_time: endIso,
+      duration_minutes: rule.duration_minutes as number,
+      is_time_fixed: true,
+      location_id: (rule.location_id as string | null) ?? null,
+      app_mode: rule.mode,
+      sequence: 0,
+    };
+  });
+  const { error: stopErr } = await supabase.from("stops").insert(stopRows);
+  if (stopErr) console.error("[recurring] bulk stop insert failed", stopErr);
 }
