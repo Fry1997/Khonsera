@@ -1080,3 +1080,15 @@ Newest at the bottom of each section.
   redundant trailing whole-itinerary resolve; computed the day span from the already-loaded stops
   instead of inferAndUpdateSpan's 2 re-reads + a 3rd span re-fetch (persist only on drift,
   fire-and-forget); overlapped the journey fetch with ensureHomeBookend. tsc + build green.
+
+- **D81 — Liquid perf pass (no skeletons/pop-in).** Three levers: (1) `/plan` index —
+  `materializeRecurring` was awaited before render doing insert+createStop+bookend+solve PER
+  occurrence (~40 round trips/rule, blocking); rewrote to BATCH (one wanted-dates pass, one
+  existing-date check, one bulk itinerary insert, one bulk stop insert) = constant ~4 round trips.
+  app_mode set explicitly to the rule's mode (work stays workspace-visible; null fails closed); home
+  base + solve deferred to first open (matches a blank createEvent day). (2) `/plan/[id]` — folded
+  the PlacePicker queries into the readers' single Promise.all (was a separate awaited wave after).
+  (3) `/today` — code-split maplibre-gl (~350 kB) behind `LazyNavMap`: loads as its own chunk only
+  when a next-leg map mounts, into a reserved themed frame (NavMap's exact box) so no layout shift /
+  skeleton. /today First Load JS 422 kB → 129 kB. Nav page keeps the eager import (map IS the page).
+  tsc + 335 + build green.
