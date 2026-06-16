@@ -46,5 +46,7 @@ export const dusk: JourneyTheme = {
     cityLabel: "#3a342c",
     countryLabel: "#6e6557",
     boundary: "#9c917f",
+    sky: "#aebccf",
+    skyHorizon: "#ecdfca",
   },
 };

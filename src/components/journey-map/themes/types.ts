@@ -11,6 +11,8 @@ export interface MapThemeColors {
   cityLabel: string;
   countryLabel: string;
   boundary: string;
+  sky: string; // upper-sky colour revealed when the guidance camera tilts
+  skyHorizon: string; // warm haze band where the sky meets the ground
 }
 
 export interface JourneyTheme {

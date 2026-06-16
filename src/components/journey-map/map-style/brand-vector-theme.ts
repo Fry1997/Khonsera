@@ -10,7 +10,7 @@ import type { JourneyTheme } from "../themes/types";
 
 // A touch lighter/darker than a base, for casings and tonal steps. Works on
 // #rrggbb; passes through anything else (rgba()) unchanged.
-function shade(hex: string, amt: number): string {
+export function shade(hex: string, amt: number): string {
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
   if (!m) return hex;
   const f = (h: string) => Math.max(0, Math.min(255, Math.round(parseInt(h, 16) + amt)));

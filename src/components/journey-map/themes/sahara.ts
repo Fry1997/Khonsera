@@ -46,5 +46,7 @@ export const sahara: JourneyTheme = {
     cityLabel: "#3a2e1c",
     countryLabel: "#7a6c52",
     boundary: "#a49878",
+    sky: "#c4d2dc",
+    skyHorizon: "#ecdcbd",
   },
 };

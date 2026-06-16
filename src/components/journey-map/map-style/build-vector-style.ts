@@ -1,6 +1,6 @@
 import { layersWithCustomTheme } from "protomaps-themes-base";
 import type { JourneyTheme } from "../themes/types";
-import { brandVectorTheme } from "./brand-vector-theme";
+import { brandVectorTheme, shade } from "./brand-vector-theme";
 import { basemapProtocolUrl, VECTOR_MAXZOOM } from "../pmtiles-source";
 
 // The premium basemap: Protomaps v4 vector tiles, branded to the Khonsera theme,
@@ -24,6 +24,12 @@ export function buildVectorStyle(theme: JourneyTheme): maplibregl.StyleSpecifica
   // 3D buildings — extrude the footprints near the ground. Protomaps carries
   // `height`/`min_height` (metres) where OSM has them; a small default lifts the
   // rest so the city still has texture. Inserted beneath the labels.
+  // Premium touch: the fill is HEIGHT-GRADUATED — low blocks sit recessive and
+  // warm, towers tint lighter as if catching the sky — and MapLibre's vertical
+  // gradient shades each face base→top, so the skyline has real depth instead of
+  // a single flat grey. Tones derive from the land token (no raw hex).
+  const land = theme.mapStyle.land;
+  const dark = theme.name === "midnight";
   const extrusion: maplibregl.LayerSpecification = {
     id: "buildings-3d",
     type: "fill-extrusion",
@@ -32,10 +38,18 @@ export function buildVectorStyle(theme: JourneyTheme): maplibregl.StyleSpecifica
     minzoom: 15,
     filter: ["in", "kind", "building", "building_part"],
     paint: {
-      "fill-extrusion-color": t.buildings,
+      "fill-extrusion-color": [
+        "interpolate",
+        ["linear"],
+        ["coalesce", ["get", "height"], 6],
+        0, shade(land, dark ? 6 : -20),
+        14, t.buildings,
+        45, shade(land, dark ? 28 : 12),
+      ],
       "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 15, 0, 16, ["coalesce", ["get", "height"], 6]],
       "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
-      "fill-extrusion-opacity": 0.85,
+      "fill-extrusion-vertical-gradient": true,
+      "fill-extrusion-opacity": 0.92,
     },
   };
   const firstSymbol = layers.findIndex((l) => l.type === "symbol");

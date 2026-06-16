@@ -48,5 +48,7 @@ export const midnight: JourneyTheme = {
     cityLabel: "#e8dcc6",
     countryLabel: "#9a8e7a",
     boundary: "#6a5e7e",
+    sky: "#161126",
+    skyHorizon: "#2a2138",
   },
 };

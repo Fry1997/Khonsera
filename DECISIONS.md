@@ -1255,3 +1255,16 @@ Newest at the bottom of each section.
   Photon fallback can't drag it. NB the geocode is slow because it's on the Photon fallback —
   GOOGLE_MAPS_API_KEY is likely unset (provider-gating again); setting it makes geocode sub-second.
   tsc + 362 + build green.
+
+- **D95 — Nav "make it better": sky reveal + premium 3D buildings.** Founder elated with the live
+  premium map (vector switch on), asked to push further. (1) SKY is now a real token — added
+  `sky`/`skyHorizon` to MapThemeColors + all three themes (dusk soft-dusk-blue/cream, midnight
+  aubergine-ink, sahara pale-daylight/sand); NavMap's `setSky` paints sky→horizon→fog (distant
+  buildings melt into a warm haze) and fades in by zoom so the flat overview never gets an odd tint.
+  (2) Guidance PITCH 58→63 so a sliver of horizon/sky actually enters the frame (founder: "I don't
+  see sky, but you wouldn't at this angle" — correct; 58 kept the horizon above the frame).
+  (3) 3D BUILDINGS were a single flat tone (`shade(land,-14)`) — now HEIGHT-GRADUATED (low blocks
+  recessive/warm, towers tint lighter as if catching sky) with MapLibre vertical-gradient face
+  shading + opacity 0.92, so the skyline has depth not flat grey. Tones derive from the land token
+  via the now-exported `shade()` (no raw hex in components; sky values are token defs). tsc + 362 +
+  build green.

@@ -324,17 +324,19 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
         },
       });
 
-      // A sky/atmosphere at the horizon — the single biggest "this is a 3D world"
-      // cue when the camera tilts (best-effort; older MapLibre lacks setSky).
+      // A sky/atmosphere at the horizon — the "this is a 3D world" cue when the
+      // camera tilts. Themed sky→horizon→fog so distant buildings melt into a warm
+      // haze. Faded in by zoom so the flat overview never gets an odd sky tint.
+      // (best-effort; older MapLibre lacks setSky.)
       try {
         (m as unknown as { setSky?: (s: Record<string, unknown>) => void }).setSky?.({
-          "sky-color": theme.colors.water,
-          "sky-horizon-blend": 0.5,
-          "horizon-color": theme.colors.labelHalo,
-          "horizon-fog-blend": 0.6,
+          "sky-color": theme.mapStyle.sky,
+          "sky-horizon-blend": 0.6,
+          "horizon-color": theme.mapStyle.skyHorizon,
+          "horizon-fog-blend": 0.5,
           "fog-color": theme.colors.paper,
-          "fog-ground-blend": 0.3,
-          "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0, 12, 0.2, 16, 0],
+          "fog-ground-blend": 0.4,
+          "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 12, 0, 15, 0.4, 18, 0.55],
         });
       } catch {
         /* sky is a flourish; never block the map on it */
@@ -422,7 +424,7 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
     m.easeTo({
       center: [position.lng, position.lat],
       zoom: navZoomRef.current,
-      pitch: 58,
+      pitch: 63, // leant back enough that a sliver of sky/horizon enters the frame
       bearing: headingUp ? (position.heading as number) : m.getBearing(),
       padding: { top: Math.round(h * 0.56), bottom: 0, left: 0, right: 0 }, // puck low; road ahead fills the top
       duration: 1000,
