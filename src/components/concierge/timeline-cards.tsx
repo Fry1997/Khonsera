@@ -119,7 +119,7 @@ export function AnchorCard({
           title="Rename"
         >
           <span>{anchor.title && anchor.title !== "Stop" ? anchor.title : "Name this stop"}</span>
-          <span className="cc-anchor-title-pen" aria-hidden>Rename</span>
+          <span className="cc-anchor-title-edit-pen" aria-hidden>Rename</span>
         </button>
       ) : (
         <h3 className="cc-anchor-title">{anchor.title}</h3>

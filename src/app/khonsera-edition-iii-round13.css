@@ -1,0 +1,606 @@
+/* ============================================================================
+ * Khonsera — Edition III · Round 13 skin
+ * Additive. Import LAST, after khonsera-edition-iii-connections.css.
+ * Owns: the ★ real-cabin seat map (.cc-plane), the ★ plan-page hierarchy
+ * (.cc-plan-tools), and the coherence/polish surfaces accrued since sharing
+ * (D63–D76). No new tokens — existing theme only.
+ * Governing rule, unchanged: calm caution that carries consequence, never alarm.
+ * ========================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * ★ SEAT MAP → A REAL CABIN
+ * The flat repeat(7,1fr) grid becomes a fuselage: curved nose, ribbed cabin
+ * walls that taper, numbered rows, a true aisle gap, exit-row + facility cues.
+ * Seats keep .cc-conn-seat[data-state] (the colour language is unchanged).
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-plane {
+  --fuse: color-mix(in oklab, var(--card) 88%, var(--ink) 4%);
+  --fuse-wall: color-mix(in oklab, var(--ink) 16%, var(--rule));
+  margin: var(--space-2) auto 0;
+  width: max-content;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  position: relative;
+}
+/* curved nose — the cabin reads as the front of an aircraft */
+.cc-plane-nose {
+  width: 78%;
+  height: 46px;
+  margin: 0 auto -1px;
+  border: 1.5px solid var(--fuse-wall);
+  border-bottom: none;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--fuse) 100%);
+  position: relative;
+}
+/* cockpit windows hint */
+.cc-plane-nose::before {
+  content: "";
+  position: absolute;
+  top: 16px; left: 50%;
+  transform: translateX(-50%);
+  width: 34px; height: 7px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--slate) 40%, transparent);
+}
+.cc-plane-cabin {
+  border: 1.5px solid var(--fuse-wall);
+  border-top: none;
+  border-radius: 0 0 18px 18px;
+  background:
+    linear-gradient(90deg,
+      color-mix(in oklab, var(--ink) 5%, transparent) 0 3px,
+      transparent 3px calc(100% - 3px),
+      color-mix(in oklab, var(--ink) 5%, transparent) calc(100% - 3px)),
+    var(--fuse);
+  padding: var(--space-3) var(--space-2) var(--space-5);
+}
+/* one seat row: number gutter · seats · number gutter */
+.cc-plane-row {
+  display: grid;
+  grid-template-columns: 20px auto 20px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 0;
+  position: relative;
+}
+.cc-plane-rownum {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.cc-plane-seats {
+  display: grid;
+  grid-template-columns: repeat(3, 26px) 18px repeat(3, 26px);
+  gap: 5px;
+  justify-content: center;
+}
+.cc-plane-seats .cc-conn-seat { aspect-ratio: 1; min-height: 0; width: 26px; }
+/* the aisle — a real gap, dotted centreline */
+.cc-plane-aisle {
+  grid-column: 4;
+  align-self: stretch;
+  position: relative;
+}
+.cc-plane-aisle::after {
+  content: "";
+  position: absolute;
+  top: 4px; bottom: 4px; left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(180deg, var(--rule-2) 0 3px, transparent 3px 7px);
+}
+/* exit row — the wings; sage rownum + a quiet EXIT flank that doesn't disturb the grid */
+.cc-plane-row[data-exit] .cc-plane-rownum { color: var(--success); }
+.cc-plane-row[data-exit]::before,
+.cc-plane-row[data-exit]::after {
+  content: "EXIT";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 6px;
+  letter-spacing: 0.12em;
+  color: var(--success);
+  pointer-events: none;
+}
+.cc-plane-row[data-exit]::before { left: -8px; }
+.cc-plane-row[data-exit]::after { right: -8px; }
+/* facility band (galley / lavatory) — a labelled divider strip */
+.cc-plane-facility {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-1-5) 0;
+  border-top: 1px dashed var(--rule-2);
+  border-bottom: 1px dashed var(--rule-2);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+/* wings — soft tapered shapes flanking the exit area */
+.cc-plane::before,
+.cc-plane::after {
+  content: "";
+  position: absolute;
+  top: 46%;
+  width: 26px; height: 92px;
+  background: color-mix(in oklab, var(--slate) 22%, transparent);
+  border-radius: 4px;
+  z-index: -1;
+}
+.cc-plane::before { left: -14px; transform: skewY(20deg); }
+.cc-plane::after { right: -14px; transform: skewY(-20deg); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * ★ PLAN-PAGE HIERARCHY — the Trip tools collapse region
+ * The spine reads first; operational tools fold into one quiet <details>.
+ * It must feel like a hierarchy: secondary weight, calm, openable — never a
+ * second primary surface competing with the day.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-plan-tools {
+  margin: var(--space-6) 0 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 60%, var(--paper));
+  overflow: hidden;
+}
+.cc-plan-tools-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3-5) var(--space-4);
+  user-select: none;
+}
+.cc-plan-tools-summary::-webkit-details-marker { display: none; }
+.cc-plan-tools-summary::after {
+  content: "";
+  margin-left: auto;
+  align-self: center;
+  width: 8px; height: 8px;
+  border-right: 1.5px solid var(--ink-dim);
+  border-bottom: 1.5px solid var(--ink-dim);
+  transform: rotate(45deg);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.cc-plan-tools[open] .cc-plan-tools-summary::after { transform: rotate(225deg); }
+.cc-plan-tools-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.cc-plan-tools-hint {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+.cc-plan-tools-body {
+  padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-top: 1px solid var(--rule);
+  padding-top: var(--space-4);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * COHERENCE PASS (D63)
+ * ───────────────────────────────────────────────────────────────────────── */
+/* grouped sidebar */
+.cc-rail-nav { display: flex; flex-direction: column; gap: var(--space-5); }
+.cc-rail-group { display: flex; flex-direction: column; gap: var(--space-0-5); }
+.cc-rail-group-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 var(--space-3) var(--space-1-5);
+}
+
+/* editable day title */
+.cc-plan-title { display: inline-flex; align-items: center; gap: var(--space-2); }
+.cc-plan-title-edit {
+  opacity: 0;
+  display: inline-flex;
+  color: var(--ink-faint);
+  transition: opacity var(--dur-base) var(--ease-standard);
+}
+.cc-plan-title:hover .cc-plan-title-edit,
+.cc-plan-title:focus-within .cc-plan-title-edit { opacity: 1; }
+.cc-plan-title[data-unnamed] {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-faint);
+}
+.cc-plan-title-input {
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--gold);
+  padding: 0 0 2px;
+}
+
+/* per-stop rename */
+.cc-anchor-title-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  cursor: pointer;
+}
+.cc-anchor-title-edit-pen {
+  opacity: 0;
+  color: var(--ink-faint);
+  transition: opacity var(--dur-base) var(--ease-standard);
+}
+.cc-anchor-title-edit:hover .cc-anchor-title-edit-pen { opacity: 1; }
+.cc-anchor-title-edit[data-untitled] {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* share scope (replaces the bare timer) */
+.cc-share-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+.cc-share-scope button {
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--rule-2);
+  background: var(--card);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: all var(--dur-base) var(--ease-standard);
+}
+.cc-share-scope button[data-active="true"] {
+  border-color: var(--gold);
+  background: var(--gold-tint);
+  color: var(--gold-2);
+}
+.cc-share-scope-note {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: var(--space-1-5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * PLAN ELEVATIONS (D69) — day base + intention
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-plan-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-5);
+}
+.cc-plan-base {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.cc-plan-base-pin { color: var(--gold); flex: none; display: inline-flex; }
+.cc-plan-base-text { color: var(--ink); }
+.cc-plan-base-edit { margin-left: var(--space-1); color: var(--ink-faint); opacity: 0; }
+.cc-plan-base:hover .cc-plan-base-edit { opacity: 1; }
+.cc-plan-base[data-unset] .cc-plan-base-text {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-faint);
+}
+.cc-plan-intention {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.cc-plan-intention-eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  flex: none;
+}
+.cc-plan-intention-text {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink);
+}
+.cc-plan-intention[data-set] .cc-plan-intention-add { display: none; }
+.cc-plan-intention-add {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--gold-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.cc-plan-intention-input {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--gold);
+  flex: 1;
+}
+
+/* tappable ModeTag (per-event work↔personal) */
+.cc-mode-tag-btn {
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color var(--dur-base) var(--ease-standard);
+}
+.cc-mode-tag-btn:hover { border-color: var(--rule-2); }
+
+/* readiness — user-authored reminders */
+.cc-readiness-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--gold-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) 0;
+}
+.cc-readiness-clear {
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * TRANSPORT PARITY (D67) — changeover rows (multi-leg trains/flights)
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-co-row {
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--card) 70%, var(--paper));
+  padding: var(--space-2-5) var(--space-3);
+  margin-top: var(--space-2);
+}
+.cc-co-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: var(--space-2);
+}
+.cc-co-remove { color: var(--ink-faint); background: none; border: none; cursor: pointer; }
+.cc-co-add {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--gold-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2) 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * RECURRING (D72/D75) — manager <details> + offers strip
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-recurring {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 60%, var(--paper));
+  overflow: hidden;
+}
+.cc-recurring-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3-5) var(--space-4);
+}
+.cc-recurring-summary::-webkit-details-marker { display: none; }
+.cc-recurring-summary::after {
+  content: "";
+  margin-left: auto;
+  align-self: center;
+  width: 8px; height: 8px;
+  border-right: 1.5px solid var(--ink-dim);
+  border-bottom: 1.5px solid var(--ink-dim);
+  transform: rotate(45deg);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.cc-recurring[open] .cc-recurring-summary::after { transform: rotate(225deg); }
+.cc-recurring-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.cc-recurring-hint { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-faint); }
+.cc-recurring-body {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.cc-recurring-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-recurring-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2-5) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+.cc-recurring-row-main { display: flex; flex-direction: column; gap: 2px; }
+.cc-recurring-row-main .what { font-family: var(--sans); font-weight: var(--fw-medium); font-size: 14px; color: var(--ink); }
+.cc-recurring-row-main .when { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.04em; }
+.cc-recurring-del { margin-left: auto; color: var(--ink-faint); background: none; border: none; cursor: pointer; }
+.cc-recurring-add {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--gold-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) 0;
+}
+
+/* gold-tint offers strip */
+.cc-rec-offers { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-3) 0; }
+.cc-rec-offer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3-5);
+  border: 1px solid var(--gold-soft);
+  border-radius: var(--radius-md);
+  background: var(--gold-tint);
+}
+.cc-rec-offer-text { font-family: var(--sans); font-size: 13px; color: var(--ink); flex: 1; }
+.cc-rec-offer-text strong { font-weight: var(--fw-semibold); }
+.cc-rec-offer-actions { display: flex; gap: var(--space-2); flex: none; }
+.cc-rec-offer-actions button {
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--rule-2);
+  background: var(--card);
+  color: var(--ink-dim);
+}
+.cc-rec-offer-actions button:first-child {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * TODAY WEATHER (D76) — current chip + hourly strip
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-today-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.cc-weather {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+  padding: var(--space-2-5) var(--space-3-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+.cc-weather-temp {
+  font-family: var(--display);
+  font-weight: var(--fw-medium);
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+.cc-weather-meta { display: flex; flex-direction: column; gap: 2px; }
+.cc-weather-headline { font-family: var(--sans); font-size: 13px; color: var(--ink); white-space: nowrap; }
+.cc-weather-place { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-weather[data-day="night"] { background: color-mix(in oklab, var(--slate) 14%, var(--card)); }
+.cc-weather-hours {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  padding: var(--space-2) 0;
+  margin-top: var(--space-2);
+  scrollbar-width: none;
+}
+.cc-weather-hours::-webkit-scrollbar { display: none; }
+.cc-weather-hour {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 46px;
+  padding: var(--space-2) var(--space-1-5);
+  border-radius: var(--radius-sm);
+}
+.cc-weather-hour-time { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.04em; }
+.cc-weather-hour-cond { color: var(--ink-dim); display: inline-flex; }
+.cc-weather-hour-temp { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * SMALLER CUES
+ * ───────────────────────────────────────────────────────────────────────── */
+/* wallet peeked-pass flip */
+.cc-pass-collapse {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2);
+}
+.cc-pass-del { color: var(--ink-faint); background: none; border: none; cursor: pointer; opacity: 0.7; }
+.cc-pass-del:hover { color: var(--danger); opacity: 1; }
+
+/* nudge honesty cue */
+.cc-nudge-sample {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-left: var(--space-1-5);
+}
+
+/* save confirmation toast */
+.cc-save-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--success);
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+}

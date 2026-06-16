@@ -93,7 +93,7 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
   return (
     <div className="flex flex-col gap-4">
       <FormError message={feedback?.message} />
-      {notice ? <p className="cc-save-notice" style={{ color: "var(--success)", fontSize: 13 }}>{notice}</p> : null}
+      {notice ? <p className="cc-save-notice">{notice}</p> : null}
 
       <div
         className="card-hero"

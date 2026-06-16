@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="format-detection" content="telephone=no" />
+<title>Khonsera — Edition III · Round 13 (coherence + correctness)</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="../../_tokens-shim.css" />
+<link rel="stylesheet" href="../for-code-r12/khonsera-edition-iii-connections.css" />
+<link rel="stylesheet" href="../khonsera-edition-iii-round13.css" />
+<style>
+  html,body{margin:0;background:#cfc6b2;font-family:var(--sans);color:var(--ink);}
+  *{box-sizing:border-box;}
+  .board{padding:60px 52px 110px;}
+  .head{max-width:1340px;margin:0 auto 8px;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#6b6453;}
+  .title{font-family:var(--display);font-weight:500;font-size:34px;letter-spacing:-.03em;color:#26211a;margin:14px 0 6px;}
+  .note{font-family:var(--serif);font-style:italic;font-size:16px;color:#5a5345;max-width:84ch;}
+  .star-row{display:flex;gap:44px;flex-wrap:wrap;align-items:flex-start;max-width:1340px;margin:48px auto 0;}
+  .row{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start;max-width:1340px;margin:40px auto 0;}
+  .cap{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6453;margin-bottom:14px;display:flex;gap:10px;align-items:baseline;}
+  .cap .st{color:#9a8f7d;text-transform:none;letter-spacing:0;font-family:var(--serif);font-style:italic;font-size:13px;}
+  .cap .badge{font-family:var(--sans);font-size:10px;letter-spacing:0;text-transform:none;color:#8f6722;border:1px solid #d9c79b;background:#f3e9d2;border-radius:999px;padding:1px 8px;}
+  .col{flex:none;width:420px;}
+  .col.wide{width:560px;}
+  .col.narrow{width:340px;}
+  /* phone frame for the Today + plan surfaces */
+  .phone{flex:none;width:412px;}
+  .phone .scr{width:412px;min-height:560px;border-radius:34px;border:11px solid #15110b;background:var(--paper);overflow:hidden;position:relative;box-shadow:0 40px 80px -42px rgba(20,16,10,.5);}
+  .phone .pad{padding:46px 22px 30px;}
+  .panel{background:var(--paper);border-radius:14px;padding:24px;}
+  .sectlabel{font-family:var(--display);font-weight:500;font-size:21px;letter-spacing:-.02em;color:#3a3328;max-width:1340px;margin:74px auto 0;padding-bottom:8px;border-bottom:1px solid rgba(70,60,40,.18);}
+  /* harness-only: round-7 .cc-decision-clock isn't loaded here — give it legible spacing */
+  .cc-decision-clock{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:8px 0;font-family:var(--sans);font-size:14px;color:var(--ink-dim);}
+  .cc-decision-clock .label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);}
+  .cc-decision-clock .figure{font-family:var(--mono);font-size:20px;color:var(--gold-2);letter-spacing:.02em;}
+  .cc-decision-clock .for{font-family:var(--serif);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="head">
+    <div class="eyebrow">Khonsera · Edition III · Round 13 — coherence + correctness</div>
+    <h1 class="title">The day reads first; everything else earns its weight</h1>
+    <p class="note">A coherence, correctness and features pass. Two surfaces wanted real design judgement — the seat map becoming an unmistakable cabin, and the plan page gaining a hierarchy so the day's spine leads and the operational tools recede into one quiet region. The rest is brand polish on accrued components, all on existing tokens, same calm rule throughout.</p>
+  </div>
+
+  <!-- ★ PRIORITY -->
+  <div class="sectlabel">★ The two that needed design judgement</div>
+  <div class="star-row">
+    <div class="col narrow" style="width:368px">
+      <div class="cap">★ Seat map → a real cabin <span class="st">read it as an aircraft</span></div>
+      <div class="panel"><div id="cabin"></div></div>
+    </div>
+    <div class="col wide">
+      <div class="cap">★ Plan-page hierarchy <span class="st">spine first, tools recede</span></div>
+      <div class="panel"><div id="hierarchy"></div></div>
+    </div>
+  </div>
+
+  <!-- COHERENCE -->
+  <div class="sectlabel">Coherence pass</div>
+  <div class="row">
+    <div class="col narrow">
+      <div class="cap">Grouped sidebar</div>
+      <div class="panel" style="background:var(--card)"><div id="sidebar"></div></div>
+    </div>
+    <div class="col">
+      <div class="cap">Editable day title · per-stop rename</div>
+      <div class="panel"><div id="titles"></div></div>
+    </div>
+    <div class="col">
+      <div class="cap">Share scope <span class="st">not a bare timer</span></div>
+      <div class="panel"><div id="scope"></div></div>
+    </div>
+  </div>
+
+  <!-- PLAN ELEVATIONS -->
+  <div class="sectlabel">Plan elevations + per-event mode + reminders</div>
+  <div class="row">
+    <div class="col">
+      <div class="cap">Day base + intention</div>
+      <div class="panel"><div id="baseint"></div></div>
+    </div>
+    <div class="col">
+      <div class="cap">Tappable ModeTag · readiness add</div>
+      <div class="panel"><div id="modeready"></div></div>
+    </div>
+    <div class="col">
+      <div class="cap">Changeover rows <span class="st">multi-leg parity</span></div>
+      <div class="panel"><div id="changeover"></div></div>
+    </div>
+  </div>
+
+  <!-- RECURRING -->
+  <div class="sectlabel">Recurring</div>
+  <div class="row">
+    <div class="col wide">
+      <div class="cap">Recurring manager</div>
+      <div class="panel"><div id="recmgr"></div></div>
+    </div>
+    <div class="col">
+      <div class="cap">Recurring offers strip <span class="st">gold-tint, dismissible</span></div>
+      <div class="panel"><div id="recoffers"></div></div>
+    </div>
+  </div>
+
+  <!-- TODAY WEATHER + SMALLER CUES -->
+  <div class="sectlabel">Today weather + smaller cues</div>
+  <div class="row">
+    <div class="phone">
+      <div class="cap">Weather chip + hourly strip</div>
+      <div class="scr"><div class="pad"><div id="weather"></div></div></div>
+    </div>
+    <div class="col">
+      <div class="cap">Wallet flip · nudge sample · save notice</div>
+      <div class="panel"><div id="cues"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function el(id){return document.getElementById(id);}
+function ic(p){return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
+var penIcon = ic('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>');
+var pinIcon = ic('<path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.4"/>');
+var plusIcon = ic('<path d="M12 5v14M5 12h14"/>');
+var xIcon = ic('<path d="M6 6l12 12M18 6L6 18"/>');
+var checkIcon = ic('<path d="M20 6 9 17l-5-5"/>');
+
+/* ── ★ REAL CABIN ─────────────────────────────────────────── */
+function seat(letter, state){ return `<button class="cc-conn-seat" data-state="${state}">${state==='taken'?'':letter}</button>`; }
+function cabinRow(num, seats, exit){
+  var left = seats.slice(0,3).map(function(s,i){return seat('ABC'[i], s);}).join('');
+  var right = seats.slice(3).map(function(s,i){return seat('DEF'[i], s);}).join('');
+  return `<div class="cc-plane-row"${exit?' data-exit':''}>
+    <span class="cc-plane-rownum">${num}</span>
+    <div class="cc-plane-seats">${left}<span class="cc-plane-aisle"></span>${right}</div>
+    <span class="cc-plane-rownum">${num}</span>
+  </div>`;
+}
+el('cabin').innerHTML = `<div class="cc-conn"><div class="cc-conn-seats">
+  <div class="cc-conn-seats-lead"><span class="title">Choose a seat</span><span class="note">optional · BA 1442</span></div>
+  <div class="cc-plane">
+    <div class="cc-plane-nose"></div>
+    <div class="cc-plane-cabin">
+      ${cabinRow('1',['paid','paid','paid','paid','paid','paid'])}
+      ${cabinRow('2',['free','free','taken','selected','free','free'])}
+      ${cabinRow('3',['taken','free','free','free','free','paid'])}
+      <div class="cc-plane-facility">Galley · Lavatory</div>
+      ${cabinRow('11',['free','free','free','free','taken','free'], true)}
+      ${cabinRow('12',['free','paid','free','free','free','free'], true)}
+      ${cabinRow('13',['taken','taken','free','free','free','paid'])}
+      ${cabinRow('14',['free','free','free','taken','free','free'])}
+    </div>
+  </div>
+  <div class="cc-conn-seats-legend"><span class="free"><i></i>Free</span><span class="paid"><i></i>Extra legroom +£14</span><span class="sel"><i></i>Your seat</span><span>Taken</span></div>
+</div></div>`;
+
+/* ── ★ PLAN-PAGE HIERARCHY ────────────────────────────────── */
+el('hierarchy').innerHTML = `
+  <div class="cc-plan-frame">
+    <div class="cc-plan-title"><span class="h2" style="font-family:var(--display);font-weight:500;font-size:26px;letter-spacing:-.025em;margin:0">Edinburgh — Thursday</span><span class="cc-plan-title-edit">${penIcon}</span></div>
+    <div class="cc-plan-base" data-unset><span class="cc-plan-base-pin">${pinIcon}</span><span class="cc-plan-base-text">Set where the day starts</span><span class="cc-plan-base-edit">${penIcon}</span></div>
+    <div class="cc-plan-intention" data-set><span class="cc-plan-intention-eyebrow">For</span><span class="cc-plan-intention-text">the Q3 board review and dinner after</span></div>
+  </div>
+  <div class="cc-decision-clock"><span class="label">Set off by</span><span class="figure">07:35</span><span class="for">for the 08:10 from Heathrow</span></div>
+  <div style="margin:18px 0;padding:16px;border:1px dashed var(--rule-2);border-radius:10px;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)">The spine + map render here — the day reads first</div>
+  <details class="cc-plan-tools" open>
+    <summary class="cc-plan-tools-summary"><span class="cc-plan-tools-title">Trip tools</span><span class="cc-plan-tools-hint">budget, sharing, recurring, mileage</span></summary>
+    <div class="cc-plan-tools-body">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)">Budget · £420 / £600</div>
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)">Share this journey</div>
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)">Recurring events</div>
+    </div>
+  </details>`;
+
+/* ── GROUPED SIDEBAR ──────────────────────────────────────── */
+function navItem(label, active){ return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-family:var(--sans);font-size:13px;${active?'background:var(--gold-tint);color:var(--gold-2);font-weight:500':'color:var(--ink-dim)'}"><span style="width:6px;height:6px;border-radius:50%;background:${active?'var(--gold)':'var(--rule-2)'}"></span>${label}</div>`; }
+el('sidebar').innerHTML = `<nav class="cc-rail-nav">
+  <div class="cc-rail-group"><span class="cc-rail-group-label">Day</span>${navItem('Today',true)}${navItem('Plan')}${navItem('Wallet')}</div>
+  <div class="cc-rail-group"><span class="cc-rail-group-label">Money & travel</span>${navItem('Mileage')}${navItem('Expenses')}${navItem('Workspace')}</div>
+  <div class="cc-rail-group"><span class="cc-rail-group-label">Account</span>${navItem('Settings')}</div>
+</nav>`;
+
+/* ── EDITABLE TITLES ──────────────────────────────────────── */
+el('titles').innerHTML = `
+  <div style="margin-bottom:22px">
+    <div class="cap" style="margin-bottom:8px">Named</div>
+    <div class="cc-plan-title"><span style="font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.02em">Edinburgh — Thursday</span><span class="cc-plan-title-edit">${penIcon}</span></div>
+  </div>
+  <div style="margin-bottom:22px">
+    <div class="cap" style="margin-bottom:8px">Unnamed — an italic invitation</div>
+    <div class="cc-plan-title" data-unnamed><span style="font-size:22px">Name this day</span><span class="cc-plan-title-edit" style="opacity:1">${penIcon}</span></div>
+  </div>
+  <div>
+    <div class="cap" style="margin-bottom:8px">Per-stop rename</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span class="cc-anchor-title-edit"><strong style="font-family:var(--sans);font-weight:500">The Balmoral</strong><span class="cc-anchor-title-edit-pen" style="opacity:1">${penIcon}</span></span>
+      <span class="cc-anchor-title-edit" data-untitled>Untitled stop <span class="cc-anchor-title-edit-pen" style="opacity:1">${penIcon}</span></span>
+    </div>
+  </div>`;
+
+/* ── SHARE SCOPE ──────────────────────────────────────────── */
+el('scope').innerHTML = `
+  <div style="font-family:var(--sans);font-size:13px;color:var(--ink-dim);margin-bottom:14px">Share your live ETA — for how long?</div>
+  <div class="cc-share-scope">
+    <button data-active="true">Until I arrive</button>
+    <button>For today</button>
+    <button>For the trip</button>
+    <button>Set hours</button>
+  </div>
+  <div class="cc-share-scope-note">Ends on its own — you never have to remember to stop it.</div>`;
+
+/* ── BASE + INTENTION ─────────────────────────────────────── */
+el('baseint').innerHTML = `
+  <div class="cc-plan-frame">
+    <div class="cc-plan-base"><span class="cc-plan-base-pin">${pinIcon}</span><span class="cc-plan-base-text">20 Wilce Ave</span><span class="cc-plan-base-edit">${penIcon}</span></div>
+    <div class="cc-plan-intention" data-set><span class="cc-plan-intention-eyebrow">For</span><span class="cc-plan-intention-text">the Q3 board review and dinner after</span></div>
+  </div>
+  <div style="height:1px;background:var(--rule);margin:18px 0"></div>
+  <div class="cc-plan-frame">
+    <div class="cc-plan-base" data-unset><span class="cc-plan-base-pin">${pinIcon}</span><span class="cc-plan-base-text">Set where the day starts</span><span class="cc-plan-base-edit" style="opacity:1">${penIcon}</span></div>
+    <div class="cc-plan-intention"><span class="cc-plan-intention-eyebrow">For</span><button class="cc-plan-intention-add">What's this day for?</button></div>
+  </div>`;
+
+/* ── MODE TAG + READINESS ─────────────────────────────────── */
+el('modeready').innerHTML = `
+  <div class="cap" style="margin-bottom:10px">Per-event work ↔ personal</div>
+  <div style="display:flex;gap:10px;margin-bottom:24px">
+    <button class="cc-mode-tag cc-mode-tag-btn" data-mode="work">Work</button>
+    <button class="cc-mode-tag cc-mode-tag-btn" data-mode="personal">Personal</button>
+  </div>
+  <div class="cap" style="margin-bottom:10px">Your reminders</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="cc-readiness-clear">${xIcon}</span>
+      <span style="font-family:var(--sans);font-size:13px">Pack the board papers</span>
+    </div>
+    <button class="cc-readiness-add">${plusIcon} Add a reminder</button>
+  </div>`;
+
+/* ── CHANGEOVER ───────────────────────────────────────────── */
+el('changeover').innerHTML = `
+  <div style="font-family:var(--sans);font-weight:500;font-size:14px;margin-bottom:4px">Rail · London → Edinburgh</div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:8px">2 legs · 1 change</div>
+  <div class="cc-co-row">
+    <div class="cc-co-head"><span>Leg 1 · LNER</span><button class="cc-co-remove">${xIcon}</button></div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--ink)">11:00 KGX → 13:20 York · plat 3</div>
+  </div>
+  <div class="cc-co-row">
+    <div class="cc-co-head"><span>Leg 2 · LNER</span><button class="cc-co-remove">${xIcon}</button></div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--ink)">13:38 York → 16:02 EDI · plat 9</div>
+  </div>
+  <button class="cc-co-add">${plusIcon} Add a connecting leg</button>`;
+
+/* ── RECURRING MANAGER ────────────────────────────────────── */
+el('recmgr').innerHTML = `<details class="cc-recurring" open>
+  <summary class="cc-recurring-summary"><span class="cc-recurring-title">Recurring events</span><span class="cc-recurring-hint">the things that repeat</span></summary>
+  <div class="cc-recurring-body">
+    <div class="cc-recurring-list">
+      <div class="cc-recurring-row"><div class="cc-recurring-row-main"><span class="what">Office</span><span class="when">Every Thursday · 09:00</span></div><span class="cc-mode-tag" data-mode="work" style="margin-left:auto">Work</span><button class="cc-recurring-del">${xIcon}</button></div>
+      <div class="cc-recurring-row"><div class="cc-recurring-row-main"><span class="what">Five-a-side</span><span class="when">Every Tuesday · 19:30</span></div><span class="cc-mode-tag" data-mode="personal" style="margin-left:auto">Personal</span><button class="cc-recurring-del">${xIcon}</button></div>
+    </div>
+    <button class="cc-recurring-add">${plusIcon} Add a recurring event</button>
+  </div>
+</details>`;
+
+/* ── RECURRING OFFERS ─────────────────────────────────────── */
+el('recoffers').innerHTML = `<div class="cc-rec-offers">
+  <div class="cc-rec-offer">
+    <span class="cc-rec-offer-text">Thursday already has <strong>the board review</strong> — add <strong>Office</strong> to this day?</span>
+    <span class="cc-rec-offer-actions"><button>Add</button><button>Skip</button></span>
+  </div>
+</div>`;
+
+/* ── TODAY WEATHER ────────────────────────────────────────── */
+function sun(){return ic('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/>');}
+function cloud(){return ic('<path d="M17 18a4 4 0 0 0 0-8 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 18Z"/>');}
+function rain(){return ic('<path d="M17 15a4 4 0 0 0 0-8 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 15Z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/>');}
+function hour(t,c,deg){return `<div class="cc-weather-hour"><span class="cc-weather-hour-time">${t}</span><span class="cc-weather-hour-cond">${c}</span><span class="cc-weather-hour-temp">${deg}</span></div>`;}
+el('weather').innerHTML = `
+  <div class="cc-today-head">
+    <div>
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim)">Thu 18 Jun · 06:12</div>
+      <div style="font-family:var(--display);font-weight:500;font-size:24px;letter-spacing:-.025em;margin-top:8px">Today</div>
+    </div>
+    <div class="cc-weather">
+      <span class="cc-weather-temp">11°</span>
+      <div class="cc-weather-meta"><span class="cc-weather-headline">Light rain easing</span><span class="cc-weather-place">Edinburgh</span></div>
+    </div>
+  </div>
+  <div class="cc-weather-hours">
+    ${hour('07', rain(), '11°')}
+    ${hour('08', rain(), '12°')}
+    ${hour('09', cloud(), '13°')}
+    ${hour('10', cloud(), '14°')}
+    ${hour('11', sun(), '16°')}
+    ${hour('12', sun(), '17°')}
+    ${hour('13', sun(), '18°')}
+    ${hour('14', cloud(), '17°')}
+  </div>
+  <div style="margin-top:14px;font-family:var(--serif);font-style:italic;font-size:14px;color:var(--ink-dim)">Edinburgh is 11°, take a coat — it clears by late morning.</div>`;
+
+/* ── SMALLER CUES ─────────────────────────────────────────── */
+el('cues').innerHTML = `
+  <div style="margin-bottom:22px">
+    <div class="cap" style="margin-bottom:8px">Wallet — peeked pass flip + delete</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--rule);border-radius:10px;background:var(--card)">
+      <span style="font-family:var(--sans);font-weight:500;font-size:13px">LNER · 17:05 to Wellingborough</span>
+      <span style="display:flex;gap:6px;align-items:center"><button class="cc-pass-collapse">Open ${ic('<path d="M6 9l6 6 6-6"/>')}</button><button class="cc-pass-del">${xIcon}</button></span>
+    </div>
+  </div>
+  <div style="margin-bottom:22px">
+    <div class="cap" style="margin-bottom:8px">Nudge honesty cue</div>
+    <div style="font-family:var(--sans);font-size:13px;color:var(--ink)">Fast-track at Gatwick protects your buffer<span class="cc-nudge-sample">· sample</span></div>
+  </div>
+  <div>
+    <div class="cap" style="margin-bottom:8px">Save confirmation</div>
+    <span class="cc-save-notice">${checkIcon} Saved to your places</span>
+  </div>`;
+</script>
+</body>
+</html>
