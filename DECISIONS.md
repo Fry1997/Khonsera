@@ -1188,3 +1188,17 @@ Newest at the bottom of each section.
   and the return format (a .cc-* skin + redlines + optional HTML proof). Design is now unblocked to build
   the surface over a working, tested brain (N0+N2). Parallel Code track available: N3 (TfL adapter + tube
   graph) or the runtime wiring once N1 lands.
+
+- **D90 — Navigation N1 surface integrated (Khonsera_23).** Design returned a complete drop-in
+  `.cc-nav*` skin (no new tokens, no field gaps — the N0/N2 contracts carried everything). Integrated:
+  `khonsera-edition-iii-nav.css` → src/app/, imported LAST. Built the React surface family in
+  `src/components/nav/guidance/guidance-surface.tsx` emitting Design's exact markup, bound to the real
+  contracts: `EtaChip`←EventETA (3 states, spare phrased by state via guidance-format.spareLabel —
+  "13 MIN EARLY"/"4 MIN SPARE"/"3 MIN LATE"), `ManeuverBanner` (reuses ManeuverGlyph at 46px),
+  `DecisionCard`←NavDecision (calm = Got it; act = one ranked option + trade-off + Accept/Let me think;
+  `data-return-threat` when the option carries a returnNote), and the `GuidanceSurface` shell (two chromes
+  light/dark-aubergine, six states acquiring/guiding/offsignal/arrived + decision overlay + status pill +
+  consequence line + controls). Pure presentation helper `guidance-format.ts` (4 tests). Presentational
+  only — the runtime (watchPosition pace + Darwin/TfL + ways-out fetch → N0/N2 → these props) is the next
+  wiring phase, deliberately separate (consistent with brain-before-wiring). Skin + redlines + proof in
+  docs/design/. tsc + 352 + build green.

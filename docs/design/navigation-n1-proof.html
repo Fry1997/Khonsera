@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Khonsera — N1 · the guidance surface</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="../_tokens-shim.css" />
+<link rel="stylesheet" href="../khonsera-edition-iii-nav.css" />
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:#cfc6b2;font-family:'Satoshi',sans-serif;color:#26211a;}
+  .board{padding:56px 48px 110px;}
+  .head{max-width:1340px;margin:0 auto 6px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#6b6453;}
+  .title{font-family:'Satoshi';font-weight:500;font-size:33px;letter-spacing:-.03em;margin:13px 0 6px;}
+  .note{font-family:'Spectral';font-style:italic;font-size:16px;color:#5a5345;max-width:88ch;}
+  .sectlabel{font-family:'Satoshi';font-weight:500;font-size:20px;letter-spacing:-.02em;color:#3a3328;max-width:1340px;margin:62px auto 0;padding-bottom:8px;border-bottom:1px solid rgba(70,60,40,.18);}
+  .grid{display:flex;gap:34px;flex-wrap:wrap;max-width:1340px;margin:34px auto 0;}
+  .item{flex:none;}
+  .cap{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6453;margin-bottom:13px;display:flex;gap:10px;align-items:baseline;}
+  .cap .sub{font-family:'Spectral';font-style:italic;font-size:13px;letter-spacing:0;text-transform:none;color:#8a8273;}
+  /* phone frame */
+  .phone{width:392px;}
+  .phone .scr{width:392px;height:760px;border-radius:40px;border:12px solid #15110b;overflow:hidden;position:relative;box-shadow:0 44px 90px -44px rgba(20,16,10,.55);background:#fcfaf4;}
+  /* component isolations sit on a plain card */
+  .iso{width:392px;background:#fcfaf4;border-radius:16px;padding:22px;box-shadow:0 30px 60px -36px rgba(20,16,10,.4);}
+  .iso.dark{background:#2a2233;}
+  .stack{display:flex;flex-direction:column;gap:16px;}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="head">
+    <div class="eyebrow">Khonsera · Edition III · N1 — the guidance surface</div>
+    <h1 class="title">Will I make my day — held calm, over a map you can trust</h1>
+    <p class="note">The full-screen guidance surface over the working nav brain. Operational trust to match Google or Apple — the dot glued to the route, the next move unmistakable at arm's length — plus the thing only we show: the event-ETA, always on screen, answering "do I make it, and by how much," in a concierge voice that stays level even when the answer is no.</p>
+  </div>
+
+  <!-- THE HERO CHIP — 3 states -->
+  <div class="sectlabel">A · EventETAChip — the hero · three states</div>
+  <div class="grid" id="chips"></div>
+
+  <!-- THE SIX SURFACE STATES in phone frames -->
+  <div class="sectlabel">The surface · six states (spec §4)</div>
+  <div class="grid" id="states"></div>
+
+  <!-- DECISION CARD shapes -->
+  <div class="sectlabel">C · DecisionCard — calm informing vs act (one recommendation)</div>
+  <div class="grid" id="decisions"></div>
+</div>
+
+<script>
+function ic(p,s){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${s||1.7}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
+var I = {
+  turnRight: ic('<path d="M6 20V10a4 4 0 0 1 4-4h6"/><path d="M13 3l4 3-4 3"/>',1.9),
+  turnLeft: ic('<path d="M18 20V10a4 4 0 0 0-4-4H8"/><path d="M11 3 7 6l4 3"/>',1.9),
+  straight: ic('<path d="M12 21V5"/><path d="M7 10l5-5 5 5"/>',1.9),
+  roundabout: ic('<circle cx="12" cy="10" r="4"/><path d="M12 14v7"/>',1.8),
+  recenter: ic('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'),
+  overview: ic('<path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3z"/><path d="M9 4v13M15 7v13"/>'),
+  end: ic('<path d="M18 6 6 18M6 6l12 12"/>',2),
+  tube: ic('<rect x="4" y="4" width="16" height="14" rx="3"/><path d="M4 11h16M8 21l1.5-3M16 21l-1.5-3"/>'),
+  taxi: ic('<path d="M5 17h14M6 17v-4l2-5h8l2 5v4M9 8V5h6v3"/><circle cx="8" cy="17" r="1.5"/><circle cx="16" cy="17" r="1.5"/>'),
+  walk: ic('<circle cx="12" cy="4" r="1.6"/><path d="M11 8l-2 5 2 1 1 6M11 8l3 2 3-1M11 8l-2 3"/>'),
+  bus: ic('<rect x="5" y="4" width="14" height="13" rx="2"/><path d="M5 11h14M8 17v2M16 17v2"/><circle cx="8.5" cy="14" r="1"/><circle cx="15.5" cy="14" r="1"/>'),
+  check: ic('<path d="M20 6 9 17l-5-5"/>',2),
+  checkCircle: ic('<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5 11 15l4.5-5"/>',1.8),
+  info: ic('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',1.7),
+  alert: ic('<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/>',1.7),
+  offline: ic('<path d="M3 3l18 18M8.5 8.5A6 6 0 0 0 5 11M12 5a11 11 0 0 1 7 3M9 13a4 4 0 0 1 5 0M12 17h.01"/>',1.7)
+};
+
+/* a faithful little basemap behind the chrome (dusk + midnight) */
+function basemap(dark){
+  var land = dark? '#302640':'#efe9da', water=dark?'#1b2f2a':'#b8c2a8', road=dark?'#473a58':'#fffefb',
+      rstroke=dark?'#372b47':'#dcd2bb', rail=dark?'#564a68':'#d6cdb8', edge=dark?'#3a2e4c':'#e7e1d0',
+      gold=dark?'#e2ab52':'#9c6714', casing=dark?'rgba(0,0,0,0.6)':'rgba(20,16,10,0.62)';
+  var roads=['M-20,360 C120,330 200,360 320,300 S470,250 540,270','M70,-20 C90,150 150,230 180,320 S210,420 250,520','M-20,150 C120,170 240,120 360,180 S500,150 540,150','M380,-20 C360,120 430,210 400,320 S430,460 410,520'];
+  return `<svg viewBox="0 0 392 760" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%">
+    <rect width="392" height="760" fill="${land}"/>
+    <rect width="392" height="760" fill="url(#tx)" opacity="0.5"/>
+    <path d="M250,420 C320,410 400,440 470,410 C470,520 400,560 300,540 C260,530 240,460 250,420Z" fill="${water}"/>
+    <path d="M70,640 C150,560 180,420 250,360 S360,230 410,170" fill="none" stroke="${rail}" stroke-width="5" stroke-linecap="round"/>
+    ${roads.map(d=>`<path d="${d}" fill="none" stroke="${rstroke}" stroke-width="8" stroke-linecap="round"/>`).join('')}
+    ${roads.map(d=>`<path d="${d}" fill="none" stroke="${road}" stroke-width="4.5" stroke-linecap="round"/>`).join('')}
+    <!-- the route, cased -->
+    <path d="M150,560 C200,470 230,400 270,330 S330,210 360,150" fill="none" stroke="${casing}" stroke-width="9" stroke-linecap="round"/>
+    <path d="M150,560 C200,470 230,400 270,330 S330,210 360,150" fill="none" stroke="${gold}" stroke-width="4.5" stroke-linecap="round"/>
+    <defs><pattern id="tx" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(8)"><path d="M0,23 H46 M23,0 V46" stroke="${edge}" stroke-width="1"/></pattern></defs>
+  </svg>`;
+}
+/* the puck glued to the route */
+function puck(x,y){ return `<svg viewBox="0 0 392 760" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+  <circle class="cc-nav-puck-halo" cx="${x}" cy="${y}" r="26"/>
+  <g transform="translate(${x},${y})"><circle class="cc-nav-puck" r="11"/><path d="M0, -4 L4,4 L0,2 L-4,4 Z" fill="#fff"/></g></svg>`; }
+
+/* ── the hero chip, 3 states ─────────────────────────────────────────────── */
+function chip(state, place, time, spareTxt, sub, secondary){
+  return `<div class="cc-nav-eta-chip" data-state="${state}"${secondary?' data-secondary':''}>
+    <span class="cc-nav-eta-dot"></span>
+    <div class="cc-nav-eta-body">
+      <div class="cc-nav-eta-line"><span class="place">${place}</span><span class="em">—</span><span class="at">${time}</span></div>
+      ${sub?`<div class="cc-nav-eta-sub">${sub}</div>`:''}
+    </div>
+    <span class="cc-nav-eta-spare">${spareTxt}</span>
+  </div>`;
+}
+document.getElementById('chips').innerHTML = `
+  <div class="item"><div class="cap">on_track <span class="sub">calm · sage</span></div>
+    <div class="iso"><div class="stack">
+      <div class="cc-nav-eta-for">For the 14:00 meeting</div>
+      ${chip('on_track','BRIXTON','14:32','13 MIN EARLY','You land with room to spare')}
+    </div></div></div>
+  <div class="item"><div class="cap">thinning <span class="sub">attention, not alarm</span></div>
+    <div class="iso"><div class="stack">
+      <div class="cc-nav-eta-for">For the 14:00 meeting</div>
+      ${chip('thinning','BRIXTON','13:56','4 MIN SPARE','The margin is getting thin')}
+    </div></div></div>
+  <div class="item"><div class="cap">will_miss <span class="sub">stated levelly</span></div>
+    <div class="iso"><div class="stack">
+      <div class="cc-nav-eta-for">For the 14:00 meeting</div>
+      ${chip('will_miss','BRIXTON','14:03','3 MIN LATE','As it stands, just past the hour')}
+    </div></div></div>`;
+
+/* ── decision cards ──────────────────────────────────────────────────────── */
+function decisionCalm(){
+  return `<div class="cc-nav-decision" data-severity="calm" style="position:relative;margin:0">
+    <div class="cc-nav-decision-head">
+      <div class="cc-nav-decision-eyebrow">${I.info} Heads up</div>
+      <h3 class="cc-nav-decision-headline">Slow traffic on Coldharbour Lane.</h3>
+      <p class="cc-nav-decision-consequence">You'd still reach the 14:00 with 6 minutes to spare — no change needed.</p>
+    </div>
+    <div class="cc-nav-decision-actions"><button class="cc-nav-decision-dismiss">Got it</button></div>
+  </div>`;
+}
+function decisionAct(dark){
+  return `<div class="cc-nav-decision" data-severity="act" style="position:relative;margin:0">
+    <div class="cc-nav-decision-head">
+      <div class="cc-nav-decision-eyebrow">${I.alert} A decision</div>
+      <h3 class="cc-nav-decision-headline">Victoria line is cancelled ahead.</h3>
+      <p class="cc-nav-decision-consequence">On your current route you'd reach the 14:00 meeting 15 minutes late.</p>
+    </div>
+    <div class="cc-nav-decision-option">
+      <div class="cc-nav-decision-option-top">
+        <span class="cc-nav-decision-mode">${I.taxi} Taxi</span>
+        <span class="cc-nav-decision-option-label">Cut across to Stockwell</span>
+      </div>
+      <div class="cc-nav-decision-times">13:48 → 13:57 <span class="makes">${I.check} makes the 14:00</span></div>
+      <p class="cc-nav-decision-tradeoff">About £9, and you keep the 16:10 home.</p>
+    </div>
+    <div class="cc-nav-decision-actions">
+      <button class="cc-nav-decision-accept">Accept</button>
+      <button class="cc-nav-decision-dismiss">Let me think</button>
+    </div>
+  </div>`;
+}
+function decisionActReturn(){
+  return `<div class="cc-nav-decision" data-severity="act" style="position:relative;margin:0">
+    <div class="cc-nav-decision-head">
+      <div class="cc-nav-decision-eyebrow">${I.alert} A decision</div>
+      <h3 class="cc-nav-decision-headline">Your train is delayed 12 minutes.</h3>
+      <p class="cc-nav-decision-consequence">You'd still make the meeting, but the tight connection home is now at risk.</p>
+    </div>
+    <div class="cc-nav-decision-option">
+      <div class="cc-nav-decision-option-top">
+        <span class="cc-nav-decision-mode">${I.bus} Bus</span>
+        <span class="cc-nav-decision-option-label">The 45 from the corner</span>
+      </div>
+      <div class="cc-nav-decision-times">13:50 → 13:58 <span class="makes">${I.check} makes the 14:00</span></div>
+      <p class="cc-nav-decision-tradeoff" data-return-threat>Protects the 16:10 home — miss it and the next is 17:40.</p>
+    </div>
+    <div class="cc-nav-decision-actions">
+      <button class="cc-nav-decision-accept">Accept</button>
+      <button class="cc-nav-decision-dismiss">Let me think</button>
+    </div>
+  </div>`;
+}
+document.getElementById('decisions').innerHTML = `
+  <div class="item"><div class="cap">calm <span class="sub">informing · dismissible</span></div><div class="iso">${decisionCalm()}</div></div>
+  <div class="item"><div class="cap">act <span class="sub">one recommendation + trade-off</span></div><div class="iso">${decisionAct()}</div></div>
+  <div class="item"><div class="cap">act · return threatened <span class="sub">the honest cost</span></div><div class="iso">${decisionActReturn()}</div></div>`;
+
+/* ── the six surface states (phone frames) ───────────────────────────────── */
+function maneuver(dark){
+  return `<div class="cc-nav-maneuver">
+    <div class="cc-nav-maneuver-glyph">${I.turnRight}</div>
+    <div class="cc-nav-maneuver-main">
+      <div class="cc-nav-maneuver-dist">220<u>m</u></div>
+      <div class="cc-nav-maneuver-step">Right onto Brixton Road</div>
+    </div>
+    <div class="cc-nav-maneuver-next">${I.straight}<span class="lbl">Then</span></div>
+  </div>`;
+}
+function controls(){
+  return `<div class="cc-nav-controls">
+    <button class="cc-nav-ctl">${I.recenter}</button>
+    <button class="cc-nav-ctl">${I.overview}</button>
+    <button class="cc-nav-ctl" data-end>${I.end}</button>
+  </div>`;
+}
+function etaBlock(){
+  return `<div class="cc-nav-eta">
+    <div class="cc-nav-eta-for">For the 14:00 meeting</div>
+    ${chip('on_track','BRIXTON','14:32','13 MIN EARLY','You land with room to spare')}
+  </div>`;
+}
+
+function frame(state, inner, dark){
+  return `<div class="phone"><div class="scr">
+    <div class="cc-nav" data-state="${state}"${dark?' data-chrome="dark"':''} style="position:absolute;inset:0">
+      <div class="cc-nav-map">${basemap(dark)}${state!=='acquiring'&&state!=='arrived'?puck(150,560):''}</div>
+      ${inner}
+    </div>
+  </div></div>`;
+}
+
+document.getElementById('states').innerHTML = `
+  <div class="item"><div class="cap">Acquiring <span class="sub">never a dead grey screen</span></div>
+    ${frame('acquiring', `<div class="cc-nav-acquiring"><div><div class="cc-nav-acquiring-ring"></div><div class="cc-nav-acquiring-text">Finding you…</div></div></div>`)}
+  </div>
+  <div class="item"><div class="cap">Guiding <span class="sub">the everyday surface</span></div>
+    ${frame('guiding', maneuver()+controls()+etaBlock())}
+  </div>
+  <div class="item"><div class="cap">Guiding · at risk <span class="sub">thin consequence line</span></div>
+    ${frame('guiding', maneuver()+controls()+`<div class="cc-nav-eta"><div class="cc-nav-consequence">${I.alert} The 14:00 is getting tight — I'm watching it.</div><div class="cc-nav-eta-for">For the 14:00 meeting</div>`+chip('thinning','BRIXTON','13:56','4 MIN SPARE','The margin is getting thin')+`</div>`)}
+  </div>
+  <div class="item"><div class="cap">Decision · act <span class="sub">over the guiding surface</span></div>
+    ${frame('guiding', maneuver()+decisionAct())}
+  </div>
+  <div class="item"><div class="cap">Re-routing <span class="sub">no jarring flash</span></div>
+    ${frame('guiding', `<div class="cc-nav-status" data-pulse><span class="dot"></span>Re-routing…<span class="mono">FROM HERE</span></div>`+controls()+etaBlock())}
+  </div>
+  <div class="item"><div class="cap">Off-signal <span class="sub">cached route, said plainly</span></div>
+    ${frame('offsignal', `<div class="cc-nav-status" data-tone="offline"><span class="dot"></span>Offline — showing your saved route</div>`+maneuver()+controls()+etaBlock())}
+  </div>
+  <div class="item"><div class="cap">Live · dark chrome <span class="sub">a dark train, after dark</span></div>
+    ${frame('guiding', maneuver(true)+controls()+etaBlock(), true)}
+  </div>
+  <div class="item"><div class="cap">Arrived <span class="sub">closes the loop</span></div>
+    ${frame('arrived', `<div class="cc-nav-arrived"><div class="cc-nav-arrived-inner"><div class="cc-nav-arrived-mark">${I.checkCircle}</div><h3 class="cc-nav-arrived-headline">You made it — 11 minutes before.</h3><p class="cc-nav-arrived-sub">The 14:00 at Dancing Duck. I'll keep an eye on the way back.</p><button class="cc-nav-arrived-back">Back to the day</button></div></div>`)}
+  </div>`;
+</script>
+</body>
+</html>

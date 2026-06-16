@@ -1,0 +1,396 @@
+/* ============================================================================
+ * Khonsera — Edition III · N1 — the premium guidance surface
+ * Additive `.cc-nav*` skin. Import LAST, after the connections + round13 CSS.
+ * Tokens only. Governing rule: operational trust (Google/Apple-grade legibility)
+ * + the Khonsera differentiator always on screen — "will I make my day" — held
+ * in a calm voice. Calm carries consequence, never alarm. No emoji, ever.
+ *
+ * The surface has two chromes: light (walk/day) and dark (.cc-nav[data-chrome=
+ * "dark"] — Live / a dark train). The map is full-bleed under everything; these
+ * classes are the chrome around it.
+ * ========================================================================== */
+
+.cc-nav {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--sans);
+  color: var(--ink);
+  --nav-surface: var(--card);
+  --nav-ink: var(--ink);
+  --nav-ink-dim: var(--ink-dim);
+  --nav-rule: var(--rule);
+  --nav-scrim: rgba(20,16,10,0.30);
+  --nav-shadow: 0 18px 50px -22px rgba(20,16,10,0.55);
+}
+/* dark chrome — Live / dark train. Aubergine-ink, not black (brand after-dark). */
+.cc-nav[data-chrome="dark"] {
+  --nav-surface: #2a2233;
+  --nav-ink: #f4ecdd;
+  --nav-ink-dim: #b8ab9a;
+  --nav-rule: rgba(244,236,221,0.16);
+  --nav-scrim: rgba(8,6,12,0.42);
+  --nav-shadow: 0 18px 50px -20px rgba(0,0,0,0.6);
+  color: var(--nav-ink);
+}
+
+/* the map plate (full-bleed); proof fills it with a basemap, app uses MapLibre */
+.cc-nav-map { position: absolute; inset: 0; z-index: 0; }
+/* a soft top+bottom scrim so chrome stays legible over any map content */
+.cc-nav::before, .cc-nav::after {
+  content: ""; position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none;
+}
+.cc-nav::before { top: 0; height: 230px; background: linear-gradient(180deg, var(--nav-scrim), transparent); }
+.cc-nav::after { bottom: 0; height: 220px; background: linear-gradient(0deg, var(--nav-scrim), transparent); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * B · ManeuverBanner — the next move. Top of surface, the loudest thing while
+ * moving. Big glyph + distance-to-turn + step name + the one after.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-nav-maneuver {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+  margin: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3-5);
+  padding: var(--space-3-5) var(--space-4);
+  background: var(--nav-surface);
+  border: 1px solid var(--nav-rule);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--nav-shadow);
+}
+.cc-nav-maneuver-glyph {
+  flex: none;
+  width: 52px; height: 52px;
+  display: grid; place-items: center;
+  color: var(--nav-ink);
+}
+.cc-nav-maneuver-glyph svg { width: 46px; height: 46px; }
+.cc-nav-maneuver-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cc-nav-maneuver-dist {
+  font-family: var(--display, var(--sans));
+  font-weight: var(--fw-semibold, 600);
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--nav-ink);
+  font-variant-numeric: tabular-nums;
+}
+.cc-nav-maneuver-dist u { text-decoration: none; font-size: 16px; font-weight: var(--fw-medium); color: var(--nav-ink-dim); margin-left: 4px; }
+.cc-nav-maneuver-step {
+  font-size: 16px;
+  color: var(--nav-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* the turn after — a quiet pre-cue on the right */
+.cc-nav-maneuver-next {
+  flex: none;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding-left: var(--space-3-5);
+  border-left: 1px solid var(--nav-rule);
+  color: var(--nav-ink-dim);
+}
+.cc-nav-maneuver-next svg { width: 22px; height: 22px; }
+.cc-nav-maneuver-next .lbl {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * A · EventETAChip — the hero. "Will I make my day, and by how much." Always
+ * on screen, just above the controls. Three states drive the colour.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-nav-eta {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  margin: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+}
+.cc-nav-eta-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--nav-surface);
+  border: 1px solid var(--nav-rule);
+  border-left-width: 3px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--nav-shadow);
+}
+/* a status dot + the destination/eta/spare line */
+.cc-nav-eta-dot { flex: none; width: 11px; height: 11px; border-radius: 50%; }
+.cc-nav-eta-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cc-nav-eta-line {
+  display: flex; align-items: baseline; gap: var(--space-2-5);
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--nav-ink);
+  font-variant-numeric: tabular-nums;
+}
+.cc-nav-eta-line .place { font-weight: 500; letter-spacing: 0.06em; }
+.cc-nav-eta-line .at { color: var(--nav-ink-dim); }
+.cc-nav-eta-line .em { margin: 0 2px; color: var(--nav-ink-dim); }
+/* the spare — the differentiator, the number you read first */
+.cc-nav-eta-spare {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cc-nav-eta-sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--nav-ink-dim);
+}
+/* what "name" this is for */
+.cc-nav-eta-for {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--nav-ink-dim);
+}
+
+/* state colours — left border + dot + spare text */
+.cc-nav-eta-chip[data-state="on_track"] { border-left-color: var(--success); }
+.cc-nav-eta-chip[data-state="on_track"] .cc-nav-eta-dot { background: var(--success); }
+.cc-nav-eta-chip[data-state="on_track"] .cc-nav-eta-spare { color: var(--success); }
+
+.cc-nav-eta-chip[data-state="thinning"] { border-left-color: var(--amber); }
+.cc-nav-eta-chip[data-state="thinning"] .cc-nav-eta-dot { background: var(--amber); }
+.cc-nav-eta-chip[data-state="thinning"] .cc-nav-eta-spare { color: var(--amber); }
+
+.cc-nav-eta-chip[data-state="will_miss"] { border-left-color: var(--rust); }
+.cc-nav-eta-chip[data-state="will_miss"] .cc-nav-eta-dot { background: var(--rust); }
+.cc-nav-eta-chip[data-state="will_miss"] .cc-nav-eta-spare { color: var(--rust); }
+
+/* a second commitment, carried smaller beneath the lead one */
+.cc-nav-eta-chip[data-secondary] { padding: var(--space-2-5) var(--space-4); opacity: 0.92; }
+.cc-nav-eta-chip[data-secondary] .cc-nav-eta-line { font-size: 13px; }
+
+/* thin consequence line (when the day's at risk but no decision is raised yet) */
+.cc-nav-consequence {
+  display: flex; align-items: center; gap: var(--space-2-5);
+  padding: var(--space-2-5) var(--space-3-5);
+  font-family: var(--serif); font-style: italic; font-size: 13.5px; line-height: 1.4;
+  color: var(--nav-ink);
+  background: var(--nav-surface);
+  border: 1px solid var(--nav-rule);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius-md);
+  box-shadow: var(--nav-shadow);
+}
+.cc-nav-consequence svg { flex: none; width: 15px; height: 15px; color: var(--amber); }
+.cc-nav[data-chrome="dark"] .cc-nav-consequence { background: var(--nav-surface); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * C · DecisionCard — the concierge moment. Raised over the guiding surface.
+ * calm = a quiet informing band (dismissible). act = headline + consequence
+ * + ONE recommended option + its trade-off + Accept / Dismiss.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-nav-decision {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  margin: var(--space-3);
+  background: var(--nav-surface);
+  border: 1px solid var(--nav-rule);
+  border-radius: var(--radius-xl, 18px);
+  box-shadow: var(--nav-shadow);
+  overflow: hidden;
+}
+/* the severity flank — calm uses slate (informing), act uses rust (a choice) */
+.cc-nav-decision::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
+}
+.cc-nav-decision[data-severity="calm"]::before { background: var(--slate); }
+.cc-nav-decision[data-severity="act"]::before { background: var(--rust); }
+
+.cc-nav-decision-head { padding: var(--space-4) var(--space-4) var(--space-3); }
+.cc-nav-decision-eyebrow {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  margin-bottom: var(--space-2-5);
+}
+.cc-nav-decision[data-severity="calm"] .cc-nav-decision-eyebrow { color: var(--slate); }
+.cc-nav-decision[data-severity="act"] .cc-nav-decision-eyebrow { color: var(--rust); }
+.cc-nav-decision-eyebrow svg { width: 13px; height: 13px; }
+.cc-nav-decision-headline {
+  font-family: var(--display, var(--sans));
+  font-weight: var(--fw-medium, 500);
+  font-size: 19px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--nav-ink);
+  margin: 0 0 var(--space-1-5);
+}
+.cc-nav-decision-consequence {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14.5px; line-height: 1.45;
+  color: var(--nav-ink-dim);
+  margin: 0;
+}
+
+/* the recommended option (act only) — one option, never a wall */
+.cc-nav-decision-option {
+  margin: 0 var(--space-4) var(--space-3);
+  border: 1px solid var(--nav-rule);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--gold) 7%, var(--nav-surface));
+  padding: var(--space-3-5);
+}
+.cc-nav[data-chrome="dark"] .cc-nav-decision-option { background: color-mix(in oklab, var(--gold) 16%, var(--nav-surface)); }
+.cc-nav-decision-option-top {
+  display: flex; align-items: center; gap: var(--space-2-5); margin-bottom: var(--space-2);
+}
+.cc-nav-decision-mode {
+  flex: none;
+  display: inline-flex; align-items: center; gap: var(--space-1-5);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold-2);
+  padding: 3px var(--space-2);
+  border: 1px solid var(--gold-soft); border-radius: var(--radius-pill);
+  background: var(--gold-tint);
+}
+.cc-nav[data-chrome="dark"] .cc-nav-decision-mode { color: var(--gold-100); border-color: rgba(212,174,106,0.4); }
+.cc-nav-decision-mode svg { width: 12px; height: 12px; }
+.cc-nav-decision-option-label { font-weight: var(--fw-medium); font-size: 15px; color: var(--nav-ink); }
+.cc-nav-decision-times {
+  font-family: var(--mono); font-size: 14px; color: var(--nav-ink);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1-5) var(--space-2-5); margin-bottom: var(--space-1-5);
+}
+.cc-nav-decision-times .makes {
+  font-family: var(--sans); font-style: normal; font-size: 11px; letter-spacing: 0;
+  color: var(--success); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.cc-nav-decision-times .makes svg { flex: none; width: 13px; height: 13px; }
+.cc-nav-decision-tradeoff {
+  font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--nav-ink-dim); margin: 0;
+}
+.cc-nav-decision-tradeoff[data-return-threat] { color: var(--rust); }
+
+.cc-nav-decision-actions {
+  display: flex; gap: var(--space-2-5); padding: 0 var(--space-4) var(--space-4);
+}
+.cc-nav-decision-actions button {
+  flex: 1;
+  font-family: var(--sans); font-weight: var(--fw-medium); font-size: 14px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid var(--nav-rule);
+  transition: all var(--dur-base) var(--ease-standard);
+}
+.cc-nav-decision-accept { background: var(--gold); border-color: var(--gold); color: #fff; flex: 1.4; }
+.cc-nav-decision-accept:hover { background: var(--gold-2); }
+.cc-nav-decision-dismiss { background: transparent; color: var(--nav-ink-dim); }
+.cc-nav-decision-dismiss:hover { color: var(--nav-ink); border-color: var(--nav-ink-dim); }
+/* calm decision: a single quiet dismiss, no option block */
+.cc-nav-decision[data-severity="calm"] .cc-nav-decision-actions { padding-top: var(--space-1); }
+.cc-nav-decision[data-severity="calm"] .cc-nav-decision-dismiss { flex: 1; }
+
+/* enter motion — a measured rise, curtain-draw not a pop */
+@keyframes cc-nav-rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cc-nav-decision { animation: cc-nav-rise var(--dur-slow, 420ms) var(--ease-standard, cubic-bezier(0.22,1,0.36,1)); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * E · Controls — re-centre / overview / end. Right rail, thumb-reachable.
+ * ───────────────────────────────────────────────────────────────────────── */
+.cc-nav-controls {
+  position: absolute; right: var(--space-3); z-index: 4;
+  bottom: 160px;
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.cc-nav-ctl {
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  background: var(--nav-surface);
+  border: 1px solid var(--nav-rule);
+  border-radius: var(--radius-md);
+  box-shadow: var(--nav-shadow);
+  color: var(--nav-ink);
+  cursor: pointer;
+}
+.cc-nav-ctl svg { width: 20px; height: 20px; }
+.cc-nav-ctl[data-end] { color: var(--rust); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * STATES — Acquiring / Re-routing / Off-signal / Arrived
+ * ───────────────────────────────────────────────────────────────────────── */
+/* a status pill that sits under the maneuver slot for transient states */
+.cc-nav-status {
+  position: absolute; top: var(--space-3); left: 50%; transform: translateX(-50%); z-index: 4;
+  display: inline-flex; align-items: center; gap: var(--space-2-5);
+  padding: var(--space-2-5) var(--space-4);
+  background: var(--nav-surface);
+  border: 1px solid var(--nav-rule);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--nav-shadow);
+  font-family: var(--sans); font-size: 13.5px; color: var(--nav-ink);
+}
+.cc-nav-status .dot {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--gold);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cc-nav-status[data-pulse] .dot { animation: cc-nav-pulse 1.6s var(--ease-standard) infinite; }
+}
+@keyframes cc-nav-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.cc-nav-status[data-tone="offline"] .dot { background: var(--slate); }
+.cc-nav-status[data-tone="offline"] { color: var(--nav-ink); }
+.cc-nav-status .mono { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--nav-ink-dim); }
+
+/* Acquiring — a calm locating field, never a dead grey screen */
+.cc-nav[data-state="acquiring"] .cc-nav-map {
+  background:
+    radial-gradient(70% 50% at 50% 42%, color-mix(in oklab, var(--gold) 10%, var(--nav-surface)), var(--nav-surface));
+}
+.cc-nav-acquiring {
+  position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; text-align: center;
+}
+.cc-nav-acquiring-ring {
+  width: 80px; height: 80px; border-radius: 50%;
+  border: 2px solid var(--gold); margin: 0 auto var(--space-4);
+  position: relative;
+}
+.cc-nav-acquiring-ring::after {
+  content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--gold);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cc-nav-acquiring-ring { animation: cc-nav-acq 2s var(--ease-standard) infinite; }
+  @keyframes cc-nav-acq { 0%,100% { box-shadow: 0 0 0 0 var(--gold-tint); } 50% { box-shadow: 0 0 0 14px transparent; } }
+}
+.cc-nav-acquiring-text { font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--nav-ink-dim); }
+
+/* Off-signal — the cached route still draws; say so plainly */
+.cc-nav[data-state="offsignal"] .cc-nav-map { filter: saturate(0.7) opacity(0.9); }
+
+/* Arrived — closes the loop */
+.cc-nav-arrived {
+  position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; text-align: center;
+  background: color-mix(in oklab, var(--success) 12%, var(--nav-surface));
+  padding: var(--space-6);
+}
+.cc-nav-arrived-inner { max-width: 320px; }
+.cc-nav-arrived-mark { color: var(--success); margin-bottom: var(--space-4); }
+.cc-nav-arrived-mark svg { width: 54px; height: 54px; }
+.cc-nav-arrived-headline {
+  font-family: var(--display, var(--sans)); font-weight: var(--fw-medium); font-size: 25px;
+  letter-spacing: -0.02em; color: var(--nav-ink); margin: 0 0 var(--space-2);
+}
+.cc-nav-arrived-sub { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--nav-ink-dim); margin: 0 0 var(--space-5); }
+.cc-nav-arrived-back {
+  font-family: var(--sans); font-weight: var(--fw-medium); font-size: 14px;
+  padding: var(--space-3) var(--space-5); border-radius: var(--radius-md);
+  background: var(--gold); color: #fff; border: none; cursor: pointer;
+}
+
+/* the dot glued to the route — the trust primitive (proof draws it on the map) */
+.cc-nav-puck { fill: var(--gold); stroke: #fff; stroke-width: 3; }
+.cc-nav[data-chrome="dark"] .cc-nav-puck { stroke: #2a2233; }
+.cc-nav-puck-halo { fill: var(--gold-tint); }

@@ -13,7 +13,8 @@ import "./khonsera-edition-iii-live.css"; // Edition III live spine + disruption
 import "./khonsera-edition-iii-care.css"; // Edition III deviation & care (P11–P13)
 import "./khonsera-edition-iii-connections.css"; // Edition III connections/booking (P14)
 import "./khonsera-edition-iii-sharing.css"; // Edition III sharing/comms/safety (P18)
-import "./khonsera-edition-iii-round13.css"; // Edition III Round 13 coherence + features skin — LAST
+import "./khonsera-edition-iii-round13.css"; // Edition III Round 13 coherence + features skin
+import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance surface (.cc-nav*) — LAST
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical Khonsera type stack, per the Visual Identity brand book
