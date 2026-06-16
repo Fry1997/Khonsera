@@ -1179,3 +1179,12 @@ Newest at the bottom of each section.
   + N0 verbatim — no new I/O; triggers + candidates are fed by the runtime (GPS/Darwin/TfL/ways-out
   fetch) in the surface phase. 5 tests; tsc + 348 + build green. Next: N1 premium guidance surface
   (Design) then the runtime wiring (watchPosition pace + live disruption → this engine → the decision card).
+
+- **D89 — Navigation N1 handed to Design (`docs/design/navigation-n1-brief.md`).** Code→Design spec
+  request: the premium full-screen guidance surface, with components bound to the REAL built contracts
+  (EventETAChip←EventETA, DecisionCard←NavDecision, ManeuverBanner, the map frame). Enumerates the six
+  surface states (acquiring/guiding/decision/re-routing/off-signal/arrived), what's Code-owned vs
+  Design's, the brand rules (Khonsera voice, no emoji, calm-carries-consequence, honest live-vs-estimated),
+  and the return format (a .cc-* skin + redlines + optional HTML proof). Design is now unblocked to build
+  the surface over a working, tested brain (N0+N2). Parallel Code track available: N3 (TfL adapter + tube
+  graph) or the runtime wiring once N1 lands.
