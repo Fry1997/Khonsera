@@ -1166,3 +1166,16 @@ Newest at the bottom of each section.
   separate so it's testable without a GPS/route harness). Composes with — does not duplicate — live/engine
   (decisionClock/cascade/delayConsequence) and the buffers. 8 tests; tsc + 343 + build green. Next: N1
   premium guidance surface (Design) / N2 the decision loop wiring this to live position + disruption.
+
+- **D88 — Navigation N2: the decision loop brain (`src/lib/nav/decision-loop.ts`).** The "ACT" step of
+  the nav loop (D86 §2), pure + tested like N0. `evaluateNavDecision` takes the live day projection (N0)
+  + what just changed (a `NavTrigger`: pace behind / off-route detour / Darwin·TfL disruption) + the
+  fetched ways-out (RecoveryOption[]) and decides the SINGLE thing to surface — or nothing. Calm rule
+  honoured: when the day's still on track it returns null (the geography auto-rerouted; no interruption).
+  When a connection thins/breaks it raises ONE decision: headline (what changed) + consequence (the pinch,
+  from the EventETA) + a ranked recommendation (rankFor + the recovery engine's own honest consequence/
+  returnNote) when ways-out exist, else a calm notice. Stable `key` per (trigger, pinch) so a dismiss
+  sticks and the same situation never re-raises. Reuses recovery/engine (rankFor, buildRecoveryOptions)
+  + N0 verbatim — no new I/O; triggers + candidates are fed by the runtime (GPS/Darwin/TfL/ways-out
+  fetch) in the surface phase. 5 tests; tsc + 348 + build green. Next: N1 premium guidance surface
+  (Design) then the runtime wiring (watchPosition pace + live disruption → this engine → the decision card).
