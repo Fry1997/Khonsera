@@ -10,6 +10,7 @@ import { fetchNavRoute } from "@/lib/actions/nav";
 import { requestHeadingPermission } from "@/components/nav/use-heading";
 import { FullLeg } from "./next-leg-map";
 import { useLivePosition } from "./use-live-position";
+import { buildNavCommitments } from "@/lib/nav/day-commitments";
 import type { NavMode, NavRoute } from "@/lib/nav/types";
 
 // The live next-move — timing-first and reactive. Threads the plan, picks the
@@ -198,7 +199,15 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
         <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>{spare} min of free time across your day — room to fit something in.</p>
       ) : null}
 
-      {navOpen && route ? <FullLeg route={route} preview={false} onClose={() => setNavOpen(false)} /> : null}
+      {navOpen && route && next ? (
+        <FullLeg
+          route={route}
+          preview={false}
+          commitments={buildNavCommitments(liveAnchors, next.id)}
+          scheduledRemainingMin={Math.round(route.duration_s / 60)}
+          onClose={() => setNavOpen(false)}
+        />
+      ) : null}
     </section>
   );
 }

@@ -119,13 +119,25 @@ export function NextLegMap({
 // distance-remaining strip. Live GPS + voice when real; a simulated moving dot
 // in the demo so the bench shows the same view. Exported so the day-of card can
 // open it directly on Navigate (no inline map needed).
-export function FullLeg({ route, preview, onClose }: { route: NavRoute; preview: boolean; onClose: () => void }) {
-  // The day's downstream commitments give the event-ETA chip its meaning. The Today
-  // reader that turns real stops + D77 buffers into these is the next plumbing step;
-  // until then live navigation shows the premium guidance (no fabricated arrive-by —
-  // the honesty rule), while the bench/preview carries one sample commitment so the
-  // full surface — chip included — is demonstrable.
-  const commitments: NavCommitment[] = useMemo(() => {
+export function FullLeg({
+  route,
+  preview,
+  onClose,
+  commitments,
+  scheduledRemainingMin,
+}: {
+  route: NavRoute;
+  preview: boolean;
+  onClose: () => void;
+  // The day's downstream commitments (LiveDay supplies the real ones via
+  // buildNavCommitments) — they give the event-ETA chip + decision loop their
+  // meaning. When absent: the bench/preview carries one sample so the full surface
+  // is demonstrable; live with none shows premium guidance (no fabricated arrive-by).
+  commitments?: NavCommitment[];
+  scheduledRemainingMin?: number;
+}) {
+  const cms: NavCommitment[] = useMemo(() => {
+    if (commitments) return commitments;
     if (!preview) return [];
     return [{
       id: "sample",
@@ -135,7 +147,7 @@ export function FullLeg({ route, preview, onClose }: { route: NavRoute; preview:
       bufferMin: 10,
       downstreamMin: 0,
     }];
-  }, [preview, route.duration_s]);
+  }, [commitments, preview, route.duration_s]);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
@@ -144,8 +156,8 @@ export function FullLeg({ route, preview, onClose }: { route: NavRoute; preview:
         active={!preview}
         preview={preview}
         voice={!preview}
-        commitments={commitments}
-        scheduledRemainingMin={Math.round(route.duration_s / 60)}
+        commitments={cms}
+        scheduledRemainingMin={scheduledRemainingMin ?? Math.round(route.duration_s / 60)}
         online={typeof navigator !== "undefined" ? navigator.onLine : true}
         onEnd={onClose}
       />

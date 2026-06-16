@@ -1217,3 +1217,13 @@ Newest at the bottom of each section.
   Today FullLeg): plumb the day's downstream commitments (stops + D77 buffers) + the Darwin/TfL disruption
   feed + the ways-out fetch + the accept-applies-the-option seam, then mount NavSessionView from "Take me
   there"/Today. tsc + build green.
+
+- **D92 — Day-commitments reader: the event-ETA chip is real in live nav.** `src/lib/nav/day-commitments.ts`
+  (`buildNavCommitments`, pure, 5 tests): turns Today's spine anchors into NavCommitment[] — the active
+  obligation leads (downstreamMin 0), later anchors carry their scheduled offset from it (so "behind to
+  the next thing" cascades into the ones after), and each gets its comfort buffer by kind (airport 90 /
+  rail 15 / tube 5 / meeting 10, via D77 comfortBufferMinutes). Wired: LiveDay's Navigate → FullLeg now
+  passes the real commitments + scheduled remaining; FullLeg accepts them (falls back to the preview
+  sample / live-empty when absent). So real day-of navigation now drives the event-ETA chip + the decision
+  loop from the day's actual fixed stops — the differentiator is live (pending production promote +
+  on-device GPS). tsc + 362 + build green; /today stays 133 kB (maplibre lazy).
