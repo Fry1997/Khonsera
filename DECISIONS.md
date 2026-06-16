@@ -978,3 +978,13 @@ Newest at the bottom of each section.
   `deleteReadinessItem` + a status route in `setReadinessStatus` (user items carry their row id in a
   `user:` key). ReadinessPanel gains an always-available "Add a prep item" input + delete. tsc + 326
   tests + build green.
+
+- **D72 — Recurring events (mig 0050), founder-approved.** A recurring COMMITMENT, not a recurring
+  booking — the rule seeds the EVENT only (weekday/time/place); transport is added per occurrence.
+  `recurring_events` table (owner-only) + `itineraries.recurring_event_id`. LAZY materialisation:
+  `materializeRecurring()` runs on Plan load (+ after create), generating the next 8 weekly
+  occurrences as real days (blank day + the event + home base), idempotent by (rule, date) so steady
+  state is just a read. Edit model: template-seeds-the-day — a generated day is its own thing (edits
+  local); editing/deleting the rule only affects future un-generated days; existing days stay.
+  `RecurringManager` on the Plan index (define "Office, Thu, 9–5" once); rules + generated events
+  carry work/personal mode (per-event privacy applies). tsc + 326 tests + build green.

@@ -4,7 +4,10 @@ import { JourneyListCard, type JourneyVM } from "@/components/concierge";
 import { PlanCreate } from "@/components/plan/plan-create";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
 import { DeleteEventButton } from "@/components/plan/delete-event-button";
+import { RecurringManager } from "@/components/plan/recurring-manager";
 import { loadReminders } from "@/lib/actions/reminders";
+import { listRecurringEvents, materializeRecurring } from "@/lib/actions/recurring";
+import type { PlacePickerLocation } from "@/components/place-picker";
 
 // Plan — the INDEX of Events (proposal §3a). The two-level structure that fixes
 // the singleton bug: this lists every Event (a day or a multi-day trip) hinged
@@ -29,6 +32,10 @@ function ymd(d: Date): string {
 export default async function PlanIndexPage() {
   const ctx = await requireUserContext();
   const supabase = await createClient();
+
+  // Lazy-generate any due recurring days before listing (idempotent; steady state
+  // is just a read). Then the new days show in the list below.
+  await materializeRecurring();
 
   const { data: rows } = await supabase
     .from("itineraries")
@@ -86,7 +93,13 @@ export default async function PlanIndexPage() {
   archive.reverse(); // most-recent past first
 
   const empty = itins.length === 0;
-  const reminders = await loadReminders();
+  const [reminders, recurringRules, { data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
+    loadReminders(),
+    listRecurringEvents(),
+    supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
+    supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
+    supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
+  ]);
 
   return (
     <div className="cc-screen">
@@ -98,6 +111,13 @@ export default async function PlanIndexPage() {
       </header>
 
       <PlanCreate />
+
+      <RecurringManager
+        rules={recurringRules}
+        customers={pickCustomers ?? []}
+        customerSites={pickSites ?? []}
+        locations={(pickLocations ?? []) as PlacePickerLocation[]}
+      />
 
       <RemindersStrip initial={reminders} />
 
