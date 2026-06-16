@@ -5,8 +5,9 @@ import { PlanCreate } from "@/components/plan/plan-create";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
 import { DeleteEventButton } from "@/components/plan/delete-event-button";
 import { RecurringManager } from "@/components/plan/recurring-manager";
+import { RecurringOffers } from "@/components/plan/recurring-offers";
 import { loadReminders } from "@/lib/actions/reminders";
-import { listRecurringEvents, materializeRecurring } from "@/lib/actions/recurring";
+import { listRecurringEvents, materializeRecurring, listRecurringOffers } from "@/lib/actions/recurring";
 import type { PlacePickerLocation } from "@/components/place-picker";
 
 // Plan — the INDEX of Events (proposal §3a). The two-level structure that fixes
@@ -93,9 +94,10 @@ export default async function PlanIndexPage() {
   archive.reverse(); // most-recent past first
 
   const empty = itins.length === 0;
-  const [reminders, recurringRules, { data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
+  const [reminders, recurringRules, recurringOffers, { data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
     loadReminders(),
     listRecurringEvents(),
+    listRecurringOffers(),
     supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
     supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
     supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
@@ -111,6 +113,8 @@ export default async function PlanIndexPage() {
       </header>
 
       <PlanCreate />
+
+      <RecurringOffers offers={recurringOffers} />
 
       <RecurringManager
         rules={recurringRules}

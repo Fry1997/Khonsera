@@ -1009,3 +1009,13 @@ Newest at the bottom of each section.
   time just before that commitment — so it slots in as a pre-step, and the solver back-derives its
   real time (office arrive − the walk). No clock required. Fail-safe: untimed stops with no nearby
   timed commitment keep the old Infinity behaviour; timed stops unaffected. tsc + 326 + build green.
+
+- **D75 — Recurring collisions: OFFER, don't silently skip (founder, mig 0051).** When a recurring
+  occurrence lands on a date you already have a plan, the generator still doesn't auto-create a
+  duplicate, but the Plan index now surfaces an OFFER: "{rule} falls on {date}, which already has
+  {plan} — add it to that day?" with Add / Skip. Add merges the rule's event into the EXISTING day
+  (createStop + the rule's mode set explicitly — so an office WORK event on a personal Dancing Duck
+  day stays workspace-visible while the rest stays private, per D70). The decision is remembered in
+  `recurring_occurrence_overrides` (owner-only, unique per rule+date) so it never re-asks. Offers
+  exclude the rule's own generated days. listRecurringOffers + resolveRecurringOffer +
+  RecurringOffers on /plan. tsc + 326 + build green.
