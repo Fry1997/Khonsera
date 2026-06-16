@@ -1202,3 +1202,18 @@ Newest at the bottom of each section.
   only — the runtime (watchPosition pace + Darwin/TfL + ways-out fetch → N0/N2 → these props) is the next
   wiring phase, deliberately separate (consistent with brain-before-wiring). Skin + redlines + proof in
   docs/design/. tsc + 352 + build green.
+
+- **D91 — Navigation runtime loop (the three layers connected).** Built the orchestrator that turns
+  N0+N2+N1 into a live experience. `src/lib/nav/session.ts` (`projectSession`, pure, 5 tests): a live
+  snapshot (active-leg remaining from the guidance tick + the day's downstream commitments + a known
+  downstream delay + any fetched ways-out) → the surface view (live EventETAs + the one decision).
+  Derives "behind pace" from live-remaining vs scheduled-remaining; a detected disruption takes
+  precedence over pace; stays silent unless the day thins/breaks (calm rule lives in N2). `use-nav-session.ts`
+  wraps the existing `useGuidance` (GPS/voice/off-route reroute), runs projectSession each fix, builds the
+  ManeuverBanner VM, owns the dismissed-keys + the surface state machine (acquiring/guiding/offsignal/
+  arrived). `nav-session-view.tsx` composes the hook + NavMap + GuidanceSurface into the mountable
+  full-screen surface (degrades gracefully with no commitments). REMAINING for the live mount (needs
+  on-device GPS verification + a day-commitments reader, so not blind-swapped over the working /navigate +
+  Today FullLeg): plumb the day's downstream commitments (stops + D77 buffers) + the Darwin/TfL disruption
+  feed + the ways-out fetch + the accept-applies-the-option seam, then mount NavSessionView from "Take me
+  there"/Today. tsc + build green.
