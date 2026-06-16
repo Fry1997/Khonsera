@@ -33,6 +33,7 @@ import {
   type LegOption,
 } from "@/lib/actions/plan-edit";
 import { updateStop } from "@/lib/actions/stops";
+import { setStopMode } from "@/lib/actions/plan-edit";
 
 // The interactive planner spine (planner master brief §5). Renders the
 // chronological rail of anchors + the leg/gap between each pair, and hosts the
@@ -150,6 +151,7 @@ export function PlanSpine({
                       anchor={n.anchor}
                       onEditVariable={(id, slot) => setEdit({ anchor: n.anchor!, slot })}
                       onRename={(id) => setRename({ id, title: n.anchor!.title === "Stop" ? "" : n.anchor!.title })}
+                      onFlipMode={(id, next) => { void setStopMode({ stopId: id, itineraryId: eventId, mode: next }).then((r) => { if (r.ok) router.refresh(); }); }}
                     />
                     <button
                       type="button"

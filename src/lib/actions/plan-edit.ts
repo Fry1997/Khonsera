@@ -303,6 +303,26 @@ export async function setPlanBase(input: {
   return { ok: true };
 }
 
+// Tag a single EVENT work/personal (per-event privacy, mig 0048). The privacy
+// boundary is per-stop now: a personal event is invisible to the workspace even
+// inside a work day. RLS (owns_itinerary) lets only the owner change it.
+export async function setStopMode(input: {
+  stopId: string;
+  itineraryId: string;
+  mode: "work" | "personal";
+}): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("stops")
+    .update({ app_mode: input.mode })
+    .eq("id", input.stopId)
+    .eq("workspace_id", ctx.workspaceId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/plan/${input.itineraryId}`);
+  return { ok: true };
+}
+
 // The day's INTENTION — "what's this day for" (plan elevation; the Intention is a
 // core entity the IntentionCard reads but nothing wrote). One per day: upsert the
 // description, or clear it when blanked. RLS (can_access_itinerary) gates it.

@@ -42,6 +42,7 @@ export type AnchorVM = {
   time?: TimeWindow; // ISO strings; `to` present => window
   durationMinutes?: number;
   fixed?: boolean; // immovable hard point
+  mode?: "work" | "personal"; // per-event work/personal tag (privacy + expensing)
   // The three-variable model (§5.3). When present, the AnchorCard renders the
   // editable arrive-by / duration / leave-by triad; the third is `derived`.
   vars?: {

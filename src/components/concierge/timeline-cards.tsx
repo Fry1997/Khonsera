@@ -73,11 +73,13 @@ export function AnchorCard({
   onSelect,
   onEditVariable,
   onRename,
+  onFlipMode,
 }: {
   anchor: AnchorVM;
   onSelect?: (id: string) => void;
   onEditVariable?: (id: string, slot: AnchorVariableSlot) => void;
   onRename?: (id: string) => void; // deep review 2026-06-15 — tap the title to rename
+  onFlipMode?: (id: string, next: "work" | "personal") => void; // per-event work/personal tag
 }) {
   // Three-variable model when `vars` is present; else the legacy time fallback.
   const vars = anchor.vars;
@@ -96,6 +98,17 @@ export function AnchorCard({
     >
       <div className="cc-anchor-head">
         <span className="cc-anchor-type">{ANCHOR_LABEL[anchor.type]}</span>
+        {onFlipMode && anchor.mode ? (
+          <button
+            type="button"
+            className="cc-mode-tag cc-mode-tag-btn"
+            data-mode={anchor.mode}
+            onClick={(e) => { e.stopPropagation(); onFlipMode(anchor.id, anchor.mode === "work" ? "personal" : "work"); }}
+            title={`This event is ${anchor.mode} — tap to make it ${anchor.mode === "work" ? "personal" : "work"}`}
+          >
+            {anchor.mode === "work" ? "Work" : "Personal"}
+          </button>
+        ) : null}
       </div>
       {onRename ? (
         <button

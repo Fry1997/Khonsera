@@ -53,6 +53,9 @@
 .cc-mode-tag::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .cc-mode-tag[data-mode="work"] { color: var(--gold-2); background: var(--gold-tint); }
 .cc-mode-tag[data-mode="personal"] { color: var(--ink-faint); background: var(--ink-soft); }
+/* The per-event flip (tap to toggle work/personal) — a tappable ModeTag (mig 0048). */
+.cc-mode-tag-btn { border: none; cursor: pointer; font: inherit; }
+.cc-mode-tag-btn:hover { filter: brightness(0.97); }
 
 /* ---------------------------------------------------------------------------
  * P1 · PlanModeFlip — plan-mode-flip.tsx · .cc-mode-flip

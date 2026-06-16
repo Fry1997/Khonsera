@@ -92,6 +92,7 @@ type StopRow = {
   end_time: string | null;
   duration_minutes: number | null;
   is_time_fixed: boolean | null;
+  app_mode: "work" | "personal" | null;
   metadata: Record<string, unknown> | null;
   location: { name?: string | null; latitude?: number | null; longitude?: number | null } | null;
   customer_site: { name?: string | null; latitude?: number | null; longitude?: number | null } | null;
@@ -182,7 +183,7 @@ async function loadSpine(itineraryId: string) {
   return Promise.all([
     supabase
       .from("stops")
-      .select("id, sequence, type, title, start_time, end_time, duration_minutes, is_time_fixed, metadata, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(code, name, latitude, longitude)")
+      .select("id, sequence, type, title, start_time, end_time, duration_minutes, is_time_fixed, app_mode, metadata, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(code, name, latitude, longitude)")
       .eq("itinerary_id", itineraryId)
       .order("sequence"),
     supabase
@@ -263,6 +264,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     time: st.start_time ? { from: st.start_time, to: st.end_time ?? undefined } : undefined,
     durationMinutes: st.duration_minutes ?? undefined,
     fixed: st.is_time_fixed ?? undefined,
+    mode: st.app_mode ?? undefined,
     vars: buildVars(st),
   });
   const legOf = (tr: TransRow, from: StopRow, to: StopRow): LegVM => {

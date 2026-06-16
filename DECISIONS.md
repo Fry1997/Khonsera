@@ -957,3 +957,17 @@ Newest at the bottom of each section.
   this day for" that writes the `intentions` table (RLS already can_access_itinerary), replacing the
   dead IntentionCard render path (the card read intentions but nothing wrote them). Dropped: explicit
   trip dates (span auto-infers) and a spine preview (the plan threads live). tsc + 326 tests + build green.
+
+- **D70 — TRUE per-event work/personal privacy (founder choice, mig 0048).** The privacy boundary
+  moved from the whole day to the individual event. A day can hold both work and personal events;
+  a personal event is INVISIBLE to the workspace even inside a work day; the owner always sees all.
+  Schema: `stops.app_mode` (nullable + a BEFORE-INSERT trigger that inherits the day's mode; an
+  explicit `setStopMode` overrides; NULL = not-work = fail-closed). RLS: `stops` → owner OR (work AND
+  member); `transitions` → owner OR (member AND neither endpoint personal); `can_access_itinerary`
+  redefined to owner OR (member AND the day has a work stop); `itineraries_select` flows through it.
+  New `owns_itinerary` SECURITY-DEFINER helper. **Strictly tightening** — it can only reduce member
+  visibility, never widen it; verified policy defns + backfill (36 stops, all personal → all hidden
+  from any workspace) + advisor (no new errors). `notes` were already per-mode (owner / work+
+  org-reviewable), unchanged. UI: a tappable ModeTag on each AnchorCard (work↔personal) via
+  `setStopMode`; the day-level `PlanModeFlip` is now the default-for-new-events. The itinerary-level
+  `mode` remains as that default + primary label. tsc + 326 tests + build green.
