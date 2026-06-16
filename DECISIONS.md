@@ -1001,3 +1001,11 @@ Newest at the bottom of each section.
   it can never break a normal day). Renders as a non-editable base-style node ("Back to your car").
   Also fixes park-and-ride for trains by the same logic. (Paired follow-up: a parking/utility stop
   deriving its time from the next commitment instead of asking for an arrive-by.) tsc + 326 + build.
+
+- **D74 — Parking-as-stepping-stone: untimed places slot in by geography (pairs with D73).** The
+  other half of the parking clunk: an untimed "park before the office" stop sorted to the end (no
+  time → Infinity), so you had to fake an arrive-by to get the order right. Now `resequenceAndSolve`
+  gives an untimed MIDDLE stop within ~2mi (walking distance) of a timed commitment an effective sort
+  time just before that commitment — so it slots in as a pre-step, and the solver back-derives its
+  real time (office arrive − the walk). No clock required. Fail-safe: untimed stops with no nearby
+  timed commitment keep the old Infinity behaviour; timed stops unaffected. tsc + 326 + build green.

@@ -741,7 +741,10 @@ async function resequenceAndSolve(itineraryId: string): Promise<void> {
 
   const { data: rows } = await supabase
     .from("stops")
-    .select("id, type, sequence, start_time, metadata")
+    .select(`id, type, sequence, start_time, is_time_fixed, metadata,
+      location:locations(latitude, longitude),
+      customer_site:customer_sites(latitude, longitude),
+      transport_hub:transport_hubs(latitude, longitude)`)
     .eq("itinerary_id", itineraryId)
     .eq("workspace_id", ctx.workspaceId);
 
@@ -756,20 +759,53 @@ async function resequenceAndSolve(itineraryId: string): Promise<void> {
   const rank = (r: { type: string; metadata: Record<string, unknown> | null }) =>
     isStart(r as never) ? 0 : isEnd(r as never) ? 3 : isCollect(r) ? 2 : 1;
 
-  const sorted = (rows ?? []).slice().sort((a, b) => {
-    const ra = rank(a as never), rb = rank(b as never);
+  type Row = {
+    id: string; type: string; sequence: number | null; start_time: string | null;
+    is_time_fixed: boolean | null; metadata: Record<string, unknown> | null;
+    location: { latitude: number | null; longitude: number | null } | null;
+    customer_site: { latitude: number | null; longitude: number | null } | null;
+    transport_hub: { latitude: number | null; longitude: number | null } | null;
+  };
+  const allRows = (rows ?? []) as unknown as Row[];
+  const coordOf = (r: Row) => {
+    const lat = r.location?.latitude ?? r.customer_site?.latitude ?? r.transport_hub?.latitude;
+    const lng = r.location?.longitude ?? r.customer_site?.longitude ?? r.transport_hub?.longitude;
+    return lat != null && lng != null ? { lat, lng } : null;
+  };
+  // A parking/stepping-stone added WITHOUT a clock ("park before the office") used
+  // to sort to the end (no time → Infinity), so you had to fake an arrive-by. Now
+  // an untimed middle stop within walking distance (~2mi) of a timed commitment is
+  // treated as a pre-step TO it — its effective sort time is just before that
+  // commitment, so it slots in right, and the solver back-derives its real time.
+  const timedMiddle = allRows.filter((r) => rank(r) === 1 && r.start_time);
+  const effTime = (r: Row): number => {
+    if (r.start_time) return new Date(r.start_time).getTime();
+    const c = coordOf(r);
+    if (!c) return Infinity;
+    let best: number | null = null;
+    for (const m of timedMiddle) {
+      const mc = coordOf(m);
+      if (!mc) continue;
+      const miles = haversineMeters(c.lat, c.lng, mc.lat, mc.lng) / 1609.344;
+      if (miles >= 2) continue;
+      const t = new Date(m.start_time as string).getTime() - 60_000; // just before it
+      if (best == null || t < best) best = t;
+    }
+    return best ?? Infinity;
+  };
+
+  const sorted = allRows.slice().sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
     if (ra !== rb) return ra - rb;
-    const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
-    const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
-    return ta - tb;
+    return effTime(a) - effTime(b);
   });
-  const ordered = sorted.map((r) => r.id as string);
+  const ordered = sorted.map((r) => r.id);
   // Only rewrite sequences when the chronological order differs from the stored
   // one — cheap enough to call on every Event open as a self-heal.
-  const currentOrder = (rows ?? [])
+  const currentOrder = allRows
     .slice()
-    .sort((a, b) => (a.sequence as number) - (b.sequence as number))
-    .map((r) => r.id as string);
+    .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+    .map((r) => r.id);
   const needsReorder = ordered.some((id, i) => id !== currentOrder[i]);
   if (ordered.length > 1 && needsReorder) {
     await reorderStops({ itinerary_id: itineraryId, stop_ids: ordered });
