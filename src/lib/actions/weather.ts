@@ -2,9 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
-import { currentConditions, type CurrentWeather } from "@/lib/integrations/open-meteo";
+import { currentConditions, dayForecast, type CurrentWeather, type ForecastHour } from "@/lib/integrations/open-meteo";
 
-export type LocalWeather = CurrentWeather & { place: string };
+export type LocalWeather = CurrentWeather & { place: string; hours: ForecastHour[] };
 
 // "Weather where you are" for the Today strip. Uses the user's home/office
 // location coords (server-known — no GPS prompt, so it renders whole with no
@@ -29,7 +29,10 @@ export async function getLocalWeather(): Promise<LocalWeather | null> {
   const lng = loc?.longitude as number | null | undefined;
   if (lat == null || lng == null) return null;
 
-  const w = await currentConditions({ lat, lng });
+  const [w, hours] = await Promise.all([
+    currentConditions({ lat, lng }),
+    dayForecast({ lat, lng }),
+  ]);
   if (!w) return null;
-  return { ...w, place: (loc?.name as string) ?? "Home" };
+  return { ...w, place: (loc?.name as string) ?? "Home", hours };
 }

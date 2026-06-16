@@ -1019,3 +1019,12 @@ Newest at the bottom of each section.
   `recurring_occurrence_overrides` (owner-only, unique per rule+date) so it never re-asks. Offers
   exclude the rule's own generated days. listRecurringOffers + resolveRecurringOffer +
   RecurringOffers on /plan. tsc + 326 + build green.
+
+- **D76 — Live status gated to near-now + Today hourly forecast (founder).** (1) BUG: live Darwin/TfL
+  enrichment ran for ALL days, so opening a FUTURE day matched its 08:15 against TODAY's live board
+  (wrong platform/timing). Fixed: live lookups (Darwin departures, TfL line status + leg plans, the
+  docked-pass LivePass `live` prop) only fire when a leg's scheduled departure is in a near-now window
+  [now-1h, now+3h] — the live board's useful horizon. Future/past days show the static plan, no live
+  board. (2) FEATURE: Today's weather went from a single current-conditions chip to an HOURLY strip —
+  `dayForecast` (Open-Meteo, cached) returns the rest of today hour-by-hour (temp + condition), shown
+  as a horizontal scroll under the header, with the current chip kept. tsc + 326 + build green.

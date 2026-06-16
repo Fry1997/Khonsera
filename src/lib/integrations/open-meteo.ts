@@ -63,6 +63,38 @@ export function summarizeCorridor(res: OpenMeteoResponse, startIso: string, endI
   return { severity, headline, maxPrecipMm: Math.round(maxPrecip * 10) / 10, maxGustKmh: Math.round(maxGust), snow };
 }
 
+// Today's hourly forecast (from the current hour to end of day, Europe/London) —
+// the temperature + condition for each hour, for the Today strip. Cached 30 min;
+// empty on failure → the strip is omitted.
+export type ForecastHour = { label: string; tempC: number; code: number; headline: string };
+
+export async function dayForecast(args: { lat: number; lng: number }): Promise<ForecastHour[]> {
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const url =
+    `${BASE}?latitude=${args.lat.toFixed(4)}&longitude=${args.lng.toFixed(4)}` +
+    `&hourly=temperature_2m,weather_code&start_date=${date}&end_date=${date}&timezone=Europe%2FLondon`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000), next: { revalidate: 1800 } });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { hourly?: { time?: string[]; temperature_2m?: number[]; weather_code?: number[] } };
+    const h = json.hourly;
+    if (!h?.time?.length) return [];
+    const nowHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", hour12: false }).format(new Date()));
+    const out: ForecastHour[] = [];
+    for (let i = 0; i < h.time.length; i++) {
+      const hh = Number(h.time[i].slice(11, 13));
+      if (Number.isNaN(hh) || hh < nowHour) continue; // only the rest of today
+      const temp = h.temperature_2m?.[i];
+      if (temp == null) continue;
+      const code = h.weather_code?.[i] ?? 0;
+      out.push({ label: `${String(hh).padStart(2, "0")}:00`, tempC: Math.round(temp), code, headline: wmoHeadline(code) });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 // Live fetch (keyless). Null on any failure → the rule stays silent.
 export async function corridorForecast(args: {
   lat: number;

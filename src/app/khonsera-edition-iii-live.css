@@ -203,3 +203,13 @@
 .cc-weather-place { font-family: var(--mono); font-size: 10px; letter-spacing: var(--ls-eyebrow, 0.16em);
   text-transform: uppercase; color: var(--ink-faint); }
 .cc-weather[data-day="false"] { background: var(--card-2); }
+
+/* Today hourly forecast strip (2026-06-16) — the rest of today, hour by hour. */
+.cc-weather-hours { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1);
+  scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.cc-weather-hour { flex: 0 0 auto; min-width: 58px; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: var(--space-2) var(--space-2-5); border: 1px solid var(--rule); border-radius: var(--radius-md);
+  background: var(--card); }
+.cc-weather-hour-time { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.cc-weather-hour-temp { font-family: var(--display); font-size: 17px; font-weight: var(--fw-medium, 500); color: var(--ink); }
+.cc-weather-hour-cond { font-size: 10px; color: var(--ink-dim); text-align: center; line-height: 1.2; }

@@ -324,6 +324,18 @@ export default async function TodayPage({
         ) : null}
       </header>
 
+      {weather && weather.hours.length > 0 ? (
+        <div className="cc-weather-hours" aria-label="Today's forecast by the hour">
+          {weather.hours.map((h) => (
+            <div key={h.label} className="cc-weather-hour" title={h.headline}>
+              <span className="cc-weather-hour-time">{h.label}</span>
+              <span className="cc-weather-hour-temp">{h.tempC}&deg;</span>
+              <span className="cc-weather-hour-cond">{h.headline}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <TodayDisruption items={disruptions} />
 
       {inLondon ? <TflLineStatus /> : null}

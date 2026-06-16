@@ -375,6 +375,11 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       legs.forEach((lt, idx) => {
         const originStop = stopById.get(lt.originStopId);
         const iso = originStop?.type === "transit_changeover" ? originStop.end_time : originStop?.start_time;
+        // Live departure status is only fetched (client-side, via LivePass) when
+        // this hop leaves around NOW — otherwise a future day's 08:15 would show
+        // TODAY's 08:15 platform/timing. Window: 1h after → 3h before departure.
+        const ms = iso ? new Date(iso).getTime() : null;
+        const liveNow = ms != null && ms >= Date.now() - 60 * 60_000 && ms <= Date.now() + 180 * 60_000;
         units.push({
           key: `legpass-${lt.originStopId}`,
           entryId: lt.originStopId,
@@ -383,11 +388,13 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           // dest CRS disambiguates same-minute departures at a busy interchange
           // (Luton can have two 07:50s on different platforms — match the one
           // calling at this hop's destination, not just any train at that time).
-          live: {
-            crs: originStop?.transport_hub?.code ?? null,
-            time: londonHHMM(iso),
-            dest: lt.ticket.legs[0]?.destination.code ?? null,
-          },
+          live: liveNow
+            ? {
+                crs: originStop?.transport_hub?.code ?? null,
+                time: londonHHMM(iso),
+                dest: lt.ticket.legs[0]?.destination.code ?? null,
+              }
+            : { crs: null, time: null, dest: null },
           passDelete: lt.isFirstLeg ? lt.runDepartureStopId : null,
           continuesRun: idx < legs.length - 1,
         });
@@ -462,13 +469,31 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     return { key: u.key, anchor: u.anchor, isBase, baseEyebrow: isCollectCar ? "Back to your car" : undefined, accommodation, notes, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
+  // Live status (Darwin departures, TfL line status + leg plans) is only meaningful
+  // for trains leaving around NOW — a live board has a ~few-hour horizon. Without
+  // this guard, opening a FUTURE day (e.g. the 25th) matched its 08:15 against
+  // TODAY's 08:15 board and showed the wrong platform/timing. Only enrich legs whose
+  // scheduled departure sits in the live window.
+  const nowMs = Date.now();
+  const LIVE_BEFORE_MS = 60 * 60_000; // up to 1h after a scheduled departure
+  const LIVE_AHEAD_MS = 180 * 60_000; // up to 3h before — the board's useful horizon
+  const inLiveWindow = (iso?: string | null): boolean => {
+    if (!iso) return false;
+    const t = new Date(iso).getTime();
+    return t >= nowMs - LIVE_BEFORE_MS && t <= nowMs + LIVE_AHEAD_MS;
+  };
+  const anyLiveLeg = nodes.some((n) => n.after?.kind === "leg" && inLiveWindow(stopById.get(n.after.fromStopId)?.start_time));
+
   // Phase 8 — resolve each London transit leg to a live TfL plan; Phase 9 — when a
   // line on that route is disrupted, translate it into a consequence on the next
-  // commitment (the live engine). Mock until TFL_APP_KEY is set.
-  const statusRes = await tflLineStatus();
+  // commitment (the live engine). Mock until TFL_APP_KEY is set. Only when the day
+  // actually has a leg leaving around now.
   const disrupted = new Map<string, TflLine>();
-  if (statusRes.mode !== "unavailable") {
-    for (const l of statusRes.data) if (l.state !== "good") disrupted.set(l.name.toLowerCase(), l);
+  if (anyLiveLeg) {
+    const statusRes = await tflLineStatus();
+    if (statusRes.mode !== "unavailable") {
+      for (const l of statusRes.data) if (l.state !== "good") disrupted.set(l.name.toLowerCase(), l);
+    }
   }
   const DELAY_FOR: Record<string, number> = { minor: 6, severe: 16, suspended: 35, info: 0 };
   const liveDelays: number[] = []; // every live delay on the day, for the whole-day cascade
@@ -476,6 +501,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     nodes.map(async (n) => {
       if (n.after?.kind !== "leg") return;
       const fromStop = stopById.get(n.after.fromStopId);
+      // Future/past days never hit a live board.
+      if (!inLiveWindow(fromStop?.start_time)) return;
 
       // Rail path — a booked train leg → live Darwin status → engine consequence.
       // Dormant (no call) unless DARWIN_LDBWS_KEY is set, so no false alarms.
