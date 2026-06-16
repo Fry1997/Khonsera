@@ -71,10 +71,11 @@ export function NavSessionView(props: {
       remainingMin: Math.round((props.route.duration_s * frac) / 60),
       maneuverIndex: mIdx,
       toManeuverM: props.route.maneuvers[mIdx]?.distance_m ?? 0,
+      progress: geom.length > 1 ? simIdx / (geom.length - 1) : 0,
     };
   }, [props.preview, props.route, geom, simIdx]);
 
-  const { fix, surfaceState, view, maneuver, dismiss } = useNavSession({
+  const { fix, surfaceState, view, maneuver, progress, dismiss } = useNavSession({
     route: props.route,
     active: props.active,
     voice: props.voice,
@@ -106,6 +107,7 @@ export function NavSessionView(props: {
         <NavMap
           route={props.route}
           position={fix ? { lat: fix.lat, lng: fix.lng, heading: fix.heading } : null}
+          progress={progress}
           follow
         />
       }

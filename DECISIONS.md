@@ -1227,3 +1227,17 @@ Newest at the bottom of each section.
   sample / live-empty when absent). So real day-of navigation now drives the event-ETA chip + the decision
   loop from the day's actual fixed stops — the differentiator is live (pending production promote +
   on-device GPS). tsc + 362 + build green; /today stays 133 kB (maplibre lazy).
+
+- **D93 — Nav polish pass: the cinematic/cartographic layer (NavMap).** Founder: the nav looked
+  un-premium — because only the intelligence layer existed, not the cinematic one. Added (all in
+  nav-map.tsx, reviewable from /navigate → "Preview guided view"): (1) SKY/ATMOSPHERE via setSky
+  (themed horizon + fog) — the "3D world" cue when tilted; (2) CINEMATIC CAMERA — puck in the lower
+  third (padding top ~56% of height so the road ahead fills the frame), continuous linear glide
+  between fixes (1s) instead of a per-tick jump, gentle SPEED-ADAPTIVE zoom (17.8 walking → ~16.5
+  fast, eased), pitch 58; (3) PREMIUM ROUTE LINE — a dark routeCasing under a brighter glow + a core
+  line whose gradient DIMS the travelled segment (goldMuted behind `progress`, gold ahead), threaded
+  live via useNavSession→NavSessionView→NavMap (and the preview sim); (4) DIRECTIONAL PUCK — a
+  white-bordered chevron rotated to heading (canvas image), with the flat dot as the no-heading
+  fallback. NB: sky + 3D buildings + crisp vector still REQUIRE the vector basemap on
+  (NEXT_PUBLIC_PMTILES_URL); on raster the camera/route/puck still elevate but the tiles stay OSM.
+  tsc + 362 + build green.

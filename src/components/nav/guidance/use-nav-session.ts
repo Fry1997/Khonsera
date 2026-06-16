@@ -38,6 +38,7 @@ export function useNavSession(opts: {
     remainingMin: number;
     maneuverIndex: number;
     toManeuverM: number;
+    progress?: number; // 0..1 along the route (for the travelled-dim gradient)
     arrived?: boolean;
   };
 }) {
@@ -94,5 +95,13 @@ export function useNavSession(opts: {
     return { kind: m.kind, distanceValue: value, distanceUnit: unit, step: m.instruction, nextKind: next?.kind };
   }, [opts.route, maneuverIndex, toManeuverM]);
 
-  return { fix: liveFix, geoError, surfaceState, view, maneuver, dismiss };
+  // Fraction of the route travelled — live from the guidance tick, or the override
+  // in preview. Drives the route line's travelled-dim gradient.
+  const progress = ov?.progress ?? (
+    state && state.along_m + state.remaining_m > 0
+      ? state.along_m / (state.along_m + state.remaining_m)
+      : 0
+  );
+
+  return { fix: liveFix, geoError, surfaceState, view, maneuver, progress, dismiss };
 }
