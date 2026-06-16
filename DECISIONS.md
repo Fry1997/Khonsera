@@ -1154,3 +1154,15 @@ Newest at the bottom of each section.
   shapes Design asked for (NavFix, NavSession/NavLeg/EventETA, TubeGraph/TubeLegPlan) + provider gating +
   a measurable "definition of premium" + phasing N0–N5. Unblocks Design (surface states + data shapes +
   modality).
+
+- **D87 — Navigation N0: event-aware ETA core (`src/lib/nav/event-eta.ts`).** The first slice of the
+  navigation spec (D86) — the number that makes us different, built as a pure, unit-tested engine before
+  any UI (consistent with how live/engine + recovery were built ahead of their surface). `projectEventETA`
+  turns "live minutes from now to the place" + a commitment's needed-by + comfort buffer (D77) into the
+  relationship the user cares about: projected arrival, **spareMin** (how early you land — the D82 spare,
+  now live), **slackMin** (margin against your comfort), and a state (on_track / thinning / will_miss).
+  `projectDay` projects the whole remaining chain and names the **pinch** (earliest break, else thinnest).
+  `deriveMinutesFromNow` composes active-leg guidance remaining + downstream scheduled + live delay (kept
+  separate so it's testable without a GPS/route harness). Composes with — does not duplicate — live/engine
+  (decisionClock/cascade/delayConsequence) and the buffers. 8 tests; tsc + 343 + build green. Next: N1
+  premium guidance surface (Design) / N2 the decision loop wiring this to live position + disruption.
