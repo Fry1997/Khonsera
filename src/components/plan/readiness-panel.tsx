@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { setReadinessStatus } from "@/lib/actions/readiness";
+import { setReadinessStatus, createReadinessItem, deleteReadinessItem } from "@/lib/actions/readiness";
 import { createTask } from "@/lib/actions/tasks";
 import { CATEGORY_LABELS, type ReadinessItem, type ReadinessCategory } from "@/lib/readiness/types";
 
@@ -13,9 +13,27 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
   const [open, setOpen] = useState(true);
+  const [addLabel, setAddLabel] = useState("");
 
   const live = items.filter((i) => i.status === "open" || i.status === "snoozed");
   const doneCount = items.filter((i) => i.status === "done").length;
+
+  async function addItem() {
+    const label = addLabel.trim();
+    if (!label) return;
+    setAddLabel("");
+    setPending("__add__");
+    await createReadinessItem({ itineraryId, label });
+    setPending(null);
+    router.refresh();
+  }
+  async function removeItem(key: string) {
+    if (!key.startsWith("user:")) return;
+    setPending(key);
+    await deleteReadinessItem(key.slice("user:".length), itineraryId);
+    setPending(null);
+    router.refresh();
+  }
 
   async function set(key: string, status: ReadinessItem["status"]) {
     setPending(key);
@@ -32,8 +50,6 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
     setPending(null);
     router.refresh();
   }
-
-  if (items.length === 0) return null;
 
   // Which finder tab a "book" gap deep-links to. Hotel gaps → stays, ticket gaps
   // → flights (rail booking is Assertis-pending). Parking books via its nudge, so
@@ -57,7 +73,7 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
         </span>
       </button>
 
-      {open && live.length > 0 ? (
+      {open ? (
         <div className="cc-readiness-body">
           {[...byCat.entries()].map(([cat, list]) => (
             <div key={cat} className="cc-readiness-group">
@@ -83,12 +99,30 @@ export function ReadinessPanel({ itineraryId, items }: { itineraryId: string; it
                       </button>
                     ) : null}
                     <button type="button" disabled={pending === i.key} onClick={() => set(i.key, "done")}>Done</button>
-                    <button type="button" disabled={pending === i.key} onClick={() => set(i.key, "dismissed")}>Dismiss</button>
+                    {i.key.startsWith("user:") ? (
+                      <button type="button" disabled={pending === i.key} onClick={() => removeItem(i.key)}>Delete</button>
+                    ) : (
+                      <button type="button" disabled={pending === i.key} onClick={() => set(i.key, "dismissed")}>Dismiss</button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           ))}
+
+          {live.length === 0 ? <p className="cc-readiness-clear">You&rsquo;re set. Add your own reminders below.</p> : null}
+
+          {/* Add your own prep item ("remember the charger"). */}
+          <div className="cc-readiness-add">
+            <input
+              className="cc-field"
+              value={addLabel}
+              placeholder="Add a prep item — e.g. passport, charger"
+              onChange={(e) => setAddLabel(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void addItem(); }}
+            />
+            <button type="button" disabled={pending === "__add__" || !addLabel.trim()} onClick={() => void addItem()}>Add</button>
+          </div>
         </div>
       ) : null}
     </section>

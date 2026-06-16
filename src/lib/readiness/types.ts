@@ -8,7 +8,8 @@ export type ReadinessCategory =
   | "bookings"
   | "devices"
   | "international"
-  | "multiday";
+  | "multiday"
+  | "custom"; // user-authored prep items
 
 export type ReadinessSeverity = "info" | "advise" | "warn";
 
@@ -37,6 +38,7 @@ export const CATEGORY_LABELS: Record<ReadinessCategory, string> = {
   devices: "Devices & power",
   international: "International",
   multiday: "Your trip",
+  custom: "Your reminders",
 };
 
 export type DaySummary = {

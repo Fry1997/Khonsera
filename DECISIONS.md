@@ -971,3 +971,10 @@ Newest at the bottom of each section.
   org-reviewable), unchanged. UI: a tappable ModeTag on each AnchorCard (work↔personal) via
   `setStopMode`; the day-level `PlanModeFlip` is now the default-for-new-events. The itinerary-level
   `mode` remains as that default + primary label. tsc + 326 tests + build green.
+
+- **D71 — Manual prep items (mig 0049).** The readiness/prep list was 100% auto-derived — you
+  couldn't add your own. Added `readiness_items` (owner-only RLS, prep is personal); `loadReadiness`
+  merges derived checks + user items under a new "Your reminders" category; `createReadinessItem` /
+  `deleteReadinessItem` + a status route in `setReadinessStatus` (user items carry their row id in a
+  `user:` key). ReadinessPanel gains an always-available "Add a prep item" input + delete. tsc + 326
+  tests + build green.

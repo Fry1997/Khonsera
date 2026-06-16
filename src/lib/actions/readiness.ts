@@ -41,7 +41,7 @@ export async function loadReadiness(itineraryId: string): Promise<ReadinessItem[
     .maybeSingle();
   if (!itin) return [];
 
-  const [{ data: s }, { data: t }, { data: state }] = await Promise.all([
+  const [{ data: s }, { data: t }, { data: state }, { data: userItems }] = await Promise.all([
     supabase
       .from("stops")
       .select("id, type, title, start_time, end_time, location:locations(latitude, longitude), customer_site:customer_sites(latitude, longitude), transport_hub:transport_hubs(latitude, longitude)")
@@ -54,6 +54,11 @@ export async function loadReadiness(itineraryId: string): Promise<ReadinessItem[
       .from("readiness_state")
       .select("item_key, status, snooze_until")
       .eq("itinerary_id", itineraryId),
+    supabase
+      .from("readiness_items")
+      .select("id, label, status")
+      .eq("itinerary_id", itineraryId)
+      .order("created_at"),
   ]);
 
   const stops: StopForReadiness[] = ((s ?? []) as unknown as StopRow[]).map((row) => ({
@@ -78,7 +83,7 @@ export async function loadReadiness(itineraryId: string): Promise<ReadinessItem[
   const byKey = new Map<string, { status: ReadinessStatus; snooze_until: string | null }>();
   for (const r of state ?? []) byKey.set(r.item_key as string, { status: r.status as ReadinessStatus, snooze_until: (r.snooze_until as string | null) ?? null });
 
-  return checks.map((c) => {
+  const derived: ReadinessItem[] = checks.map((c) => {
     const saved = byKey.get(c.key);
     let status: ReadinessStatus = saved?.status ?? "open";
     // A snooze that has elapsed re-opens the item.
@@ -87,6 +92,52 @@ export async function loadReadiness(itineraryId: string): Promise<ReadinessItem[
     }
     return { ...c, status };
   });
+
+  // User-authored items (key prefixed `user:` so setReadinessStatus routes them).
+  const authored: ReadinessItem[] = (userItems ?? []).map((u) => ({
+    key: `user:${u.id as string}`,
+    category: "custom",
+    label: u.label as string,
+    severity: "info",
+    action: { kind: "none" },
+    status: (u.status as ReadinessStatus) ?? "open",
+  }));
+
+  return [...derived, ...authored];
+}
+
+const ITEM_PREFIX = "user:";
+
+// Add a prep item of your own ("remember the charger"). Owner-only.
+export async function createReadinessItem(input: {
+  itineraryId: string;
+  label: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requireUserContext();
+  const label = input.label.trim();
+  if (!label) return { ok: false, error: "Type something to add." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("readiness_items").insert({
+    itinerary_id: input.itineraryId,
+    user_id: ctx.userId,
+    workspace_id: ctx.workspaceId,
+    label,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/plan/${input.itineraryId}`);
+  return { ok: true };
+}
+
+export async function deleteReadinessItem(
+  id: string,
+  itineraryId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireUserContext();
+  const supabase = await createClient();
+  const { error } = await supabase.from("readiness_items").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/plan/${itineraryId}`);
+  return { ok: true };
 }
 
 export async function setReadinessStatus(
@@ -96,6 +147,14 @@ export async function setReadinessStatus(
 ): Promise<{ ok: boolean; error?: string }> {
   await requireUserContext();
   const supabase = await createClient();
+  // A user-authored item carries its row id in the key — update it directly.
+  if (itemKey.startsWith(ITEM_PREFIX)) {
+    const id = itemKey.slice(ITEM_PREFIX.length);
+    const { error } = await supabase.from("readiness_items").update({ status }).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/plan/${itineraryId}`);
+    return { ok: true };
+  }
   const { error } = await supabase
     .from("readiness_state")
     .upsert(
