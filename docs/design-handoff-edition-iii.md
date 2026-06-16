@@ -462,3 +462,75 @@ surfaces sharing the Edition III tokens. Skin `.cc-mileage*`, `.cc-budget*`, `.c
   positioned (coords + view-on-map link sit on the ground for now).
 - No token requests; verified. Redlines + map saved to `docs/design/edition-iii-sharing-*`.
   Build green · 324 tests · tsc clean.
+
+---
+
+# ROUND 13 · Accrued since the sharing handoff — 🟡 ALL TO SKIN (2026-06-16)
+
+A lot landed in a coherence + correctness + features push (DECISIONS D63–D76). Everything below
+ships FUNCTIONAL, on-token, and contract-classed — Design owns the visual pass. **No new design
+tokens were introduced** (existing `theme` only), so `docs/design-tokens.md` is unchanged. Two items
+are flagged ★ as genuinely needing Design's judgement, not just a skin.
+
+## ★ Priority for Design
+- **Seat map → a real cabin** ★ — `plan/flight-finder.tsx`, `.cc-plane` (+ `-nose`, `-cabin`, `-row`,
+  `-rownum`, `-seats`, `-aisle`, `-facility`); seats keep `.cc-conn-seat[data-state]`. Replaced the
+  flat `repeat(7,1fr)` grid with a fuselage frame + numbered rows + a true aisle gap. Code gave it the
+  right bones; Design should make it read unmistakably as an aircraft (curved fuselage, wing/exit cues).
+- **Plan-page hierarchy** ★ — the day's spine reads first (intentions/clock/nudges/map/spine); the
+  operational tools collapse into one **Trip tools** region: `.cc-plan-tools` (+ `-summary`, `-title`,
+  `-hint`, `-body`). Code grouped it; Design owns the visual *weighting* so it feels like a hierarchy.
+
+## Coherence pass (D63)
+- **Grouped sidebar** 🟡 — `app-sidebar.tsx`, `.cc-rail-nav`, `.cc-rail-group`, `.cc-rail-group-label`
+  (Day / Money & travel / Account). New distinct glyphs: `mileage`, `workspace`.
+- **Editable day title** 🟡 — `plan/plan-title-editor.tsx`, `.cc-plan-title` (+ `-input`, `-edit`,
+  `[data-unnamed]`). Tap the title to rename; an unnamed day reads as an italic invitation.
+- **Per-stop rename** 🟡 — `concierge/timeline-cards.tsx`, `.cc-anchor-title-edit` (+ `-pen`,
+  `[data-untitled]`); the RenameSheet reuses `.cc-sheet`.
+- **Share scoped to the journey** 🟡 — `plan/share-control.tsx`, `.cc-share-scope` (+ `-scope-note`):
+  "Until I arrive / For today / For the trip / Set hours" instead of a bare timer.
+
+## Plan elevations (D69)
+- **Day base + intention** 🟡 — `plan/plan-base.tsx` + `plan/plan-intention.tsx`, `.cc-plan-frame`,
+  `.cc-plan-base` (+ `-pin`, `-text`, `-edit`, `[data-unset]`), `.cc-plan-intention` (+ `-input`,
+  `-eyebrow`, `-text`, `-add`, `[data-set]`). Under the title: where the day starts/ends + "what's it for".
+
+## Per-event work/personal (D70)
+- **Tappable ModeTag** 🟡 — `concierge/timeline-cards.tsx`, `.cc-mode-tag-btn` (a tappable variant of
+  `.cc-mode-tag[data-mode]`). Each event flips work↔personal; per-event privacy underneath.
+
+## Manual prep items (D71)
+- **Readiness add** 🟡 — `plan/readiness-panel.tsx`, `.cc-readiness-add`, `.cc-readiness-clear`; a new
+  "Your reminders" category groups user-authored items.
+
+## Transport parity (D67)
+- **Changeover rows** 🟡 — `plan/plan-add.tsx`, `.cc-co-row`, `.cc-co-head`, `.cc-co-remove`,
+  `.cc-co-add` (dashed sub-cards inside the booking add for multi-leg trains/flights).
+
+## Car continuity (D73)
+- **"Back to your car" node** 🟡 — `plan/plan-spine.tsx`, reuses `.cc-base-node` with a `baseEyebrow`
+  override ("Back to your car"). A quiet, non-editable derived waypoint — should read like the home base.
+
+## Recurring events (D72/D75)
+- **RecurringManager** 🟡 — `plan/recurring-manager.tsx`, `.cc-recurring` (+ `-summary`, `-title`,
+  `-hint`, `-body`, `-list`, `-row`, `-row-main`, `-del`, `-add`). A `<details>` on `/plan` to define
+  "Office, every Thursday". Mode toggle reuses `.cc-share-scope`.
+- **RecurringOffers** 🟡 — `plan/recurring-offers.tsx`, `.cc-rec-offers`, `.cc-rec-offer` (+ `-text`,
+  `-actions`). A gold-tint strip: "X falls on a day that already has Y — add it?" [Add to this day]/[Skip].
+
+## Today weather (D76)
+- **Weather chip + hourly strip** 🟡 — `today/page.tsx`, `.cc-today-head`, `.cc-weather` (+ `-temp`,
+  `-meta`, `-headline`, `-place`, `[data-day]`) and `.cc-weather-hours` / `.cc-weather-hour` (+ `-time`,
+  `-temp`, `-cond`). Current conditions chip in the header + an hourly scroll for the rest of today.
+
+## Smaller cues 🟡
+- **Wallet flip** — `wallet/wallet-screen.tsx`, `.cc-pass-collapse`; `.cc-pass-del` is now always-visible
+  (was hover-only). Peeked passes expand to a full Pass on tap.
+- **Nudge "· sample" cue** — `plan/plan-nudges.tsx`, `.cc-nudge-sample` (honest mock marker).
+- **Save confirmation** — `locations/locations-panel.tsx`, `.cc-save-notice`.
+
+## Note for Design
+`docs/component-contract.md` should gain rows for the new components above. All classes already have
+working token-based CSS in `src/app/khonsera-edition-*.css` — restyle in place; no markup/class
+changes needed (the contract is fixed). Two ★ items want real design thought; the rest are polish.
