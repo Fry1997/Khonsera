@@ -40,6 +40,7 @@ import { setTransitionMode } from "@/lib/actions/transitions";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { ensureHomeBookend } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
+import { comfortBufferMinutes, stopModeOf } from "@/lib/itinerary/buffers";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import {
   formatClock,
@@ -268,12 +269,23 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     vars: buildVars(st),
   });
   const legOf = (tr: TransRow, from: StopRow, to: StopRow): LegVM => {
-    const feas = tr.is_locked
+    // A warning is only honest when arriving INTO a FIXED time (a train you must
+    // catch, a meeting with a hard arrive-by). When the destination is flexible
+    // the solver simply slides it — there's nothing to be late for, so we don't
+    // moan about slack on a route we freely built. When it IS fixed, the comfort
+    // buffer for that stop is the "comfortable" threshold, so the slack we report
+    // is measured against the early-margin the user actually wants.
+    const toFixed = to.is_time_fixed === true;
+    const feas = tr.is_locked || !toFixed
       ? ({ state: "ok" } as const)
       : checkLegFeasibility({
           fromEnd: from.end_time ? new Date(from.end_time) : from.start_time ? new Date(from.start_time) : null,
           toStart: to.start_time ? new Date(to.start_time) : null,
           travelMinutes: tr.computed_duration_minutes,
+          bufferMinutes: comfortBufferMinutes(
+            { type: to.type, mode: stopModeOf(to, tr.mode) },
+            profile,
+          ),
         });
     const atRisk = feas.state === "tight" || feas.state === "late";
     return {
@@ -304,13 +316,19 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   // could render. They don't depend on each other or on the node graph, so one
   // Promise.all collapses the wait to the slowest single reader. RLS scopes each
   // to the viewer. (loadNudges stays separate below — it needs the built nodes.)
-  const [constraints, readiness, allNotes, bookedConnections, budget, locationShares] = await Promise.all([
+  const [constraints, readiness, allNotes, bookedConnections, budget, locationShares, { data: profile }] = await Promise.all([
     loadConstraints(),
     loadReadiness(id),
     listNotesForStops(stops.map((st) => st.id)),
     loadBookedConnections(id),
     loadBudget(id),
     listLocationShares(id),
+    supabase
+      .from("travel_profiles")
+      .select("default_arrival_buffer_minutes, default_airport_buffer_minutes, default_meeting_buffer_minutes")
+      .eq("user_id", ctx.userId)
+      .eq("workspace_id", ctx.workspaceId)
+      .maybeSingle(),
   ]);
   const notesByStop = new Map<string, NoteVM[]>();
   for (const n of allNotes) {

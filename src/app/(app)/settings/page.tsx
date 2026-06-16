@@ -28,7 +28,7 @@ export default async function SettingsPage({
     supabase
       .from("travel_profiles")
       .select(
-        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_return_buffer_minutes, mileage_rate, walking_threshold_minutes, minimum_buffer_minutes, max_taxi_fare_pence, luggage_default",
+        "default_drive_origin_location_id, default_rail_origin_location_id, default_return_location_id, default_rail_origin_transport_hub_id, default_flight_origin_transport_hub_id, preferred_mode, default_arrival_buffer_minutes, default_airport_buffer_minutes, default_meeting_buffer_minutes, default_return_buffer_minutes, mileage_rate, walking_threshold_minutes, minimum_buffer_minutes, max_taxi_fare_pence, luggage_default",
       )
       .eq("user_id", ctx.userId)
       .eq("workspace_id", ctx.workspaceId)
@@ -182,6 +182,10 @@ export default async function SettingsPage({
                 | "mixed",
               default_arrival_buffer_minutes:
                 profile?.default_arrival_buffer_minutes ?? 15,
+              default_airport_buffer_minutes:
+                profile?.default_airport_buffer_minutes ?? 90,
+              default_meeting_buffer_minutes:
+                profile?.default_meeting_buffer_minutes ?? 10,
               default_return_buffer_minutes:
                 profile?.default_return_buffer_minutes ?? 15,
               mileage_rate: Number(profile?.mileage_rate ?? 0.45),

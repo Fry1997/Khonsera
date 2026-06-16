@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit/with-audit";
 import { dbResult, parseInput } from "./_helpers";
 import { transitionItinerary } from "@/lib/state/transitions";
 import { solveTimes } from "@/lib/itinerary/solver";
+import { comfortBufferMinutes, stopModeOf } from "@/lib/itinerary/buffers";
 import { ok, type Result } from "@/lib/errors";
 import type { ItineraryStatus } from "@/lib/types/domain";
 import { routeForTransition as routeForTransitionFn } from "@/lib/integrations/routing";
@@ -1573,7 +1574,7 @@ export async function resolveItineraryTimes(
     supabase
       .from("stops")
       .select(
-        "id, sequence, type, start_time, end_time, duration_minutes, is_time_fixed",
+        "id, sequence, type, start_time, end_time, duration_minutes, is_time_fixed, metadata",
       )
       .eq("itinerary_id", itineraryId)
       .eq("workspace_id", ctx.workspaceId)
@@ -1581,26 +1582,40 @@ export async function resolveItineraryTimes(
     supabase
       .from("transitions")
       .select(
-        "id, from_stop_id, to_stop_id, start_time, end_time, computed_duration_minutes, is_locked",
+        "id, from_stop_id, to_stop_id, start_time, end_time, computed_duration_minutes, is_locked, mode",
       )
       .eq("itinerary_id", itineraryId)
       .eq("workspace_id", ctx.workspaceId),
     supabase
       .from("travel_profiles")
-      .select("default_arrival_buffer_minutes")
+      .select(
+        "default_arrival_buffer_minutes, default_airport_buffer_minutes, default_meeting_buffer_minutes",
+      )
       .eq("user_id", ctx.userId)
       .eq("workspace_id", ctx.workspaceId)
       .maybeSingle(),
   ]);
 
-  // Boarding a train (a transit_departure stop) should get you to the platform
-  // the user's buffer-minutes early — applied in the solver as an earlier leave,
-  // not a longer leg (Settings → Travel profile, default 15m).
-  const buffer = (profile?.default_arrival_buffer_minutes as number | null) ?? 15;
-  const solverStops = (stops ?? []).map((s) => ({
-    ...s,
-    arrival_buffer_minutes: (s as { type?: string }).type === "transit_departure" ? buffer : 0,
-  }));
+  // Comfort buffers — how early you want to be, by what you're catching (a train
+  // platform, an airport, a meeting). Applied in the solver as an earlier leave,
+  // not a longer leg, so it reads as slack. Resolved per stop from the user's
+  // dials + the stop's own transport mode (rail vs tube vs flight).
+  // The mode of the leg LEAVING a transit_departure (the train/tube itself) is
+  // the truest signal for rail-vs-tube; fall back to the stop's metadata stamp.
+  const outgoingMode = new Map<string, string>();
+  for (const t of transitions ?? []) {
+    if ((t as { mode?: string }).mode) outgoingMode.set((t as { from_stop_id: string }).from_stop_id, (t as { mode: string }).mode);
+  }
+  const solverStops = (stops ?? []).map((s) => {
+    const stop = s as { id: string; type?: string; metadata?: Record<string, unknown> | null };
+    return {
+      ...s,
+      arrival_buffer_minutes: comfortBufferMinutes(
+        { type: stop.type, mode: stopModeOf(stop, outgoingMode.get(stop.id)) },
+        profile,
+      ),
+    };
+  });
 
   const result = solveTimes({
     stops: solverStops as Parameters<typeof solveTimes>[0]["stops"],

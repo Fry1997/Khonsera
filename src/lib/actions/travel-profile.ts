@@ -42,6 +42,8 @@ const updateTravelProfileSchema = z.object({
   default_flight_origin_transport_hub_id: z.string().uuid().nullable().optional(),
   preferred_mode: preferenceEnum.optional(),
   default_arrival_buffer_minutes: z.number().int().min(0).max(180).optional(),
+  default_airport_buffer_minutes: z.number().int().min(0).max(300).optional(),
+  default_meeting_buffer_minutes: z.number().int().min(0).max(120).optional(),
   default_return_buffer_minutes: z.number().int().min(0).max(180).optional(),
   mileage_rate: z.number().min(0).max(10).optional(),
   // Scoring engine inputs (migration 0016).
@@ -62,6 +64,8 @@ export type TravelProfile = {
   default_flight_origin_transport_hub_id: string | null;
   preferred_mode: TravelModePreference;
   default_arrival_buffer_minutes: number;
+  default_airport_buffer_minutes: number;
+  default_meeting_buffer_minutes: number;
   default_return_buffer_minutes: number;
   mileage_rate: number;
   walking_threshold_minutes: number;

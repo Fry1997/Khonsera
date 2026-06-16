@@ -1028,3 +1028,32 @@ Newest at the bottom of each section.
   board. (2) FEATURE: Today's weather went from a single current-conditions chip to an HOURLY strip —
   `dayForecast` (Open-Meteo, cached) returns the rest of today hour-by-hour (temp + condition), shown
   as a horizontal scroll under the header, with the current chip kept. tsc + 326 + build green.
+
+- **D77 — Buffers are a per-type comfort, and the app never moans about slack it built (founder,
+  mig 0053).** Buffers weren't conceptually real: only `transit_departure` got a flat 15m, everything
+  else 0, so a route the solver freely built reported "0m of slack" and warned about it. Reframed per
+  founder: a buffer is *how early you want to be, by what you're catching* — and it varies by person
+  AND by thing (airport ≫ rail ≫ tube ≈ meeting). (1) **Per-type comfort model** in
+  `src/lib/itinerary/buffers.ts` (`comfortBufferMinutes`): rail/station = `default_arrival_buffer_minutes`
+  (15), airport = `default_airport_buffer_minutes` (90), appointment/event = `default_meeting_buffer_minutes`
+  (10), tube/bus board+interchange = 5 (capped ≤ station), meal = 5, home/arrival/check-in = 0. Mode read
+  from the stop's `metadata.transport_mode` (booked rail/flight stamp) or the leg leaving it (rail vs tube).
+  Three user dials added to Travel profile (mig 0053 adds airport + meeting columns; station + return already
+  existed). (2) **Solver** applies the resolved buffer per stop as an earlier leave, not a longer leg, so it
+  reads as slack in a wider window (existing `arrival_buffer_minutes` support, now fed per-type). (3) **No
+  false moan:** plan-page `legOf` only runs feasibility when the destination is *time-fixed* (a train you must
+  catch, a hard arrive-by) — a flexible stop just slides, nothing to be late for — and passes the SAME comfort
+  buffer as the "comfortable" threshold, so the slack the solver gave you equals the threshold and never trips
+  "tight". A warning now fires only when two genuinely-fixed times can't fit the buffer. Read-time, so the moan
+  stops on next render; existing plans pick up the earlier *departure times* on their next edit (resequenceAndSolve).
+  tsc + vitest (buffers.test) + build green.
+
+- **D78 (LOGGED, not built) — Live changeover intelligence: plan on the safe departure, surface the one
+  you might catch (founder vision).** For tight connections (esp. tube line changes), a static buffer isn't
+  enough — the founder wants: compute the realistic interchange walk, then plan on the departure that clears
+  it with margin, while *showing* the earlier one you could still make ("there's a train in 7 min we think
+  you'll just make; your plan's on the 9-min one, so you're covered either way"). This needs LIVE departure
+  boards (Darwin for rail, TfL for tube) to know the actual next services + walk-time-vs-headway — it's a layer
+  on the live spine (`src/lib/live/engine.ts`) + recovery ways-out, NOT static slack. Seam: the comfort buffer
+  from D77 is the floor the chooser must clear; the live board supplies candidate departures. Build when the
+  live-board changeover picker is scheduled (gated on `DARWIN_*` / `TFL_APP_KEY`, already wired).

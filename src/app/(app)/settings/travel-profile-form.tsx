@@ -30,6 +30,8 @@ export function TravelProfileForm({
     default_flight_origin_transport_hub_id: string | null;
     preferred_mode: TravelModePreference;
     default_arrival_buffer_minutes: number;
+    default_airport_buffer_minutes: number;
+    default_meeting_buffer_minutes: number;
     default_return_buffer_minutes: number;
     mileage_rate: number;
     walking_threshold_minutes: number;
@@ -106,6 +108,8 @@ export function TravelProfileForm({
             default_flight_origin_transport_hub_id: flightHub.id,
             preferred_mode: formData.get("preferred_mode") as TravelModePreference,
             default_arrival_buffer_minutes: Number(formData.get("arrival_buffer") ?? 15),
+            default_airport_buffer_minutes: Number(formData.get("airport_buffer") ?? 90),
+            default_meeting_buffer_minutes: Number(formData.get("meeting_buffer") ?? 10),
             default_return_buffer_minutes: Number(formData.get("return_buffer") ?? 15),
             mileage_rate: Number(formData.get("mileage_rate") ?? 0.45),
             walking_threshold_minutes: Number(
@@ -268,10 +272,20 @@ export function TravelProfileForm({
         />
       </FormField>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <p className="uc" style={{ marginTop: 4 }}>Comfort buffers</p>
+      <p
+        className="serif-i"
+        style={{ fontSize: 13.5, color: "var(--ink-dim)", margin: "-4px 0 0" }}
+      >
+        How early you like to be, by what you&rsquo;re catching. Khonsera plans
+        your departures so you arrive this much ahead — and never warns about the
+        slack it built you. Tube and bus changes use a quick 5&nbsp;min.
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <FormField
-          label="Arrival buffer (min)"
+          label="Station buffer (min)"
           htmlFor="arrival_buffer"
+          hint="Rail platform — getting to the train."
           error={feedback?.fieldErrors.default_arrival_buffer_minutes}
         >
           <Input
@@ -284,20 +298,51 @@ export function TravelProfileForm({
           />
         </FormField>
         <FormField
-          label="Return buffer (min)"
-          htmlFor="return_buffer"
-          error={feedback?.fieldErrors.default_return_buffer_minutes}
+          label="Airport buffer (min)"
+          htmlFor="airport_buffer"
+          hint="Check-in + security before a flight."
+          error={feedback?.fieldErrors.default_airport_buffer_minutes}
         >
           <Input
-            id="return_buffer"
-            name="return_buffer"
+            id="airport_buffer"
+            name="airport_buffer"
             type="number"
             min={0}
-            max={180}
-            defaultValue={initial.default_return_buffer_minutes}
+            max={300}
+            defaultValue={initial.default_airport_buffer_minutes}
+          />
+        </FormField>
+        <FormField
+          label="Meeting buffer (min)"
+          htmlFor="meeting_buffer"
+          hint="Arrive a touch early for an appointment."
+          error={feedback?.fieldErrors.default_meeting_buffer_minutes}
+        >
+          <Input
+            id="meeting_buffer"
+            name="meeting_buffer"
+            type="number"
+            min={0}
+            max={120}
+            defaultValue={initial.default_meeting_buffer_minutes}
           />
         </FormField>
       </div>
+      <FormField
+        label="Return buffer (min)"
+        htmlFor="return_buffer"
+        hint="Slack when getting back to base."
+        error={feedback?.fieldErrors.default_return_buffer_minutes}
+      >
+        <Input
+          id="return_buffer"
+          name="return_buffer"
+          type="number"
+          min={0}
+          max={180}
+          defaultValue={initial.default_return_buffer_minutes}
+        />
+      </FormField>
 
       <FormField
         label="Mileage rate (£/mile)"
