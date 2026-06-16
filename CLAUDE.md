@@ -94,6 +94,9 @@ unset — the build NEVER blocks on a key, and an unset key shows honest mock wi
 a false alarm. New env vars: `OTP_URL`, `OTP_GRAPHQL_PATH?`, `DRAGONPASS_KEY` (fast-track + lounge),
 `PARKOPEDIA_KEY`, `AERODATABOX_KEY`, `OPEN_METEO_URL?`, `COLLINSON_KEY?` (dormant long-term target),
 `DUFFEL_API_TOKEN` (P14 flights — `duffel_test_…` routes to test mode), `ASSERTIS_KEY?` (rail booking, pending).
+**The flip side — a feature shipping silently in its budget fallback because a switch is off — is
+catalogued in `docs/env-switches.md`. Check Tier 1 there FIRST whenever something "looks/feels
+un-premium but the code is clearly there" (it caught the raster-vs-vector basemap and the 40s geocode).**
 
 ## Connections / booking (Edition III P14) — `src/lib/connections/` + `integrations/duffel.ts`
 The reusable supplier pattern: one **Offer → Quote → Booking** vocabulary every connector speaks, so the
