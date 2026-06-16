@@ -31,6 +31,11 @@ export interface JourneyTheme {
     water: string;
     markerFill: string;
     markerStroke: string;
+    // Label badge (station code / appointment / place) — styled independently of the
+    // marker dots so it reads above basemap town names (Design D84: dark ground +
+    // light text on all themes, not inverted).
+    labelBadge: string;
+    labelBadgeText: string;
     labelText: string;
     labelHalo: string;
   };
@@ -42,6 +47,7 @@ export interface JourneyTheme {
   geom: {
     railWidth: number;
     railGlowWidth: number;
+    casingWidth: number;
     walkWidth: number;
     walkDash: string;
     markerRadius: number;

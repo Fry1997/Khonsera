@@ -1125,3 +1125,16 @@ Newest at the bottom of each section.
   "Wellingborough") — marker labels are now solid badges (ink ground, paper text, shadow) that sit
   unmistakably above the basemap. New theme colours routeReturn + routeCasing on dusk/midnight/sahara.
   tsc + 335 + build green.
+
+- **D85 — Design map return integrated (Khonsera_5).** Design returned refined slot values against the
+  D84 capability brief; applied verbatim to dusk/midnight/sahara: route hues nudged (dusk gold warmed
+  to #9c6714, casings crisper), line widths moved INTO `geom` (railWidth 2.8 over casingWidth 5.5 — the
+  ratio Design wants preserved), walk dash now driven from `geom.walkDash`. TWO NEW SLOTS added per
+  Design to resolve the midnight badge ambiguity — `labelBadge` + `labelBadgeText` (dark ground / light
+  text on ALL themes, not inverted; the marker DOTS keep markerFill/markerStroke). MIDNIGHT BASEMAP
+  LIFTED out of near-black to aubergine-to-ink so streets/water/rail read under the route (it was
+  floating in a void). Dusk/sahara roads nudged brighter to push them back from the route. Vector
+  basemap flagged on for Design's future pass. Proof + returned values archived in docs/design/.
+  **D83 underground:** Design's direction — honour TfL canonical line colours, keep the Khonsera ground
+  + type + the single gold "you" pulse, and the geo→diagram FOLD (~560ms) is the USP. Design asks Code
+  to spec the live-position + line-graph data shape next. tsc + 335 + build green.

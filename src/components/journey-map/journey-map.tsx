@@ -156,13 +156,17 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
   // CASING — a crisp dark outline drawn UNDER every route line, wider than it, so
   // the route stands clear of similarly-toned basemap roads (the "route blends into
   // the road" complaint). One casing for all modes; the coloured lines sit on top.
+  const g = theme.geom;
+  // Walk dash from the theme ("2 5" → [2,5]); falls back to a sensible pattern.
+  const walkDash = g.walkDash.trim().split(/\s+/).map(Number).filter((n) => !Number.isNaN(n));
+
   map.addLayer({
     id: "j-casing",
     type: "line",
     source: SOURCE_ID,
     // Not under walk — a solid casing would fill the dashed walk line's gaps.
     filter: ["!=", ["get", "mode"], "walk"],
-    paint: { "line-color": theme.colors.routeCasing, "line-width": 5, "line-opacity": 0.9 },
+    paint: { "line-color": theme.colors.routeCasing, "line-width": g.casingWidth, "line-opacity": 0.9 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -171,7 +175,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: { "line-color": dirColor, "line-width": 9, "line-opacity": 0.15, "line-blur": 4 },
+    paint: { "line-color": dirColor, "line-width": g.railGlowWidth, "line-opacity": 0.15, "line-blur": 4 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -180,7 +184,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: { "line-color": dirColor, "line-width": 3, "line-opacity": 1 },
+    paint: { "line-color": dirColor, "line-width": g.railWidth, "line-opacity": 1 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -189,7 +193,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "walk"],
-    paint: { "line-color": dirColor, "line-width": 2, "line-opacity": 0.95, "line-dasharray": [2, 4] },
+    paint: { "line-color": dirColor, "line-width": g.walkWidth, "line-opacity": 0.95, "line-dasharray": walkDash.length >= 2 ? walkDash : [2, 5] },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -198,7 +202,7 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["in", ["get", "mode"], ["literal", ["road", "transit"]]],
-    paint: { "line-color": dirColor, "line-width": 2.5, "line-opacity": 1 },
+    paint: { "line-color": dirColor, "line-width": g.railWidth, "line-opacity": 1 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 }
@@ -248,8 +252,8 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
   lbl.style.fontSize = "9px";
   lbl.style.fontWeight = "600";
   lbl.style.letterSpacing = "0.06em";
-  lbl.style.color = theme.colors.labelHalo;
-  lbl.style.background = theme.colors.markerStroke;
+  lbl.style.color = theme.colors.labelBadgeText;
+  lbl.style.background = theme.colors.labelBadge;
   lbl.style.padding = "1.5px 5px";
   lbl.style.borderRadius = "3px";
   lbl.style.whiteSpace = "nowrap";

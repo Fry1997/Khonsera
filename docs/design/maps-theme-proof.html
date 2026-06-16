@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Khonsera — Journey Map · theme proof</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+  :root{--sans:'Satoshi',sans-serif;--serif:'Spectral',serif;--mono:'JetBrains Mono',monospace;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:#cfc6b2;font-family:var(--sans);color:#26211a;}
+  .board{padding:56px 48px 110px;}
+  .head{max-width:1320px;margin:0 auto 6px;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#6b6453;}
+  .title{font-family:var(--sans);font-weight:500;font-size:33px;letter-spacing:-.03em;margin:13px 0 6px;}
+  .note{font-family:var(--serif);font-style:italic;font-size:16px;color:#5a5345;max-width:86ch;}
+  .sectlabel{font-family:var(--sans);font-weight:500;font-size:20px;letter-spacing:-.02em;color:#3a3328;max-width:1320px;margin:64px auto 0;padding-bottom:8px;border-bottom:1px solid rgba(70,60,40,.18);}
+  .maps{display:flex;gap:30px;flex-wrap:wrap;max-width:1320px;margin:34px auto 0;}
+  .mapcard{flex:1 1 360px;min-width:340px;}
+  .mapcap{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6453;margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline;}
+  .mapcap .sub{font-family:var(--serif);font-style:italic;font-size:13px;letter-spacing:0;text-transform:none;color:#8a8273;}
+  .frame{border-radius:18px;overflow:hidden;box-shadow:0 30px 60px -34px rgba(20,16,10,.5);border:1px solid rgba(20,16,10,.12);position:relative;}
+  .frame svg{display:block;width:100%;height:auto;}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:#6b6453;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend i{width:18px;height:3px;border-radius:2px;display:inline-block;}
+  .legend i.dot{width:9px;height:9px;border-radius:50%;}
+  /* network mode */
+  .tube{display:flex;gap:30px;flex-wrap:wrap;max-width:1320px;margin:34px auto 0;align-items:flex-start;}
+  .tubecard{flex:1 1 440px;min-width:380px;}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="head">
+    <div class="eyebrow">Khonsera · Journey Map — theme proof (D81–D83)</div>
+    <h1 class="title">Out in gold, back in teal — legible on the warm map</h1>
+    <p class="note">The slot values from the maps brief, rendered so you can feel the contrast before they ship. Same overlay on all three basemaps; outbound and return now read as two distinct directions, each with a crisp casing so the route stands off the roads, and station codes carried on solid badges so they sit above the basemap town names. Values returned at the foot for Code to drop straight in.</p>
+  </div>
+
+  <div class="sectlabel">The three themes · same day, same overlay</div>
+  <div class="maps" id="maps"></div>
+
+  <div class="sectlabel">★ D83 — the Underground modality · geographic ⇄ network</div>
+  <div class="tube" id="tube"></div>
+</div>
+
+<script>
+/* ── theme objects — mirror the brief's slots verbatim (refined values) ───── */
+const THEMES = {
+  dusk: {
+    label:'Dusk', sub:'warm cream · default',
+    colors:{ gold:'#9c6714', routeReturn:'#1d6f73', routeCasing:'rgba(20,16,10,0.62)', goldGlow:'rgba(160,117,32,0.16)',
+             markerFill:'#a07520', markerStroke:'#1a1612', labelHalo:'#fbf8f1', labelBadge:'#1a1612', labelBadgeText:'#fbf8f1' },
+    mapStyle:{ water:'#b8c2a8', land:'#efe9da', landEdge:'#e7e1d0', rail:'#d6cdb8', road:'#fffefb', roadStroke:'#dcd2bb', cityLabel:'#3a342c', boundary:'#a89c87' }
+  },
+  midnight: {
+    label:'Midnight', sub:'after dark · Live',
+    colors:{ gold:'#e2ab52', routeReturn:'#5cc2cf', routeCasing:'rgba(0,0,0,0.6)', goldGlow:'rgba(212,160,77,0.22)',
+             markerFill:'#d4a04d', markerStroke:'#f4e8cf', labelHalo:'#2a2030', labelBadge:'#0e0b14', labelBadgeText:'#f4e8cf' },
+    mapStyle:{ water:'#1b2f2a', land:'#302640', landEdge:'#3a2e4c', rail:'#564a68', road:'#473a58', roadStroke:'#372b47', cityLabel:'#e8dcc6', boundary:'#6a5e7e' }
+  },
+  sahara: {
+    label:'Sahara', sub:'daylight · ochre',
+    colors:{ gold:'#9a6815', routeReturn:'#1b6566', routeCasing:'rgba(32,24,14,0.55)', goldGlow:'rgba(168,120,38,0.18)',
+             markerFill:'#a87826', markerStroke:'#20180e', labelHalo:'#f7f0db', labelBadge:'#20180e', labelBadgeText:'#f7f0db' },
+    mapStyle:{ water:'#c2ccb0', land:'#f3e8c8', landEdge:'#ebe0bd', rail:'#ddd0ad', road:'#fffdf6', roadStroke:'#e2d6b4', cityLabel:'#3a2e1c', boundary:'#b0a079' }
+  }
+};
+
+/* ── geometry: a plausible day. home (bullseye) → rail out → walk → dest ──── */
+const W=520, H=440;
+// roads (drawn with stroke casing under fill)
+const ROADS = [
+  'M30,360 C120,330 200,350 300,300 S470,250 510,260',
+  'M70,40 C90,150 140,220 180,300 S210,400 240,430',
+  'M0,140 C120,160 240,120 360,170 S480,150 520,140',
+  'M380,20 C360,120 420,200 400,300 S430,400 410,440',
+  'M20,250 C100,240 160,270 250,250'
+];
+const RAIL = 'M88,372 C150,330 180,250 240,210 S330,150 392,120';      // out route follows rail
+const ROUTE_OUT = 'M88,372 C150,330 180,250 240,210 S330,150 392,120';
+const ROUTE_WALK = 'M392,120 L432,96';                                   // short walk to door
+const ROUTE_BACK = 'M432,96 C360,150 300,200 230,250 S140,330 88,372';  // return, offset slightly
+const WATER = 'M300,300 C360,290 420,320 470,300 C500,288 515,330 510,370 C470,400 380,395 320,380 C290,370 280,320 300,300 Z';
+
+function badge(x,y,code,t){
+  return `<g transform="translate(${x},${y})">
+    <rect x="${-code.length*4.4-7}" y="-11" width="${code.length*8.8+14}" height="22" rx="5" fill="${t.colors.labelBadge}"/>
+    <text x="0" y="4.5" text-anchor="middle" font-family="var(--mono)" font-size="11" font-weight="500" letter-spacing="1" fill="${t.colors.labelBadgeText}">${code}</text>
+  </g>`;
+}
+function originDot(x,y,t){
+  return `<g><circle cx="${x}" cy="${y}" r="9" fill="none" stroke="${t.colors.markerStroke}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="3.4" fill="${t.colors.markerStroke}"/></g>`;
+}
+function ringDot(x,y,t){
+  return `<g><circle cx="${x}" cy="${y}" r="6" fill="${t.mapStyle.land}" stroke="${t.colors.markerFill}" stroke-width="2.4"/></g>`;
+}
+function fillDot(x,y,t){
+  return `<circle cx="${x}" cy="${y}" r="6.4" fill="${t.colors.markerFill}" stroke="${t.mapStyle.land}" stroke-width="1.6"/>`;
+}
+
+function drawMap(key){
+  const t = THEMES[key];
+  const roadsCasing = ROADS.map(d=>`<path d="${d}" fill="none" stroke="${t.mapStyle.roadStroke}" stroke-width="6.5" stroke-linecap="round"/>`).join('');
+  const roadsFill   = ROADS.map(d=>`<path d="${d}" fill="none" stroke="${t.mapStyle.road}" stroke-width="3.4" stroke-linecap="round"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t.label} journey map">
+    <rect width="${W}" height="${H}" fill="${t.mapStyle.land}"/>
+    <!-- subtle land texture blocks -->
+    <rect x="0" y="0" width="${W}" height="${H}" fill="url(#tex_${key})" opacity="0.5"/>
+    <path d="${WATER}" fill="${t.mapStyle.water}"/>
+    <!-- rail bed -->
+    <path d="${RAIL}" fill="none" stroke="${t.mapStyle.rail}" stroke-width="4" stroke-linecap="round"/>
+    <!-- roads -->
+    ${roadsCasing}${roadsFill}
+    <!-- ROUTE: glow, casing, then line. Return first (under), outbound on top -->
+    <path d="${ROUTE_OUT}" fill="none" stroke="${t.colors.goldGlow}" stroke-width="9" stroke-linecap="round"/>
+    <path d="${ROUTE_BACK}" fill="none" stroke="${t.colors.routeCasing}" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="${ROUTE_BACK}" fill="none" stroke="${t.colors.routeReturn}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="${ROUTE_OUT}" fill="none" stroke="${t.colors.routeCasing}" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="${ROUTE_OUT}" fill="none" stroke="${t.colors.gold}" stroke-width="2.8" stroke-linecap="round"/>
+    <!-- walk leg dashed -->
+    <path d="${ROUTE_WALK}" fill="none" stroke="${t.colors.gold}" stroke-width="1.8" stroke-dasharray="2 5" stroke-linecap="round"/>
+    <!-- markers -->
+    ${ringDot(240,210,t)}
+    ${fillDot(432,96,t)}
+    ${originDot(88,372,t)}
+    <!-- labels as solid badges -->
+    ${badge(88,352,'HOME',t)}
+    ${badge(240,188,'WEL',t)}
+    ${badge(432,74,'KX',t)}
+    <defs>
+      <pattern id="tex_${key}" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(8)">
+        <rect width="44" height="44" fill="none"/>
+        <path d="M0,22 H44 M22,0 V44" stroke="${t.mapStyle.landEdge}" stroke-width="1"/>
+      </pattern>
+    </defs>
+  </svg>`;
+}
+
+document.getElementById('maps').innerHTML = Object.keys(THEMES).map(key=>{
+  const t=THEMES[key];
+  return `<div class="mapcard">
+    <div class="mapcap"><span>${t.label}</span><span class="sub">${t.sub}</span></div>
+    <div class="frame">${drawMap(key)}</div>
+    <div class="legend">
+      <span><i style="background:${t.colors.gold}"></i>Outbound</span>
+      <span><i style="background:${t.colors.routeReturn}"></i>Return</span>
+      <span><i class="dot" style="background:none;border:2px solid ${t.colors.markerStroke}"></i>Home</span>
+      <span><i class="dot" style="background:${t.colors.markerFill}"></i>Destination</span>
+    </div>
+  </div>`;
+}).join('');
+
+/* ── ★ D83 Underground network mode — diagrammatic, dusk-themed TfL ───────── */
+// canonical TfL geometry feel: 45° angles, equal station spacing, interchange rings.
+function tubeLine(pts, color, w){
+  let d='M'+pts.map(p=>p.join(',')).join(' L');
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function station(x,y,label,anchor,dy){
+  return `<g><circle cx="${x}" cy="${y}" r="3.4" fill="#1a1612"/><text x="${x+(anchor==='end'?-8:anchor==='middle'?0:8)}" y="${y+(dy||4)}" text-anchor="${anchor}" font-family="var(--mono)" font-size="9.5" fill="#3a342c">${label}</text></g>`;
+}
+function interchange(x,y,label,anchor,dx,dy){
+  return `<g><circle cx="${x}" cy="${y}" r="6" fill="#fbf8f1" stroke="#1a1612" stroke-width="2.4"/><text x="${x+(dx||0)}" y="${y+(dy||-12)}" text-anchor="${anchor}" font-family="var(--sans)" font-weight="500" font-size="11" fill="#1a1612">${label}</text></g>`;
+}
+// Khonsera positions you on the graph: a gold "you are here" pulse on the Victoria line.
+const tubeSVG = `<svg viewBox="0 0 560 360" role="img" aria-label="Underground network mode">
+  <rect width="560" height="360" rx="18" fill="#efe9da"/>
+  <!-- lines: honour TfL canonical colours, on the dusk ground -->
+  ${tubeLine([[96,80],[160,80],[240,160],[240,300]], '#0098D4', 7)}   <!-- Victoria (blue-ish) -->
+  ${tubeLine([[40,200],[200,200],[280,120],[420,120]], '#E32017', 7)} <!-- Central (red) -->
+  ${tubeLine([[120,40],[120,260],[320,260],[460,260]], '#00782A', 7)} <!-- District (green) -->
+  ${tubeLine([[460,60],[300,60],[240,160]], '#9B0056', 7)}            <!-- Met (magenta) -->
+  <!-- the journey segment you're on, lifted in gold over its line -->
+  <path d="M160,80 L240,160 L240,300" fill="none" stroke="#9c6714" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7" opacity="0.9"/>
+  <!-- stations -->
+  ${station(96,80,'Walthamstow','start',18)}
+  ${interchange(160,80,'Highbury','middle',0,-14)}
+  ${station(240,300,'Brixton','middle',18)}
+  ${station(420,120,'Liverpool St','start')}
+  ${interchange(240,160,'Oxford Circus','start',12,-12)}
+  ${station(460,260,'Upminster','start')}
+  <!-- YOU ARE HERE: gold pulse -->
+  <g>
+    <circle cx="240" cy="160" r="15" fill="none" stroke="#9c6714" stroke-width="2"><animate attributeName="r" values="9;17;9" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.9;0;0.9" dur="2.4s" repeatCount="indefinite"/></circle>
+    <circle cx="240" cy="160" r="7" fill="#9c6714"/>
+  </g>
+  <!-- next interchange hint -->
+  <g transform="translate(240,300)">
+    <rect x="-78" y="18" width="156" height="26" rx="6" fill="#1a1612"/>
+    <text x="0" y="35" text-anchor="middle" font-family="var(--mono)" font-size="11" letter-spacing="0.5" fill="#fbf8f1">ALIGHT IN 4 · BRIXTON</text>
+  </g>
+</svg>`;
+
+document.getElementById('tube').innerHTML = `
+  <div class="tubecard">
+    <div class="mapcap"><span>Network mode — you on the graph</span><span class="sub">diagrammatic, not geographic</span></div>
+    <div class="frame">${tubeSVG}</div>
+    <div class="legend">
+      <span><i class="dot" style="background:#9c6714"></i>You are here</span>
+      <span><i class="dot" style="background:#fbf8f1;border:2px solid #1a1612"></i>Interchange</span>
+      <span><i style="background:#0098D4"></i>TfL canonical line colours</span>
+    </div>
+  </div>
+  <div class="tubecard">
+    <div class="mapcap"><span>The recommendation</span><span class="sub">how the two modes relate</span></div>
+    <div style="background:#f7f0e0;border-radius:18px;padding:26px 28px;font-family:var(--sans);font-size:14px;line-height:1.62;color:#3a3328;border:1px solid rgba(20,16,10,.1)">
+      <p style="margin:0 0 14px"><strong style="font-weight:600">Honour TfL line colours.</strong> They're a wayfinding language riders already trust — rebranding them to dusk/midnight/sahara would cost legibility for no gain. Khonsera owns the <em>ground, type and "you" treatment</em>, not the lines.</p>
+      <p style="margin:0 0 14px"><strong style="font-weight:600">The ground stays Khonsera.</strong> Dusk cream / midnight aubergine / sahara behind the canonical lines — so it's unmistakably ours while the lines stay TfL-true.</p>
+      <p style="margin:0 0 14px"><strong style="font-weight:600">"You" is the one gold moment.</strong> A single gold pulse on your position; the mono "ALIGHT IN 4" tab is the assistant speaking — calm, factual, never alarmist.</p>
+      <p style="margin:0"><strong style="font-weight:600">The transition is the USP.</strong> Entering the Underground, the geographic map should <em>fold</em> into the diagram — streets desaturate and lift away, lines straighten to 45°, your dot travels continuously. One curtain-draw, ~560ms, the standard ease. (Spec the live-position + line-graph data shape and I'll design the transition frames.)</p>
+    </div>
+  </div>`;
+</script>
+</body>
+</html>
