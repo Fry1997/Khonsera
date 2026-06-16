@@ -31,6 +31,15 @@ export function useNavSession(opts: {
   downstreamDelayMin?: number;
   protect?: ProtectTarget;
   onReroute?: (from: GuidanceFix) => void;
+  // Preview/demo override — drives the surface from a simulated position instead of
+  // GPS (the staff bench), so the new surface is visible without a live journey.
+  override?: {
+    fix: GuidanceFix;
+    remainingMin: number;
+    maneuverIndex: number;
+    toManeuverM: number;
+    arrived?: boolean;
+  };
 }) {
   const { fix, state, geoError } = useGuidance(opts.route, opts.active, {
     voice: opts.voice,
@@ -40,9 +49,12 @@ export function useNavSession(opts: {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const dismiss = useCallback((key: string) => setDismissed((d) => (d.includes(key) ? d : [...d, key])), []);
 
-  // Live remaining on the active leg → minutes (fall back to the scheduled remaining
-  // before the first fix, so the ETA shows immediately rather than blank).
-  const activeLegRemainingMin = state ? state.remaining_s / 60 : opts.scheduledRemainingMin;
+  const ov = opts.override;
+  const liveFix = ov?.fix ?? fix;
+
+  // Live remaining on the active leg → minutes (override in preview; fall back to the
+  // scheduled remaining before the first fix so the ETA shows immediately).
+  const activeLegRemainingMin = ov ? ov.remainingMin : state ? state.remaining_s / 60 : opts.scheduledRemainingMin;
 
   const view: SessionView = useMemo(
     () =>
@@ -62,23 +74,25 @@ export function useNavSession(opts: {
 
   // The surface state machine.
   const surfaceState: SurfaceState =
-    opts.active && !fix && !geoError
-      ? "acquiring"
-      : state?.arrived
-        ? "arrived"
+    ov?.arrived || state?.arrived
+      ? "arrived"
+      : !ov && opts.active && !fix && !geoError
+        ? "acquiring"
         : opts.online === false
           ? "offsignal"
           : "guiding";
 
-  // The maneuver banner VM from the current tick.
+  // The maneuver banner VM from the current tick (or the override in preview).
+  const maneuverIndex = ov ? ov.maneuverIndex : state?.maneuver_index;
+  const toManeuverM = ov ? ov.toManeuverM : state?.to_maneuver_m;
   const maneuver: ManeuverVM | undefined = useMemo(() => {
-    if (!opts.route || !state) return undefined;
-    const m = opts.route.maneuvers[state.maneuver_index];
+    if (!opts.route || maneuverIndex == null || toManeuverM == null) return undefined;
+    const m = opts.route.maneuvers[maneuverIndex];
     if (!m) return undefined;
-    const [value, unit = ""] = formatNavDistance(state.to_maneuver_m).split(" ");
-    const next = opts.route.maneuvers[state.maneuver_index + 1];
+    const [value, unit = ""] = formatNavDistance(toManeuverM).split(" ");
+    const next = opts.route.maneuvers[maneuverIndex + 1];
     return { kind: m.kind, distanceValue: value, distanceUnit: unit, step: m.instruction, nextKind: next?.kind };
-  }, [opts.route, state]);
+  }, [opts.route, maneuverIndex, toManeuverM]);
 
-  return { fix, geoError, surfaceState, view, maneuver, dismiss };
+  return { fix: liveFix, geoError, surfaceState, view, maneuver, dismiss };
 }

@@ -7,7 +7,8 @@
 // dot on the route, the maneuver banner, the always-on event-ETA, and the one calm
 // decision when the day thins. Degrades gracefully with no commitments (just guidance).
 
-import { NavMap } from "@/components/nav/nav-map";
+import { useEffect, useMemo, useState } from "react";
+import { LazyNavMap as NavMap } from "@/components/nav/lazy-nav-map";
 import { GuidanceSurface } from "./guidance-surface";
 import { useNavSession } from "./use-nav-session";
 import type { NavRoute } from "@/lib/nav/types";
@@ -15,6 +16,15 @@ import type { NavCommitment } from "@/lib/nav/session";
 import type { RecoveryOption, ProtectTarget } from "@/lib/recovery/engine";
 import type { NavTrigger } from "@/lib/nav/decision-loop";
 import type { GuidanceFix } from "@/components/nav/use-guidance";
+
+function bearing(a: [number, number], b: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toDeg = (r: number) => (r * 180) / Math.PI;
+  const dLng = toRad(b[1] - a[1]);
+  const y = Math.sin(dLng) * Math.cos(toRad(b[0]));
+  const x = Math.cos(toRad(a[0])) * Math.sin(toRad(b[0])) - Math.sin(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
 
 export function NavSessionView(props: {
   route: NavRoute | null;
@@ -24,6 +34,8 @@ export function NavSessionView(props: {
   scheduledRemainingMin: number;
   online?: boolean;
   chrome?: "light" | "dark";
+  // Staff bench: drive the surface from a simulated walk along the route, not GPS.
+  preview?: boolean;
   recovery?: RecoveryOption[];
   disruption?: Extract<NavTrigger, { kind: "disruption" }>;
   downstreamDelayMin?: number;
@@ -35,6 +47,33 @@ export function NavSessionView(props: {
   // Accepting a decision applies its recommended way-out (the screen wires the seam).
   onAcceptDecision?: (decisionKey: string) => void;
 }) {
+  // Preview: a simulated dot walking the route (the bench), so the new surface is
+  // visible without a live journey. Steps along the geometry once a second.
+  const [simIdx, setSimIdx] = useState(0);
+  const geom = props.route?.geometry;
+  useEffect(() => {
+    if (!props.preview || !geom || geom.length < 2) return;
+    const stride = Math.max(1, Math.floor(geom.length / 40));
+    const id = setInterval(() => {
+      setSimIdx((i) => (i + stride >= geom.length - 1 ? 0 : i + stride));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [props.preview, geom]);
+
+  const override = useMemo(() => {
+    if (!props.preview || !props.route || !geom || geom.length < 2) return undefined;
+    const a = geom[simIdx];
+    const b = geom[Math.min(simIdx + 1, geom.length - 1)];
+    const frac = geom.length > 1 ? 1 - simIdx / (geom.length - 1) : 0;
+    const mIdx = Math.max(0, props.route.maneuvers.findIndex((mn) => mn.begin_shape_index > simIdx) - 1);
+    return {
+      fix: { lat: a[0], lng: a[1], heading: bearing(a, b), accuracy: 5 } as GuidanceFix,
+      remainingMin: Math.round((props.route.duration_s * frac) / 60),
+      maneuverIndex: mIdx,
+      toManeuverM: props.route.maneuvers[mIdx]?.distance_m ?? 0,
+    };
+  }, [props.preview, props.route, geom, simIdx]);
+
   const { fix, surfaceState, view, maneuver, dismiss } = useNavSession({
     route: props.route,
     active: props.active,
@@ -47,6 +86,7 @@ export function NavSessionView(props: {
     downstreamDelayMin: props.downstreamDelayMin,
     protect: props.protect,
     onReroute: props.onReroute,
+    override,
   });
 
   const lead = view.etas[0];
