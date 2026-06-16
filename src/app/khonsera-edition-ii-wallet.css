@@ -150,3 +150,10 @@
   color: var(--gold-2); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 /* booking-pair on the spine: the return is a second docked pass at its own
    position downstream — they are NOT stacked here (the timeline IS the order). */
+
+/* Flip-through wallet (2026-06-16): a peeked card expands to a full Pass on tap;
+   a quiet collapse control returns it to the stack. */
+.cc-pass-collapse { position: absolute; bottom: 10px; right: 10px; z-index: 3;
+  background: none; border: none; cursor: pointer; font-family: var(--mono); font-size: 9px;
+  letter-spacing: var(--ls-eyebrow, 0.16em); text-transform: uppercase; color: var(--ink-faint); }
+.cc-pass-collapse:hover { color: var(--ink-2); }

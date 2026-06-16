@@ -56,15 +56,20 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FormFeedback | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(locations.length === 0);
 
+  // Optimistic removal — the row disappears immediately; reverts if the delete
+  // fails. (Was: rely on router.refresh, and deleteLocation didn't revalidate, so
+  // the row lingered until a manual refresh.)
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
   const handleDelete = (id: string, name: string) => {
     if (!window.confirm(`Delete "${name}"?`)) return;
-    setBusyId(id);
+    setHidden((prev) => new Set(prev).add(id));
     startTransition(async () => {
       const result = await deleteLocation(id);
-      setBusyId(null);
       if (!result.ok) {
+        setHidden((prev) => { const n = new Set(prev); n.delete(id); return n; });
         setFeedback(feedbackFromError(result.error));
         return;
       }
@@ -73,13 +78,13 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
   };
 
   const [quickPicked, setQuickPicked] = useState<PlaceSelection | null>(null);
-  // Quick-add via Google Places — the PlacePicker materialises the chosen
-  // place into the locations table on the server. We just refresh once it's
-  // done.
+  // Quick-add via Google Places — the PlacePicker materialises the chosen place
+  // into the locations table on the server (createInlineLocation now revalidates
+  // /locations, so the new row appears reliably). Confirm it visibly.
   const handleQuickPick = (selection: PlaceSelection | null) => {
     setQuickPicked(selection);
     if (selection?.kind === "location") {
-      // PlacePicker already inserted the row + geocoded; just refresh.
+      setNotice(`Saved ${selection.label}.`);
       router.refresh();
       setQuickPicked(null);
     }
@@ -88,6 +93,7 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
   return (
     <div className="flex flex-col gap-4">
       <FormError message={feedback?.message} />
+      {notice ? <p className="cc-save-notice" style={{ color: "var(--success)", fontSize: 13 }}>{notice}</p> : null}
 
       <div
         className="card-hero"
@@ -139,7 +145,7 @@ export function LocationsPanel({ locations }: { locations: Location[] }) {
           className="card"
           style={{ padding: 0, overflow: "hidden" }}
         >
-          {locations.map((l, i) =>
+          {locations.filter((l) => !hidden.has(l.id)).map((l, i) =>
             editingId === l.id ? (
               <div
                 key={l.id}

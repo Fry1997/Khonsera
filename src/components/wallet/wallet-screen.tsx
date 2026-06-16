@@ -19,17 +19,27 @@ type Group = { key: string; when?: "today" | "tomorrow"; label: string; tickets:
 export function WalletScreen({ tickets }: { tickets: TicketVM[] }) {
   const router = useRouter();
   const [scan, setScan] = useState<{ summary: string; barcodes: BarcodeVM[] } | null>(null);
+  // Optimistic removal — the card vanishes the moment you confirm, while the
+  // (heavy) server delete + re-solve runs behind it; reverts if it fails.
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
 
-  const { upcoming, archive } = useMemo(() => splitGroups(tickets), [tickets]);
+  const visible = useMemo(() => tickets.filter((t) => !removed.has(t.id)), [tickets, removed]);
+  const { upcoming, archive } = useMemo(() => splitGroups(visible), [visible]);
 
   function remove(t: TicketVM) {
     if (!window.confirm(`Remove the ${t.operator} booking? It clears from your plan too.`)) return;
+    setRemoved((prev) => new Set(prev).add(t.id));
     void deleteBookedRun(t.id).then((res) => {
-      if (res.ok) router.refresh();
+      if (res.ok) {
+        router.refresh();
+      } else {
+        setRemoved((prev) => { const n = new Set(prev); n.delete(t.id); return n; });
+        window.alert("Couldn't remove that booking — please try again.");
+      }
     });
   }
 
-  if (tickets.length === 0) {
+  if (visible.length === 0) {
     return (
       <div className="cc-wallet cc-wallet--lux">
         <div className="cc-wallet-empty">
@@ -76,6 +86,10 @@ function Stack({
   onRemove: (t: TicketVM) => void;
 }) {
   const [hero, ...rest] = group.tickets;
+  // Flip through the stack: tap a peeked card to bring it forward (full Pass);
+  // the others stay peeking. Was a dead-end — peeks only opened the barcode
+  // (and did nothing at all for barcodeless stays).
+  const [openId, setOpenId] = useState<string | null>(null);
   return (
     <section className="cc-wallet-group" data-when={group.when}>
       <div className="cc-wallet-group-head">{group.label}</div>
@@ -88,7 +102,14 @@ function Stack({
         ) : null}
         {rest.map((t) => (
           <div key={t.id} className="cc-pass-wrap">
-            <PassPeek ticket={t} onSelect={onScan} />
+            {openId === t.id ? (
+              <>
+                <Pass ticket={t} onShow={onScan} />
+                <button type="button" className="cc-pass-collapse" onClick={() => setOpenId(null)} aria-label="Collapse" title="Collapse">Collapse</button>
+              </>
+            ) : (
+              <PassPeek ticket={t} onSelect={() => setOpenId(t.id)} />
+            )}
             <button type="button" className="cc-pass-del" onClick={() => onRemove(t)} aria-label="Remove booking" title="Remove">×</button>
           </div>
         ))}

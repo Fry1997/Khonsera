@@ -39,7 +39,11 @@ export function JourneyListCard({
         <span className="cc-journey-span">{spanLabel(journey.dateStart, journey.dateEnd)}</span>
         <span style={{ display: "inline-flex", alignItems: "baseline", gap: "var(--space-2)" }}>
           <ModeTag mode={journey.mode} />
-          <span className="cc-journey-status" data-status={journey.status}>{journey.status}</span>
+          {/* "planning" is the default for every day and carries no meaning (there
+              is no confirm step) — show a status only when it's actually notable. */}
+          {journey.status && journey.status !== "planning" ? (
+            <span className="cc-journey-status" data-status={journey.status}>{journey.status.replace(/_/g, " ")}</span>
+          ) : null}
         </span>
       </div>
       <h3 className="cc-journey-title">{journey.title || "Untitled"}</h3>

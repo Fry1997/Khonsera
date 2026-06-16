@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit/with-audit";
@@ -78,6 +79,7 @@ export async function createLocation(
       action: "create",
       after: result.value,
     });
+    revalidatePath("/locations");
   }
   return result;
 }
@@ -117,6 +119,7 @@ export async function updateLocation(
       before,
       after: result.value,
     });
+    revalidatePath("/locations");
   }
   return result;
 }
@@ -198,7 +201,7 @@ export async function createInlineLocation(
       near(l.longitude as number | null, longitude)
     );
   });
-  if (match) return { ok: true, value: match as Location };
+  if (match) { revalidatePath("/locations"); return { ok: true, value: match as Location }; }
 
   const { data, error } = await supabase
     .from("locations")
@@ -223,6 +226,7 @@ export async function createInlineLocation(
       action: "create",
       after: result.value,
     });
+    revalidatePath("/locations");
   }
   return result;
 }
@@ -287,5 +291,6 @@ export async function deleteLocation(id: string): Promise<Result<{ id: string }>
     action: "delete",
     before,
   });
+  revalidatePath("/locations");
   return { ok: true, value: { id } };
 }
