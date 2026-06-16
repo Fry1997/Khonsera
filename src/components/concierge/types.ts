@@ -96,6 +96,9 @@ export type LegVM = {
   toLabel: string;
   departure?: string;
   arrival?: string;
+  // When set, the leg lands this-named commitment EARLY — the leg shows "N min
+  // before <arriveBeforeLabel>", making the comfort buffer visible.
+  arriveBeforeLabel?: string;
   cost?: number; // pence/cents minor units
   currency?: string;
   notes?: string;

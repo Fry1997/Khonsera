@@ -149,6 +149,11 @@ export async function createStop(
 
 export async function updateStop(
   input: z.input<typeof updateSchema>,
+  // Callers that immediately re-solve themselves (e.g. setAnchorVariable →
+  // resequenceAndSolve) pass skipSolve to avoid solving the whole day TWICE per
+  // edit — the visible "every edit is slow" tax. Default keeps the solve so direct
+  // callers (rename) are unaffected.
+  opts?: { skipSolve?: boolean },
 ): Promise<Result<Stop>> {
   const parsed = parseInput(updateSchema, input);
   if (!parsed.ok) return parsed;
@@ -181,7 +186,7 @@ export async function updateStop(
       before,
       after: result.value,
     });
-    await resolveItineraryTimes(result.value.itinerary_id);
+    if (!opts?.skipSolve) await resolveItineraryTimes(result.value.itinerary_id);
   }
   return result;
 }

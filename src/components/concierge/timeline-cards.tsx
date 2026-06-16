@@ -246,6 +246,18 @@ export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: strin
     : "Travel needed");
   const Tag = onCompare ? "button" : "div";
   const state = leg.atRisk ? "at-risk" : LEG_STATE[leg.bookingStatus];
+  // The buffer made legible: how many minutes you LAND EARLY before the next fixed
+  // thing. Shown as a real number on every leg, not a vague "Comfortable".
+  const spare = leg.buffer?.slackMinutes;
+  const bufferLabel = !leg.buffer || leg.buffer.state === "unknown"
+    ? null
+    : leg.buffer.state === "late"
+      ? "Won't make it"
+      : leg.buffer.state === "tight"
+        ? `Tight · ${spare ?? 0} min`
+        : spare != null && spare > 0
+          ? `${spare} min spare`
+          : null; // flexible destination — nothing to be early for
   return (
     <Tag
       className="cc-leg-card"
@@ -256,13 +268,9 @@ export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: strin
       <div className="cc-leg-head">
         <span className="cc-leg-total">{total} door-to-door</span>
         <span className="cc-leg-head-right">
-          {leg.buffer && leg.buffer.state !== "unknown" ? (
-            <span className="cc-leg-buffer" data-buffer={leg.buffer.state}>
-              {leg.buffer.state === "ok"
-                ? "Comfortable"
-                : leg.buffer.state === "tight"
-                  ? `Tight · ${leg.buffer.slackMinutes ?? 0}m`
-                  : "Insufficient"}
+          {bufferLabel ? (
+            <span className="cc-leg-buffer" data-buffer={leg.buffer!.state}>
+              {bufferLabel}
             </span>
           ) : null}
           <span className="cc-leg-pattern">Direct</span>
@@ -279,6 +287,11 @@ export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: strin
           <span className="cc-mono">{formatMoney(leg.cost, leg.currency)}</span>
         ) : null}
       </div>
+      {spare != null && spare > 0 && leg.arriveBeforeLabel ? (
+        <p className="cc-leg-spare">
+          Arrive {formatClock(leg.arrival)} — {spare} min before {leg.arriveBeforeLabel}
+        </p>
+      ) : null}
       {leg.atRisk && leg.riskNote ? (
         <p className="cc-leg-risk">
           <span aria-hidden>!</span> {leg.riskNote}

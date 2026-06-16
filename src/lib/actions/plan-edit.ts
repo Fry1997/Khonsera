@@ -66,7 +66,9 @@ export async function setAnchorVariable(input: {
   }
   patch.metadata = meta;
 
-  const res = await updateStop(patch);
+  // skipSolve: resequenceAndSolve below already solves the day — without this the
+  // itinerary was solved TWICE per time edit (the visible edit lag).
+  const res = await updateStop(patch, { skipSolve: true });
   if (!res.ok) {
     const msg = "message" in res.error ? res.error.message : "Couldn't update that.";
     return { ok: false, error: msg };
@@ -155,6 +157,9 @@ export async function chooseLeg(input: {
     const msg = "message" in res.error ? res.error.message : "Couldn't choose that.";
     return { ok: false, error: msg };
   }
+  // Bust the canonical itinerary page (not just the index) so the change is fresh
+  // on the very next render — router.refresh shouldn't be the only thing busting it.
+  revalidatePath(`/plan/${res.value.itinerary_id}`);
   revalidatePath("/plan");
   return { ok: true };
 }
@@ -177,6 +182,7 @@ export async function createLeg(input: {
     const msg = "message" in res.error ? res.error.message : "Couldn't add that leg.";
     return { ok: false, error: msg };
   }
+  revalidatePath(`/plan/${input.itineraryId}`);
   revalidatePath("/plan");
   return { ok: true };
 }

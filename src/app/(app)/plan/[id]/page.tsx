@@ -331,23 +331,38 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           ),
         });
     const atRisk = feas.state === "tight" || feas.state === "late";
+    // You LEAVE at the from stop's end_time; you ARRIVE travel-minutes later — which,
+    // with a comfort buffer, is EARLIER than the fixed event. Show that real arrival
+    // (not the event time) so the buffer is visible as a gap, and surface the spare
+    // minutes explicitly ("12 min spare") instead of a vague "Comfortable".
+    const departIso = from.end_time ?? from.start_time ?? undefined;
+    const travelMin = tr.computed_duration_minutes;
+    const realArrivalIso =
+      departIso && travelMin != null
+        ? new Date(new Date(departIso).getTime() + travelMin * 60_000).toISOString()
+        : (to.start_time ?? undefined);
+    // Spare = how early you land before a FIXED commitment (the buffer made real).
+    const spareMinutes =
+      toFixed && to.start_time && realArrivalIso
+        ? Math.round((new Date(to.start_time).getTime() - new Date(realArrivalIso).getTime()) / 60_000)
+        : undefined;
     return {
       id: `${tr.from_stop_id}->${tr.to_stop_id}`,
       mode: mapLegMode(tr.mode),
       fromLabel: from.title ?? "—",
       toLabel: to.title ?? "—",
-      // You LEAVE a stop at its end_time (its "leave by"); fall back to start_time
-      // for transit stops that only carry a departure. This stops the first leg
-      // reading backwards (it was using home's phantom start_time).
-      departure: from.end_time ?? from.start_time ?? undefined,
-      arrival: to.start_time ?? undefined,
-      notes: tr.computed_duration_minutes ? `${tr.computed_duration_minutes} min` : undefined,
+      departure: departIso,
+      arrival: realArrivalIso,
+      arriveBeforeLabel: spareMinutes != null && spareMinutes > 0 ? (to.title ?? undefined) : undefined,
+      notes: travelMin ? `${travelMin} min` : undefined,
       bookingStatus: tr.is_locked ? "booked_in_app" : "manual",
       atRisk,
       riskNote: atRisk && "message" in feas ? feas.message : undefined,
       buffer: {
         state: feas.state,
-        slackMinutes: "slackMinutes" in feas ? feas.slackMinutes : undefined,
+        // The spare margin, shown for every classification (not just 'tight') so the
+        // buffer is always legible: "X min spare before your event".
+        slackMinutes: "slackMinutes" in feas ? feas.slackMinutes : spareMinutes,
       },
     };
   };
