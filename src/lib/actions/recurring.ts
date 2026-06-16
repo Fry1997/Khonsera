@@ -100,6 +100,15 @@ export async function deleteRecurringEvent(id: string): Promise<{ ok: boolean; e
 // ensures the next WEEKS_AHEAD weekly occurrences exist as real days. Idempotent:
 // a (rule, date) already present is skipped, so steady-state is just a read.
 export async function materializeRecurring(): Promise<void> {
+  try {
+    await materializeRecurringInner();
+  } catch (e) {
+    // NEVER let generation break the Plan page — log and move on.
+    console.error("[recurring] materialize failed", e);
+  }
+}
+
+async function materializeRecurringInner(): Promise<void> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
   const { data: rules } = await supabase
@@ -122,47 +131,64 @@ export async function materializeRecurring(): Promise<void> {
       cursor.setDate(cursor.getDate() + 7);
     }
 
+    // Skip any date you ALREADY have a plan on — a recurring rule must never create
+    // a second day on a date that's taken, nor touch an existing plan (e.g. the
+    // Dancing Duck demo on the 25th). This also covers idempotency: a day this rule
+    // already generated is "taken", so it's not recreated.
     const { data: existing } = await supabase
       .from("itineraries")
       .select("date_start")
-      .eq("recurring_event_id", rule.id as string)
+      .eq("user_id", ctx.userId)
       .in("date_start", dates);
-    const have = new Set((existing ?? []).map((r) => r.date_start as string));
-    const missing = dates.filter((d) => !have.has(d));
+    const taken = new Set((existing ?? []).map((r) => r.date_start as string));
+    const missing = dates.filter((d) => !taken.has(d));
 
     for (const date of missing) {
-      const { data: itin } = await supabase
-        .from("itineraries")
-        .insert({
-          workspace_id: ctx.workspaceId,
-          user_id: ctx.userId,
-          mode: rule.mode,
-          title: rule.title as string,
-          date_start: date,
-          date_end: date,
-          status: "planning",
-          recurring_event_id: rule.id as string,
-        })
-        .select("id")
-        .single();
-      if (!itin) continue;
+      try {
+        const { data: itin, error: insErr } = await supabase
+          .from("itineraries")
+          .insert({
+            workspace_id: ctx.workspaceId,
+            user_id: ctx.userId,
+            mode: rule.mode,
+            title: rule.title as string,
+            date_start: date,
+            date_end: date,
+            status: "planning",
+            recurring_event_id: rule.id as string,
+          })
+          .select("id")
+          .single();
+        if (insErr || !itin) {
+          console.error("[recurring] itinerary insert failed", date, insErr);
+          continue;
+        }
 
-      const startIso = wallClockToIso(date, rule.start_time as string);
-      const endIso = startIso
-        ? new Date(new Date(startIso).getTime() + (rule.duration_minutes as number) * 60_000).toISOString()
-        : null;
-      await createStop({
-        itinerary_id: itin.id as string,
-        type: "appointment",
-        title: rule.title as string,
-        start_time: startIso,
-        end_time: endIso,
-        duration_minutes: rule.duration_minutes as number,
-        is_time_fixed: true,
-        location_id: (rule.location_id as string | null) ?? null,
-      });
-      await ensureHomeBookend(itin.id as string, { create: true });
-      await resolveItineraryTimes(itin.id as string);
+        const startIso = wallClockToIso(date, rule.start_time as string);
+        const endIso = startIso
+          ? new Date(new Date(startIso).getTime() + (rule.duration_minutes as number) * 60_000).toISOString()
+          : null;
+        await createStop({
+          itinerary_id: itin.id as string,
+          type: "appointment",
+          title: rule.title as string,
+          start_time: startIso,
+          end_time: endIso,
+          duration_minutes: rule.duration_minutes as number,
+          is_time_fixed: true,
+          location_id: (rule.location_id as string | null) ?? null,
+        });
+        // The event + day already exist now; the bookend/solve are enhancements,
+        // so a failure here (e.g. no profile home) must not lose the generated day.
+        try {
+          await ensureHomeBookend(itin.id as string, { create: true });
+          await resolveItineraryTimes(itin.id as string);
+        } catch (e) {
+          console.error("[recurring] solve/bookend failed (day kept)", date, e);
+        }
+      } catch (e) {
+        console.error("[recurring] occurrence failed", date, e);
+      }
     }
   }
 }
