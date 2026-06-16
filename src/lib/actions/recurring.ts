@@ -205,7 +205,11 @@ export async function createRecurringEvent(
 export async function deleteRecurringEvent(id: string): Promise<{ ok: boolean; error?: string }> {
   await requireUserContext();
   const supabase = await createClient();
-  // Stop future generation. Already-generated days remain (delete them individually).
+  // Stop future generation. Already-generated days STAY (they're their own thing
+  // now) — just untag them so they read as normal days. Clean up the rule's
+  // collision decisions too (no FK cascade now that recurring_event_id is soft).
+  await supabase.from("itineraries").update({ recurring_event_id: null }).eq("recurring_event_id", id);
+  await supabase.from("recurring_occurrence_overrides").delete().eq("recurring_event_id", id);
   const { error } = await supabase.from("recurring_events").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/plan");
