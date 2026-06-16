@@ -7,6 +7,8 @@ import { buildValhallaRequest, mapValhallaTrip, type ValhallaTrip } from "@/lib/
 import { rankByProximity } from "@/lib/geo";
 import { textSearchPlaces } from "@/lib/google/places";
 import { mapsApiKey } from "@/lib/google/maps";
+import { searchTransportHubs, type TransportHubHit } from "@/lib/actions/travel-profile";
+import { searchPlaces, type PlaceHit } from "@/lib/actions/place-search";
 import type { GeocodeHit, NavRoute } from "@/lib/nav/types";
 
 // Point-to-point navigation actions. Fully open-source stack, every endpoint
@@ -153,4 +155,54 @@ export async function geocodeSearch(
     const msg = e instanceof Error ? e.message : "Geocode request failed";
     return err(errors.integration("photon", msg));
   }
+}
+
+// One round-trip for the whole endpoint search. The four lookups (rail hubs,
+// airports, saved places, free-text geocode) run truly in PARALLEL here on the
+// server. Fanning them out as four separate server actions from the client
+// serialises them — Next runs one server action at a time per router — so four
+// calls queued behind a slow geocode is what made the box take ~40s. The geocode
+// is time-boxed so a slow Photon fallback can't drag the whole result.
+const endpointsSchema = z.object({
+  query: z.string(),
+  near: z.object({ lat: z.number(), lng: z.number() }).nullish(),
+});
+
+export type EndpointResults = {
+  rail: TransportHubHit[];
+  air: TransportHubHit[];
+  places: PlaceHit[];
+  geocode: GeocodeHit[];
+};
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
+}
+
+export async function searchEndpoints(
+  input: z.input<typeof endpointsSchema>,
+): Promise<Result<EndpointResults>> {
+  const empty: EndpointResults = { rail: [], air: [], places: [], geocode: [] };
+  const parsed = endpointsSchema.safeParse(input);
+  if (!parsed.success) return ok(empty);
+  const q = parsed.data.query.trim();
+  if (q.length < 2) return ok(empty);
+  const near = parsed.data.near ?? undefined;
+
+  const [rail, air, places, geo] = await Promise.all([
+    searchTransportHubs({ kind: "rail_station", query: q, near }).catch(() => null),
+    searchTransportHubs({ kind: "airport", query: q, near }).catch(() => null),
+    searchPlaces({ query: q, near }).catch(() => null),
+    withTimeout(geocodeSearch({ query: q, near }), 6_000).catch(() => null),
+  ]);
+
+  return ok({
+    rail: rail?.ok ? rail.value : [],
+    air: air?.ok ? air.value : [],
+    places: places?.ok ? places.value : [],
+    geocode: geo?.ok ? geo.value : [],
+  });
 }

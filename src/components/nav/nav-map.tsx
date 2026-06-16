@@ -105,6 +105,14 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
 }
 
+// Line widths interpolate with zoom: the design-pack's slim overview lines when
+// the whole route is in frame (low zoom), fattening to the bold close-up nav line
+// once you've hit Start and the camera is at street level (~z16.5+). A fixed width
+// that looks right up-close is "thicker than houses" zoomed out — this fixes that.
+function widthByZoom(thin: number, thick: number): maplibregl.ExpressionSpecification {
+  return ["interpolate", ["linear"], ["zoom"], 13, thin, 16.5, thick];
+}
+
 // The route core gradient — travelled segment dimmed (goldMuted), the road ahead
 // bright (gold), the hand-off right at your progress. Clamped so the interpolate
 // stops stay strictly ascending and in-range.
@@ -227,14 +235,14 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
         id: "nav-casing",
         type: "line",
         source: ROUTE_SOURCE,
-        paint: { "line-color": theme.colors.routeCasing, "line-width": 11, "line-opacity": 0.9 },
+        paint: { "line-color": theme.colors.routeCasing, "line-width": widthByZoom(theme.geom.casingWidth, 11), "line-opacity": 0.9 },
         layout: { "line-cap": "round", "line-join": "round" },
       });
       m.addLayer({
         id: "nav-glow",
         type: "line",
         source: ROUTE_SOURCE,
-        paint: { "line-color": theme.colors.gold, "line-width": 13, "line-opacity": 0.16, "line-blur": 5 },
+        paint: { "line-color": theme.colors.gold, "line-width": widthByZoom(theme.geom.railGlowWidth, 13), "line-opacity": 0.16, "line-blur": 5 },
         layout: { "line-cap": "round", "line-join": "round" },
       });
       // The core line — a gradient that DIMS the part you've already travelled
@@ -244,7 +252,7 @@ export function NavMap({ route, themeName = "dusk", position, follow = false, he
         type: "line",
         source: ROUTE_SOURCE,
         paint: {
-          "line-width": 6,
+          "line-width": widthByZoom(theme.geom.railWidth, 6),
           "line-gradient": routeGradient(theme, 0),
         },
         layout: { "line-cap": "round", "line-join": "round" },

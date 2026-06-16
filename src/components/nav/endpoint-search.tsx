@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { searchTransportHubs } from "@/lib/actions/travel-profile";
-import { searchPlaces } from "@/lib/actions/place-search";
-import { geocodeSearch } from "@/lib/actions/nav";
+import { searchEndpoints } from "@/lib/actions/nav";
 import { formatMiles } from "@/lib/geo";
 import type { NavPoint } from "@/lib/nav/types";
 
@@ -51,16 +49,14 @@ export function EndpointSearch({
     const mySeq = ++seq.current;
     setBusy(true);
     const t = setTimeout(async () => {
-      const nearArg = near ?? undefined;
-      const [rail, air, places, osm] = await Promise.all([
-        searchTransportHubs({ kind: "rail_station", query: q, near: nearArg }).catch(() => null),
-        searchTransportHubs({ kind: "airport", query: q, near: nearArg }).catch(() => null),
-        searchPlaces({ query: q, near: nearArg }).catch(() => null),
-        geocodeSearch({ query: q, near: nearArg }).catch(() => null),
-      ]);
+      // One server action — the four lookups parallelise server-side. Fanning
+      // them out as separate actions from here serialises them (Next runs one at
+      // a time), which is what made this take tens of seconds.
+      const res = await searchEndpoints({ query: q, near: near ?? undefined }).catch(() => null);
       if (seq.current !== mySeq) return; // stale response
+      const data = res?.ok ? res.value : { rail: [], air: [], places: [], geocode: [] };
 
-      const hubHits = [...(rail?.ok ? rail.value : []), ...(air?.ok ? air.value.slice(0, 2) : [])];
+      const hubHits = [...data.rail, ...data.air.slice(0, 2)];
       const out: Suggestion[] = [];
       {
         for (const h of hubHits.slice(0, 4)) {
@@ -75,23 +71,19 @@ export function EndpointSearch({
           });
         }
       }
-      if (places?.ok) {
-        for (const p of places.value.slice(0, 3)) {
-          if (p.latitude == null || p.longitude == null) continue;
-          out.push({
-            group: "place",
-            name: p.name,
-            detail: p.kind === "customer_site" ? "Client site" : "Saved place",
-            lat: p.latitude,
-            lng: p.longitude,
-            distance_m: p.distance_m,
-          });
-        }
+      for (const p of data.places.slice(0, 3)) {
+        if (p.latitude == null || p.longitude == null) continue;
+        out.push({
+          group: "place",
+          name: p.name,
+          detail: p.kind === "customer_site" ? "Client site" : "Saved place",
+          lat: p.latitude,
+          lng: p.longitude,
+          distance_m: p.distance_m,
+        });
       }
-      if (osm?.ok) {
-        for (const g of osm.value.slice(0, 5)) {
-          out.push({ group: "osm", name: g.name, detail: g.detail, lat: g.lat, lng: g.lng, distance_m: g.distance_m });
-        }
+      for (const g of data.geocode.slice(0, 5)) {
+        out.push({ group: "osm", name: g.name, detail: g.detail, lat: g.lat, lng: g.lng, distance_m: g.distance_m });
       }
       setResults(out);
       setBusy(false);

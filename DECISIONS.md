@@ -1241,3 +1241,17 @@ Newest at the bottom of each section.
   fallback. NB: sky + 3D buildings + crisp vector still REQUIRE the vector basemap on
   (NEXT_PUBLIC_PMTILES_URL); on raster the camera/route/puck still elevate but the tiles stay OSM.
   tsc + 362 + build green.
+
+- **D94 — Nav overview lines + the 40s endpoint search.** Two founder reports on /navigate.
+  (1) ROUTE LINES too thick when zoomed out ("thicker than houses"): the close-up nav widths were
+  used at every zoom. Fixed — widths now zoom-interpolate (nav-map `widthByZoom`): the design-pack's
+  slim overview lines (theme.geom railWidth 2.8 / casing 5.5 / glow 9) at z13, fattening to the bold
+  close-up nav line (6 / 11 / 13) by z16.5. Overview reads as the design pack; the moment Start zooms
+  to street level the line is the bold nav line — no mode flag needed, zoom does it.
+  (2) "To" field took 40s for one result: the box fanned out FOUR separate server actions via
+  Promise.all from the client — Next serialises server actions (one in-flight per router), so they
+  queued behind a slow geocode. Collapsed into ONE action `searchEndpoints` (nav.ts) that runs the
+  four lookups in parallel server-side, one round-trip; the geocode is time-boxed to 6s so a slow
+  Photon fallback can't drag it. NB the geocode is slow because it's on the Photon fallback —
+  GOOGLE_MAPS_API_KEY is likely unset (provider-gating again); setting it makes geocode sub-second.
+  tsc + 362 + build green.
