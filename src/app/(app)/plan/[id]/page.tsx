@@ -452,11 +452,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     // editable anchors. Flag them so the spine renders a fixed home card.
     const entryStop = stopById.get(u.entryId);
     const entryType = entryStop?.type;
-    const isBase = entryType === "start" || entryType === "end";
+    // The auto "Back to your car" waypoint renders like a base node — quiet and
+    // not editable/removable (it's derived, not a fact the user placed).
+    const isCollectCar = (entryStop?.metadata as Record<string, unknown> | null)?.kind === "collect_car";
+    const isBase = entryType === "start" || entryType === "end" || isCollectCar;
     const accommodation =
       entryType === "accommodation" ? accommodationFromMetadata(entryStop?.metadata) : null;
     const notes = u.anchor ? notesByStop.get(u.entryId) ?? [] : [];
-    return { key: u.key, anchor: u.anchor, isBase, accommodation, notes, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
+    return { key: u.key, anchor: u.anchor, isBase, baseEyebrow: isCollectCar ? "Back to your car" : undefined, accommodation, notes, pass: u.pass, live: u.live, passDelete: u.passDelete, dayStart, after };
   });
 
   // Phase 8 — resolve each London transit leg to a live TfL plan; Phase 9 — when a

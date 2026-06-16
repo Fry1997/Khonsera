@@ -48,6 +48,7 @@ export type SpineNode = {
   anchor?: AnchorVM; // a normal anchor node
   isBase?: boolean; // a home/base node (the `start`/`end` stop) — the day's origin or
   // return-home. Renders as a fixed home card, not an editable, removable anchor.
+  baseEyebrow?: string; // override the base eyebrow (e.g. "Back to your car" waypoint)
   accommodation?: AccommodationDetails | null; // ED1 — the stay's arrival payload, rendered below
   // the anchor (wifi, access, parking, cancellation…) so the Hilton/Booking app is redundant.
   notes?: NoteVM[]; // P3 — prep + outcome notes bound to this commitment
@@ -124,7 +125,7 @@ export function PlanSpine({
               <div>
                 {n.isBase && n.anchor ? (
                   <div className="cc-node-anchor cc-base-node">
-                    <span className="cc-base-eyebrow">{n.after ? "Home · start" : "Home"}</span>
+                    <span className="cc-base-eyebrow">{n.baseEyebrow ?? (n.after ? "Home · start" : "Home")}</span>
                     <span className="cc-base-title">{n.anchor.place ?? n.anchor.title}</span>
                     {n.anchor.time ? (
                       <span className="cc-base-time">by {formatClock(n.anchor.time.from)}</span>

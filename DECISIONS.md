@@ -988,3 +988,16 @@ Newest at the bottom of each section.
   local); editing/deleting the rule only affects future un-generated days; existing days stay.
   `RecurringManager` on the Plan index (define "Office, Thu, 9–5" once); rules + generated events
   carry work/personal mode (per-event privacy applies). tsc + 326 tests + build green.
+
+- **D73 — Car continuity: your car stays where you park it (founder-discovered).** The solver chose
+  leg modes purely by distance and had no notion of where the car was — so after you drove to a
+  street, parked, and walked to the office, it "drove" you home from the office, teleporting the car.
+  New `carContinuityPass` (in `resequenceAndSolve`, before threading): tracks the car (rides on a
+  drive, stays on a walk); when it ends stranded away from home and you're not with it, it
+  auto-inserts a quiet "Back to your car" waypoint at the parked place, just before home. The
+  existing distance-based routing then yields the right legs for free — short walk to the car, then
+  drive home — and the map draws the dogleg naturally. Idempotent (clears its own waypoint each run)
+  and FAIL-SAFE (does nothing on missing coords / no home loop / car already with you or at home, so
+  it can never break a normal day). Renders as a non-editable base-style node ("Back to your car").
+  Also fixes park-and-ride for trains by the same logic. (Paired follow-up: a parking/utility stop
+  deriving its time from the next commitment instead of asking for an arrive-by.) tsc + 326 + build.

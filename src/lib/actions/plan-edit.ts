@@ -625,30 +625,140 @@ export async function addBookingRun(input: {
   return { ok: true };
 }
 
+// CAR CONTINUITY (2026-06-16). Your car is an asset with a LOCATION: it starts at
+// home, a drive carries it with you, and the moment you continue on foot it stays
+// put. A later drive can only begin where the car actually is. So if you drive to
+// a street, park, and walk to the office, the car is stranded on that street — and
+// the way home is NOT "drive from the office" (the app used to teleport the car),
+// it's "walk back to the car, then drive home". This pass auto-detects that and
+// inserts a quiet "Back to your car" waypoint just before home, at the parked
+// location — after which the normal distance-based routing yields the right legs
+// (short walk to the car, then drive home) for free. Idempotent + fail-safe: it
+// clears its own previous waypoint each run and does nothing when anything's
+// ambiguous (missing coords, no home loop, car already with you or at home).
+const COLLECT_NEAR_M = 120; // "same place" tolerance
+const DRIVE_MILES = 2; // matches threadTransitions' walk/drive cutoff
+
+type CcStop = {
+  id: string; type: string; sequence: number | null; start_time: string | null;
+  title: string | null; location_id: string | null; customer_site_id: string | null;
+  metadata: Record<string, unknown> | null;
+  location: { latitude: number | null; longitude: number | null } | null;
+  customer_site: { latitude: number | null; longitude: number | null } | null;
+  transport_hub: { latitude: number | null; longitude: number | null } | null;
+};
+
+async function carContinuityPass(itineraryId: string): Promise<void> {
+  const ctx = await requireUserContext();
+  const supabase = await createClient();
+  const { data: rows } = await supabase
+    .from("stops")
+    .select(`id, type, sequence, start_time, title, location_id, customer_site_id, metadata,
+      location:locations(latitude, longitude),
+      customer_site:customer_sites(latitude, longitude),
+      transport_hub:transport_hubs(latitude, longitude)`)
+    .eq("itinerary_id", itineraryId)
+    .eq("workspace_id", ctx.workspaceId);
+  const all = (rows ?? []) as unknown as CcStop[];
+
+  // Always clear the previous waypoint (+ its legs) so we recompute fresh.
+  const old = all.filter((s) => s.metadata?.kind === "collect_car").map((s) => s.id);
+  if (old.length) {
+    await supabase.from("transitions").delete().eq("itinerary_id", itineraryId).in("from_stop_id", old);
+    await supabase.from("transitions").delete().eq("itinerary_id", itineraryId).in("to_stop_id", old);
+    await supabase.from("stops").delete().eq("workspace_id", ctx.workspaceId).in("id", old);
+  }
+  const stops = all.filter((s) => s.metadata?.kind !== "collect_car");
+
+  const coordOf = (s: CcStop) => {
+    const lat = s.location?.latitude ?? s.customer_site?.latitude ?? s.transport_hub?.latitude;
+    const lng = s.location?.longitude ?? s.customer_site?.longitude ?? s.transport_hub?.longitude;
+    return lat != null && lng != null ? { lat, lng } : null;
+  };
+  type C = { lat: number; lng: number };
+  const near = (a: C | null, b: C | null) => !!a && !!b && haversineMeters(a.lat, a.lng, b.lat, b.lng) < COLLECT_NEAR_M;
+  const miles = (a: C, b: C) => haversineMeters(a.lat, a.lng, b.lat, b.lng) / 1609.344;
+  const isEnd = (s: CcStop) => s.type === "end" || s.metadata?.kind === "return_home" || s.metadata?.kind === "be_home_by";
+  const isStart = (s: CcStop) => s.type === "start" && s.metadata?.kind !== "be_home_by";
+
+  const start = stops.find(isStart);
+  const end = stops.find(isEnd);
+  if (!start || !end) return; // no home→home loop
+  const startCoord = coordOf(start);
+  const endCoord = coordOf(end);
+  if (!startCoord || !endCoord) return;
+
+  // Middle stops in chronological order (robust to stored sequence).
+  const middle = stops
+    .filter((s) => s.id !== start.id && !isEnd(s))
+    .sort((a, b) => (a.start_time ? new Date(a.start_time).getTime() : Infinity) - (b.start_time ? new Date(b.start_time).getTime() : Infinity));
+  if (middle.length === 0) return;
+
+  // Track the car: it rides along on a drive, stays put on a walk.
+  let carCoord: C = startCoord;
+  let prev: CcStop = start;
+  for (const s of middle) {
+    const pc = coordOf(prev), sc = coordOf(s);
+    if (pc && sc && miles(pc, sc) >= DRIVE_MILES) carCoord = sc; // drove → car moved here
+    prev = s;
+  }
+  const lastStop = middle[middle.length - 1];
+  const lastCoord = coordOf(lastStop);
+  if (!lastCoord) return;
+
+  // No collection needed if the car's at home, you're standing at it, or you
+  // could just walk home (car near home).
+  if (near(carCoord, endCoord) || near(carCoord, startCoord)) return;
+  if (near(lastCoord, carCoord)) return;
+  if (miles(carCoord, endCoord) < DRIVE_MILES) return;
+
+  // Reuse the parked stop's place (coords + name) for the waypoint.
+  const parkStop = [start, ...middle].find((s) => near(coordOf(s), carCoord));
+  if (!parkStop || (!parkStop.location_id && !parkStop.customer_site_id)) return; // can't route without a place
+
+  await supabase.from("stops").insert({
+    itinerary_id: itineraryId,
+    workspace_id: ctx.workspaceId,
+    type: "other",
+    title: parkStop.title ? `Back to the car · ${parkStop.title}` : "Back to the car",
+    location_id: parkStop.location_id,
+    customer_site_id: parkStop.customer_site_id,
+    is_time_fixed: false,
+    sequence: end.sequence ?? 9000,
+    metadata: { kind: "collect_car" },
+  });
+}
+
 // Shared: re-sequence every stop in an Event chronologically (insert-by-time),
 // then re-solve + re-infer the span. Used by every Plan-flow mutation.
 async function resequenceAndSolve(itineraryId: string): Promise<void> {
   const ctx = await requireUserContext();
   const supabase = await createClient();
+
+  // Car continuity first (it may add/remove a "Back to your car" waypoint), then
+  // re-sequence everything around it.
+  await carContinuityPass(itineraryId);
+
   const { data: rows } = await supabase
     .from("stops")
     .select("id, type, sequence, start_time, metadata")
     .eq("itinerary_id", itineraryId)
     .eq("workspace_id", ctx.workspaceId);
 
-  // Home start stays first, the return-home / be-home-by end stays last, the
-  // rest sort by time (matches createItineraryFromBrief's ordering).
+  // Rank order: home start (0) · middle by time (1) · collect-car waypoint (2) ·
+  // return-home / be-home-by end (3). The waypoint sits just before home.
   const isEnd = (r: { type: string; metadata: Record<string, unknown> | null }) =>
     r.type === "end" ||
     (r.metadata && (r.metadata.kind === "return_home" || r.metadata.kind === "be_home_by"));
   const isStart = (r: { type: string; metadata: Record<string, unknown> | null }) =>
     r.type === "start" && !(r.metadata && r.metadata.kind === "be_home_by");
+  const isCollect = (r: { metadata: Record<string, unknown> | null }) => r.metadata?.kind === "collect_car";
+  const rank = (r: { type: string; metadata: Record<string, unknown> | null }) =>
+    isStart(r as never) ? 0 : isEnd(r as never) ? 3 : isCollect(r) ? 2 : 1;
 
   const sorted = (rows ?? []).slice().sort((a, b) => {
-    const aS = isStart(a as never), bS = isStart(b as never);
-    if (aS !== bS) return aS ? -1 : 1;
-    const aE = isEnd(a as never), bE = isEnd(b as never);
-    if (aE !== bE) return aE ? 1 : -1;
+    const ra = rank(a as never), rb = rank(b as never);
+    if (ra !== rb) return ra - rb;
     const ta = a.start_time ? new Date(a.start_time as string).getTime() : Infinity;
     const tb = b.start_time ? new Date(b.start_time as string).getTime() : Infinity;
     return ta - tb;
