@@ -1057,3 +1057,26 @@ Newest at the bottom of each section.
   on the live spine (`src/lib/live/engine.ts`) + recovery ways-out, NOT static slack. Seam: the comfort buffer
   from D77 is the floor the chooser must clear; the live board supplies candidate departures. Build when the
   live-board changeover picker is scheduled (gated on `DARWIN_*` / `TFL_APP_KEY`, already wired).
+
+- **D79 — CRITICAL FIX: mig 0048 silently broke ALL new-day creation (mig 0054).** Root-caused the
+  founder's "recurring made no Thursdays" while chasing plan-tab slowness. mig 0048 set
+  `itineraries_select` USING to `can_access_itinerary(id)` — a STABLE SECURITY DEFINER function that
+  re-queries the itineraries table. Every create (createEvent / PlanCreate / recurring generation)
+  does `INSERT ... RETURNING id` via PostgREST `.select()`; the SELECT policy is applied to the
+  returned row, but the function's internal query can't see the just-inserted, stop-less row
+  (same-statement snapshot) → owner branch FALSE → RLS denies the RETURNING → the whole insert fails.
+  PROVEN: zero itineraries created since 0048 (~18h); in-harness `INSERT...RETURNING` failed, identical
+  `INSERT` without RETURNING succeeded; recurring's "0 generated days" was the visible symptom. Fix
+  (0054): `using ((user_id = auth.uid()) or can_access_itinerary(id))` — owner branch evaluated
+  row-direct (always visible to RETURNING), member access unchanged, privacy boundary unchanged.
+  Verified in-harness the create now returns the id. Other `can_access_itinerary(itinerary_id)` tables
+  reference the PARENT (already committed) so they were never affected.
+
+- **D80 — Plan-tab slowness: stop re-routing un-routable legs every open (page perf).** The plan
+  page's stale-leg heal re-routed any leg missing a duration on every render, but setTransitionMode
+  writes `computed_duration_minutes = route ?? null`, so a leg with an un-geocoded endpoint NEVER gets
+  a duration — it was re-routed (an external Valhalla call) + fully re-solved on EVERY open, several
+  seconds per navigation. Gated the heal to routable legs only (both endpoints geocoded); dropped the
+  redundant trailing whole-itinerary resolve; computed the day span from the already-loaded stops
+  instead of inferAndUpdateSpan's 2 re-reads + a 3rd span re-fetch (persist only on drift,
+  fire-and-forget); overlapped the journey fetch with ensureHomeBookend. tsc + build green.
