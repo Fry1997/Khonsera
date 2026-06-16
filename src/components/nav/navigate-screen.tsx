@@ -14,6 +14,7 @@ import type { NavMode, NavPoint, NavRoute, SavedNavRoute, ManeuverKind } from "@
 import { fetchBasemapTile } from "@/components/journey-map/pmtiles-source";
 import { EndpointSearch } from "./endpoint-search";
 import { NavMap } from "./nav-map";
+import { NavSessionView } from "./guidance/nav-session-view";
 import { useGuidance, type GuidanceFix } from "./use-guidance";
 import { useHeading, requestHeadingPermission } from "./use-heading";
 
@@ -43,6 +44,7 @@ export function NavigateScreen({
   const [error, setError] = useState<string | null>(null);
 
   const [guiding, setGuiding] = useState(false);
+  const [previewGuided, setPreviewGuided] = useState(false);
   const [voice, setVoice] = useState(true);
 
   const [saved, setSaved] = useState<SavedNavRoute[]>([]);
@@ -203,6 +205,32 @@ export function NavigateScreen({
     );
   }
 
+  // ── Preview the guided view (simulated, no GPS) — so the premium guidance
+  // surface (tilted 3D map, moving dot, the event-ETA chip) is reviewable from a
+  // desk without a live journey. The same surface "Start" gives on a real trip.
+  if (previewGuided && route) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
+        <NavSessionView
+          route={route}
+          active={false}
+          preview
+          voice={false}
+          commitments={[{
+            id: "sample",
+            name: "your appointment",
+            place: route.destination.name ?? "Destination",
+            neededByIso: new Date(Date.now() + route.duration_s * 1000 + 12 * 60_000).toISOString(),
+            bufferMin: 10,
+            downstreamMin: 0,
+          }]}
+          scheduledRemainingMin={Math.round(route.duration_s / 60)}
+          onEnd={() => setPreviewGuided(false)}
+        />
+      </div>
+    );
+  }
+
   // ── Plan mode ───────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -252,6 +280,9 @@ export function NavigateScreen({
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
               <button type="button" className="cc-btn" onClick={saveForOffline} disabled={!!saving}>
                 {saving ? `Saving ${saving.done}/${saving.total}…` : "Save offline"}
+              </button>
+              <button type="button" className="cc-btn" onClick={() => setPreviewGuided(true)}>
+                Preview guided view
               </button>
               <button type="button" className="cc-btn cc-btn-gold" onClick={startGuidance}>
                 Start
