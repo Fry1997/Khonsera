@@ -35,9 +35,7 @@ import { nextRailServices } from "@/lib/recovery/provider";
 import { buildRecoveryOptions } from "@/lib/recovery/engine";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
-import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { setTransitionMode } from "@/lib/actions/transitions";
-import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { ensureHomeBookend } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { comfortBufferMinutes, stopModeOf } from "@/lib/itinerary/buffers";
@@ -83,6 +81,14 @@ const londonHHMM = (iso?: string | null): string | null =>
   iso
     ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso))
     : null;
+
+// The YYYY-MM-DD prefix of an ISO timestamp — matches the span inference that
+// used to live in inferAndUpdateSpan (a plain slice, not a tz conversion).
+const ymdLocal = (iso?: string | null): string | null => {
+  if (!iso) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+  return m ? m[1] : null;
+};
 
 type StopRow = {
   id: string;
@@ -203,17 +209,19 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  const { data: journey } = await supabase
-    .from("itineraries")
-    .select("id, title, mode, date_start, date_end, status")
-    .eq("id", id)
-    .maybeSingle();
+  // Fetch the journey and collapse any stray duplicate home stops concurrently —
+  // they're independent (one reads itineraries, the other dedupes stops). We do
+  // NOT create home here — creation lives in the mutations so concurrent renders
+  // can't race and flash "home home … home home". Collapse is idempotent.
+  const [{ data: journey }] = await Promise.all([
+    supabase
+      .from("itineraries")
+      .select("id, title, mode, date_start, date_end, status")
+      .eq("id", id)
+      .maybeSingle(),
+    ensureHomeBookend(id, { create: false }),
+  ]);
   if (!journey) notFound();
-
-  // Collapse any stray duplicate home stops (legacy data / earlier races). We do
-  // NOT create here — creation lives in the mutations so concurrent renders can't
-  // race and flash "home home … home home". Collapse is idempotent.
-  await ensureHomeBookend(id, { create: false });
 
   let [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
   let stops = (s ?? []) as unknown as StopRow[];
@@ -225,25 +233,60 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   // NOTE: render is READ-MOSTLY — do NOT re-sequence/re-thread here. Doing that
   // raced across concurrent renders (prefetch + navigate) and made the order +
   // times jump on every refresh. Re-sequencing lives in the mutations.
-  const staleLegs = transitions.filter((x) => !x.is_locked && x.computed_duration_minutes == null);
+  //
+  // ONLY heal legs we can actually route: both endpoints must be geocoded. A leg
+  // with an un-geocoded endpoint will NEVER get a duration from routing, so
+  // re-routing it was burning an external route call + a full re-solve on EVERY
+  // open (the planning-tab slowness — a few un-routable legs = several seconds
+  // per navigation). Leave those null (honest "travel needed") until the endpoint
+  // gains coords; a real edit re-routes them. The per-leg setTransitionMode
+  // already re-solves, so no trailing whole-itinerary resolve is needed.
+  const coordById = new Map(stops.map((st) => [st.id, coordOfStop(st)] as const));
+  const staleLegs = transitions.filter(
+    (x) =>
+      !x.is_locked &&
+      x.computed_duration_minutes == null &&
+      !!coordById.get(x.from_stop_id) &&
+      !!coordById.get(x.to_stop_id),
+  );
   if (staleLegs.length > 0) {
     for (const leg of staleLegs) {
       await setTransitionMode({ id: leg.id, mode: leg.mode as Parameters<typeof setTransitionMode>[0]["mode"] });
     }
-    await resolveItineraryTimes(id);
     [{ data: s }, { data: t }, { data: i }] = await loadSpine(id);
     stops = (s ?? []) as unknown as StopRow[];
     transitions = (t ?? []) as unknown as TransRow[];
   }
 
-  await inferAndUpdateSpan(id);
-  const { data: spanRow } = await supabase
-    .from("itineraries")
-    .select("date_start, date_end")
-    .eq("id", id)
-    .maybeSingle();
-  const dateStart = (spanRow?.date_start as string) ?? (journey.date_start as string);
-  const dateEnd = (spanRow?.date_end as string) ?? (journey.date_end as string);
+  // Day span — earliest/latest stop date, never narrower than the stored span.
+  // Computed from the stops we ALREADY loaded (was: inferAndUpdateSpan re-read
+  // the journey + every stop, then a third query re-fetched the span — three
+  // serial round trips on every render for a value we already have in hand).
+  const stopDates: string[] = [];
+  for (const st of stops) {
+    const a = ymdLocal(st.start_time);
+    const b = ymdLocal(st.end_time);
+    if (a) stopDates.push(a);
+    if (b) stopDates.push(b);
+  }
+  stopDates.sort();
+  const dateStart =
+    stopDates.length && stopDates[0] < (journey.date_start as string)
+      ? stopDates[0]
+      : (journey.date_start as string);
+  const dateEnd =
+    stopDates.length && stopDates[stopDates.length - 1] > (journey.date_end as string)
+      ? stopDates[stopDates.length - 1]
+      : (journey.date_end as string);
+  // Persist only if the stored span actually drifted — fire-and-forget so the
+  // write never blocks the render (the value above is already correct for paint).
+  if (dateStart !== journey.date_start || dateEnd !== journey.date_end) {
+    void supabase
+      .from("itineraries")
+      .update({ date_start: dateStart, date_end: dateEnd })
+      .eq("id", id)
+      .then(() => undefined);
+  }
 
   const intentions: IntentionVM[] = (i ?? []).map((x) => ({
     id: x.id as string,
