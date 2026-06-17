@@ -1016,6 +1016,21 @@ const SENDER_CONFIGS: SenderConfig[] = [
     },
   },
   {
+    // RailSmartr (= Assertis Ltd). The journey lives in the PDF/.pkpass
+    // attachments, not the body — so we return a transport SKELETON here and
+    // enrichRailsmartrFromPdfs fills the segments/price/ref from the eTickets.
+    match: (from, subject) => /railsmartr|assertis/i.test(from) || /railsmartr/i.test(subject),
+    parse: () => ({
+      type: "transport",
+      mode: "train",
+      provider: "Railsmartr",
+      booking_reference: null,
+      price: null,
+      currency: "GBP",
+      segments: [],
+    }),
+  },
+  {
     match: (from) => /lner/i.test(from),
     parse: (html, text) => parseUkRail(html, text, "LNER"),
   },

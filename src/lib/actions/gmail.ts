@@ -22,9 +22,14 @@ import {
   tryDownloadPkpass,
   extractBarcodeFromPkpass,
 } from "@/lib/gmail/trainline-pdf";
+import {
+  parseRailsmartrPdfText,
+  railsmartrTicketsToSegments,
+} from "@/lib/gmail/railsmartr-pdf";
 
 const BOOKING_SENDERS = [
   "trainline",
+  "railsmartr",
   "lner",
   "avanti",
   "gwr",
@@ -142,6 +147,87 @@ async function enrichTrainlineFromPdfs(
   };
 }
 
+// RailSmartr (Assertis) carries the whole journey in its PDF eTickets, not the
+// body. Parse each PDF's text → itinerary legs, decode its Aztec, then combine the
+// outbound + return halves into one booking. Mirrors enrichTrainlineFromPdfs but
+// for the inline-labelled Assertis layout (and the return-fare price rule).
+async function enrichRailsmartrFromPdfs(
+  accessToken: string,
+  messageId: string,
+  msg: Awaited<ReturnType<typeof gmailGetMessage>>,
+  parsed: Partial<ParsedBooking>,
+): Promise<Partial<ParsedBooking>> {
+  if (parsed.type !== "transport") return parsed;
+  const attachments = extractAttachments(msg);
+  const pdfs = attachments.filter(
+    (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+  );
+  if (pdfs.length === 0) return parsed;
+
+  const pdfBuffers = await Promise.all(
+    pdfs.map(async (pdf) => {
+      try {
+        return await gmailGetAttachment({ accessToken, messageId, attachmentId: pdf.attachmentId });
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const { extractText } = await import("unpdf").catch(() => ({ extractText: null }));
+  if (!extractText) return parsed;
+
+  const tickets = await Promise.all(
+    pdfBuffers.map(async (buf) => {
+      if (!buf) return null;
+      let ticket: ReturnType<typeof parseRailsmartrPdfText> = null;
+      try {
+        // Fresh buffer per consumer — unpdf detaches the ArrayBuffer on read.
+        const result = await extractText(new Uint8Array(buf).buffer);
+        const pdfText = Array.isArray(result.text) ? result.text.join(" ") : result.text;
+        ticket = parseRailsmartrPdfText(pdfText);
+      } catch {
+        // text extraction failed
+      }
+      if (!ticket) return null;
+      try {
+        const barcodeData = await decodeAztecFromPdf(new Uint8Array(buf).buffer);
+        if (barcodeData) ticket.barcode_data = barcodeData;
+      } catch {
+        // Aztec decode is best-effort; the ticket detail still imports.
+      }
+      return ticket;
+    }),
+  );
+
+  const valid = tickets.filter((t): t is NonNullable<typeof t> => t !== null);
+  if (valid.length === 0) return parsed;
+
+  const fallbackDate = parsed.segments?.[0]?.departure_date ?? new Date().toISOString().slice(0, 10);
+  const segments = railsmartrTicketsToSegments(valid, fallbackDate).sort((a, b) =>
+    (a.departure_date + a.departure_time).localeCompare(b.departure_date + b.departure_time),
+  );
+
+  // Price: an Anytime Day RETURN prints the SAME fare on both halves — count each
+  // distinct ticket number's price ONCE (summing would double the return). Two
+  // genuinely separate tickets (distinct numbers) still sum correctly.
+  const priceByTicket = new Map<string, number>();
+  valid.forEach((t, i) => {
+    if (t.price != null) priceByTicket.set(t.ticket_number ?? `__${i}`, t.price);
+  });
+  const totalPrice = [...priceByTicket.values()].reduce((s, p) => s + p, 0);
+
+  const ref = valid.find((t) => t.ticket_number)?.ticket_number ?? null;
+
+  return {
+    ...parsed,
+    provider: "Railsmartr",
+    segments,
+    price: totalPrice > 0 ? totalPrice : (parsed as { price?: number | null }).price ?? null,
+    booking_reference: ref ?? (parsed as { booking_reference?: string | null }).booking_reference ?? null,
+  };
+}
+
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
   const bodyProviders = BOOKING_SENDERS.map((s) => `"${s}"`).join(" OR ");
@@ -223,6 +309,19 @@ export async function scanGmailForBookings(): Promise<
             );
           } catch (e) {
             console.warn("gmail: PDF enrichment failed", ref.id, e);
+          }
+        } else if (parsed.type === "transport" && /railsmartr|assertis/i.test(from)) {
+          // RailSmartr's body is data-empty — the journey is in the eTicket PDFs.
+          try {
+            parsed = await enrichRailsmartrFromPdfs(
+              gmail.accessToken, ref.id, msg, parsed,
+            );
+          } catch (e) {
+            console.warn("gmail: railsmartr PDF enrichment failed", ref.id, e);
+          }
+          // Skeleton with no resolvable legs → nothing to import.
+          if (!parsed || (parsed.type === "transport" && (parsed.segments?.length ?? 0) === 0)) {
+            return null;
           }
         }
 

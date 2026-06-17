@@ -1278,3 +1278,21 @@ Newest at the bottom of each section.
   is informal-path/cut-through data coverage vs Google/Apple (a data moat, not a rendering issue);
   self-hosting Valhalla with a tuned pedestrian profile is the lever if it resurfaces. Not building
   the Mapbox style now — parked as direction. Maps work is OFF the table for the moment.
+
+- **D97 — RailSmartr/Assertis eTicket import (Gmail).** Founder bought real RailSmartr tickets
+  (sender `tickets@railsmartr.co.uk`); evaluated + built support. RailSmartr = a trading name of
+  **Assertis Ltd**, who white-label rail ticketing for many retailers, so this layout should
+  generalise (matched on `railsmartr|assertis`). The email BODY is data-empty — the journey is in the
+  attachments (2× `.pkpass` + 2× `.pdf` eTickets, ref AABTSKFL9ZB). New `src/lib/gmail/railsmartr-pdf.ts`
+  (`parseRailsmartrPdfText` + `railsmartrTicketsToSegments`): the Assertis TCPDF extracts as ONE
+  space-delimited run (no newlines, unlike Trainline) with inline labels — cleaner to parse. Pulls
+  direction/CRS endpoints, date, ticket type, route, railcard, price, ticket number, order ID, and the
+  **suggested itinerary legs** (time + operator + endpoints) — so the Luton change is modelled as
+  adjacent segments. Wiring: `railsmartr` added to `BOOKING_SENDERS`; a skeleton SENDER_CONFIG so
+  `detectAndParse` returns non-null for the empty body; `enrichRailsmartrFromPdfs` builds segments from
+  the PDFs + reuses the proven generic `decodeAztecFromPdf` (the Aztec is the 294×294 image; the other
+  two are logo/railcard). **Price rule:** an Anytime Day RETURN prints the SAME fare on both halves —
+  count each distinct ticket number ONCE (summing would double it); distinct numbers still sum. 5 unit
+  tests on the real extracted text. NB: couldn't run the Aztec decode in-sandbox (zxing-wasm can't
+  fetch its wasm in a bare script) but it's the identical Trainline path + the image is confirmed
+  present/shaped. tsc + 367 + build green.
