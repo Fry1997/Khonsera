@@ -129,6 +129,53 @@ export function mapOtpItineraries(res: OtpResponse, destName: string): RecoveryC
   return out;
 }
 
+// Direct scheduled journey time for ONE origin→destination leg at a booked
+// departure — used to fill arrival times a retailer's eTicket omitted (RailSmartr
+// prints departures only). This is the on-posture, direct-to-source alternative to
+// a third-party journey API: the GB rail GTFS timetable in our own OTP, no rate
+// limits, no per-request cost. Pure selection split out for unit testing.
+export function pickScheduledArrival(res: OtpResponse, departIso: string): string | null {
+  const departMs = new Date(departIso).getTime();
+  if (Number.isNaN(departMs)) return null;
+  // Edges are time-ordered; the booked train is the first itinerary departing at
+  // (≈) or after the booked time. Allow 60s of slack for rounding.
+  for (const { node } of res.data?.planConnection?.edges ?? []) {
+    const legs = (node.legs ?? []).filter((l) => l.mode && l.mode !== "WALK");
+    const dep = node.start ?? legs[0]?.start?.scheduledTime ?? null;
+    const arr = node.end ?? legs[legs.length - 1]?.end?.scheduledTime ?? null;
+    if (!dep || !arr) continue;
+    if (new Date(dep).getTime() < departMs - 60_000) continue;
+    return arr;
+  }
+  return null;
+}
+
+// Gated live call. Returns the booked leg's scheduled ARRIVAL ISO, or null when
+// OTP_URL is unset / the instance errors — the caller then falls back to another
+// timetable (Google transit) so import never blocks.
+export async function otpScheduledArrival(args: {
+  origin: OtpPoint;
+  destination: OtpPoint;
+  departIso: string;
+}): Promise<string | null> {
+  const base = otpUrl();
+  if (!base) return null;
+  const { query, variables } = buildOtpPlanQuery(args.origin, args.destination, args.departIso);
+  try {
+    const res = await fetch(`${base.replace(/\/$/, "")}${GRAPHQL_PATH}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(6000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return pickScheduledArrival((await res.json()) as OtpResponse, args.departIso);
+  } catch {
+    return null;
+  }
+}
+
 // Live call (gated). Returns null when OTP_URL is unset or the instance errors —
 // recovery falls back to the Darwin same-route options, never a blank.
 export async function otpRouteAlternatives(args: {

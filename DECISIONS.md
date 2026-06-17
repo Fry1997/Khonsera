@@ -1333,3 +1333,15 @@ Newest at the bottom of each section.
   Trainline (real arrivals) is untouched and a missing key just leaves the estimate. UNVERIFIED in
   sandbox (no live Google call) — validate on a real import; watch the query timezone picks the right
   train. tsc + 369 + build green.
+
+- **D97d — Rail timing is OTP-first (direct GTFS), Google only the fallback.** Founder pushed back on
+  leaning on Google for rail times (rate limits, indirect, third-party) — "there's a direct-to-source
+  method." Correct, and we'd already scaffolded it: OpenTripPlanner (`src/lib/integrations/otp.ts`),
+  the GB rail GTFS timetable in our own self-hosted OTP2, same posture as Valhalla/Photon — no rate
+  limits, no per-request cost, no third party (docs/otp-self-hosting.md; inert until `OTP_URL` set).
+  Added `pickScheduledArrival` (pure, tested) + `otpScheduledArrival` (gated call) for a direct
+  point-to-point booked-leg arrival lookup. `importBookingAsRun` now refines estimated arrivals
+  OTP-FIRST, falling back to Google transit only when OTP is unset/errs, then to the parser estimate.
+  So once the OTP instance is stood up, import timing is direct-source automatically with zero code
+  change — Google is just today's stopgap. (Darwin stays the day-of live refiner; it's a ~2h board,
+  not a forward timetable.) tsc + 372 + build green.

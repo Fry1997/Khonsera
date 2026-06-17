@@ -9,6 +9,7 @@ import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { wallClockToIso } from "@/lib/time-zone";
 import { getDirections } from "@/lib/google/maps";
+import { otpScheduledArrival } from "@/lib/integrations/otp";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
@@ -978,11 +979,17 @@ export async function importBookingAsRun(input: {
   // Refine DERIVED arrival times against the real scheduled timetable. RailSmartr
   // (and similar) print departures only, so the parser leaves an estimate flagged
   // `arrival_estimated`; here we look up the actual journey time station→station at
-  // the booked departure and set the true arrival. Why not Darwin? Darwin's LDBWS
-  // is a LIVE board (~2h ahead) — it can't time a journey days away; it's the
-  // day-of refiner (the live engine already uses it). Google transit carries the
-  // forward timetable. Best-effort + parallel: if the key/route is unavailable the
-  // parser's estimate stands, so the build never blocks.
+  // the booked departure and set the true arrival.
+  //
+  // PRIMARY source is our self-hosted OTP (the GB rail GTFS timetable) — direct,
+  // no rate limits, no per-request cost, no third party; the on-posture choice
+  // (same as Valhalla/Photon). It's inert until OTP_URL is set, so until the
+  // instance is stood up we FALL BACK to Google transit (which carries the forward
+  // timetable and is already keyed). Not Darwin: its LDBWS is a LIVE board (~2h
+  // ahead) and can't time a journey days away — that's the day-of refiner. All
+  // best-effort + parallel + gated on the flag: if every source is unavailable the
+  // parser's estimate stands and the build never blocks (Trainline is untouched —
+  // its arrivals are printed, so it carries no estimate flag).
   const addClockMinutes = (hhmm: string, mins: number): string => {
     const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
     if (!m) return hhmm;
@@ -996,18 +1003,23 @@ export async function importBookingAsRun(input: {
       const d = coordFor(s.to_station_code, s.to_station);
       const depIso = segIso(s.departure_date, s.departure_time);
       if (!o || !d || !depIso) return;
-      try {
-        const dir = await getDirections({
-          origin: o,
-          destination: d,
-          mode: "transit",
-          departureTime: new Date(depIso),
-        });
-        if (dir && dir.durationSeconds > 0) {
-          s.arrival_time = addClockMinutes(s.departure_time, Math.round(dir.durationSeconds / 60));
+      const depMs = new Date(depIso).getTime();
+      let durMin: number | null = null;
+      // 1) Direct source — self-hosted OTP timetable (inert until OTP_URL is set).
+      const otpArr = await otpScheduledArrival({ origin: o, destination: d, departIso: depIso });
+      if (otpArr) {
+        durMin = Math.round((new Date(otpArr).getTime() - depMs) / 60_000);
+      } else {
+        // 2) Fallback — Google transit (forward timetable, already keyed).
+        try {
+          const dir = await getDirections({ origin: o, destination: d, mode: "transit", departureTime: new Date(depIso) });
+          if (dir && dir.durationSeconds > 0) durMin = Math.round(dir.durationSeconds / 60);
+        } catch {
+          // keep the parser's estimate
         }
-      } catch {
-        // keep the parser's estimate
+      }
+      if (durMin && durMin > 0 && durMin < 1440) {
+        s.arrival_time = addClockMinutes(s.departure_time, durMin);
       }
     }),
   );
