@@ -1357,3 +1357,14 @@ Newest at the bottom of each section.
   rail journey API exists. The path is OTP self-hosted on the RDM *timetable feed* (data persists; no
   hosted endpoint to vanish) — same posture as Valhalla/Protomaps. Already wired OTP-first (D97d);
   Google transit is the interim fallback. Do NOT chase RTJP/OJP.
+
+- **D98 — "Imported" now means "still on a plan": orphaned Gmail imports self-heal + re-import.**
+  Founder deleted the mis-built RailSmartr import, then the scan stopped finding the tickets. Cause:
+  the scan excluded any id in `gmail_imported_messages` with NO orphan check; the run-level delete
+  releases the email (clears the row) but the founder deleted the scattered stops PIECEMEAL (via
+  per-stop delete, which doesn't release) — so the rows were orphaned and the email was skipped
+  forever. Fix (scanGmailForBookings): a row only counts as imported if a LIVE stop still carries its
+  message id (import stamps `gmail_message_id`/`gmail_message_ids` on the departure stop's metadata);
+  orphaned rows are released + cleaned up, so any deletion path (run-level OR piecemeal) makes the
+  booking re-importable. Self-heals the founder's stuck tickets on the next scan — no manual cleanup.
+  tsc + 372 + build green.

@@ -251,13 +251,42 @@ export async function scanGmailForBookings(): Promise<
 
   const supabase = await createClient();
 
-  // Get already-imported message IDs to exclude
+  // Already-imported message IDs to exclude — but "imported" must mean "still on a
+  // plan". A booking deleted stop-by-stop (rather than via the run-delete that
+  // releases the email) leaves an ORPHANED gmail_imported_messages row, and without
+  // this check the scan would skip that email forever. So a row only counts as
+  // imported if a LIVE stop still carries its message id (the import stamps it on
+  // the departure stop's metadata). Orphans are released + the stale rows cleaned
+  // up, so a deleted import can always be re-scanned and re-imported.
   const { data: imported } = await supabase
     .from("gmail_imported_messages")
     .select("gmail_message_id")
     .eq("workspace_id", ctx.workspaceId)
     .eq("user_id", ctx.userId);
-  const importedIds = new Set((imported ?? []).map((r) => r.gmail_message_id));
+  const importedMsgIds = [...new Set((imported ?? []).map((r) => r.gmail_message_id as string))];
+
+  const liveMsgIds = new Set<string>();
+  if (importedMsgIds.length) {
+    const { data: liveStops } = await supabase
+      .from("stops")
+      .select("metadata")
+      .eq("workspace_id", ctx.workspaceId);
+    for (const s of liveStops ?? []) {
+      const meta = (s.metadata as Record<string, unknown> | null) ?? {};
+      const one = typeof meta.gmail_message_id === "string" ? [meta.gmail_message_id] : [];
+      const many = Array.isArray(meta.gmail_message_ids) ? (meta.gmail_message_ids as unknown[]) : [];
+      for (const m of [...one, ...many]) if (typeof m === "string" && m) liveMsgIds.add(m);
+    }
+  }
+  const orphanIds = importedMsgIds.filter((id) => !liveMsgIds.has(id));
+  if (orphanIds.length) {
+    await supabase
+      .from("gmail_imported_messages")
+      .delete()
+      .eq("workspace_id", ctx.workspaceId)
+      .in("gmail_message_id", orphanIds);
+  }
+  const importedIds = new Set(importedMsgIds.filter((id) => liveMsgIds.has(id)));
 
   let messageRefs;
   try {
