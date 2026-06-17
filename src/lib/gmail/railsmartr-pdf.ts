@@ -197,6 +197,9 @@ export function railsmartrTicketsToSegments(
         seat: null,
         barcode_ref: first ? t.ticket_number : null,
         barcode_data: first ? t.barcode_data : null,
+        // Times are derived (the itinerary prints departures only) — the importer
+        // refines them against a transit timetable, falling back to these.
+        arrival_estimated: true,
       });
     });
   }

@@ -19,6 +19,9 @@ export type ParsedTransportSegment = {
   seat: string | null;
   barcode_ref: string | null;
   barcode_data: string | null; // Full Aztec/barcode payload for regeneration
+  // True when arrival_time was DERIVED (not printed on the ticket) — e.g. RailSmartr
+  // prints departures only. The importer refines these via a transit timetable.
+  arrival_estimated?: boolean;
 };
 
 export type ParsedTransportBooking = {

@@ -8,6 +8,7 @@ import { resolveItineraryTimes } from "@/lib/actions/itineraries";
 import { inferAndUpdateSpan } from "@/lib/actions/events";
 import { foldStopsToTickets } from "@/lib/tickets/from-stops";
 import { wallClockToIso } from "@/lib/time-zone";
+import { getDirections } from "@/lib/google/maps";
 import { previewRoute, setTransitionMode, upsertTransition } from "@/lib/actions/transitions";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { topViable, doorToDoorMinutes, type DoorToDoorOption } from "@/lib/planning/door-to-door";
@@ -925,40 +926,91 @@ export async function importBookingAsRun(input: {
   const wantKind = booking.mode === "flight" ? "airport" : "rail_station";
   const codes = [...new Set(segs.flatMap((s) => [s.from_station_code, s.to_station_code]).filter((c): c is string => !!c))];
   const hubByCode = new Map<string, string>();
+  const coordByCode = new Map<string, { lat: number; lng: number }>();
   if (codes.length) {
     const { data: hubs } = await supabase
       .from("transport_hubs")
-      .select("id, code, kind")
+      .select("id, code, kind, latitude, longitude")
       .in("code", codes.map((c) => c.toUpperCase()));
     for (const c of codes) {
       const cu = c.toUpperCase();
       const matches = (hubs ?? []).filter((h) => (h.code as string)?.toUpperCase() === cu);
       const pick = matches.find((h) => h.kind === wantKind) ?? matches[0];
-      if (pick) hubByCode.set(cu, pick.id as string);
+      if (pick) {
+        hubByCode.set(cu, pick.id as string);
+        if (pick.latitude != null && pick.longitude != null) {
+          coordByCode.set(cu, { lat: pick.latitude as number, lng: pick.longitude as number });
+        }
+      }
     }
   }
 
   const names = [...new Set(segs.flatMap((s) => [s.from_station, s.to_station]).filter((n): n is string => !!n))];
   const hubByName = new Map<string, string>();
+  const coordByName = new Map<string, { lat: number; lng: number }>();
   if (names.length) {
     const orFilter = names.map((n) => `name.ilike.${n.replace(/[(),]/g, " ").trim()}`).join(",");
     const { data: hubs } = await supabase
       .from("transport_hubs")
-      .select("id, name, kind")
+      .select("id, name, kind, latitude, longitude")
       .or(orFilter);
     for (const n of names) {
       // Prefer an exact rail-station name match (avoids "Luton Airport Parkway"
       // matching "Luton"); fall back to any exact-name hub.
       const matches = (hubs ?? []).filter((h) => (h.name as string)?.toLowerCase() === n.toLowerCase());
       const pick = matches.find((h) => h.kind === wantKind) ?? matches[0];
-      if (pick) hubByName.set(n.toLowerCase(), pick.id as string);
+      if (pick) {
+        hubByName.set(n.toLowerCase(), pick.id as string);
+        if (pick.latitude != null && pick.longitude != null) {
+          coordByName.set(n.toLowerCase(), { lat: pick.latitude as number, lng: pick.longitude as number });
+        }
+      }
     }
   }
 
   const hubFor = (code: string | null, name?: string | null) =>
     (code ? hubByCode.get(code.toUpperCase()) : null) ?? (name ? hubByName.get(name.toLowerCase()) ?? null : null);
+  const coordFor = (code: string | null, name?: string | null) =>
+    (code ? coordByCode.get(code.toUpperCase()) : null) ?? (name ? coordByName.get(name.toLowerCase()) ?? null : null);
 
   const segIso = (date: string, time: string | null) => (time ? wallClockToIso(date, time) : null);
+
+  // Refine DERIVED arrival times against the real scheduled timetable. RailSmartr
+  // (and similar) print departures only, so the parser leaves an estimate flagged
+  // `arrival_estimated`; here we look up the actual journey time station→station at
+  // the booked departure and set the true arrival. Why not Darwin? Darwin's LDBWS
+  // is a LIVE board (~2h ahead) — it can't time a journey days away; it's the
+  // day-of refiner (the live engine already uses it). Google transit carries the
+  // forward timetable. Best-effort + parallel: if the key/route is unavailable the
+  // parser's estimate stands, so the build never blocks.
+  const addClockMinutes = (hhmm: string, mins: number): string => {
+    const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return hhmm;
+    const total = ((parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + mins) % 1440 + 1440) % 1440;
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  };
+  await Promise.all(
+    segs.map(async (s) => {
+      if (!s.arrival_estimated || !s.departure_time || s.departure_time === "00:00") return;
+      const o = coordFor(s.from_station_code, s.from_station);
+      const d = coordFor(s.to_station_code, s.to_station);
+      const depIso = segIso(s.departure_date, s.departure_time);
+      if (!o || !d || !depIso) return;
+      try {
+        const dir = await getDirections({
+          origin: o,
+          destination: d,
+          mode: "transit",
+          departureTime: new Date(depIso),
+        });
+        if (dir && dir.durationSeconds > 0) {
+          s.arrival_time = addClockMinutes(s.departure_time, Math.round(dir.durationSeconds / 60));
+        }
+      } catch {
+        // keep the parser's estimate
+      }
+    }),
+  );
 
   // Split into JOURNEYS. A return booking lists every leg in one email:
   // out (WEL→Luton→Harpenden) then return (Harpenden→Luton→WEL). The hours you

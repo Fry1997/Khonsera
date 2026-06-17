@@ -1318,3 +1318,18 @@ Newest at the bottom of each section.
   one ~1min hang) — possibly a duplicate booking from a second RailSmartr email (order-confirmation +
   eTicket both carrying the PDFs); if it recurs, add booking_reference dedup for RailSmartr. tsc + 369
   + build green.
+
+- **D97c — Real rail leg times at import via transit timetable (not Darwin).** Founder noticed the
+  Luton changeover showed arrive == depart (the 0-min placeholder) and the final leg was a +30
+  estimate, and asked to run from→to + departure through Darwin on import. Clarified: **Darwin LDBWS
+  is a LIVE board (~2h ahead) — it cannot time a journey days away**, so it's the *day-of* refiner
+  (the live engine already uses it), not an import-time timetable. The forward timetable we already
+  have a key for is **Google transit** (`getDirections({mode:"transit", departureTime})` returns the
+  scheduled duration). So: the RailSmartr parser still DERIVES arrivals (changeover = next departure,
+  final = +30) but now flags them `arrival_estimated`; `importBookingAsRun` resolves station coords and,
+  for each estimated leg, looks up the real station→station journey time at the booked departure and
+  sets the true arrival (`arrival = departure + durationSeconds`, computed in wall-clock minutes;
+  query instant via `wallClockToIso` so BST is right). Best-effort + parallel + gated on the flag, so
+  Trainline (real arrivals) is untouched and a missing key just leaves the estimate. UNVERIFIED in
+  sandbox (no live Google call) — validate on a real import; watch the query timezone picks the right
+  train. tsc + 369 + build green.
