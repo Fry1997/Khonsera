@@ -97,4 +97,52 @@ describe("railsmartrTicketsToSegments", () => {
     expect(segs[1].barcode_data).toBeNull(); // second leg of a ticket carries no barcode
     expect(segs[0].operator).toBe("East Midlands Railway");
   });
+
+  it("derives arrival times so the importer can split & sequence", () => {
+    const out = parseRailsmartrPdfText(OUTBOUND)!;
+    const ret = parseRailsmartrPdfText(RETURN)!;
+    const segs = railsmartrTicketsToSegments([out, ret], "2026-06-18").sort((a, b) =>
+      (a.departure_date + a.departure_time).localeCompare(b.departure_date + b.departure_time),
+    );
+
+    // First leg arrives by the onward (Luton) departure; never empty.
+    expect(segs[0].arrival_time).toBe("08:13"); // WEL→Luton arrives by the 08:13 onward
+    expect(segs[2].arrival_time).toBe("17:42"); // HPD→Luton arrives by the 17:42 onward
+    // Final leg of each direction is estimated (+30), not left blank.
+    expect(segs[1].arrival_time).toBe("08:43");
+    expect(segs[3].arrival_time).toBe("18:12");
+    expect(segs.every((s) => s.arrival_time !== "")).toBe(true);
+  });
+
+  it("splits into TWO journeys (outbound + return) the way importBookingAsRun does", () => {
+    const out = parseRailsmartrPdfText(OUTBOUND)!;
+    const ret = parseRailsmartrPdfText(RETURN)!;
+    const segs = railsmartrTicketsToSegments([out, ret], "2026-06-18").sort((a, b) =>
+      (a.departure_date + a.departure_time).localeCompare(b.departure_date + b.departure_time),
+    );
+
+    // Mirror of the importer's gap-based split (gap > 180 min starts a new Pass).
+    const toMin = (t: string) => parseInt(t.slice(0, 2), 10) * 60 + parseInt(t.slice(3), 10);
+    const journeys: (typeof segs)[] = [];
+    let cur: typeof segs = [];
+    segs.forEach((s, k) => {
+      if (k > 0) {
+        const gap = toMin(s.departure_time) - toMin(segs[k - 1].arrival_time);
+        if (gap > 180) {
+          journeys.push(cur);
+          cur = [];
+        }
+      }
+      cur.push(s);
+    });
+    if (cur.length) journeys.push(cur);
+
+    expect(journeys).toHaveLength(2);
+    // Outbound: WEL → (change at Luton) → HPD
+    expect(journeys[0].map((s) => s.from_station)).toEqual(["Wellingborough", "Luton"]);
+    expect(journeys[0][journeys[0].length - 1].to_station).toBe("Harpenden");
+    // Return: HPD → (change at Luton) → WEL
+    expect(journeys[1].map((s) => s.from_station)).toEqual(["Harpenden", "Luton"]);
+    expect(journeys[1][journeys[1].length - 1].to_station).toBe("Wellingborough");
+  });
 });

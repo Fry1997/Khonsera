@@ -30,6 +30,22 @@ function titleCase(s: string): string {
     .trim();
 }
 
+// RailSmartr prints DEPARTURE times only (no arrivals). The importer
+// (importBookingAsRun) needs arrival times for two things: to split the outbound
+// from the return (a gap > 3h starts a new Pass) and to time the changeover stops.
+// Derive them: a leg arrives by the NEXT leg's departure (the onward connection);
+// the final leg of a direction has no onward leg, so estimate a short hop. Without
+// this every arrival is null → no split → one mangled round-trip run.
+const FINAL_LEG_EST_MIN = 30;
+
+function addMinutes(hhmm: string, mins: number): string {
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return "";
+  const total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + mins;
+  const wrapped = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(wrapped / 60)).padStart(2, "0")}:${String(wrapped % 60).padStart(2, "0")}`;
+}
+
 // One leg of the suggested itinerary — RailSmartr gives departure time + operator
 // + endpoints per leg (arrival times aren't printed; the solver fills them).
 export type RailsmartrLeg = {
@@ -156,6 +172,12 @@ export function railsmartrTicketsToSegments(
     legs.forEach((leg, i) => {
       const first = i === 0;
       const last = i === legs.length - 1;
+      // Arrive by the next leg's departure (the changeover), or estimate for the
+      // final leg of the direction — so the importer can split & sequence (above).
+      const nextDep = legs[i + 1]?.departure_time;
+      const arrivalTime = leg.departure_time
+        ? nextDep || addMinutes(leg.departure_time, FINAL_LEG_EST_MIN)
+        : "";
       segments.push({
         from_station: leg.from_name,
         to_station: leg.to_name,
@@ -164,7 +186,7 @@ export function railsmartrTicketsToSegments(
         departure_date: t.date || fallbackDate,
         departure_time: leg.departure_time || "00:00",
         arrival_date: t.date || fallbackDate,
-        arrival_time: "",
+        arrival_time: arrivalTime,
         service_number: null,
         operator: leg.operator || null,
         route_restriction: first ? t.route_restriction : null,

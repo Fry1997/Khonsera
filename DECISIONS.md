@@ -1302,3 +1302,19 @@ Newest at the bottom of each section.
   considered and DECLINED — retailers are expected to lock down / vary the wallet passes, so it's not a
   dependable source. Do NOT wire full `.pkpass` parsing back in. (The existing barcode-only `.pkpass`
   reader stays as-is.)
+
+- **D97b — RailSmartr import built the day wrong: derived arrival times (the real fix).** First live
+  import mangled the timeline: outbound+return merged, "Wellingborough" landed as a generic arrival
+  (not the station), the Luton change was lost from the rail card, and Luton appeared (duplicated)
+  AFTER the office. Root cause: `importBookingAsRun` splits outbound from return by the GAP between a
+  leg's `arrival_time` and the next `departure_time` (>3h = new Pass) and times the changeover/arrival
+  stops from arrivals — but the RailSmartr itinerary prints DEPARTURE times only, so the parser left
+  every `arrival_time` empty → gap always 0 → no split → one tangled null-time round-trip the solver
+  couldn't sequence (loose "ARRIVAL" anchors). Fix (railsmartr-pdf.ts): derive each leg's arrival =
+  the NEXT leg's departure (the changeover), and estimate +30m for the final leg of each direction.
+  Now the importer splits into two clean journeys with the Luton interchange intact. The Aztec
+  decoded fine in production (wallet showed the barcode). 2 new tests (arrival derivation + a mirror of
+  the importer's journey-split). OPEN/UNVERIFIED: the user saw two import buttons (one instant no-op,
+  one ~1min hang) — possibly a duplicate booking from a second RailSmartr email (order-confirmation +
+  eTicket both carrying the PDFs); if it recurs, add booking_reference dedup for RailSmartr. tsc + 369
+  + build green.
