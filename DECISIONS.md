@@ -1268,3 +1268,13 @@ Newest at the bottom of each section.
   shading + opacity 0.92, so the skyline has depth not flat grey. Tones derive from the land token
   via the now-exported `shade()` (no raw hex in components; sky values are token defs). tsc + 362 +
   build green.
+
+- **D96 — Maps: serviceable now; future visual direction is a custom Mapbox style.** Founder verdict
+  after the nav polish pass: the MapLibre + Protomaps/OSM + Valhalla stack is best-in-class on the
+  *renderer* and good enough to rest on for now. The agreed FUTURE direction for the look is a
+  **bespoke Mapbox style** (Mapbox Standard 3D base, branded to the dusk/midnight/sahara palette),
+  dropped into the existing swappable tile source (the `khnav://` protocol + `NEXT_PUBLIC_PMTILES_URL`
+  seam) — no renderer change, just a tile/style swap. The one acknowledged trade of today's OSM stack
+  is informal-path/cut-through data coverage vs Google/Apple (a data moat, not a rendering issue);
+  self-hosting Valhalla with a tuned pedestrian profile is the lever if it resurfaces. Not building
+  the Mapbox style now — parked as direction. Maps work is OFF the table for the moment.
