@@ -1345,3 +1345,15 @@ Newest at the bottom of each section.
   So once the OTP instance is stood up, import timing is direct-source automatically with zero code
   change — Google is just today's stopgap. (Darwin stays the day-of live refiner; it's a ~2h board,
   not a forward timetable.) tsc + 372 + build green.
+
+- **D97e — RTJP/OJP ruled out; OTP-on-timetable is the durable rail-timing path.** Investigated the
+  Rail Data Marketplace for a direct hosted journey planner. The Real Time Journey Planner (RTJP/OJP)
+  technically does point-to-point + multi-leg with times, BUT it's disqualified three ways, any one
+  fatal: (1) deprecated / 2026-hackathon-scoped (founder, closer to the live portal) — and the National
+  Rail Data Portal itself is being retired early 2026; (2) paid, contract-only (cost-recovery licence
+  via RDG); (3) its licence PROHIBITS use alongside ticket retailing on third-party sites — which is
+  Khonsera's direction (Duffel live, Assertis rail pending). Commercial planners (TransportAPI) bring
+  back per-call cost/limits/3rd-party. Conclusion: no durable, production, retailing-compatible hosted
+  rail journey API exists. The path is OTP self-hosted on the RDM *timetable feed* (data persists; no
+  hosted endpoint to vanish) — same posture as Valhalla/Protomaps. Already wired OTP-first (D97d);
+  Google transit is the interim fallback. Do NOT chase RTJP/OJP.
