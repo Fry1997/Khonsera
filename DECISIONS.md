@@ -1296,3 +1296,9 @@ Newest at the bottom of each section.
   tests on the real extracted text. NB: couldn't run the Aztec decode in-sandbox (zxing-wasm can't
   fetch its wasm in a bare script) but it's the identical Trainline path + the image is confirmed
   present/shaped. tsc + 367 + build green.
+
+- **D97a — Rail eTicket import stays PDF-only; .pkpass enrichment declined (founder).** The PDF
+  eTicket is the durable, universal artifact (full journey + Aztec); .pkpass `pass.json` enrichment was
+  considered and DECLINED — retailers are expected to lock down / vary the wallet passes, so it's not a
+  dependable source. Do NOT wire full `.pkpass` parsing back in. (The existing barcode-only `.pkpass`
+  reader stays as-is.)
