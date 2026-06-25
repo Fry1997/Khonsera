@@ -54,7 +54,11 @@ function stationsOf(b: TransportBooking): Set<string> {
   return out;
 }
 
-// Union bookings that share at least one station into clusters (same trip).
+// Union bookings that share at least one station into clusters (same trip) —
+// UNLESS they have a departure-time CONFLICT at a shared origin (see below), which
+// marks them as two genuinely different bookings (e.g. a rebooking after a
+// cancellation: 07:13 cancelled, 07:50 rebooked, same route + date). Without the
+// conflict guard the rebooking gets merged into the cancelled trip and never shows.
 function clusterBySharedStation(group: TransportBooking[]): TransportBooking[][] {
   const stations = group.map(stationsOf);
   const parent = group.map((_, i) => i);
@@ -64,7 +68,9 @@ function clusterBySharedStation(group: TransportBooking[]): TransportBooking[][]
   };
   for (let i = 0; i < group.length; i++) {
     for (let j = i + 1; j < group.length; j++) {
-      if ([...stations[i]].some((s) => stations[j].has(s))) union(i, j);
+      if ([...stations[i]].some((s) => stations[j].has(s)) && !departuresConflict(group[i], group[j])) {
+        union(i, j);
+      }
     }
   }
   const byRoot = new Map<number, TransportBooking[]>();
@@ -75,6 +81,34 @@ function clusterBySharedStation(group: TransportBooking[]): TransportBooking[][]
     byRoot.set(r, c);
   }
   return [...byRoot.values()];
+}
+
+// Real (non-placeholder) departure times per ORIGIN station for a booking.
+// Anytime etickets carry 00:00 placeholders → excluded, so a confirmation+eticket
+// of ONE trip never looks conflicting.
+function departuresByOrigin(b: TransportBooking): Map<string, Set<string>> {
+  const m = new Map<string, Set<string>>();
+  for (const s of b.segments) {
+    if (!s.departure_time || s.departure_time === "00:00") continue;
+    const key = (s.from_station_code ?? s.from_station ?? "").slice(0, 3).toUpperCase();
+    if (!key) continue;
+    (m.get(key) ?? m.set(key, new Set()).get(key)!).add(s.departure_time);
+  }
+  return m;
+}
+
+// Two bookings CONFLICT when they both have a real departure from the SAME origin
+// station but at NON-OVERLAPPING times — i.e. you can't board the same train, so
+// they're different bookings (a rebooking), not two emails of one trip.
+function departuresConflict(a: TransportBooking, b: TransportBooking): boolean {
+  const da = departuresByOrigin(a);
+  const db = departuresByOrigin(b);
+  for (const [origin, timesA] of da) {
+    const timesB = db.get(origin);
+    if (!timesB) continue; // the other side has no real departure here (placeholder) → not a conflict
+    if (![...timesA].some((t) => timesB.has(t))) return true; // shared origin, disjoint times → conflict
+  }
+  return false;
 }
 
 // Trainline sends two emails for one trip: a booking CONFIRMATION (carries the

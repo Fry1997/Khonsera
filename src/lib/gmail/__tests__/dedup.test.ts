@@ -162,4 +162,41 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     const out = deduplicateTrainlineBookings([toDerby, londonToManchester]);
     expect(out).toHaveLength(2);
   });
+
+  it("does NOT merge a REBOOKING with the cancelled trip (same route+date, different departure)", () => {
+    // Real case: the 07:13 Wellingborough→Harpenden was cancelled and rebooked as
+    // the 07:50. Same route, same day, but a departure-time CONFLICT at WEL → two
+    // different bookings that must both survive (so the new 07:50 shows).
+    const cancelled = booking({
+      booking_reference: "AAA111",
+      raw_subject: "Your booking confirmation for Wellingborough to Harpenden (18 Jun)",
+      segments: [seg({ from_station: "Wellingborough", to_station: "Harpenden", departure_time: "07:13", departure_date: "2026-06-18" })],
+    });
+    const rebooked = booking({
+      booking_reference: "BBB222",
+      raw_subject: "Your booking confirmation for Wellingborough to Harpenden (18 Jun)",
+      segments: [seg({ from_station: "Wellingborough", to_station: "Harpenden", departure_time: "07:50", departure_date: "2026-06-18" })],
+    });
+    const out = deduplicateTrainlineBookings([cancelled, rebooked]);
+    expect(out).toHaveLength(2);
+    const times = out.flatMap((b) => (b.type === "transport" ? b.segments.map((s) => s.departure_time) : []));
+    expect(new Set(times)).toEqual(new Set(["07:13", "07:50"]));
+  });
+
+  it("STILL merges a confirmation with its anytime eticket (00:00 placeholder ≠ conflict)", () => {
+    // Guard the fix: the legit two-email-one-trip case must keep merging. The
+    // eticket's 00:00 placeholder is not a real departure, so it is not a conflict.
+    const confirmation = booking({
+      gmail_message_id: "c",
+      raw_subject: "Your booking confirmation for Wellingborough to Harpenden (18 Jun)",
+      segments: [seg({ from_station: "Wellingborough", to_station: "Harpenden", departure_time: "07:13", departure_date: "2026-06-18" })],
+    });
+    const eticket = booking({
+      gmail_message_id: "e",
+      raw_subject: "Your etickets to Harpenden",
+      segments: [seg({ from_station: "Wellingborough", to_station: "Harpenden", departure_time: "00:00", departure_date: "2026-06-18", barcode_ref: "AZTEC1" })],
+    });
+    const out = deduplicateTrainlineBookings([confirmation, eticket]);
+    expect(out).toHaveLength(1);
+  });
 });
