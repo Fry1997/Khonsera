@@ -3869,3 +3869,24 @@
 @keyframes livepulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.82); } }
 .livedot { animation: livepulse 2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .livedot { animation: none; } }
+
+/* ============================================================================
+ * DS2 · Material on the real surfaces — solid cards lift like cotton sheets and
+ * their text letterpress-debosses. The leg/gap connectors (transparent / dashed
+ * tint) are intentionally NOT lifted. Additive: shadow + text-shadow only, so
+ * existing layout + state-accent borders are untouched.
+ * ========================================================================== */
+.cc-anchor-card,
+.cc-active-tile,
+.cc-readiness,
+.cc-recovery,
+.cc-pass,
+.cc-doc-card,
+.cc-nudges .cc-nudge,
+.cc-nudges .NudgeCard {
+  box-shadow: var(--lift);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.92), 0 -1px 1px rgba(36,30,22,0.12);
+}
+[data-theme="dark"] :is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-nudges .cc-nudge,.cc-nudges .NudgeCard) {
+  text-shadow: 0 -1px 1px rgba(0,0,0,0.5), 0 1px 0.5px rgba(255,255,255,0.08);
+}
