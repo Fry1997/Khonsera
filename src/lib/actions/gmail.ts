@@ -88,6 +88,7 @@ async function enrichTrainlineFromPdfs(
   // single unparseable PDF mis-attached every barcode). One ticket per PDF; for a
   // return booking that's the outbound eticket + the return eticket, each with its
   // own Aztec.
+  const debugTexts: string[] = [];
   const perPdf = await Promise.all(
     pdfBuffers.map(async (buf) => {
       if (!buf) return null;
@@ -98,6 +99,7 @@ async function enrichTrainlineFromPdfs(
         // Aztec decode with zero bytes (silently no barcode). Give each its own.
         const result = await extractText(new Uint8Array(buf).buffer);
         const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
+        debugTexts.push(pdfText);
         ticket = parseTrainlinePdfText(pdfText);
       } catch {
         // text extraction failed
@@ -112,6 +114,21 @@ async function enrichTrainlineFromPdfs(
       return ticket;
     }),
   );
+
+  // TEMP diagnostic — dump the raw eticket PDF text so we can see the per-leg
+  // route + any Leicester times for the Anytime Day Return (07:50 changeover).
+  try {
+    const joined = debugTexts.join("\n");
+    if (/leicester|derby|wellingborough/i.test(joined)) {
+      const sb = await createClient();
+      await sb.from("_debug_routes_api").insert({
+        status: `GMAILPDF npdf=${debugTexts.length}`,
+        message: debugTexts.map((t, i) => `#${i}|${t.replace(/\s+/g, " ").slice(0, 700)}`).join("\n====\n").slice(0, 6000),
+      });
+    }
+  } catch (e) {
+    console.warn("debug pdf dump failed", e);
+  }
 
   const validTickets = perPdf.filter((t): t is NonNullable<typeof t> => t !== null);
   if (validTickets.length === 0) return parsed;
@@ -525,44 +542,8 @@ export async function scanGmailForBookings(): Promise<
   // Reconcile: Trainline sends a booking confirmation (intended times + price)
   // AND an eticket (barcodes); merge them into one booking per route so an
   // anytime ticket isn't stranded at midnight.
-  // TEMP diagnostic — the EXACT list entering dedup (provider/ref/date/dep), so we
-  // can see why clustering still merges the 07:50 and 07:13 in prod.
-  try {
-    const pre = future
-      .map((b) =>
-        b.type === "transport"
-          ? `[prov=${b.provider} ref=${b.booking_reference} date=${getTravelDate(b)} dep=${b.segments[0]?.departure_time} n=${b.segments.length}]`
-          : `[${b.type}]`,
-      )
-      .join(" ");
-    await supabase.from("_debug_routes_api").insert({
-      status: `GMAILDBG3 PREDEDUP n=${future.length}`,
-      message: pre.slice(0, 1500),
-    });
-  } catch (e) {
-    console.warn("debug prededup insert failed", e);
-  }
-
   const futureBookings = deduplicateTrainlineBookings(future);
   console.log("[gmail-scan] after future filter + dedup:", futureBookings.length);
-
-  // TEMP diagnostic — the FINAL list that reaches the panel. Reveals whether dedup
-  // merged the 07:13 and 07:50 into one (and which times/ref/superseded survived).
-  try {
-    const dump = futureBookings
-      .map((b) =>
-        b.type === "transport"
-          ? `{ref=${b.booking_reference} sup=${b.superseded_by ?? "-"} ${b.segments.map((s) => `${s.from_station}→${s.to_station} ${s.departure_time}`).join(",")}}`
-          : `{acc ${b.hotel_name}}`,
-      )
-      .join("  ");
-    await supabase.from("_debug_routes_api").insert({
-      status: `GMAILDBG2 FINAL count=${futureBookings.length}`,
-      message: dump.slice(0, 1500),
-    });
-  } catch (e) {
-    console.warn("debug final insert failed", e);
-  }
 
   // Update last_scan_at
   await supabase
