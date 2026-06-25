@@ -456,14 +456,18 @@ export async function scanGmailForBookings(): Promise<
         });
         // TEMP diagnostic (D103 chase) — what does the server actually receive?
         if (/derby|wellingborough|trainline/i.test(`${subject} ${from}`)) {
-          void supabase.from("_debug_gmail_scan").insert({
-            subject: subject.slice(0, 120),
-            html_inline_len: (html ?? "").length,
-            html_used_len: structuredHtml.length,
-            fetched_attachment: fetchedAtt,
-            jsonld_count: extractJsonLd(structuredHtml).length,
-            struct_count: structured.length,
-          });
+          try {
+            await supabase.from("_debug_gmail_scan").insert({
+              subject: subject.slice(0, 120),
+              html_inline_len: (html ?? "").length,
+              html_used_len: structuredHtml.length,
+              fetched_attachment: fetchedAtt,
+              jsonld_count: extractJsonLd(structuredHtml).length,
+              struct_count: structured.length,
+            });
+          } catch (e) {
+            console.warn("debug insert failed", e);
+          }
         }
         if (structured.length) {
           try {
