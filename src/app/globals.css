@@ -525,25 +525,27 @@
   }
 
   /* Gold primary CTA — the dusk palette's principal action surface. */
+  /* The lead action is a CHARCOAL stock block (DS2: no shiny gold buttons —
+     charcoal is the punctuation). Lifts off the sheet via --lift-char. */
   .btn-gold {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    border-radius: 3px;
-    background: var(--gold);
-    color: var(--paper);
-    border: 1px solid var(--gold);
+    border-radius: var(--radius-sm);
+    background: var(--char);
+    color: var(--cream);
+    border: none;
+    box-shadow: var(--lift-char);
     font-family: var(--sans);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 13px;
     line-height: 1;
     letter-spacing: 0.01em;
-    transition: background 0.15s, transform 0.08s, border-color 0.15s;
+    transition: transform 0.08s, filter 0.15s;
   }
   .btn-gold:hover:not(:disabled) {
-    background: var(--gold-2);
-    border-color: var(--gold-2);
+    filter: brightness(1.12);
     transform: translateY(-1px);
   }
   .btn-gold:disabled {
@@ -1414,11 +1416,12 @@
 
   /* Override the earlier btn-gold to match the Khonsera shape. */
   .btn-gold {
-    background: var(--gold);
-    color: #fff;
-    border: 1px solid var(--gold);
+    background: var(--char);
+    color: var(--cream);
+    border: none;
+    box-shadow: var(--lift-char);
     padding: 14px 20px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     font-family: var(--sans);
     font-weight: 600;
     font-size: 15px;
@@ -1428,11 +1431,11 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    transition: background 0.15s, transform 0.08s;
+    transition: transform 0.08s, filter 0.15s;
   }
   .btn-gold:hover:not(:disabled) {
-    background: var(--gold-2);
-    border-color: var(--gold-2);
+    filter: brightness(1.12);
+    transform: translateY(-1px);
   }
   .btn-ink {
     background: var(--ink);
