@@ -26,6 +26,7 @@ import {
   parseRailsmartrPdfText,
   railsmartrTicketsToSegments,
 } from "@/lib/gmail/railsmartr-pdf";
+import { parseStructuredFromHtml } from "@/lib/gmail/structured-parser";
 
 const BOOKING_SENDERS = [
   "trainline",
@@ -228,6 +229,82 @@ async function enrichRailsmartrFromPdfs(
   };
 }
 
+// Brand name from the sender, so the structured parser tags the booking right.
+function providerHintFromSender(from: string): string | null {
+  const f = from.toLowerCase();
+  if (/trainline/.test(f)) return "Trainline";
+  if (/railsmartr|assertis/.test(f)) return "RailSmartr";
+  if (/\blner\b/.test(f)) return "LNER";
+  if (/avanti/.test(f)) return "Avanti West Coast";
+  if (/\bgwr\b|great\s*western/.test(f)) return "GWR";
+  if (/crosscountry|cross\s*country/.test(f)) return "CrossCountry";
+  if (/scotrail/.test(f)) return "ScotRail";
+  if (/southeastern/.test(f)) return "Southeastern";
+  return null;
+}
+
+// Structured bookings carry the correct journey but no Aztec (a barcode is an
+// image, not JSON-LD). Graft the scannable barcodes from any PDF e-tickets onto
+// the matching boarding leg — reusing the proven PDF text + Aztec decoders.
+// Best-effort: failures never break the import.
+async function graftBarcodesFromPdfs(
+  accessToken: string,
+  messageId: string,
+  msg: Awaited<ReturnType<typeof gmailGetMessage>>,
+  bookings: ParsedBooking[],
+): Promise<void> {
+  const transport = bookings.filter((b): b is Extract<ParsedBooking, { type: "transport" }> => b.type === "transport");
+  if (!transport.length) return;
+  const pdfs = extractAttachments(msg).filter(
+    (a) => a.mimeType === "application/pdf" || a.filename?.endsWith(".pdf"),
+  );
+  if (!pdfs.length) return;
+  const { extractText } = await import("unpdf").catch(() => ({ extractText: null }));
+  if (!extractText) return;
+
+  for (const pdf of pdfs) {
+    let buf: Awaited<ReturnType<typeof gmailGetAttachment>> | null = null;
+    try {
+      buf = await gmailGetAttachment({ accessToken, messageId, attachmentId: pdf.attachmentId });
+    } catch {
+      continue;
+    }
+    if (!buf) continue;
+    let originCode = "";
+    let originName = "";
+    try {
+      const result = await extractText(new Uint8Array(buf).buffer);
+      const pdfText = Array.isArray(result.text) ? result.text.join("\n") : result.text;
+      const ticket = parseTrainlinePdfText(pdfText);
+      originCode = ticket?.from_code ?? "";
+      originName = ticket?.from_name ?? "";
+    } catch {
+      // origin unknown — we'll fall back to the first un-barcoded leg
+    }
+    let barcode: string | null = null;
+    try {
+      barcode = await decodeAztecFromPdf(new Uint8Array(buf).buffer);
+    } catch {
+      // no barcode in this PDF
+    }
+    if (!barcode) continue;
+    for (const b of transport) {
+      const seg =
+        b.segments.find(
+          (s) =>
+            !s.barcode_data &&
+            ((originCode && s.from_station_code?.toUpperCase() === originCode.toUpperCase()) ||
+              (originName && s.from_station.slice(0, 4).toLowerCase() === originName.slice(0, 4).toLowerCase())),
+        ) ?? b.segments.find((s) => !s.barcode_data);
+      if (seg) {
+        seg.barcode_data = barcode;
+        seg.barcode_ref = seg.barcode_ref ?? b.booking_reference;
+        break;
+      }
+    }
+  }
+}
+
 function buildSearchQuery(): string {
   const senderClauses = BOOKING_SENDERS.map((s) => `from:${s}`).join(" OR ");
   const bodyProviders = BOOKING_SENDERS.map((s) => `"${s}"`).join(" OR ");
@@ -327,8 +404,35 @@ export async function scanGmailForBookings(): Promise<
         const date = getHeader(msg.payload.headers, "Date") ?? "";
         const { html, text } = extractMessageBody(msg);
 
+        const emailDate =
+          date && !isNaN(Date.parse(date))
+            ? new Date(date).toISOString()
+            : new Date(parseInt(msg.internalDate)).toISOString();
+
+        // STRUCTURED-FIRST — read the schema.org JSON-LD reservations the email
+        // embeds (the standard that powers Gmail trip cards). Deterministic and
+        // authoritative: the boarding station + times come straight from the data,
+        // not from scraping HTML/PDF (which read "Wellingborough 07:50" as
+        // "Kettering 07:26"). Falls through to the legacy parsers when an email
+        // carries no JSON-LD.
+        const structured = parseStructuredFromHtml(html ?? "", {
+          gmail_message_id: ref.id,
+          raw_subject: subject,
+          email_date: emailDate,
+          providerHint: providerHintFromSender(from),
+        });
+        if (structured.length) {
+          try {
+            await graftBarcodesFromPdfs(gmail.accessToken, ref.id, msg, structured);
+          } catch (e) {
+            console.warn("gmail: barcode graft failed", ref.id, e);
+          }
+          return structured;
+        }
+
+        // LEGACY fallback — the per-retailer regex parsers + PDF enrichment.
         let parsed = detectAndParse(from, subject, html, text);
-        if (!parsed) return null;
+        if (!parsed) return [];
 
         // Enrich Trainline bookings with PDF attachment data (seat, coach, barcode)
         if (parsed.type === "transport" && /trainline/i.test(from)) {
@@ -350,28 +454,23 @@ export async function scanGmailForBookings(): Promise<
           }
           // Skeleton with no resolvable legs → nothing to import.
           if (!parsed || (parsed.type === "transport" && (parsed.segments?.length ?? 0) === 0)) {
-            return null;
+            return [];
           }
         }
 
-        const emailDate =
-          date && !isNaN(Date.parse(date))
-            ? new Date(date).toISOString()
-            : new Date(parseInt(msg.internalDate)).toISOString();
-
-        return {
+        return [{
           ...parsed,
           raw_subject: subject,
           gmail_message_id: ref.id,
           email_date: emailDate,
-        } as ParsedBooking;
+        } as ParsedBooking];
       }),
     );
 
     for (const r of results) {
       scannedCount++;
       if (r.status === "fulfilled" && r.value) {
-        bookings.push(r.value);
+        bookings.push(...r.value);
       } else if (r.status === "rejected") {
         console.warn("gmail: failed to fetch/parse message", r.reason);
       }

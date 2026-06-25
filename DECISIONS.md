@@ -1412,3 +1412,20 @@ Newest at the bottom of each section.
   ported. **Deferred (need a real-screen look, not safe to apply blind):** the fibre paper-tooth on card
   faces (::after + z-index risk), pressed-well read-outs, StatePill DOM-wiring into the existing
   data-state status mechanism, and the full planner-v7 node geometry. tsc + 372 + build(exit 0) green.
+
+- **D101 — Robust ticket parsing: read the email's schema.org JSON-LD (not HTML soup).** Founder:
+  "I want a more robust parser… tools existed before AI, they just need to be well built" (explicit NO
+  to an LLM — I'd overstepped proposing/scaffolding one and removed it). The brittleness was that the
+  parser SCRAPED rendered HTML/PDF with per-retailer regex; meanwhile the emails EMBED machine-readable
+  schema.org JSON-LD reservations (that's how Gmail shows trip cards). The founder's Trainline
+  "Wellingborough→Derby 07:50" email — which the regex turned into "Kettering 07:26" — carries a clean
+  JSON-LD block: two `TrainReservation`s (out+return) with `departureStation`/`departureTime`/etc.
+  New `src/lib/gmail/structured-parser.ts` (pure, unit-tested vs the REAL email's JSON-LD):
+  `extractJsonLd` + `parseStructuredBookings` read TrainReservation/Bus/Flight/Lodging, group by
+  `reservationNumber` (a return = one booking, two legs), drop `ReservationCancelled` (also fixes the
+  rebooking/cancelled-leg case), map to ParsedBooking. Wired STRUCTURED-FIRST in scanGmailForBookings;
+  the per-retailer regex parsers stay as the fallback for emails without JSON-LD (RailSmartr's PDF path
+  unchanged). Aztec barcodes grafted from PDFs onto the matching boarding leg (reuses the proven
+  decoder). NB: Trainline's JSON-LD is booking-endpoint level, so a change-of-train (Leicester) imports
+  as a direct Wellingborough→Derby leg with the right times — far better than the broken version;
+  per-leg breakout would need routing/PDF detail (separate). tsc + 378 + build green.
