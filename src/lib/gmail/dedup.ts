@@ -40,7 +40,43 @@ export function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedB
     }
   }
 
-  return [...rest, ...kept];
+  return [...rest, ...supersedeRebookings(kept)];
+}
+
+// Rebooking supersede. A cancelled-then-rebooked trip leaves TWO confirmed bookings
+// (same route + date, different departure — e.g. the 07:13 that was cancelled and
+// the 07:50 rebooked) and Trainline sends NO cancellation email, so nothing in the
+// data marks the old one dead. Heuristic: when two SEPARATE bookings cover the same
+// stations + travel date but were BOOKED at different times, the more recently
+// booked one wins; the older is dropped from import (it stays in the inbox). Only
+// fires when the booking/email dates differ — genuine same-session double-bookings
+// are untouched.
+function routeDateKey(b: TransportBooking): string {
+  return [...stationsOf(b)].sort().join(",") + "|" + (getTravelDate(b) ?? "");
+}
+export function supersedeRebookings(bookings: ParsedBooking[]): ParsedBooking[] {
+  const out: ParsedBooking[] = bookings.filter((b) => b.type !== "transport");
+  const byRoute = new Map<string, TransportBooking[]>();
+  for (const b of bookings) {
+    if (b.type !== "transport") continue;
+    const k = routeDateKey(b);
+    const g = byRoute.get(k) ?? [];
+    g.push(b);
+    byRoute.set(k, g);
+  }
+  for (const group of byRoute.values()) {
+    if (group.length === 1) {
+      out.push(group[0]);
+      continue;
+    }
+    const distinctDates = new Set(group.map((b) => b.email_date));
+    if (distinctDates.size <= 1) {
+      out.push(...group); // booked together → not a rebooking; keep all
+      continue;
+    }
+    out.push(group.reduce((a, b) => (b.email_date > a.email_date ? b : a))); // newest booking wins
+  }
+  return out;
 }
 
 // Every station a booking touches (origin/destination of each leg), normalised to

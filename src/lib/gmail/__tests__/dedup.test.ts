@@ -199,4 +199,27 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     const out = deduplicateTrainlineBookings([confirmation, eticket]);
     expect(out).toHaveLength(1);
   });
+
+  it("SUPERSEDES a cancelled-and-rebooked trip — newest booking wins (the real Derby case)", () => {
+    // Same route + travel date, different departure, booked a month apart: the
+    // 07:13 (booked 24 May) was scrapped by an EMR incident and rebooked as the
+    // 07:50. No cancellation email exists, so the newer booking supersedes the old.
+    const old0713 = booking({
+      gmail_message_id: "old",
+      email_date: "2026-05-24T17:22:00Z",
+      raw_subject: "Wellingborough to Derby (07:13 - 15:08)",
+      segments: [seg({ from_station: "Wellingborough", to_station: "Derby", departure_time: "07:13", departure_date: "2026-06-25" })],
+    });
+    const new0750 = booking({
+      gmail_message_id: "new",
+      email_date: "2026-06-20T09:00:00Z",
+      raw_subject: "Wellingborough to Derby (07:50 - 15:09)",
+      segments: [seg({ from_station: "Wellingborough", to_station: "Derby", departure_time: "07:50", departure_date: "2026-06-25" })],
+    });
+    const out = deduplicateTrainlineBookings([old0713, new0750]);
+    expect(out).toHaveLength(1);
+    const b = out[0];
+    if (b.type !== "transport") throw new Error("expected transport");
+    expect(b.segments[0].departure_time).toBe("07:50"); // the rebooking, not the scrapped 07:13
+  });
 });

@@ -1429,3 +1429,12 @@ Newest at the bottom of each section.
   decoder). NB: Trainline's JSON-LD is booking-endpoint level, so a change-of-train (Leicester) imports
   as a direct Wellingborough→Derby leg with the right times — far better than the broken version;
   per-leg breakout would need routing/PDF detail (separate). tsc + 378 + build green.
+
+- **D102 — Rebooking supersede: newest booking wins for the same route+date.** Founder's 07:13
+  Wellingborough→Derby was scrapped by an EMR timetable incident and rebooked as the 07:50 — but
+  Trainline sent NO cancellation email (confirmed by reading the inbox: two "is confirmed" Derby
+  emails, 07:13 booked 24 May + 07:50 booked recently, no cancel/refund). So NOTHING in the data marks
+  the 07:13 dead — no parser can know. Added `supersedeRebookings` to deduplicateTrainlineBookings: two
+  SEPARATE bookings with the same stations + travel date but DIFFERENT booking/email dates → the most
+  recently booked wins, the older is dropped from import (stays in the inbox). Only fires on differing
+  email dates, so genuine same-session double-bookings are untouched. tsc + 379 + build green.
