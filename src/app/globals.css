@@ -28,48 +28,63 @@
   :root,
   [data-theme="light"] {
     /* Dusk — the canonical palette */
-    --paper: #efe6d0;        /* Dusk Paper */
-    --paper-2: #e6dabf;
-    --sand: #f7eed7;         /* Bone */
-    --sand-2: #e8d9b5;
-    --card: #f4ecd6;
-    --card-2: #ece0bd;
+    /* ── Material grounds — heavy white cotton stock on a warm desk ──────── */
+    --ground:   #e4e0d6;   /* the warm desk the sheets rest on */
+    --screen:   #f2efe8;   /* the surface the spine sits on */
+    --widget:   #fbfaf6;   /* card face — heavy white cotton stock */
+    --widget-2: #f4f1e9;   /* secondary / nested chip */
+    --well:     #ebe7dd;   /* letterpress-pressed well (recessed) */
+    --char:     #1f2228;   /* charcoal — the same stock in black */
+    --char-2:   #262a31;
 
-    --ink: #1e1812;          /* Walnut Ink */
-    --ink-2: #2c241a;
-    --ink-dim: #6b5c46;
-    --ink-faint: #a2917a;
+    /* ── Semantic surface aliases over the grounds ──────────────────────── */
+    --paper: #e9e5db;
+    --paper-2: #e2ddd1;
+    --sand: #f5f2ea;         /* bone — near-white warm */
+    --sand-2: #e3ddd0;
+    --card: var(--widget);   /* the workhorse surface */
+    --card-2: var(--widget-2);
 
-    --rule: #ddc99e;
-    --rule-2: #c8b074;
+    /* ── Ink — cool near-black letterpress ──────────────────────────────── */
+    --ink: #20242b;
+    --ink-2: #2a2f37;
+    --ink-dim: rgba(32,36,43,0.56);
+    --ink-faint: rgba(32,36,43,0.40);
+    --ink-soft: rgba(32,36,43,0.06);
+    /* cream ink — for use ON charcoal stock */
+    --cream: #f3efe6;
+    --cream-dim: rgba(243,239,230,0.62);
+    --cream-faint: rgba(243,239,230,0.40);
 
-    /* Gold — the moon. Khonsera Gold #B8893F is the 400 step. */
-    --gold-100: #efdfb1;
-    --gold-200: #d4ae6a;
-    --gold: #b8893f;         /* 400 */
-    --gold-2: #936820;       /* 600 */
-    --gold-800: #5c3f10;
-    --gold-soft: #efdfb1;
-    --gold-tint: rgba(184, 137, 63, 0.10);
+    /* ── Hairlines ──────────────────────────────────────────────────────── */
+    --line: rgba(40,44,52,0.10);
+    --line-soft: rgba(40,44,52,0.055);
+    --rule: rgba(40,44,52,0.12);
+    --rule-2: rgba(40,44,52,0.22);
 
-    /* Terracotta — celebratory salt; also the notification badge per
-       p. 20. Not a primary palette colour; use sparingly. */
+    /* Gold — the moon. Muted, punctuation only. #93753c is the lead step. */
+    --gold-100: #e7dcc1;
+    --gold-200: #cdb27e;
+    --gold: #93753c;         /* 400 — lead accent */
+    --gold-2: #8a6d38;       /* 600 — gold-on-light text */
+    --gold-800: #5c451e;
+    --gold-soft: #e7dcc1;
+    --gold-tint: rgba(147,117,60,0.10);
+    --gold-soft-alpha: rgba(147,117,60,0.18);
+
+    /* Rare salts — one per composition, never terra + plum together. */
     --terra: #c25c3a;
     --terra-2: #a14c2c;
     --terra-deep: #7d3a1e;
-
-    /* Plum — overnight, ceremony. Rare. */
     --plum: #5c3a48;
     --plum-soft: #e3d5db;
 
-    /* Cool foil — slate, retained for non-warm chips and links. Not on
-       the canonical six but used inside the app for state contrast. */
+    /* Cool foil — non-warm chips / links / info. */
     --slate: #475569;
     --slate-2: #334155;
     --slate-soft: #dde3ea;
 
-    /* Status families — sage for success, amber for caution, rust for
-       danger. Sage = Khorasan Sage. */
+    /* Status families — sage(comfortable) · amber(tight) · rust(risky). */
     --sage: #687856;
     --sage-2: #dce0cd;
     --sage-soft: #dce0cd;
@@ -80,18 +95,28 @@
     --rust-2: #f0d6cf;
     --rust-soft: #f0d6cf;
 
-    --ink-soft: rgba(30, 24, 18, 0.06);
-    --gold-soft-alpha: rgba(184, 137, 63, 0.16);
-    --shadow-sm: 0 1px 3px rgba(30, 24, 18, 0.06);
-    --shadow: 0 4px 16px rgba(30, 24, 18, 0.09);
-    --shadow-lg: 0 16px 40px rgba(30, 24, 18, 0.14);
+    /* Elevation — light primitive shadows (the heavy material lift is below). */
+    --shadow-sm: 0 1px 3px rgba(34,30,24,0.07);
+    --shadow: 0 4px 16px rgba(34,30,24,0.10);
+    --shadow-lg: 0 16px 40px rgba(34,30,24,0.15);
+    --elevation-card: 0 1px 2px rgba(34,30,24,0.05), 0 8px 22px -12px rgba(34,30,24,0.20);
+    --elevation-raised: 0 2px 6px rgba(34,30,24,0.07), 0 18px 40px -16px rgba(34,30,24,0.26);
 
-    /* Type stack — Satoshi for display + wordmark + headlines, Inter for
-       body & UI, JetBrains Mono for codes & eyebrows, Cormorant Garamond
-       for decorative serif italic. (Brand book pp. 13–15.) */
+    /* ── Material atoms — paper lift / letterpress sink / fibre tooth ────── */
+    --hi: rgba(255,254,250,0.95);
+    --sh-1: rgba(54,44,30,0.07); --sh-2: rgba(54,44,30,0.13); --sh-3: rgba(54,44,30,0.20);
+    --lift: inset 0 1.5px 0 rgba(255,255,255,0.9), 0 0 0 0.5px rgba(40,44,52,0.045), 0 18px 30px -18px rgba(34,30,24,0.28), 0 5px 12px -6px rgba(34,30,24,0.15), 0 1.5px 3px rgba(34,30,24,0.09);
+    --lift-sm: inset 0 1px 0 rgba(255,255,255,0.85), 0 0 0 0.5px rgba(40,44,52,0.04), 0 10px 18px -12px rgba(34,30,24,0.24), 0 3px 7px -5px rgba(34,30,24,0.13);
+    --sink: inset 0 2px 4px rgba(40,36,28,0.16), inset 0 1px 2px rgba(40,36,28,0.10), inset 0 -1px 0 rgba(255,255,255,0.65);
+    --lift-char: 0 14px 26px -14px rgba(20,16,12,0.5), 0 3px 8px -3px rgba(20,16,12,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+    --fibre: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'220'%20height%3D'220'%3E%3Cdefs%3E%3Cfilter%20id%3D'f'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.5%200.55'%20numOctaves%3D'2'%20seed%3D'7'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20type%3D'matrix'%20values%3D'0%200%200%200%200.45%20%200%200%200%200%200.43%20%200%200%200%200%200.38%20%200%200%200%200.55%200'%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23f)'%2F%3E%3C%2Fsvg%3E");
+
+    /* Type stack — Satoshi for display + UI + body (its own italic); JetBrains
+       Mono for codes & eyebrows. The editorial serif is retired (aliased to
+       Satoshi for back-compat). */
     --display: "Satoshi", var(--font-sans), -apple-system, system-ui, sans-serif;
-    --serif: var(--font-serif), "Cormorant Garamond", Georgia, serif;
-    --sans: var(--font-sans), "Inter", -apple-system, system-ui, sans-serif;
+    --serif: "Satoshi", var(--font-sans), -apple-system, system-ui, sans-serif;
+    --sans: "Satoshi", var(--font-sans), -apple-system, system-ui, sans-serif;
     --mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
 
     /* ── Scale + semantic tokens (palette-invariant) ──────────────────────
@@ -114,7 +139,7 @@
     --fs-body: 14px;     --lh-body: 1.5;
     --fs-label: 12px;    --lh-label: 1.45;
     --fs-micro: 10.5px;  --lh-micro: 1.4;
-    --fw-regular: 400;   --fw-medium: 500;   --fw-semibold: 600;
+    --fw-light: 300;     --fw-regular: 400;   --fw-medium: 500;   --fw-semibold: 600;
     --ls-uc: 0.12em;     --ls-eyebrow: 0.22em;
 
     /* Spacing scale — 4px base */
@@ -145,108 +170,54 @@
      white-walled studio shoots. Gold deepens to ochre; paper bleaches to
      papyrus. (Brand book p. 12.) */
   [data-theme="sahara"] {
-    --paper: #f3e8c8;
-    --paper-2: #ecdeb1;
-    --sand: #fbf1d4;
-    --sand-2: #ecdeb1;
-    --card: #f8ecc4;
-    --card-2: #ecdeb1;
-
-    --ink: #20180e;
-    --ink-2: #483a23;
-    --ink-dim: #816f48;
-    --ink-faint: #b6a576;
-
-    --rule: #d8c184;
-    --rule-2: #b89c52;
-
-    --gold-100: #f4e2a2;
-    --gold-200: #d4ae6a;
-    --gold: #a87826;
-    --gold-2: #7f5618;
-    --gold-800: #533710;
-    --gold-soft: #f0dca1;
-    --gold-tint: rgba(168, 120, 38, 0.10);
-
-    --terra: #b85a31;
-    --terra-2: #94431f;
-    --terra-deep: #732f12;
-    --plum: #5a3540;
-    --plum-soft: #e6d0d0;
-
-    --slate: #6b7a8c;
-    --slate-2: #4f5d6e;
-    --slate-soft: #d6dee6;
-
-    --sage: #6b7449;
-    --sage-2: #e1ddb6;
-    --sage-soft: #e1ddb6;
-    --amber: #a87526;
-    --amber-2: #f0e0b5;
-    --amber-soft: #f0e0b5;
-    --rust: #94431f;
-    --rust-2: #f0d6cf;
-    --rust-soft: #f0d6cf;
-
-    --ink-soft: rgba(32, 24, 14, 0.07);
-    --gold-soft-alpha: rgba(168, 120, 38, 0.16);
-    --shadow-sm: 0 1px 3px rgba(32, 24, 14, 0.07);
-    --shadow: 0 4px 16px rgba(32, 24, 14, 0.10);
-    --shadow-lg: 0 16px 40px rgba(32, 24, 14, 0.15);
+    /* Sahara is RETIRED in the cotton-paper system (it was the warm "sun-up"
+       alternate). Left as a no-op alias so any data-theme="sahara" still
+       resolves — it now inherits the canonical light grounds from :root. */
   }
 
   /* Midnight — overnight flights, premium tickets, hotel keycards, the
      after-hours newsletter. Aubergine ground, brass moon. Reserved.
      (Brand book p. 12.) */
   [data-theme="dark"] {
-    --paper: #1f1825;
-    --paper-2: #15101a;
-    --sand: #2a2032;
-    --sand-2: #362841;
-    --card: #251c2d;
-    --card-2: #2d2236;
+    /* The cool stock pressed dark: a charcoal field, cream ink, brass moon. */
+    --ground: #15171b;  --screen: #1b1e24;  --widget: #23272f;  --widget-2: #2a2f38;
+    --well: #181b20;    --char: #0f1115;    --char-2: #161922;
+    --paper: #1b1e24;   --paper-2: #15171b; --sand: #23272f;    --sand-2: #2a2f38;
+    --card: var(--widget);  --card-2: var(--widget-2);
 
-    --ink: #f4e8cf;
-    --ink-2: #ddd0b6;
-    --ink-dim: #97896e;
-    --ink-faint: #6c5e47;
+    --ink: #f3efe6;
+    --ink-2: #ddd6c8;
+    --ink-dim: rgba(243,239,230,0.60);
+    --ink-faint: rgba(243,239,230,0.38);
+    --ink-soft: rgba(243,239,230,0.07);
+    --cream: #f3efe6;  --cream-dim: rgba(243,239,230,0.62);  --cream-faint: rgba(243,239,230,0.40);
 
-    --rule: #38293d;
-    --rule-2: #4a3850;
+    --line: rgba(243,239,230,0.10);  --line-soft: rgba(243,239,230,0.055);
+    --rule: rgba(243,239,230,0.12);  --rule-2: rgba(243,239,230,0.22);
 
-    --gold-100: #3a2c1c;
-    --gold-200: #6e521f;
-    --gold: #d4a04d;
-    --gold-2: #b07b2a;
-    --gold-800: #f0c87a;
-    --gold-soft: #3b2f1c;
-    --gold-tint: rgba(212, 160, 77, 0.12);
+    --gold-100: #3a2f1c;  --gold-200: #6e5520;  --gold: #cda64f;  --gold-2: #d8b76a;  --gold-800: #f0d49a;
+    --gold-soft: #3b3020;  --gold-tint: rgba(205,166,79,0.12);  --gold-soft-alpha: rgba(205,166,79,0.20);
 
-    --terra: #d77450;
-    --terra-2: #c25c3a;
-    --terra-deep: #9d4225;
-    --plum: #905d72;
-    --plum-soft: #392332;
+    --terra: #d77450;  --terra-2: #c25c3a;  --terra-deep: #9d4225;
+    --plum: #b07e90;   --plum-soft: #392332;
+    --slate: #9aa9bd;  --slate-2: #c2cdda;  --slate-soft: #2a3140;
 
-    --slate: #8b9bb0;
-    --slate-2: #6f7e92;
-    --slate-soft: #2a3140;
+    --sage: #9fb07f;  --sage-2: #2f3a2a;  --sage-soft: #2f3a2a;
+    --amber: #d9a85a; --amber-2: #3a2f15; --amber-soft: #3a2f15;
+    --rust: #df7d63;  --rust-2: #3a1f18;  --rust-soft: #3a1f18;
 
-    --sage: #93a07a;
-    --sage-2: #2f3a2a;
-    --sage-soft: #2f3a2a;
-    --amber: #d9a85a;
-    --amber-2: #3a2f15;
-    --amber-soft: #3a2f15;
-    --rust: #d86950;
-    --rust-2: #3a1f18;
-    --rust-soft: #3a1f18;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+    --shadow: 0 4px 18px rgba(0,0,0,0.55);
+    --shadow-lg: 0 18px 44px rgba(0,0,0,0.65);
+    --elevation-card: inset 0 1px 0 rgba(243,239,230,0.05), 0 2px 6px rgba(0,0,0,0.35), 0 14px 30px -16px rgba(0,0,0,0.6);
+    --elevation-raised: inset 0 1px 0 rgba(243,239,230,0.07), 0 4px 10px rgba(0,0,0,0.45), 0 22px 48px -18px rgba(0,0,0,0.7);
 
-    --ink-soft: rgba(244, 232, 207, 0.07);
-    --gold-soft-alpha: rgba(212, 160, 77, 0.18);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-    --shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
-    --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.65);
+    /* Dark material atoms — the tooth + lips invert so charcoal reads as stock. */
+    --hi: rgba(255,255,255,0.10);
+    --lift: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 0.5px rgba(0,0,0,0.5), 0 18px 30px -18px rgba(0,0,0,0.7), 0 5px 12px -6px rgba(0,0,0,0.5);
+    --lift-sm: inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 0.5px rgba(0,0,0,0.45), 0 10px 18px -12px rgba(0,0,0,0.6);
+    --sink: inset 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 2px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.05);
+    --lift-char: 0 14px 26px -14px rgba(0,0,0,0.6), 0 3px 8px -3px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
   }
 
   /* Back-compat — older code reads data-palette="dusk"; route onto light. */
@@ -265,9 +236,14 @@
 
   html,
   body {
-    background: var(--paper);
+    background: radial-gradient(120% 80% at 50% -10%, #eceae3 0%, var(--ground) 70%, #dad6cb 100%);
+    background-color: var(--ground);
     color: var(--ink);
     font-family: var(--sans);
+  }
+  [data-theme="dark"] body {
+    background: radial-gradient(120% 80% at 50% -10%, #1e2127 0%, var(--ground) 72%, #0d0f12 100%);
+    background-color: var(--ground);
   }
 
   button {
@@ -1374,14 +1350,14 @@
   /* The canonical .card — rounded 18px, sand-on-paper. Coexists with
      the legacy .j-card / .k-card from earlier phases. */
   .card {
-    background: var(--card);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-xl);
+    background: var(--widget);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--lift);
   }
   .card-soft {
-    background: var(--card-2);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-xl);
+    background: var(--widget-2);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--lift-sm);
   }
   .card-hero {
     background: var(--card);
@@ -3817,3 +3793,76 @@
   font-weight: 700;
   color: var(--gold-2, var(--gold));
 }
+
+/* ============================================================================
+ * Khonsera · Material layer — "heavy cotton stock" (Design System 2)
+ * ----------------------------------------------------------------------------
+ * Self-hosted Satoshi (offline-safe; the Fontshare CDN link in layout stays as
+ * a fast first-paint source). Then the paper/letterpress/perforation surface
+ * classes the React layer composes against. Atoms (--lift/--sink/--fibre) live
+ * on the theme blocks above so they follow light/dark.
+ * ========================================================================== */
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Variable.woff2") format("woff2"),
+       url("/fonts/Satoshi-Variable.woff") format("woff");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-VariableItalic.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ── letterpress ink ─────────────────────────────────────────────────────── */
+.eyb { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.2em; }
+.engr      { text-shadow: 0 1px 0 rgba(255,255,255,0.95), 0 -1px 1px rgba(36,30,22,0.18); }
+.engr-d    { text-shadow: 0 -1px 1px rgba(0,0,0,0.45), 0 1px 0.5px rgba(255,255,255,0.10); }
+.engr-deep { text-shadow: 0 -1px 1.5px rgba(0,0,0,0.85), 0 -2px 4px rgba(0,0,0,0.5), 0 1.5px 1px rgba(255,255,255,0.16); }
+
+/* ── the paper sheet (light) — dry cotton tooth + inherited text deboss.
+   Pair with background:var(--widget) + box-shadow:var(--lift). ───────────── */
+.pg { position: relative; text-shadow: 0 1px 0 rgba(255,255,255,0.92), 0 -1px 1px rgba(36,30,22,0.14); }
+.pg::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background-image: var(--fibre); background-size: 140px 140px;
+  mix-blend-mode: multiply; opacity: 0.13; pointer-events: none; z-index: 1;
+}
+.pg > * { position: relative; z-index: 2; }
+
+/* ── the paper sheet (dark) — same stock in black; carries its own lift. ──── */
+.pg-d {
+  position: relative;
+  text-shadow: 0 -1px 1px rgba(0,0,0,0.5), 0 1px 0.5px rgba(255,255,255,0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 0 0 0.5px rgba(0,0,0,0.4),
+    0 14px 26px -14px rgba(16,13,9,0.55),
+    0 3px 8px -4px rgba(16,13,9,0.4);
+}
+.pg-d::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background-image: var(--fibre); background-size: 150px 150px;
+  mix-blend-mode: screen; opacity: 0.05; pointer-events: none; z-index: 1;
+}
+.pg-d > * { position: relative; z-index: 2; }
+
+/* ── perforation — the ticket-strip cut. Use between a header and a stub. ── */
+.perf { position: relative; height: 1px; }
+.perf::before {
+  content: ""; position: absolute; left: 14px; right: 14px; top: 0;
+  border-top: 1.5px dashed var(--line);
+}
+
+/* ── pressed well (recessed) ─────────────────────────────────────────────── */
+.well { background: var(--well); box-shadow: var(--sink); border-radius: var(--radius-md); }
+
+/* ── live dot pulse (used by status chips) ───────────────────────────────── */
+@keyframes livepulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.82); } }
+.livedot { animation: livepulse 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .livedot { animation: none; } }

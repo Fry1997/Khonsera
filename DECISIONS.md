@@ -1368,3 +1368,28 @@ Newest at the bottom of each section.
   orphaned rows are released + cleaned up, so any deletion path (run-level OR piecemeal) makes the
   booking re-importable. Self-heals the founder's stuck tickets on the next scan — no manual cleanup.
   tsc + 372 + build green.
+
+- **D99 — Design System 2 adopted: cool cotton-paper, app-wide (foundation stage).** Founder built a
+  full design system in Claude Design ("heavy cotton stock" — paper sheets that lift, letterpress-
+  debossed text, fibre tooth, pressed wells, perforation ticket-cuts) and said "go for everywhere".
+  The DS kept OUR token names (--paper/--card/--ink/--gold/--rule + success/warning/danger) and added
+  material tokens, so it drops into globals.css and cascades through the ~3.5k lines of .cc-* atoms.
+  Stage 1 (this commit) — the foundation that re-skins the whole app via CSS vars:
+  • globals.css token blocks swapped to the cool-paper values: warm-walnut Dusk RETIRED → cooler
+    near-black ink (#20242b), near-white cotton card faces (#fbfaf6 --widget), muted "moon" gold
+    (#93753c, punctuation only). Light + Midnight(dark). **Sahara retired** (no-op alias → inherits
+    :root light). Added material grounds (--ground/screen/widget/well/char), material atoms
+    (--lift/--lift-sm/--sink/--lift-char/--fibre) per theme, --cream, --line, --elevation-*.
+  • Type: Satoshi now carries display+UI+BODY (Inter + the Cormorant serif retired, aliased to
+    Satoshi). Self-hosted Satoshi via @font-face (offline-safe; Fontshare CDN link stays for first
+    paint). Added --fw-light 300.
+  • Body ground = warm-desk radial gradient.
+  • Material layer classes appended: .pg/.pg-d (paper tooth + deboss), .engr*/.eyb (letterpress),
+    .perf (ticket perforation), .well, .livedot.
+  • .card/.card-soft atoms upgraded to the paper --lift/--lift-sm (sheets lift off the desk).
+  • Ported StatePill (concierge/state-pill.tsx) — the unified status language (comfortable/tight/risky
+    + booked/planned/live/done/offline), token-driven.
+  REMAINING (stage 2, reviewable): apply the fibre/deboss/perforation material + StatePill to the
+  actual card surfaces (concierge cards, the plan spine, the rail Pass), and bring the planner-v7
+  /plan look across. Held for a real-screen look first — the tactile per-surface layer is where
+  letterpress can go muddy on device. tsc + 372 + build green.
