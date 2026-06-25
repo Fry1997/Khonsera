@@ -23,6 +23,21 @@ const DERBY_LD = `
 
 const ctx = { gmail_message_id: "m1", raw_subject: "Wellingborough to Derby", email_date: "2026-06-24", providerHint: "Trainline" };
 
+// The same booking, but with the human-readable itinerary the confirmation renders
+// below the JSON-LD — the per-leg journey via Leicester the endpoints omit.
+const DERBY_LD_WITH_ITINERARY =
+  DERBY_LD.replace("</body>", "") +
+  `<div>Outbound Thursday 25 June 01h 18m, 1 change
+   <span>07:50</span> <span>Wellingborough</span> East Midlands Railway Anytime Day Return Wellingborough to Leicester
+   <span>08:20</span> <span>Leicester</span> Change, 17 minutes transfer time
+   <span>08:37</span> <span>Leicester</span> East Midlands Railway Anytime Day Return Leicester to Derby
+   <span>09:08</span> <span>Derby</span></div>
+   <div>Return Thursday 25 June 01h 22m, 1 change
+   <span>15:09</span> <span>Derby</span> East Midlands Railway Anytime Day Return Derby to Leicester
+   <span>15:41</span> <span>Leicester</span> Change, 13 minutes transfer time
+   <span>15:54</span> <span>Leicester</span> East Midlands Railway Anytime Day Return Leicester to Wellingborough
+   <span>16:31</span> <span>Wellingborough</span></div></body></html>`;
+
 describe("structured (JSON-LD) booking parser", () => {
   it("extracts the JSON-LD reservations", () => {
     const objs = extractJsonLd(DERBY_LD);
@@ -65,6 +80,30 @@ describe("structured (JSON-LD) booking parser", () => {
 
   it("returns nothing for an email with no JSON-LD", () => {
     expect(parseStructuredFromHtml("<html><body>just marketing</body></html>", ctx)).toEqual([]);
+  });
+
+  it("expands endpoint segments into per-leg legs via the itinerary (Leicester change)", () => {
+    const out = parseStructuredFromHtml(DERBY_LD_WITH_ITINERARY, ctx);
+    expect(out).toHaveLength(1);
+    const b = out[0];
+    if (b.type !== "transport") throw new Error("expected transport");
+    // 2 endpoint segments → 4 per-leg legs (WEL→LEI, LEI→DBY, DBY→LEI, LEI→WEL).
+    expect(b.segments).toHaveLength(4);
+    const legs = b.segments.map((s) => `${s.from_station}->${s.to_station} ${s.departure_time}-${s.arrival_time}`);
+    expect(legs[0]).toBe("Wellingborough->Leicester 07:50-08:20");
+    expect(legs[1]).toBe("Leicester->Derby 08:37-09:08");
+    expect(legs[2]).toBe("Derby->Leicester 15:09-15:41");
+    expect(legs[3]).toBe("Leicester->Wellingborough 15:54-16:31");
+    // Leicester is surfaced as the changeover (arrival of leg 1, departure of leg 2).
+    expect(b.segments[0].to_station).toBe("Leicester");
+    expect(b.segments[1].from_station).toBe("Leicester");
+  });
+
+  it("leaves endpoints intact when there is no itinerary to expand from", () => {
+    const out = parseStructuredFromHtml(DERBY_LD, ctx);
+    const b = out[0];
+    if (b.type !== "transport") throw new Error("expected transport");
+    expect(b.segments).toHaveLength(2); // unchanged — no wrong data without an itinerary
   });
 
   it("normalises a UTC-encoded departure to UK local time (06:13Z → 07:13)", () => {

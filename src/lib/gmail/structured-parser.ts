@@ -242,10 +242,126 @@ function priceOf(o: Obj): { amount: number | null; currency: "GBP" | "EUR" | "US
   return { amount: amount != null && !Number.isNaN(amount) ? amount : null, currency };
 }
 
+// ── Per-leg itinerary (the changeover the JSON-LD omits) ────────────────────
+// Trainline's confirmation JSON-LD lists ONE reservation per direction (endpoints
+// only: Wellingborough→Derby), but the email's human-readable itinerary spells out
+// the change: "07:50 Wellingborough … 08:20 Leicester … 08:37 Leicester … 09:08
+// Derby". A traveller needs those changeover stations + times regardless of the
+// fare (an Anytime Day Return still changes at Leicester), so we parse the
+// itinerary and EXPAND each endpoint segment into its real legs.
+
+// Words that follow a station in the itinerary (operator / fare / labels) — trimmed
+// off the captured station run so "Wellingborough East Midlands Railway" → "Wellingborough".
+const ITIN_STOPWORDS = new Set([
+  "East", "West", "Midlands", "Railway", "Avanti", "CrossCountry", "Cross", "Country",
+  "LNER", "Great", "Western", "Northern", "TransPennine", "Express", "Southern",
+  "Thameslink", "Southeastern", "Chiltern", "Merseyrail", "ScotRail", "Transport",
+  "Wales", "Elizabeth", "Line", "Anytime", "Advance", "Off", "Peak", "Super", "Day",
+  "Return", "Single", "Standard", "First", "Class", "Adult", "Child", "Railcard",
+  "Change", "No", "Specific", "Seat", "Coach", "Platform", "Outbound", "Inbound",
+  "Mandatory", "Reservations", "Valid", "Until", "Operated", "by", "Departs", "Arrives",
+]);
+
+type ItinToken = { time: string; station: string };
+
+// Extract the ordered (time, station) tokens from a confirmation's itinerary.
+export function parseItineraryTokens(html: string): ItinToken[] {
+  const text = html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ");
+  const tokens: ItinToken[] = [];
+  const re = /\b(\d{1,2}:\d{2})\s+([A-Z][a-zA-Z']+(?:\s+[A-Z][a-zA-Z']+){0,4})/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const words = m[2].split(/\s+/);
+    while (words.length > 1 && ITIN_STOPWORDS.has(words[words.length - 1])) words.pop();
+    if (words.length && !ITIN_STOPWORDS.has(words[0])) {
+      tokens.push({ time: m[1], station: words.join(" ") });
+    }
+  }
+  return tokens;
+}
+
+const sameStation = (a: string, b: string): boolean => {
+  const x = a.toLowerCase().trim();
+  const y = b.toLowerCase().trim();
+  return x === y || x.startsWith(y) || y.startsWith(x);
+};
+
+// Replace each endpoint segment with its per-leg legs IFF the itinerary contains a
+// contiguous chain that matches that segment's endpoints exactly (same departure
+// time + origin, same arrival time + destination). The strict endpoint match is the
+// safety valve: a misparse simply doesn't match, so we keep the original segment
+// (no wrong data, no regression).
+function expandSegmentsWithItinerary(
+  segments: ParsedTransportSegment[],
+  tokens: ItinToken[],
+): ParsedTransportSegment[] {
+  const out: ParsedTransportSegment[] = [];
+  for (const seg of segments) {
+    let expanded: ParsedTransportSegment[] | null = null;
+    if (seg.departure_time && seg.arrival_time && seg.from_station && seg.to_station) {
+      const s = tokens.findIndex(
+        (t) => t.time === seg.departure_time && sameStation(t.station, seg.from_station),
+      );
+      if (s >= 0) {
+        let e = -1;
+        for (let i = s + 1; i < tokens.length; i++) {
+          if (tokens[i].time === seg.arrival_time && sameStation(tokens[i].station, seg.to_station)) {
+            e = i;
+            break;
+          }
+        }
+        // A real chain needs an EVEN number of tokens (dep/arr per leg) and at least
+        // two legs (e > s+1) — otherwise it's just the endpoint pair, nothing to add.
+        if (e > s + 1 && (e - s + 1) % 2 === 0) {
+          const legs: ParsedTransportSegment[] = [];
+          for (let k = s; k < e; k += 2) {
+            const dep = tokens[k];
+            const arr = tokens[k + 1];
+            legs.push({
+              ...emptySegment({
+                from_station: k === s ? seg.from_station : dep.station,
+                to_station: k + 1 === e ? seg.to_station : arr.station,
+                from_station_code: k === s ? seg.from_station_code : null,
+                to_station_code: k + 1 === e ? seg.to_station_code : null,
+                departure_date: seg.departure_date,
+                departure_time: dep.time,
+                arrival_date: seg.arrival_date,
+                arrival_time: arr.time,
+                operator: seg.operator,
+                service_number: null,
+              }),
+              ticket_type: seg.ticket_type,
+            });
+          }
+          expanded = legs;
+        }
+      }
+    }
+    if (expanded) out.push(...expanded);
+    else out.push(seg);
+  }
+  return out;
+}
+
 // Convenience: parse a whole email's HTML straight to bookings (used by the scan).
 export function parseStructuredFromHtml(
   html: string,
   ctx: { gmail_message_id: string; raw_subject: string; email_date: string; providerHint: string | null },
 ): ParsedBooking[] {
-  return parseStructuredBookings(extractJsonLd(html), ctx);
+  const bookings = parseStructuredBookings(extractJsonLd(html), ctx);
+  const tokens = parseItineraryTokens(html);
+  if (tokens.length >= 4) {
+    for (const b of bookings) {
+      if (b.type === "transport" && b.mode === "train") {
+        b.segments = expandSegmentsWithItinerary(b.segments, tokens);
+      }
+    }
+  }
+  return bookings;
 }
