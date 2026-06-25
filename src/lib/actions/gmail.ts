@@ -455,15 +455,13 @@ export async function scanGmailForBookings(): Promise<
           providerHint: providerHintFromSender(from),
         });
         // TEMP diagnostic (D103 chase) — what does the server actually receive?
+        // Use the existing _debug_routes_api table (already in the app's schema
+        // cache + writable), since the ad-hoc table wasn't picked up.
         if (/derby|wellingborough|trainline/i.test(`${subject} ${from}`)) {
           try {
-            await supabase.from("_debug_gmail_scan").insert({
-              subject: subject.slice(0, 120),
-              html_inline_len: (html ?? "").length,
-              html_used_len: structuredHtml.length,
-              fetched_attachment: fetchedAtt,
-              jsonld_count: extractJsonLd(structuredHtml).length,
-              struct_count: structured.length,
+            await supabase.from("_debug_routes_api").insert({
+              status: `GMAILDBG ${subject.slice(0, 70)}`,
+              message: `inlineLen=${(html ?? "").length} usedLen=${structuredHtml.length} fetchedAtt=${fetchedAtt} jsonld=${extractJsonLd(structuredHtml).length} struct=${structured.length} hasLdLiteral=${/ld\+json/i.test(structuredHtml)}`,
             });
           } catch (e) {
             console.warn("debug insert failed", e);
