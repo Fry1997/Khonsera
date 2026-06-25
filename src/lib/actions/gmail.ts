@@ -435,12 +435,14 @@ export async function scanGmailForBookings(): Promise<
         // Big emails serve their HTML as an attachment, so the inline body is
         // empty and carries no JSON-LD — fetch the html part in that case.
         let structuredHtml = html ?? "";
+        let fetchedAtt = false;
         if (!extractJsonLd(structuredHtml).length) {
           const htmlAttId = findHtmlAttachmentId(msg.payload as MsgPart);
           if (htmlAttId) {
             try {
               const buf = await gmailGetAttachment({ accessToken: gmail.accessToken, messageId: ref.id, attachmentId: htmlAttId });
               structuredHtml = buf.toString("utf8");
+              fetchedAtt = true;
             } catch (e) {
               console.warn("gmail: html attachment fetch failed", ref.id, e);
             }
@@ -452,6 +454,17 @@ export async function scanGmailForBookings(): Promise<
           email_date: emailDate,
           providerHint: providerHintFromSender(from),
         });
+        // TEMP diagnostic (D103 chase) — what does the server actually receive?
+        if (/derby|wellingborough|trainline/i.test(`${subject} ${from}`)) {
+          void supabase.from("_debug_gmail_scan").insert({
+            subject: subject.slice(0, 120),
+            html_inline_len: (html ?? "").length,
+            html_used_len: structuredHtml.length,
+            fetched_attachment: fetchedAtt,
+            jsonld_count: extractJsonLd(structuredHtml).length,
+            struct_count: structured.length,
+          });
+        }
         if (structured.length) {
           try {
             await graftBarcodesFromPdfs(gmail.accessToken, ref.id, msg, structured);
