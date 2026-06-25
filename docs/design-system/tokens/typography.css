@@ -1,0 +1,118 @@
+/* ============================================================================
+ * Khonsera · Type tokens + the one type set
+ * Satoshi (display + UI + body, incl. its own italic) ·
+ * JetBrains Mono (codes, times, eyebrows, labels). Sans + mono only.
+ * No serif. The voice is operational, not editorial — emphasis comes from
+ * weight, tracking and the mono technical layer, never a literary italic.
+ * The type CLASSES (.h0…tiny, .eyebrow, .wordmark, lockup) live here too so a
+ * specimen reads the same in a brief, the reference, and the app.
+ * ========================================================================== */
+
+:root {
+  /* ── Families ─────────────────────────────────────────────────────────── */
+  --display: "Satoshi", -apple-system, system-ui, sans-serif; /* @kind font */
+  --sans:    "Satoshi", -apple-system, system-ui, sans-serif; /* @kind font */
+  --serif:   "Satoshi", -apple-system, system-ui, sans-serif; /* @kind font */ /* retired serif slot — kept pointing at Satoshi for back-compat */
+  --mono:    "JetBrains Mono", ui-monospace, monospace;  /* @kind font */
+
+  /* Role aliases */
+  --font-display: var(--display);    /* @kind font */ /* headlines + wordmark */
+  --font-ui: var(--sans);            /* @kind font */ /* body + UI */
+  --font-lead: var(--sans);          /* @kind font */ /* lead / standfirst — Satoshi light */
+  --font-technical: var(--mono);     /* @kind font */ /* codes, times, eyebrows */
+
+  /* ── Type scale — size / line-height / letter-spacing ─────────────────── */
+  --fs-display: 56px;  --lh-display: 1.02; /* @kind other */ --ls-display: -0.035em; /* @kind other */
+  --fs-h1: 40px;       --lh-h1: 1.05;  /* @kind other */    --ls-h1: -0.03em; /* @kind other */
+  --fs-h2: 28px;       --lh-h2: 1.1;   /* @kind other */    --ls-h2: -0.025em; /* @kind other */
+  --fs-h3: 15px;       --lh-h3: 1.3;   /* @kind other */    --ls-h3: -0.005em; /* @kind other */
+  --fs-body: 14px;     --lh-body: 1.5; /* @kind other */
+  --fs-label: 12px;    --lh-label: 1.45; /* @kind other */
+  --fs-micro: 10.5px;  --lh-micro: 1.4; /* @kind other */
+
+  /* Weights — Satoshi: 300 light · 400 regular · 500 medium · 600 semibold */
+  --fw-light: 300; /* @kind other */  --fw-regular: 400; /* @kind other */  --fw-medium: 500; /* @kind other */  --fw-semibold: 600; /* @kind other */
+
+  /* Tracking */
+  --ls-uc: 0.12em; /* @kind other */    --ls-eyebrow: 0.22em; /* @kind other */
+}
+
+/* ── Headlines — Satoshi 500, tight optical tracking ─────────────────────── */
+.h0 { font-family: var(--display); font-weight: var(--fw-medium); font-size: var(--fs-display);
+      line-height: var(--lh-display); letter-spacing: var(--ls-display); color: var(--ink); margin: 0; }
+.h1 { font-family: var(--display); font-weight: var(--fw-medium); font-size: var(--fs-h1);
+      line-height: var(--lh-h1); letter-spacing: var(--ls-h1); color: var(--ink); margin: 0; }
+.h2 { font-family: var(--display); font-weight: var(--fw-medium); font-size: var(--fs-h2);
+      line-height: var(--lh-h2); letter-spacing: var(--ls-h2); color: var(--ink); margin: 0; }
+.h3 { font-family: var(--display); font-weight: var(--fw-semibold); font-size: var(--fs-h3);
+      line-height: var(--lh-h3); letter-spacing: var(--ls-h3); color: var(--ink); margin: 0; }
+
+.display   { font-family: var(--display); font-weight: var(--fw-medium); letter-spacing: -0.02em; }
+.display-i { font-family: var(--display); font-style: italic; font-weight: var(--fw-medium); }
+
+/* ── Body / UI — Satoshi ─────────────────────────────────────────────────── */
+.body  { font-family: var(--sans); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink-2); }
+.small { font-family: var(--sans); font-size: var(--fs-label); color: var(--ink-dim); line-height: var(--lh-label); }
+.tiny  { font-family: var(--sans); font-size: var(--fs-micro); color: var(--ink-dim); letter-spacing: 0.04em; }
+.dim   { color: var(--ink-dim); }
+
+/* ── Lead / standfirst — Satoshi light, the framing line above a view ────── */
+/* .serif / .serif-i are retained as aliases (now Satoshi) so older markup
+ * doesn't break — but new work should use .lead / .standfirst. No italic. */
+.serif, .serif-i { font-family: var(--sans); letter-spacing: -0.01em; }
+.lead { font-family: var(--sans); font-weight: var(--fw-light);
+        font-size: 18px; line-height: 1.45; letter-spacing: -0.01em; color: var(--ink-2); margin: 0; }
+.standfirst { font-family: var(--sans); font-weight: var(--fw-light); font-size: 16px; line-height: 1.5;
+        letter-spacing: -0.005em; color: var(--ink-2); margin: 0; max-width: 58ch; text-wrap: pretty; }
+.standfirst em { color: var(--gold); font-weight: var(--fw-medium); font-style: normal; }
+
+/* ── Mono — codes, times, locators (tabular) ─────────────────────────────── */
+.mono { font-family: var(--mono); font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
+
+/* ── Eyebrow — uppercase mono, tracked. The structural label voice. ─────── */
+.eyebrow, .uc {
+  font-family: var(--mono); font-size: var(--fs-micro); font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--ink-dim);
+}
+.uc { letter-spacing: var(--ls-uc); }
+
+/* Hairline-flanked eyebrow — the section-divider treatment */
+.flank {
+  display: flex; align-items: center; gap: 14px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+.flank::before, .flank::after { content: ""; flex: 1; height: 1px; background: var(--rule); min-width: 16px; }
+.flank.left::before  { display: none; }
+.flank.right::after  { display: none; }
+
+/* ── Wordmark — Satoshi 300 LIGHT, UPPERCASE, +0.26em, monocolour ink.
+ * The emblem is the only gold element; the wordmark NEVER gold-splits. ──── */
+.wordmark {
+  font-family: var(--display); font-weight: var(--fw-light);
+  font-size: 56px; line-height: 0.98; letter-spacing: 0.26em;
+  text-transform: uppercase; color: var(--ink); padding-left: 0.26em;
+}
+.wordmark.sm { font-size: 22px; letter-spacing: 0.2em; }
+.wordmark.md { font-size: 34px; letter-spacing: 0.12em; }
+.wordmark.lg { font-size: 88px; letter-spacing: 0.06em; }
+
+/* ── Brand lockup — emblem (ink on light, brass on dark) + wordmark inline ── */
+.brand-lockup { display: inline-flex; align-items: center; gap: 11px; }
+.brand-lockup .brand-mark { height: 26px; width: auto; }
+.brand-mark.on-dark { display: none; }
+[data-theme="dark"] .brand-mark.on-light { display: none; }
+[data-theme="dark"] .brand-mark.on-dark  { display: block; }
+.brand-lockup .bl-wm {
+  font-family: var(--display); font-weight: var(--fw-light);
+  font-size: 15px; line-height: 1; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--ink); padding-left: 0.22em;
+}
+
+/* Luxe ornamental rule — hairline + gold dot, between editorial sections */
+.luxe-rule { display: flex; align-items: center; gap: 14px; color: var(--gold); }
+.luxe-rule::before, .luxe-rule::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rule-2), transparent);
+}
+.luxe-rule .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }

@@ -81,7 +81,7 @@
 .cc-pick-box { width: 20px; height: 20px; border-radius: 4px; border: 1.5px solid var(--rule-2);
   flex: none; display: flex; align-items: center; justify-content: center; color: transparent;
   transition: all var(--dur-base) var(--ease-standard); }
-.cc-pick-row[data-checked="true"] .cc-pick-box { background: var(--gold); border-color: var(--gold); color: #fff; }
+.cc-pick-row[data-checked="true"] .cc-pick-box { background: var(--ink); border-color: var(--ink); color: var(--cream); }
 .cc-pick-main { flex: 1; min-width: 0; }
 .cc-pick-title { font-size: 14.5px; color: var(--ink); letter-spacing: -0.01em; }
 .cc-pick-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px;
@@ -184,7 +184,7 @@
   border-top: 1px solid var(--rule); }
 .cc-readiness-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px; background: var(--ink-faint); }
 .cc-readiness-item[data-sev="info"] .cc-readiness-dot { background: var(--sage); }
-.cc-readiness-item[data-sev="advise"] .cc-readiness-dot { background: var(--gold); }
+.cc-readiness-item[data-sev="advise"] .cc-readiness-dot { background: var(--amber); }
 .cc-readiness-item[data-sev="warn"] .cc-readiness-dot { background: var(--amber); }
 .cc-readiness-text { flex: 1; }
 .cc-readiness-label { font-size: 14.5px; color: var(--ink); letter-spacing: -0.01em; }

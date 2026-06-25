@@ -1,0 +1,28 @@
+<!-- @dsCard group="Brand" viewport="700x230" name="Voice — calm, capable, certain" subtitle="Second person, present tense. State the next thing; reassure when safe; firm up when action is needed." -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--ground); display: flex; gap: 16px; }
+  .col { flex: 1; }
+  .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 9px; }
+  .line { font-size: 14px; line-height: 1.5; color: var(--ink-2); padding: 6px 0; }
+  .good::before { content: "✓"; color: var(--sage); font-family: var(--mono); margin-right: 9px; }
+  .bad { color: var(--ink-faint); }
+  .bad::before { content: "✕"; color: var(--rust); font-family: var(--mono); margin-right: 9px; }
+</style></head>
+<body>
+  <div class="col">
+    <div class="lbl">We say</div>
+    <div class="line good">You're on the 11:32 to St Pancras.</div>
+    <div class="line good">Disembark at Luton, platform 4.</div>
+    <div class="line good">Connection safe — 6 min to change.</div>
+    <div class="line good">Leave by 06:10 to catch it.</div>
+  </div>
+  <div class="col">
+    <div class="lbl">We don't</div>
+    <div class="line bad">Don't miss your train! 🚆</div>
+    <div class="line bad">Your journey awaits ✨</div>
+    <div class="line bad">Oops — looks like a tight one!</div>
+    <div class="line bad">Pro tip: leave a little early.</div>
+  </div>
+</body></html>

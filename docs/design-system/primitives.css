@@ -1,0 +1,127 @@
+/* ============================================================================
+ * Khonsera · Primitives
+ * ONE of each base surface — the de-duped vocabulary. Crisp radii
+ * (card 6 / button & field 4 / pill round). Reference token names only.
+ * The React components in this system emit exactly these class names.
+ * ========================================================================== */
+
+/* ── CARD — the one workhorse surface (hairline + a refined soft lift) ────── */
+.card      { background: var(--card);   border: 1px solid var(--rule); border-radius: var(--radius-md); box-shadow: var(--elevation-card); }
+.card-soft { background: var(--card-2); border: 1px solid var(--rule); border-radius: var(--radius-md); }
+/* hero card — one per screen, gold edge, soft gold lift */
+.card-hero {
+  background: var(--card); border: 1px solid var(--gold); border-radius: var(--radius-md);
+  box-shadow: 0 1px 0 var(--gold-tint), 0 14px 36px -16px rgba(184, 137, 63, 0.30);
+}
+/* ink card — the dark inset (Live, premium tickets) */
+.card-ink  { background: var(--ink); color: var(--paper); border: 1px solid var(--ink); border-radius: var(--radius-md); box-shadow: var(--elevation-raised); }
+.hr, .divider { height: 1px; background: var(--rule); border: 0; margin: 0; }
+
+/* ── BUTTON — one family. Crisp 4px, Satoshi 500. ───────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  font-family: var(--sans); font-weight: var(--fw-medium); font-size: 13px;
+  line-height: 1; letter-spacing: 0.01em; border: 1px solid transparent; cursor: pointer;
+  transition: background var(--dur-slow), transform var(--dur-fast), border-color var(--dur-slow);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm  { padding: 7px 12px;  font-size: 12px; }
+.btn-lg  { padding: 13px 20px; font-size: 14px; }
+.btn-full { width: 100%; }
+
+.btn-gold  { background: var(--gold); color: #fff; border-color: var(--gold); }
+.btn-gold:hover:not(:disabled)  { background: var(--gold-2); border-color: var(--gold-2); transform: translateY(-1px); }
+.btn-ink   { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn-ink:hover:not(:disabled)   { transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--rule-2); }
+.btn-ghost:hover:not(:disabled) { background: var(--ink-soft); }
+.btn-terra { background: var(--terra); color: #fff8ef; border-color: var(--terra); }   /* rare salt — celebratory only */
+.btn-terra:hover:not(:disabled) { background: var(--terra-2); border-color: var(--terra-2); transform: translateY(-1px); }
+.btn-destructive { background: transparent; color: var(--rust); border-color: var(--rust-2); padding: 6px 10px; font-size: 12px; }
+.btn-destructive:hover:not(:disabled) { background: var(--rust-2); }
+.btn-text  { background: none; border: none; color: var(--gold-2); padding: 4px 0; cursor: pointer; }
+
+/* ── FIELD — one input. Crisp 4px; gold focus ring. ─────────────────────── */
+.field {
+  width: 100%; padding: 11px 13px; background: var(--card);
+  border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  font-family: var(--sans); font-size: 14px; color: var(--ink);
+  outline: none; transition: border-color var(--dur-base), box-shadow var(--dur-base);
+}
+.field:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft-alpha); }
+.field::placeholder { color: var(--ink-faint); }
+
+/* ── PILL — quiet by default; saturated variants used sparingly. ────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+  border-radius: var(--radius-pill); font-family: var(--sans);
+  font-size: 10.5px; font-weight: var(--fw-semibold); letter-spacing: 0.02em;
+  background: var(--card-2); color: var(--ink-dim); white-space: nowrap;
+}
+.pill .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.pill-gold  { background: var(--gold-tint);  color: var(--gold-2); }
+.pill-sage  { background: var(--sage-soft);  color: var(--sage); }
+.pill-amber { background: var(--amber-soft);  color: var(--amber); }
+.pill-rust  { background: var(--rust-soft);  color: var(--rust); }
+.pill-slate { background: var(--slate-soft); color: var(--slate-2); }
+.pill-soft  { background: var(--ink-soft);   color: var(--ink-2); }
+.pill-ink   { background: var(--ink);        color: var(--gold); }
+.pill-anchor{ background: var(--ink); color: var(--gold); padding: 4px 9px; font-family: var(--mono);
+              letter-spacing: 0.08em; text-transform: uppercase; font-size: 9.5px; }
+
+/* ── CHIP — neutral inline tag ──────────────────────────────────────────── */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
+        border-radius: var(--radius-xs); background: var(--ink-soft); font-size: 11.5px; color: var(--ink-2); }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── TAG — readiness / feasibility (ok / tight / no / gold) ─────────────── */
+.tag-ok    { color: var(--sage);   background: var(--sage-2); }
+.tag-tight { color: var(--amber);  background: var(--amber-2); }
+.tag-no    { color: var(--rust);   background: var(--rust-2); }
+.tag-gold  { color: var(--gold-2); background: var(--gold-soft); }
+.tag-ok, .tag-tight, .tag-no, .tag-gold {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px;
+  border-radius: var(--radius-xs); font-family: var(--mono); font-size: 10px;
+  font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.tag-ok.solid    { background: var(--sage);  color: #f6f7ef; }
+.tag-tight.solid { background: var(--amber); color: #fdf8e9; }
+.tag-no.solid    { background: var(--rust);  color: #fdeae6; }
+
+/* ── STATUS PILL (.sb) — mono uppercase lifecycle ───────────────────────── */
+.sb { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: var(--radius-xs);
+      font-family: var(--mono); font-size: 10.5px; font-weight: var(--fw-medium);
+      text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.sb-draft     { background: transparent; color: var(--ink-dim);  border: 1px dashed var(--rule-2); }
+.sb-planning  { background: var(--amber-2); color: var(--amber); }
+.sb-planned   { background: var(--sage-2);  color: var(--sage); }
+.sb-progress  { background: var(--gold);    color: var(--paper); }
+.sb-done      { background: transparent; color: var(--ink-faint); border: 1px solid var(--rule); }
+.sb-booked    { background: var(--sage-2);  color: var(--sage); }
+.sb-cancelled { background: var(--rust-2);  color: var(--rust); }
+
+/* ── ICON BUTTON — round header action ──────────────────────────────────── */
+.icon-button { width: 36px; height: 36px; border-radius: var(--radius-pill); background: var(--ink-soft);
+  color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer; transition: background var(--dur-base); }
+.icon-button:hover { background: var(--card-2); }
+.icon-button.gold { background: var(--gold-tint); color: var(--gold-2); }
+.icon-button.ink  { background: var(--ink); color: var(--paper); }
+
+/* ── SEGMENTED CONTROL — pill row (mode / filter / trip-type) ───────────── */
+.segmented { display: inline-flex; gap: 2px; background: var(--card-2); border: 1px solid var(--rule);
+  border-radius: var(--radius-pill); padding: 3px; }
+.segmented .seg { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); padding: 7px 15px; border-radius: var(--radius-pill); border: none; background: none; cursor: pointer; }
+.segmented .seg[data-active="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* Filter / mode pills (standalone, not in a track) */
+.filter-pill, .mode-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: var(--radius-pill);
+  border: 1px solid var(--rule); background: transparent; font-family: var(--sans); font-size: 13px;
+  color: var(--ink-2); transition: all var(--dur-base); cursor: pointer;
+}
+.filter-pill:hover, .mode-pill:hover { border-color: var(--rule-2); color: var(--ink); }
+.filter-pill[data-active="true"], .mode-pill[data-active="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }

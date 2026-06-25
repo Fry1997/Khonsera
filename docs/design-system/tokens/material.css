@@ -1,0 +1,120 @@
+/* ============================================================================
+ * Khonsera · Material system — "heavy cotton stock" (canonical)
+ * ----------------------------------------------------------------------------
+ * The tactile surface language. Every card is a single sheet of premium
+ * business-card paper laid on a warm desk: it LIFTS on a tight contact shadow
+ * with a bright bevelled top lip, its text is letterpress-DEBOSSED into the
+ * stock, and a fine dry tooth (baked fractal-noise grain) sits over the card
+ * face only. Charcoal blocks are the SAME stock in black. Pressed wells SINK.
+ *
+ * Grounds + ink + gold live in tokens/colors.css. This file adds the shadow
+ * atoms, the letterpress text-shadows, the paper tooth, and the .pg / .pg-d /
+ * .engr surface classes the React layer composes against.
+ *
+ * HOW TO USE
+ *   <div class="pg"   style="background:var(--widget); box-shadow:var(--lift);
+ *        border-radius:14px"> … light sheet … </div>
+ *   <div class="pg-d" style="background:var(--char);  border-radius:14px"> … dark … </div>
+ *   Text inside .pg / .pg-d auto-debosses. Add .engr to a numeral for a deeper
+ *   press; .engr-d / .engr-deep on dark stock; .eyb for an uppercase mono label.
+ *   Pressed well = box-shadow:var(--sink) on background:var(--well).
+ *
+ * The paper tooth (--fibre) is BAKED below — no runtime generator required.
+ * ========================================================================== */
+
+:root {
+  /* the dry cotton tooth — a baked fractal-noise tile, used by .pg / .pg-d */
+  --fibre: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'220'%20height%3D'220'%3E%3Cdefs%3E%3Cfilter%20id%3D'f'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.5%200.55'%20numOctaves%3D'2'%20seed%3D'7'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20type%3D'matrix'%20values%3D'0%200%200%200%200.45%20%200%200%200%200%200.43%20%200%200%200%200%200.38%20%200%200%200%200.55%200'%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23f)'%2F%3E%3C%2Fsvg%3E"); /* @kind other */
+
+  /* shadow atoms (warm, not grey) */
+  --hi:   rgba(255,254,250,0.95);
+  --sh-1: rgba(54,44,30,0.07);
+  --sh-2: rgba(54,44,30,0.13);
+  --sh-3: rgba(54,44,30,0.20);
+
+  /* a single thick sheet lifting off the desk — tight contact + soft cast,
+     bevelled bright top lip, a hairline edge */
+  --lift: inset 0 1.5px 0 rgba(255,255,255,0.9),
+          0 0 0 0.5px rgba(40,44,52,0.045),
+          0 18px 30px -18px rgba(34,30,24,0.28),
+          0 5px 12px -6px rgba(34,30,24,0.15),
+          0 1.5px 3px rgba(34,30,24,0.09); /* @kind shadow */
+  --lift-sm: inset 0 1px 0 rgba(255,255,255,0.85),
+          0 0 0 0.5px rgba(40,44,52,0.04),
+          0 10px 18px -12px rgba(34,30,24,0.24),
+          0 3px 7px -5px rgba(34,30,24,0.13); /* @kind shadow */
+  /* letterpress recess — ink bitten into the stock, bright lower lip */
+  --sink: inset 0 2px 4px rgba(40,36,28,0.16),
+          inset 0 1px 2px rgba(40,36,28,0.10),
+          inset 0 -1px 0 rgba(255,255,255,0.65); /* @kind shadow */
+  /* charcoal block lifting off the sheet */
+  --lift-char: 0 14px 26px -14px rgba(20,16,12,0.5),
+          0 3px 8px -3px rgba(20,16,12,0.34),
+          inset 0 1px 0 rgba(255,255,255,0.08); /* @kind shadow */
+}
+
+/* dark theme — the tooth + lips invert so charcoal stock still reads as paper */
+[data-theme="dark"] {
+  --hi: rgba(255,255,255,0.10);
+  --lift: inset 0 1px 0 rgba(255,255,255,0.08),
+          0 0 0 0.5px rgba(0,0,0,0.5),
+          0 18px 30px -18px rgba(0,0,0,0.7),
+          0 5px 12px -6px rgba(0,0,0,0.5); /* @kind shadow */
+  --lift-sm: inset 0 1px 0 rgba(255,255,255,0.07),
+          0 0 0 0.5px rgba(0,0,0,0.45),
+          0 10px 18px -12px rgba(0,0,0,0.6); /* @kind shadow */
+  --sink: inset 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 2px rgba(0,0,0,0.4),
+          inset 0 -1px 0 rgba(255,255,255,0.05); /* @kind shadow */
+}
+
+/* ── letterpress ink ─────────────────────────────────────────────────────── */
+.eyb { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.2em; }
+/* numerals/labels pressed into light stock (deeper than the .pg default) */
+.engr      { text-shadow: 0 1px 0 rgba(255,255,255,0.95), 0 -1px 1px rgba(36,30,22,0.18); }
+/* pressed into dark stock */
+.engr-d    { text-shadow: 0 -1px 1px rgba(0,0,0,0.45), 0 1px 0.5px rgba(255,255,255,0.10); }
+/* deepest press — a focal numeral cut into a dark face */
+.engr-deep { text-shadow: 0 -1px 1.5px rgba(0,0,0,0.85), 0 -2px 4px rgba(0,0,0,0.5), 0 1.5px 1px rgba(255,255,255,0.16); }
+
+/* ── the paper sheet (light) ─────────────────────────────────────────────────
+   .pg gives any element the dry cotton tooth (scoped to its own face) plus a
+   gentle inherited deboss on all text. Pair with background:var(--widget) and
+   box-shadow:var(--lift) for the full single-sheet lift. */
+.pg { position: relative; text-shadow: 0 1px 0 rgba(255,255,255,0.92), 0 -1px 1px rgba(36,30,22,0.14); }
+.pg::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background-image: var(--fibre); background-size: 140px 140px;
+  mix-blend-mode: multiply; opacity: 0.13; pointer-events: none; z-index: 1;
+}
+.pg > * { position: relative; z-index: 2; }
+
+/* ── the paper sheet (dark) ──────────────────────────────────────────────────
+   The same stock in black. The fibre tooth shows as a faint LIGHTER grain
+   (screen blend); text presses dark; a bright top lip + soft cast give the
+   single-sheet lift. .pg-d carries its own box-shadow — just set the bg. */
+.pg-d {
+  position: relative;
+  text-shadow: 0 -1px 1px rgba(0,0,0,0.5), 0 1px 0.5px rgba(255,255,255,0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 0 0 0.5px rgba(0,0,0,0.4),
+    0 14px 26px -14px rgba(16,13,9,0.55),
+    0 3px 8px -4px rgba(16,13,9,0.4);
+}
+.pg-d::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background-image: var(--fibre); background-size: 150px 150px;
+  mix-blend-mode: screen; opacity: 0.05; pointer-events: none; z-index: 1;
+}
+.pg-d > * { position: relative; z-index: 2; }
+
+/* ── perforation — the ticket-strip cut. Use between a header and a stub. ── */
+.perf { position: relative; height: 1px; }
+.perf::before {
+  content: ""; position: absolute; left: 14px; right: 14px; top: 0;
+  border-top: 1.5px dashed var(--line);
+}
+
+/* ── corner family — crisp business-card geometry ────────────────────────────
+   hero 18 · tile 14 · inner 11 · chip 9 · badge 7. Applied inline in the React
+   layer via the W.r scale; listed here for reference. Pills stay fully round. */

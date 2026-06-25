@@ -15,11 +15,11 @@ export const alt = "Khonsera — your travel, quietly handled.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const INK = "#1b1712";
-const INK_2 = "#34302a";
-const GOLD = "#8f6722";
-const GOLD_DOT = "#b8893f";
-const FOOT = "#9a8f7d";
+const INK = "#20242b";
+const INK_2 = "#2a2f37";
+const GOLD = "#8a6d38";
+const GOLD_DOT = "#93753c";
+const FOOT = "#8a8f98";
 
 export default function OpengraphImage() {
   return new ImageResponse(

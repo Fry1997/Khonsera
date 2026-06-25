@@ -1,0 +1,23 @@
+/* ============================================================================
+ * Khonsera · Webfonts
+ * Satoshi (self-hosted, variable 300–900, incl. its own italic) ·
+ * JetBrains Mono (Google Fonts). Sans + mono only — no serif.
+ * Satoshi ships with the system (offline-safe); mono falls back to CDN then
+ * system mono. Colophon: "Satoshi · JetBrains Mono".
+ * ========================================================================== */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('../assets/fonts/Satoshi-Variable.woff2') format('woff2'),
+       url('../assets/fonts/Satoshi-Variable.woff') format('woff');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('../assets/fonts/Satoshi-VariableItalic.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');

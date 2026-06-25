@@ -1,0 +1,20 @@
+<!-- @dsCard group="Colors" viewport="700x172" name="Grounds & sheets" subtitle="The desk and the stock that sits on it — page, card, secondary, pressed well" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--ground); }
+  .swatches { display: flex; gap: 12px; }
+  .sw { flex: 1; }
+  .chip { height: 64px; border-radius: 12px; border: 1px solid var(--line); }
+  .name { font-family: var(--mono); font-size: 11px; color: var(--ink); margin-top: 9px; }
+  .val { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+</style></head>
+<body>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:var(--ground)"></div><div class="name">--ground</div><div class="val">desk</div></div>
+    <div class="sw"><div class="chip" style="background:var(--screen)"></div><div class="name">--screen</div><div class="val">spine</div></div>
+    <div class="sw"><div class="chip" style="background:var(--widget);box-shadow:var(--lift-sm)"></div><div class="name">--widget / --card</div><div class="val">card stock</div></div>
+    <div class="sw"><div class="chip" style="background:var(--widget-2)"></div><div class="name">--widget-2</div><div class="val">nested</div></div>
+    <div class="sw"><div class="chip" style="background:var(--well);box-shadow:var(--sink)"></div><div class="name">--well</div><div class="val">pressed</div></div>
+  </div>
+</body></html>

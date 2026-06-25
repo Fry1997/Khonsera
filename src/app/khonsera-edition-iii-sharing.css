@@ -67,7 +67,7 @@
 .cc-share-scope-note { flex: 1 1 100%; font-family: var(--serif); font-style: italic; font-size: 12.5px;
   color: var(--ink-dim); }
 .cc-share-go {
-  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+  background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); border-radius: 5px;
   padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px; cursor: pointer;
 }
 
@@ -76,7 +76,7 @@
 .cc-share-broadcast { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .cc-share-broadcast-status { display: inline-flex; align-items: center; gap: var(--space-2);
   font-family: var(--mono); font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
-.cc-share-broadcast-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex: none; }
+.cc-share-broadcast-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cream); flex: none; }
 @media (prefers-reduced-motion: no-preference) {
   .cc-share-live[data-broadcasting="true"] .cc-share-broadcast-status::before {
     animation: cc-share-pulse 2s var(--ease-standard, cubic-bezier(.2,0,0,1)) infinite; }
@@ -143,7 +143,7 @@
   border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 5px var(--gold-soft), 0 0 0 6px var(--gold); }
 .cc-shared-view {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 6px;
+  background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); border-radius: 6px;
   padding: 13px 24px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 14px; cursor: pointer;
   text-decoration: none; margin-top: var(--space-2);
 }

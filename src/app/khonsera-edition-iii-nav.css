@@ -282,8 +282,8 @@
   border: 1px solid var(--nav-rule);
   transition: all var(--dur-base) var(--ease-standard);
 }
-.cc-nav-decision-accept { background: var(--gold); border-color: var(--gold); color: #fff; flex: 1.4; }
-.cc-nav-decision-accept:hover { background: var(--gold-2); }
+.cc-nav-decision-accept { background: var(--char); border: none; color: var(--cream); box-shadow: var(--lift-char); flex: 1.4; }
+.cc-nav-decision-accept:hover { background: var(--char-2); }
 .cc-nav-decision-dismiss { background: transparent; color: var(--nav-ink-dim); }
 .cc-nav-decision-dismiss:hover { color: var(--nav-ink); border-color: var(--nav-ink-dim); }
 /* calm decision: a single quiet dismiss, no option block */
@@ -335,7 +335,7 @@
   font-family: var(--sans); font-size: 13.5px; color: var(--nav-ink);
 }
 .cc-nav-status .dot {
-  width: 9px; height: 9px; border-radius: 50%; background: var(--gold);
+  width: 9px; height: 9px; border-radius: 50%; background: var(--amber);
 }
 @media (prefers-reduced-motion: no-preference) {
   .cc-nav-status[data-pulse] .dot { animation: cc-nav-pulse 1.6s var(--ease-standard) infinite; }
@@ -359,7 +359,7 @@
   position: relative;
 }
 .cc-nav-acquiring-ring::after {
-  content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--gold);
+  content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--sage);
 }
 @media (prefers-reduced-motion: no-preference) {
   .cc-nav-acquiring-ring { animation: cc-nav-acq 2s var(--ease-standard) infinite; }
@@ -387,7 +387,7 @@
 .cc-nav-arrived-back {
   font-family: var(--sans); font-weight: var(--fw-medium); font-size: 14px;
   padding: var(--space-3) var(--space-5); border-radius: var(--radius-md);
-  background: var(--gold); color: #fff; border: none; cursor: pointer;
+  background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); cursor: pointer;
 }
 
 /* the dot glued to the route — the trust primitive (proof draws it on the map) */

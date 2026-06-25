@@ -433,7 +433,7 @@
 .cc-status-strip[data-status="delayed"] .cc-status-label,
 .cc-status-strip[data-status="cancelled"] .cc-status-label { color: var(--danger); }
 .cc-status-strip[data-status="cancelled"] .cc-status-dot { background: var(--danger); }
-.cc-status-strip[data-status="boarding"] .cc-status-dot { background: var(--gold); }
+.cc-status-strip[data-status="boarding"] .cc-status-dot { background: var(--sage); }
 .cc-status-strip[data-status="stale"] .cc-status-dot,
 .cc-status-strip[data-offline] .cc-status-dot { background: var(--ink-faint); }
 

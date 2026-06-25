@@ -1,0 +1,20 @@
+<!-- @dsCard group="Colors" viewport="700x172" name="Ink ramp" subtitle="Cool near-black letterpress ink — primary, body, labels, faint" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--widget); }
+  .swatches { display: flex; gap: 12px; }
+  .sw { flex: 1; }
+  .chip { height: 64px; border-radius: 12px; }
+  .name { font-family: var(--mono); font-size: 11px; color: var(--ink); margin-top: 9px; }
+  .val { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+</style></head>
+<body>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:var(--ink)"></div><div class="name">--ink</div><div class="val">primary</div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-2)"></div><div class="name">--ink-2</div><div class="val">body</div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-dim)"></div><div class="name">--ink-dim</div><div class="val">labels</div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-faint)"></div><div class="name">--ink-faint</div><div class="val">eyebrows</div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-soft)"></div><div class="name">--ink-soft</div><div class="val">tint fill</div></div>
+  </div>
+</body></html>

@@ -24,7 +24,7 @@
 .cc-tfl-dot, .cc-livedot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
 [data-state="good"]   > .cc-tfl-dot, .cc-tfl-line[data-state="good"]   .cc-tfl-dot { background: var(--sage); }
 [data-state="info"]   > .cc-tfl-dot, .cc-tfl-line[data-state="info"]   .cc-tfl-dot { background: var(--ink-faint); }
-[data-state="minor"]  > .cc-tfl-dot, .cc-tfl-line[data-state="minor"]  .cc-tfl-dot { background: var(--gold); }
+[data-state="minor"]  > .cc-tfl-dot, .cc-tfl-line[data-state="minor"]  .cc-tfl-dot { background: var(--amber); }
 [data-state="severe"] > .cc-tfl-dot, .cc-tfl-line[data-state="severe"] .cc-tfl-dot { background: var(--rust); }
 [data-state="suspended"] > .cc-tfl-dot, .cc-tfl-line[data-state="suspended"] .cc-tfl-dot { background: var(--rust); }
 
@@ -180,7 +180,7 @@
   font-variant-numeric: tabular-nums; flex: none; }
 .cc-today-disruption-item .what { font-size: 14px; line-height: 1.45; color: var(--ink); }
 .cc-today-disruption-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
-.cc-today-disruption-actions .cc-btn-gold { background: var(--gold); color: #fff; border: 1px solid var(--gold);
+.cc-today-disruption-actions .cc-btn-gold { background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char);
   border-radius: 5px; padding: 11px 18px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13px; }
 .cc-today-disruption[data-severe] .cc-today-disruption-actions .cc-btn-gold { background: var(--rust); border-color: var(--rust); }
 .cc-today-disruption-actions .cc-btn-quiet { background: none; border: none; color: var(--ink-dim);

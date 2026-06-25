@@ -44,7 +44,7 @@
 .cc-conn-field .cc-field { background: var(--paper); border: 1px solid var(--rule-2); border-radius: 5px;
   padding: 11px 13px; font-family: var(--sans); font-size: 14px; color: var(--ink); min-width: 0; width: 100%; }
 .cc-conn-field--num .cc-field { width: 72px; }
-.cc-conn-form .cc-btn, .cc-conn-form .cc-btn-gold { background: var(--gold); color: #fff; border: 1px solid var(--gold);
+.cc-conn-form .cc-btn, .cc-conn-form .cc-btn-gold { background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char);
   border-radius: 5px; padding: 12px 20px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 13.5px;
   cursor: pointer; }
 
@@ -99,7 +99,7 @@
   letter-spacing: -0.01em; }
 .cc-conn-offer-price .per { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em; }
 .cc-conn-offer-total { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-align: right; }
-.cc-conn-offer-action { background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+.cc-conn-offer-action { background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); border-radius: 5px;
   padding: 9px 16px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer;
   white-space: nowrap; }
 .cc-conn-offer-action[data-variant="quiet"] { background: transparent; color: var(--gold-2); border-color: var(--rule-2); }
@@ -140,14 +140,14 @@
 .cc-conn-seat[data-state="free"] { border-color: color-mix(in oklab, var(--success) 36%, var(--rule)); color: var(--success); }
 .cc-conn-seat[data-state="paid"] { border-color: var(--gold-soft); color: var(--gold-2); background: var(--gold-tint); }
 .cc-conn-seat[data-state="taken"] { background: var(--card-2); color: var(--ink-faint); border-style: dashed; cursor: not-allowed; }
-.cc-conn-seat[data-state="selected"] { background: var(--gold); border-color: var(--gold); color: #fff; }
+.cc-conn-seat[data-state="selected"] { background: var(--ink); border-color: var(--ink); color: var(--cream); }
 .cc-conn-seats-legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4);
   font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; color: var(--ink-dim); }
 .cc-conn-seats-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cc-conn-seats-legend i { width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--rule-2); }
 .cc-conn-seats-legend .free i { border-color: var(--success); }
 .cc-conn-seats-legend .paid i { background: var(--gold-tint); border-color: var(--gold-soft); }
-.cc-conn-seats-legend .sel i { background: var(--gold); border-color: var(--gold); }
+.cc-conn-seats-legend .sel i { background: var(--ink); border-color: var(--ink); }
 
 /* ── passenger capture ─────────────────────────────────────────────────────── */
 .cc-conn-pax { padding: var(--space-5); }
@@ -164,7 +164,7 @@
   padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--sans); width: 100%; }
 .cc-conn-pax-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5);
   padding-top: var(--space-4); border-top: 1px solid var(--rule); }
-.cc-conn-confirm { background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+.cc-conn-confirm { background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); border-radius: 5px;
   padding: 13px 22px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 14px; cursor: pointer; }
 .cc-conn-confirm .price { font-family: var(--mono); margin-left: 8px; font-variant-numeric: tabular-nums; }
 .cc-conn-back { background: none; border: none; color: var(--ink-dim); font-family: var(--mono); font-size: 11px;
@@ -182,7 +182,7 @@
 .cc-conn-pending { display: flex; align-items: center; gap: var(--space-2-5); margin: var(--space-4) var(--space-5);
   padding: var(--space-3-5) var(--space-4); border-radius: 6px; background: var(--gold-tint); color: var(--ink-2);
   font-size: 13.5px; line-height: 1.45; }
-.cc-conn-pending::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex: none; }
+.cc-conn-pending::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex: none; }
 .cc-conn-pending .sample { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--ink-faint); }
 .cc-conn-confirmed { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-5); }
@@ -234,7 +234,7 @@
 .cc-stay-rate-right { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
 .cc-stay-rate-price { font-family: var(--mono); font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cc-stay-rate-price .per { font-size: 10px; color: var(--ink-faint); }
-.cc-stay-rate-book { background: var(--gold); color: #fff; border: 1px solid var(--gold); border-radius: 5px;
+.cc-stay-rate-book { background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); border-radius: 5px;
   padding: 9px 16px; font-family: var(--sans); font-weight: var(--fw-semibold); font-size: 12.5px; cursor: pointer; }
 .cc-stay-limit { display: flex; align-items: flex-start; gap: var(--space-2-5); margin-top: var(--space-4);
   padding-top: var(--space-4); border-top: 1px solid var(--rule); font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); }

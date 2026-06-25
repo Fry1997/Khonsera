@@ -1,0 +1,129 @@
+/* ============================================================================
+ * Khonsera · Colour tokens — COOL-STOCK PAPER (canonical)
+ * ----------------------------------------------------------------------------
+ * One material direction: heavy white cotton card stock on a warm desk, cool
+ * near-black letterpress ink, charcoal = the same stock in black, and a muted
+ * gold used ONLY as punctuation (the brand dot, the odd status accent — never
+ * a fill field). Earlier "warm walnut" Dusk values are retired; this is the
+ * build the team landed on.
+ *
+ * Composition rule — ~62% paper · 24% ink · 10% charcoal · 4% gold/salt.
+ * One accent salt per composition; never terra + plum together. Reference
+ * token NAMES in product code — never a raw #hex.
+ *
+ * Two naming sets resolve to the SAME values so both layers compose cleanly:
+ *   · material grounds  — ground / screen / widget / well / char  (the planner)
+ *   · semantic surfaces — paper / card / rule / ink / gold        (primitives)
+ * ========================================================================== */
+
+:root,
+[data-theme="light"] {
+  /* ── Material grounds — the desk + the sheets that sit on it ──────────── */
+  --ground:    #e4e0d6;   /* the warm desk the sheets rest on */
+  --screen:    #f2efe8;   /* the surface the spine sits on (a touch lighter) */
+  --widget:    #fbfaf6;   /* card face — heavy white cotton stock */
+  --widget-2:  #f4f1e9;   /* secondary / nested chip */
+  --well:      #ebe7dd;   /* letterpress-pressed well (recessed) */
+  --char:      #1f2228;   /* charcoal — the same stock in black */
+  --char-2:    #262a31;
+
+  /* ── Semantic surface aliases (over the material grounds) ────────────── */
+  --paper:     #e9e5db;   /* the page ground */
+  --paper-2:   #e2ddd1;
+  --sand:      #f5f2ea;   /* bone — near-white warm */
+  --sand-2:    #e3ddd0;
+  --card:      var(--widget);     /* the workhorse surface */
+  --card-2:    var(--widget-2);   /* recessed / nested */
+
+  /* ── Ink — cool near-black letterpress ───────────────────────────────── */
+  --ink:       #20242b;                 /* primary text */
+  --ink-2:     #2a2f37;                 /* body */
+  --ink-dim:   rgba(32,36,43,0.56);     /* labels, secondary */
+  --ink-faint: rgba(32,36,43,0.40);     /* eyebrows, placeholders */
+  --ink-soft:  rgba(32,36,43,0.06);     /* faint tint fills */
+  /* cream ink — for use ON charcoal stock */
+  --cream:       #f3efe6;
+  --cream-dim:   rgba(243,239,230,0.62);
+  --cream-faint: rgba(243,239,230,0.40);
+
+  /* ── Hairlines ───────────────────────────────────────────────────────── */
+  --line:      rgba(40,44,52,0.10);
+  --line-soft: rgba(40,44,52,0.055);
+  --rule:      rgba(40,44,52,0.12);   /* alias of --line family for primitives */
+  --rule-2:    rgba(40,44,52,0.22);
+
+  /* ── Gold — the moon. Muted, punctuation only. #93753c is the lead step. */
+  --gold-100:  #e7dcc1;
+  --gold-200:  #cdb27e;
+  --gold:      #93753c;             /* 400 — lead accent */
+  --gold-2:    #8a6d38;             /* 600 — gold-on-light text */
+  --gold-800:  #5c451e;
+  --gold-soft: #e7dcc1;
+  --gold-tint:        rgba(147,117,60,0.10);
+  --gold-soft-alpha:  rgba(147,117,60,0.18);
+
+  /* ── Rare salts — one per composition, never terra + plum together ───── */
+  --terra: #c25c3a;  --terra-2: #a14c2c;  --terra-deep: #7d3a1e;   /* celebratory / disruption */
+  --plum:  #5c3a48;  --plum-soft: #e3d5db;                          /* rare editorial / personal */
+
+  /* ── Cool foil — non-warm chips / links / info ───────────────────────── */
+  --slate: #475569;  --slate-2: #334155;  --slate-soft: #dde3ea;
+
+  /* ── Status families ─────────────────────────────────────────────────── */
+  --sage:  #687856;  --sage-2: #dce0cd;  --sage-soft: #dce0cd;   /* success / "comfortable" / "fits" */
+  --amber: #a87526;  --amber-2: #f0e0b5;  --amber-soft: #f0e0b5;  /* caution / "tight" */
+  --rust:  #9b3422;  --rust-2: #f0d6cf;  --rust-soft: #f0d6cf;    /* danger / "risky" / disruption */
+
+  /* ── Elevation — soft, paper-true (the heavy material lift lives in
+   *    material.css; these are the lighter primitive shadows) ──────────── */
+  --shadow-sm:  0 1px 3px rgba(34,30,24,0.07);
+  --shadow:     0 4px 16px rgba(34,30,24,0.10);
+  --shadow-lg:  0 16px 40px rgba(34,30,24,0.15);
+  --elevation-card:   0 1px 2px rgba(34,30,24,0.05), 0 8px 22px -12px rgba(34,30,24,0.20);
+  --elevation-raised: 0 2px 6px rgba(34,30,24,0.07), 0 18px 40px -16px rgba(34,30,24,0.26);
+
+  /* ── Semantic aliases over the ramp — follow the active theme ────────── */
+  --success: var(--sage);    --success-soft: var(--sage-soft);
+  --warning: var(--amber);   --warning-soft: var(--amber-soft);
+  --danger: var(--rust);     --danger-soft: var(--rust-soft);
+  --disruption: var(--rust); --info: var(--slate);  --info-soft: var(--slate-soft);
+
+  color-scheme: light;
+}
+
+/* ── Midnight — overnight / Live travel. The cool stock pressed dark: a
+ * charcoal field, cream ink, brass moon. Departure-board energy. ───────── */
+[data-theme="dark"] {
+  --ground:   #15171b;  --screen: #1b1e24;  --widget: #23272f;  --widget-2: #2a2f38;
+  --well:     #181b20;  --char: #0f1115;    --char-2: #161922;
+  --paper:    #1b1e24;  --paper-2: #15171b;  --sand: #23272f;  --sand-2: #2a2f38;
+  --card:     var(--widget);  --card-2: var(--widget-2);
+
+  --ink:       #f3efe6;
+  --ink-2:     #ddd6c8;
+  --ink-dim:   rgba(243,239,230,0.60);
+  --ink-faint: rgba(243,239,230,0.38);
+  --ink-soft:  rgba(243,239,230,0.07);
+  --cream: #f3efe6;  --cream-dim: rgba(243,239,230,0.62);  --cream-faint: rgba(243,239,230,0.40);
+
+  --line: rgba(243,239,230,0.10);  --line-soft: rgba(243,239,230,0.055);
+  --rule: rgba(243,239,230,0.12);  --rule-2: rgba(243,239,230,0.22);
+
+  --gold-100: #3a2f1c;  --gold-200: #6e5520;  --gold: #cda64f;  --gold-2: #d8b76a;  --gold-800: #f0d49a;
+  --gold-soft: #3b3020;  --gold-tint: rgba(205,166,79,0.12);  --gold-soft-alpha: rgba(205,166,79,0.20);
+
+  --terra: #d77450;  --terra-2: #c25c3a;  --terra-deep: #9d4225;
+  --plum:  #b07e90;  --plum-soft: #392332;
+  --slate: #9aa9bd;  --slate-2: #c2cdda;  --slate-soft: #2a3140;
+  --sage:  #9fb07f;  --sage-2: #2f3a2a;  --sage-soft: #2f3a2a;
+  --amber: #d9a85a;  --amber-2: #3a2f15;  --amber-soft: #3a2f15;
+  --rust:  #df7d63;  --rust-2: #3a1f18;  --rust-soft: #3a1f18;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.5);
+  --shadow:     0 4px 18px rgba(0,0,0,0.55);
+  --shadow-lg:  0 18px 44px rgba(0,0,0,0.65);
+  --elevation-card:   inset 0 1px 0 rgba(243,239,230,0.05), 0 2px 6px rgba(0,0,0,0.35), 0 14px 30px -16px rgba(0,0,0,0.6);
+  --elevation-raised: inset 0 1px 0 rgba(243,239,230,0.07), 0 4px 10px rgba(0,0,0,0.45), 0 22px 48px -18px rgba(0,0,0,0.7);
+
+  color-scheme: dark;
+}

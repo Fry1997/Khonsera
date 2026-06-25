@@ -1393,3 +1393,22 @@ Newest at the bottom of each section.
   actual card surfaces (concierge cards, the plan spine, the rail Pass), and bring the planner-v7
   /plan look across. Held for a real-screen look first — the tactile per-surface layer is where
   letterpress can go muddy on device. tsc + 372 + build green.
+
+- **D100 — DS2 adoption completed app-wide (autonomous pass).** Founder: "go for everywhere" then
+  "work autonomously until done." Completed the cotton-paper migration:
+  • **Critical fix:** `khonsera-edition-ii.css` was an override layer re-introducing warm screen-paper
+    (#f5f1e8), bright gold (#b8893f) and Spectral serif ON TOP of the DS2 globals (it loads after) —
+    so nothing muted was showing. Retired its colour overrides (DS2 globals now win) + aliased --serif
+    to Satoshi (serif fully retired). THIS was the gate.
+  • **Gold-fill sweep** (subagent, audited then fixed across all edition-*.css): every shiny-gold
+    FILL → charcoal stock buttons (`--char`/`--cream`/`--lift-char`), selections → ink, mis-gold status
+    dots → proper status colours (sage/amber/rust); gold PUNCTUATION accents (pass seam, dividers,
+    brand/live dots) preserved. No shiny gold anywhere now.
+  • Recoloured the OG share image to DS2; updated `docs/design-tokens.md` to the cotton-paper system;
+    stored the full Claude Design reference bundle in `docs/design-system/` (tokens + components +
+    guidelines + the planner-v7 kit) as the canonical Design-side artifact.
+  Net state: cool cotton paper + cool ink + muted moon-gold + Satoshi everywhere; charcoal punctuation
+  buttons; card surfaces lift + letterpress-deboss; the rail Pass is a perforated credential; StatePill
+  ported. **Deferred (need a real-screen look, not safe to apply blind):** the fibre paper-tooth on card
+  faces (::after + z-index risk), pressed-well read-outs, StatePill DOM-wiring into the existing
+  data-state status mechanism, and the full planner-v7 node geometry. tsc + 372 + build(exit 0) green.

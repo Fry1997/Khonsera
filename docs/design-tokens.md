@@ -15,17 +15,18 @@ Nothing references raw values. Both Code and Design speak **token names**, never
 If Design needs a value with no token, that's a **token request** → Code adds it to `globals.css`
 **and this file** → both re-ground. Tokens never fork.
 
-## Fonts — Edition II (sans-led)
+## Fonts — Design System 2 (sans-only)
 | Token | Family | Role |
 |-------|--------|------|
-| `--font-display` / `--display` | Satoshi (Fontshare) | Headlines, wordmark |
+| `--font-display` / `--display` | **Satoshi** (self-hosted woff2) | Headlines, wordmark |
 | `--font-ui` / `--sans` | **Satoshi** | UI **and** body — one sans across the app |
-| `--font-editorial` / `--serif` | **Spectral** (next/font) | Rare editorial serif italic accent |
-| `--font-technical` / `--mono` | JetBrains Mono (next/font) | Codes, times, eyebrows |
+| `--font-editorial` / `--serif` | **Satoshi** (serif retired) | No editorial serif — Satoshi (its own italic) where italic is used |
+| `--font-technical` / `--mono` | JetBrains Mono | Codes, times, eyebrows |
 
-> Edition II is **sans-led**: Satoshi carries body too; **Inter is retired** (`--sans`/`--font-sans`
-> rebound to Satoshi in the override); the serif accent moved **Cormorant → Spectral**. Supersedes
-> the earlier code-canonical Inter/Cormorant per Design's brand-book authority.
+> DS2 is **sans-only**: Satoshi carries display + UI + body, **self-hosted** via `@font-face`
+> (offline-safe; Fontshare link kept for first paint). **Inter retired** earlier; now the **serif is
+> retired too** (Cormorant/Spectral gone — `--serif` aliased to Satoshi). The voice is operational —
+> emphasis comes from weight, tracking and the mono technical layer, never a literary italic.
 
 ## Colour — brand (per palette: dusk default, sahara, midnight)
 `--paper --paper-2 --sand --sand-2 --card --card-2` (grounds) · `--ink --ink-2 --ink-dim --ink-faint`
@@ -33,11 +34,16 @@ If Design needs a value with no token, that's a **token request** → Code adds 
 --gold-800 --gold-soft --gold-tint` · rare salts `--terra(-2/-deep) --plum --plum-soft` · cool foil
 `--slate --slate-2 --slate-soft`. Each palette redefines these; reference the name, never the hex.
 
-> **Edition II values (dusk, via override):** cleaner screen paper `--paper` #f5f1e8 · `--card` #fcfaf4 ·
-> `--ink` #1b1712 · **`--ink-dim` #6e6253** (the legible label ink — eyebrows/uc/flanks route here, no
-> gold-on-light) · gold ramp held to punctuation, `--gold` #b8893f / `--gold-2` #8f6722 (one permitted
-> gold fill: `.btn-gold`). Shadows pulled back (hairlines over drop-shadows). **Midnight** refreshed
-> (aubergine ground, brass gold); **Sahara** inherits type+radius, keeps its daylight palette.
+> **Design System 2 — cotton-paper (canonical, in `globals.css`):** the warm walnut Dusk is RETIRED.
+> Cool heavy white cotton stock — card face `--widget`/`--card` #fbfaf6 on a warm desk `--ground`
+> #e4e0d6; cool near-black letterpress `--ink` #20242b, `--ink-dim` rgba(32,36,43,.56); muted "moon"
+> gold `--gold` #93753c / `--gold-2` #8a6d38, **punctuation only — never a fill** (the lead action is
+> the charcoal block `--char` #1f2228 with `--cream` text). New **material tokens**: grounds
+> `--ground --screen --widget --well --char`, atoms `--lift --lift-sm --sink --lift-char --fibre`
+> (paper tooth), plus `--cream --line --elevation-card --elevation-raised`. Classes: `.pg/.pg-d`
+> (paper + deboss), `.engr/.eyb` (letterpress), `.perf` (ticket perforation), `.well`. Themes:
+> **Light** + **Midnight** (`[data-theme=dark]` — charcoal field, cream ink, brass moon); **Sahara
+> retired** (no-op alias → inherits Light).
 
 ## Colour — semantic (aliases over the brand ramp; follow the active palette)
 | Token | Maps to | Use |

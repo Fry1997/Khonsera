@@ -1,0 +1,42 @@
+/* ============================================================================
+ * Khonsera · Base
+ * Document grounds. The page is the warm desk; ink on paper; gold is
+ * punctuation. The material classes (.pg / .pg-d) live in tokens/material.css.
+ * ========================================================================== */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background:
+    radial-gradient(120% 80% at 50% -10%, #eceae3 0%, var(--ground) 70%, #dad6cb 100%);
+  background-color: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+[data-theme="dark"] body {
+  background:
+    radial-gradient(120% 80% at 50% -10%, #1e2127 0%, var(--ground) 72%, #0d0f12 100%);
+  background-color: var(--ground);
+}
+p { margin: 0; }
+
+::-webkit-scrollbar { width: 0; height: 0; }
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Quiet paper-grain motif for full-bleed grounds — never loud. */
+.paper-tex {
+  background-image: radial-gradient(rgba(30, 24, 18, 0.02) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* Motion atoms used across the system */
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes livepulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.82); } }
+.livedot { animation: livepulse 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .livedot { animation: none; } }

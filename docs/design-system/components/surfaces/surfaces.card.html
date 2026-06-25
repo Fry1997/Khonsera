@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" viewport="700x280" name="Surfaces — paper · charcoal · well · chip" subtitle="The material building blocks: the lifting sheet, the same stock in black, the pressed well, the icon chip" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 26px; background: var(--ground); }
+  .grid { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .eyb { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel">
+    const { PaperCard, Well, Chip, StubField } = window.DesignSystem_486fd8;
+    function Demo() {
+      return (
+        <div className="grid">
+          <PaperCard padding={16} style={{ width: 180 }}>
+            <div className="eyb">Paper sheet</div>
+            <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--ink)' }}>St Pancras</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-dim)', marginTop: 3 }}>Euston Road, N1C</div>
+          </PaperCard>
+
+          <PaperCard dark padding={16} radius="hero" style={{ width: 150 }}>
+            <div className="eyb" style={{ color: 'rgba(243,239,230,0.5)' }}>Charcoal plate</div>
+            <div className="mono engr-deep" style={{ fontSize: 30, fontWeight: 400, color: 'var(--cream)', marginTop: 6 }}>06:40</div>
+            <div style={{ fontSize: 11, color: 'rgba(243,239,230,0.6)', marginTop: 4 }}>to Luton</div>
+          </PaperCard>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Well style={{ width: 150 }}>
+              <StubField label="Arrive" value="08:54" />
+            </Well>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Chip icon="train" tone="char" size={38} />
+              <Chip icon="bed" tone="soft" size={38} />
+              <Chip icon="sparkle" tone="gold" size={38} />
+              <Chip icon="alert" tone="rust" size={38} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

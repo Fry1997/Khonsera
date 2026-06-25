@@ -376,7 +376,7 @@
 .cc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--sans);
   font-weight: var(--fw-semibold,600); font-size: 13px; line-height: 1; padding: 10px 15px; border-radius: 5px;
   border: 1px solid transparent; cursor: pointer; }
-.cc-btn-gold { background: var(--gold); color: #fff; border-color: var(--gold); }     /* the one permitted fill */
+.cc-btn-gold { background: var(--char); color: var(--cream); border: none; box-shadow: var(--lift-char); }     /* charcoal stock block — the lead action */
 .cc-btn-ghost { background: transparent; color: var(--ink-2); border-color: var(--rule-2); }
 .cc-btn-quiet { background: transparent; color: var(--ink-dim); padding: 10px 6px; }
 

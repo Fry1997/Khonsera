@@ -1,0 +1,22 @@
+<!-- @dsCard group="Material" viewport="700x190" name="Lift vs sink" subtitle="The level story: a sheet LIFTS off the desk (--lift); a well SINKS into it (--sink)" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 26px; background: var(--ground); display: flex; gap: 18px; }
+  .demo { flex: 1; }
+  .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin-top: 10px; }
+</style></head>
+<body>
+  <div class="demo">
+    <div class="pg" style="height:88px;border-radius:14px;background:var(--widget);box-shadow:var(--lift);border:1px solid var(--line)"></div>
+    <div class="lbl">--lift · raised sheet</div>
+  </div>
+  <div class="demo">
+    <div class="pg" style="height:88px;border-radius:14px;background:var(--widget);box-shadow:var(--lift-sm);border:1px solid var(--line)"></div>
+    <div class="lbl">--lift-sm · small lift</div>
+  </div>
+  <div class="demo">
+    <div style="height:88px;border-radius:14px;background:var(--well);box-shadow:var(--sink);border:1px solid var(--line-soft)"></div>
+    <div class="lbl">--sink · pressed well</div>
+  </div>
+</body></html>

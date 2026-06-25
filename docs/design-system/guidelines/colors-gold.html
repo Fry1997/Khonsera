@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" viewport="700x190" name="Gold — the moon" subtitle="Muted brass, PUNCTUATION ONLY — the brand dot and the odd status accent. Never a fill field." -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--widget); }
+  .ramp { display: flex; gap: 10px; margin-bottom: 16px; }
+  .sw { flex: 1; }
+  .chip { height: 46px; border-radius: 10px; }
+  .name { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); margin-top: 7px; }
+  .use { display: flex; align-items: center; gap: 16px; }
+  .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--gold); box-shadow: 0 0 0 4px var(--gold-tint); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--gold-tint); color: var(--gold-2); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+</style></head>
+<body>
+  <div class="ramp">
+    <div class="sw"><div class="chip" style="background:var(--gold-100)"></div><div class="name">--gold-100</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gold-200)"></div><div class="name">--gold-200</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gold)"></div><div class="name">--gold · 400</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gold-2)"></div><div class="name">--gold-2 · 600</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gold-800)"></div><div class="name">--gold-800</div></div>
+  </div>
+  <div class="use">
+    <span class="dot"></span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--ink-faint)">the brand dot</span>
+    <span class="pill"><span style="width:5px;height:5px;border-radius:999px;background:currentColor"></span>SPARE TIME</span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--ink-faint)">a status accent — and that is all</span>
+  </div>
+</body></html>

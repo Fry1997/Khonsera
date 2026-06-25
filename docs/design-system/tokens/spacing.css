@@ -1,0 +1,27 @@
+/* ============================================================================
+ * Khonsera · Spacing · Radius · Motion tokens
+ * 4px spacing base. Crisp, near-square radii (the round-13 "clean lines"
+ * elevation: card 6 / button & field 4). Pills stay fully round — a deliberate
+ * affordance. Calm motion by default; the expressive curve is hero/landing only.
+ * ========================================================================== */
+
+:root {
+  /* ── Spacing — 4px base ───────────────────────────────────────────────── */
+  --space-0: 0;        --space-0-5: 2px;   --space-1: 4px;    --space-1-5: 6px;
+  --space-2: 8px;      --space-2-5: 10px;  --space-3: 12px;   --space-3-5: 14px;
+  --space-4: 16px;     --space-4-5: 18px;  --space-5: 20px;   --space-6: 24px;
+  --space-8: 32px;     --space-12: 48px;
+
+  /* ── Radius — crisp print-stock surfaces ──────────────────────────────── */
+  --radius-xs: 3px;    --radius-sm: 4px;   --radius-md: 6px;
+  --radius-lg: 12px;   --radius-xl: 18px;  --radius-pill: 999px;
+
+  /* ── Motion — calm by default ─────────────────────────────────────────── */
+  --dur-fast: 80ms;    /* @kind other */
+  --dur-base: 120ms;   /* @kind other */
+  --dur-slow: 150ms;   /* @kind other */
+  --ease-standard:   cubic-bezier(0.2, 0, 0, 1);   /* @kind other */
+  --ease-out:        cubic-bezier(0, 0, 0, 1);      /* @kind other */ /* entrance */
+  --ease-in:         cubic-bezier(0.4, 0, 1, 1);    /* @kind other */ /* exit */
+  --ease-expressive: cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */ /* hero / landing only */
+}

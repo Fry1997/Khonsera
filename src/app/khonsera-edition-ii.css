@@ -30,62 +30,14 @@
   --display: "Satoshi", -apple-system, system-ui, sans-serif;
   --sans: "Satoshi", -apple-system, system-ui, sans-serif;
   --font-sans: "Satoshi", -apple-system, system-ui, sans-serif; /* added by Code: rebind per README, covers globals.css direct var(--font-sans) refs */
-  --serif: var(--font-serif), "Spectral", Georgia, serif;
+  --serif: "Satoshi", -apple-system, system-ui, sans-serif; /* DS2: serif retired — Satoshi (its own italic) */
   --mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* ---- 2 · COLOUR — Edition II dusk, on clean screen paper ------------------ */
-:root,
-[data-theme="light"] {
-  /* screen paper: lighter + lower-chroma than print Dusk Paper #EFE6D0 */
-  --paper: #f5f1e8;
-  --paper-2: #ece7da;
-  --sand: #faf6ec;
-  --sand-2: #ece2c9;
-  --card: #fcfaf4;
-  --card-2: #f1ece0;
-
-  --ink: #1b1712;
-  --ink-2: #34302a;
-  --ink-dim: #6e6253;   /* the documented label ink — legible on paper */
-  --ink-faint: #9a8f7d;
-
-  --rule: #e3dccb;
-  --rule-2: #d2c8af;
-
-  /* gold held to punctuation; the ramp is unchanged in hue */
-  --gold-100: #efdfb1;
-  --gold-200: #d4ae6a;
-  --gold: #b8893f;
-  --gold-2: #8f6722;    /* the accessible gold for text/labels on light */
-  --gold-800: #5c3f10;
-  --gold-soft: #efdfb1;
-  --gold-tint: rgba(184, 137, 63, 0.09);
-  --gold-soft-alpha: rgba(184, 137, 63, 0.16);
-
-  --ink-soft: rgba(27, 23, 18, 0.06);
-
-  /* shadows pulled back — Edition II reads on hairlines, not drop-shadows */
-  --shadow-sm: 0 1px 2px rgba(27, 23, 18, 0.05);
-  --shadow: 0 2px 10px rgba(27, 23, 18, 0.06);
-  --shadow-lg: 0 12px 32px rgba(27, 23, 18, 0.10);
-}
-
-/* Midnight refresh — aubergine ground stays; gold reads as brass, restrained */
-[data-theme="dark"] {
-  --paper: #1b1622;
-  --paper-2: #130f19;
-  --card: #221b2a;
-  --card-2: #2a2233;
-  --rule: #342a3c;
-  --rule-2: #463a50;
-  --ink: #f3e9d6;
-  --ink-2: #ddd2bd;
-  --ink-dim: #9d9079;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
-  --shadow: 0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg: 0 16px 40px rgba(0,0,0,0.6);
-}
+/* ---- 2 · COLOUR — RETIRED. The cotton-paper palette (Design System 2) now
+ * lives in globals.css (cool stock, cool ink, muted "moon" gold, material lift).
+ * Edition II's warm screen-paper + bright-gold overrides are removed so the DS2
+ * tokens win; only the form/radii + gold-discipline rules below remain. ------- */
 
 /* ---- 3 · FORM — crisp, near-square radii --------------------------------- *
  * The "Khonsera design pack" in globals.css introduced 12–18px rounding on
