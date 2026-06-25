@@ -525,6 +525,24 @@ export async function scanGmailForBookings(): Promise<
   // Reconcile: Trainline sends a booking confirmation (intended times + price)
   // AND an eticket (barcodes); merge them into one booking per route so an
   // anytime ticket isn't stranded at midnight.
+  // TEMP diagnostic — the EXACT list entering dedup (provider/ref/date/dep), so we
+  // can see why clustering still merges the 07:50 and 07:13 in prod.
+  try {
+    const pre = future
+      .map((b) =>
+        b.type === "transport"
+          ? `[prov=${b.provider} ref=${b.booking_reference} date=${getTravelDate(b)} dep=${b.segments[0]?.departure_time} n=${b.segments.length}]`
+          : `[${b.type}]`,
+      )
+      .join(" ");
+    await supabase.from("_debug_routes_api").insert({
+      status: `GMAILDBG3 PREDEDUP n=${future.length}`,
+      message: pre.slice(0, 1500),
+    });
+  } catch (e) {
+    console.warn("debug prededup insert failed", e);
+  }
+
   const futureBookings = deduplicateTrainlineBookings(future);
   console.log("[gmail-scan] after future filter + dedup:", futureBookings.length);
 
