@@ -454,14 +454,25 @@ export async function scanGmailForBookings(): Promise<
           email_date: emailDate,
           providerHint: providerHintFromSender(from),
         });
-        // TEMP diagnostic (D103 chase) — what does the server actually receive?
-        // Use the existing _debug_routes_api table (already in the app's schema
-        // cache + writable), since the ad-hoc table wasn't picked up.
-        if (/derby|wellingborough|trainline/i.test(`${subject} ${from}`)) {
+        // TEMP diagnostic (D103 chase) — what do the actual reservations say?
+        // Dump every JSON-LD train reservation (number/status/origin/time) so we
+        // can see whether the email's structured data genuinely carries the 07:50
+        // or only the stale 07:13. Use _debug_routes_api (writable + cached schema).
+        if (/derby|wellingborough/i.test(`${subject} ${from}`)) {
           try {
+            const resv = extractJsonLd(structuredHtml)
+              .filter((o) => /Reservation$/.test(String((o as Record<string, unknown>)["@type"] ?? "")))
+              .map((o) => {
+                const r = o as Record<string, unknown>;
+                const forr = (r.reservationFor ?? {}) as Record<string, unknown>;
+                const dep = (forr.departureStation ?? {}) as Record<string, unknown>;
+                const arr = (forr.arrivalStation ?? {}) as Record<string, unknown>;
+                return `${String(r.reservationNumber ?? "?")}|${String(r.reservationStatus ?? "?").replace(/^.*[/#]/, "")}|${String(dep.name ?? "?")}→${String(arr.name ?? "?")}|${String(forr.departureTime ?? "?")}`;
+              })
+              .join("  ;  ");
             await supabase.from("_debug_routes_api").insert({
-              status: `GMAILDBG ${subject.slice(0, 70)}`,
-              message: `inlineLen=${(html ?? "").length} usedLen=${structuredHtml.length} fetchedAtt=${fetchedAtt} jsonld=${extractJsonLd(structuredHtml).length} struct=${structured.length} hasLdLiteral=${/ld\+json/i.test(structuredHtml)}`,
+              status: `GMAILDBG2 ${subject.slice(0, 60)}`,
+              message: `struct=${structured.length} resv=[ ${resv} ]`,
             });
           } catch (e) {
             console.warn("debug insert failed", e);
@@ -504,6 +515,22 @@ export async function scanGmailForBookings(): Promise<
           }
         }
 
+        // TEMP diagnostic — what the REGEX path made of an eticket (no JSON-LD).
+        if (/derby|wellingborough/i.test(`${subject} ${from}`)) {
+          try {
+            const segs =
+              parsed.type === "transport"
+                ? (parsed.segments ?? []).map((s) => `${s.from_station}→${s.to_station} ${s.departure_time}-${s.arrival_time}`).join(" ; ")
+                : parsed.type;
+            await supabase.from("_debug_routes_api").insert({
+              status: `GMAILDBG2 REGEX ${subject.slice(0, 50)}`,
+              message: `ref=${parsed.type === "transport" ? parsed.booking_reference : "-"} segs=[ ${segs} ]`,
+            });
+          } catch (e) {
+            console.warn("debug insert failed", e);
+          }
+        }
+
         return [{
           ...parsed,
           raw_subject: subject,
@@ -540,6 +567,24 @@ export async function scanGmailForBookings(): Promise<
   // anytime ticket isn't stranded at midnight.
   const futureBookings = deduplicateTrainlineBookings(future);
   console.log("[gmail-scan] after future filter + dedup:", futureBookings.length);
+
+  // TEMP diagnostic — the FINAL list that reaches the panel. Reveals whether dedup
+  // merged the 07:13 and 07:50 into one (and which times/ref/superseded survived).
+  try {
+    const dump = futureBookings
+      .map((b) =>
+        b.type === "transport"
+          ? `{ref=${b.booking_reference} sup=${b.superseded_by ?? "-"} ${b.segments.map((s) => `${s.from_station}→${s.to_station} ${s.departure_time}`).join(",")}}`
+          : `{acc ${b.hotel_name}}`,
+      )
+      .join("  ");
+    await supabase.from("_debug_routes_api").insert({
+      status: `GMAILDBG2 FINAL count=${futureBookings.length}`,
+      message: dump.slice(0, 1500),
+    });
+  } catch (e) {
+    console.warn("debug final insert failed", e);
+  }
 
   // Update last_scan_at
   await supabase
