@@ -472,6 +472,26 @@ export async function scanGmailForBookings(): Promise<
           providerHint: providerHintFromSender(from),
         });
         if (structured.length) {
+          // TEMP diagnostic — dump the confirmation's stripped itinerary text so we
+          // can parse the per-leg legs + changeover times the JSON-LD omits.
+          try {
+            if (/derby|wellingborough/i.test(`${subject} ${from}`)) {
+              const txt = structuredHtml
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/&nbsp;/gi, " ")
+                .replace(/\s+/g, " ");
+              const anchor = txt.search(/\d{1,2}h\s*\d{1,2}m|transfer time|\d{2}:\d{2}\s+[A-Z][a-z]+/);
+              const window = anchor >= 0 ? txt.slice(Math.max(0, anchor - 100), anchor + 1400) : txt.slice(0, 1500);
+              await supabase.from("_debug_routes_api").insert({
+                status: `GMAILITIN ${subject.slice(0, 45)}`,
+                message: window.slice(0, 4000),
+              });
+            }
+          } catch (e) {
+            console.warn("debug itinerary dump failed", e);
+          }
           try {
             await graftBarcodesFromPdfs(gmail.accessToken, ref.id, msg, structured);
           } catch (e) {
