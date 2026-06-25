@@ -1446,3 +1446,15 @@ Newest at the bottom of each section.
   "07:50") on the older. The Gmail import panel shows an amber "Earlier booking" badge + a note
   ("Looks like you rebooked — your 07:50 booking is more recent…"), dims that Import button, and lets
   the user pick. No silent overrule. tsc + 379 + build green.
+
+- **D103 — THE actual Derby bug: large emails serve HTML as an attachment, so the JSON-LD never
+  reached the parser.** Runtime logs showed the scan parsed all 4 Derby emails but `dedup: 1` — the
+  07:50 was collapsing into the 07:13. Cause: a Trainline confirmation's HTML is ~150KB, and Gmail
+  returns large `text/html` parts via `body.attachmentId` (not inline `body.data`). `extractMessageBody`
+  only reads `body.data` → the server got EMPTY html → the structured parser saw no JSON-LD → fell back
+  to regex → the 07:50 came through with a placeholder time → no departure-conflict with the 07:13 → it
+  got merged in and vanished. (The parser itself was verified CORRECT on the real email — output:
+  Wellingborough 07:50→Derby + return 15:09.) Fix: in the scan, when the inline html carries no JSON-LD,
+  `findHtmlAttachmentId` locates the text/html attachment part and fetches it via gmailGetAttachment,
+  feeding the full html to the structured parser. Diagnosed end-to-end via the Gmail connector + Supabase
+  + Vercel runtime logs. tsc + 379 + build green.

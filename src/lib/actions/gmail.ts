@@ -26,7 +26,7 @@ import {
   parseRailsmartrPdfText,
   railsmartrTicketsToSegments,
 } from "@/lib/gmail/railsmartr-pdf";
-import { parseStructuredFromHtml } from "@/lib/gmail/structured-parser";
+import { parseStructuredFromHtml, extractJsonLd } from "@/lib/gmail/structured-parser";
 
 const BOOKING_SENDERS = [
   "trainline",
@@ -229,6 +229,23 @@ async function enrichRailsmartrFromPdfs(
   };
 }
 
+// Large emails (a Trainline confirmation is ~150KB) return their text/html via a
+// `body.attachmentId` rather than inline `body.data` — so extractMessageBody yields
+// EMPTY html and the JSON-LD never reaches the structured parser. Find the html
+// attachment part so we can fetch it on demand.
+type MsgPart = { mimeType?: string; body?: { data?: string; attachmentId?: string }; parts?: MsgPart[] };
+function findHtmlAttachmentId(part: MsgPart | undefined): string | null {
+  if (!part) return null;
+  if (part.mimeType === "text/html" && part.body?.attachmentId && !part.body?.data) {
+    return part.body.attachmentId;
+  }
+  for (const child of part.parts ?? []) {
+    const id = findHtmlAttachmentId(child);
+    if (id) return id;
+  }
+  return null;
+}
+
 // Brand name from the sender, so the structured parser tags the booking right.
 function providerHintFromSender(from: string): string | null {
   const f = from.toLowerCase();
@@ -415,7 +432,21 @@ export async function scanGmailForBookings(): Promise<
         // not from scraping HTML/PDF (which read "Wellingborough 07:50" as
         // "Kettering 07:26"). Falls through to the legacy parsers when an email
         // carries no JSON-LD.
-        const structured = parseStructuredFromHtml(html ?? "", {
+        // Big emails serve their HTML as an attachment, so the inline body is
+        // empty and carries no JSON-LD — fetch the html part in that case.
+        let structuredHtml = html ?? "";
+        if (!extractJsonLd(structuredHtml).length) {
+          const htmlAttId = findHtmlAttachmentId(msg.payload as MsgPart);
+          if (htmlAttId) {
+            try {
+              const buf = await gmailGetAttachment({ accessToken: gmail.accessToken, messageId: ref.id, attachmentId: htmlAttId });
+              structuredHtml = buf.toString("utf8");
+            } catch (e) {
+              console.warn("gmail: html attachment fetch failed", ref.id, e);
+            }
+          }
+        }
+        const structured = parseStructuredFromHtml(structuredHtml, {
           gmail_message_id: ref.id,
           raw_subject: subject,
           email_date: emailDate,
