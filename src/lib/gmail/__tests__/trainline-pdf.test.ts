@@ -29,4 +29,25 @@ describe("parseTrainlinePdfText header layouts", () => {
     expect(t?.from_code).toBe("HPD");
     expect(t?.to_code).toBe("WEL");
   });
+
+  it("falls back to the itinerary's first time when no DEPART header (flexible ticket)", () => {
+    // The 07:50 eticket layout: no "DEPART\n07:50" header, but the Itinerary
+    // section carries the times. Without the fallback this came through at 00:00
+    // and the leg couldn't attach to its booking.
+    const t = parseTrainlinePdfText(
+      "25 Jun 2026 WEL - LEI\nWELLINGBOROUGH LEICESTER\nItinerary\n07:50\nWellingborough\n08:24\nLeicester\nTicket Details\nNRS Booking Reference N/A",
+    );
+    expect(t?.departure_time).toBe("07:50");
+    expect(t?.arrival_time).toBe("08:24");
+    // "N/A" must not leak through as the ref "N".
+    expect(t?.nrs_ref).toBeNull();
+  });
+
+  it("still prefers the explicit DEPART header when present", () => {
+    const t = parseTrainlinePdfText(
+      "25 Jun 2026 WEL - LEI\nWELLINGBOROUGH LEICESTER\nDEPART\n07:13\nItinerary\n07:13\nWellingborough\n07:48\nLeicester\nTicket Details\nNRS Booking Reference MC287441",
+    );
+    expect(t?.departure_time).toBe("07:13");
+    expect(t?.nrs_ref).toBe("MC287441");
+  });
 });

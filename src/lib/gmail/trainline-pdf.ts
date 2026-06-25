@@ -118,9 +118,16 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
     date = `${dateMatch[3]}-${month}-${day}`;
   }
 
-  // Departure time: "DEPART\n07:13"
+  // Times come from the Itinerary section (first = departure, last = arrival).
+  // Some eticket layouts (e.g. flexible/Off-Peak tickets) omit the "DEPART\n07:13"
+  // header that Advance tickets carry, so anchoring departure ONLY on DEPART left
+  // those tickets at 00:00. Fall back to the itinerary's first time.
+  const itinerarySection = pdfText.match(/Itinerary[\s\S]*?(?=Ticket Details)/)?.[0] ?? "";
+  const itineraryTimes = [...itinerarySection.matchAll(/(\d{1,2}:\d{2})/g)].map((m) => m[1]);
+
+  // Departure time: "DEPART\n07:13", else the first itinerary time.
   const departMatch = pdfText.match(/DEPART\n(\d{1,2}:\d{2})/);
-  const departureTime = departMatch?.[1] ?? "";
+  const departureTime = departMatch?.[1] ?? itineraryTimes[0] ?? "";
 
   // Ticket type + route: "Advance Single EMR ONLY" on the line after "TICKET TYPE ROUTE"
   const typeRouteMatch = pdfText.match(
@@ -155,21 +162,17 @@ export function parseTrainlinePdfText(pdfText: string): TrainlinePdfTicket | nul
     operator = parts.join(" ");
   }
 
-  // Arrival time: last time in the itinerary section before "Ticket Details"
-  const itineraryMatch = pdfText.match(
-    /Itinerary[\s\S]*?(\d{1,2}:\d{2})\n(?:No specific seat\n)?[A-Z][a-z]+(?:\n|$)[\s\S]*?(?:Ticket Details|$)/,
-  );
-  // Get ALL times from the itinerary to find the last arrival
-  const itinerarySection = pdfText.match(/Itinerary[\s\S]*?(?=Ticket Details)/)?.[0] ?? "";
-  const itineraryTimes = [...itinerarySection.matchAll(/(\d{1,2}:\d{2})/g)].map((m) => m[1]);
+  // Arrival time: last time in the itinerary section (computed above).
   const arrivalTime = itineraryTimes.length > 0 ? itineraryTimes[itineraryTimes.length - 1] : "";
 
   // Price: "Price £19.70" (appears as "Price Â£19.70" due to encoding)
   const priceMatch = pdfText.match(/Price\s+(?:Â£|£)([\d.]+)/);
   const price = priceMatch ? parseFloat(priceMatch[1]) : null;
 
-  // NRS Booking Reference
-  const nrsMatch = pdfText.match(/NRS Booking Reference\s+([A-Z0-9]+)/);
+  // NRS Booking Reference. Require a real ref length so a literal "N/A" (the regex
+  // would otherwise capture just "N", stopping at the slash) becomes null instead
+  // of polluting the booking reference.
+  const nrsMatch = pdfText.match(/NRS Booking Reference\s+([A-Z0-9]{4,})/);
   const nrsRef = nrsMatch?.[1] ?? null;
 
   // Barcode reference: first line of PDF or "Ticket Number TTBQEBVV49M"
