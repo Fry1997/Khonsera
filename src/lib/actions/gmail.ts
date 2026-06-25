@@ -454,30 +454,6 @@ export async function scanGmailForBookings(): Promise<
           email_date: emailDate,
           providerHint: providerHintFromSender(from),
         });
-        // TEMP diagnostic (D103 chase) — what do the actual reservations say?
-        // Dump every JSON-LD train reservation (number/status/origin/time) so we
-        // can see whether the email's structured data genuinely carries the 07:50
-        // or only the stale 07:13. Use _debug_routes_api (writable + cached schema).
-        if (/derby|wellingborough/i.test(`${subject} ${from}`)) {
-          try {
-            const resv = extractJsonLd(structuredHtml)
-              .filter((o) => /Reservation$/.test(String((o as Record<string, unknown>)["@type"] ?? "")))
-              .map((o) => {
-                const r = o as Record<string, unknown>;
-                const forr = (r.reservationFor ?? {}) as Record<string, unknown>;
-                const dep = (forr.departureStation ?? {}) as Record<string, unknown>;
-                const arr = (forr.arrivalStation ?? {}) as Record<string, unknown>;
-                return `${String(r.reservationNumber ?? "?")}|${String(r.reservationStatus ?? "?").replace(/^.*[/#]/, "")}|${String(dep.name ?? "?")}→${String(arr.name ?? "?")}|${String(forr.departureTime ?? "?")}`;
-              })
-              .join("  ;  ");
-            await supabase.from("_debug_routes_api").insert({
-              status: `GMAILDBG2 ${subject.slice(0, 60)}`,
-              message: `struct=${structured.length} resv=[ ${resv} ]`,
-            });
-          } catch (e) {
-            console.warn("debug insert failed", e);
-          }
-        }
         if (structured.length) {
           try {
             await graftBarcodesFromPdfs(gmail.accessToken, ref.id, msg, structured);
@@ -512,22 +488,6 @@ export async function scanGmailForBookings(): Promise<
           // Skeleton with no resolvable legs → nothing to import.
           if (!parsed || (parsed.type === "transport" && (parsed.segments?.length ?? 0) === 0)) {
             return [];
-          }
-        }
-
-        // TEMP diagnostic — what the REGEX path made of an eticket (no JSON-LD).
-        if (/derby|wellingborough/i.test(`${subject} ${from}`)) {
-          try {
-            const segs =
-              parsed.type === "transport"
-                ? (parsed.segments ?? []).map((s) => `${s.from_station}→${s.to_station} ${s.departure_time}-${s.arrival_time}`).join(" ; ")
-                : parsed.type;
-            await supabase.from("_debug_routes_api").insert({
-              status: `GMAILDBG2 REGEX ${subject.slice(0, 50)}`,
-              message: `ref=${parsed.type === "transport" ? parsed.booking_reference : "-"} segs=[ ${segs} ]`,
-            });
-          } catch (e) {
-            console.warn("debug insert failed", e);
           }
         }
 

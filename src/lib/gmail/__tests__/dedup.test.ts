@@ -200,6 +200,56 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     expect(out).toHaveLength(1);
   });
 
+  it("does NOT let a 00:00 no-ref eticket BRIDGE two different bookings into one (the real Derby case)", () => {
+    // The exact production bug: a NEW 07:50 booking (ref 471218902520) and the OLD
+    // 07:13 booking (ref MC287441), each with its confirmation, PLUS the 07:50's
+    // eticket whose PDF didn't parse — it came through as ref "N", all-00:00. With
+    // union-find that bridge collapsed all three into one (the 07:50 vanished into
+    // the 07:13). Reference-keyed clustering must keep the two real bookings apart.
+    const conf0750 = booking({
+      booking_reference: "471218902520",
+      email_date: "2026-06-20T09:00:00Z",
+      raw_subject: "Your booking confirmation for return trip Wellingborough to Derby (25 Jun)",
+      segments: [
+        seg({ from_station: "Wellingborough", to_station: "Derby", departure_time: "07:50", departure_date: "2026-06-25" }),
+        seg({ from_station: "Derby", to_station: "Wellingborough", departure_time: "15:09", departure_date: "2026-06-25" }),
+      ],
+    });
+    const conf0713 = booking({
+      booking_reference: "MC287441",
+      email_date: "2026-05-24T17:22:00Z",
+      raw_subject: "Your booking confirmation for return trip Wellingborough to Derby (25 Jun)",
+      segments: [
+        seg({ from_station: "Wellingborough", to_station: "Derby", departure_time: "07:13", departure_date: "2026-06-25" }),
+        seg({ from_station: "Derby", to_station: "Wellingborough", departure_time: "15:08", departure_date: "2026-06-25" }),
+      ],
+    });
+    // The 07:50 eticket, PDF unparsed → no real ref, all-00:00, via Leicester.
+    const eticketUnparsed = booking({
+      booking_reference: "N",
+      email_date: "2026-06-20T09:05:00Z",
+      raw_subject: "Your etickets to Derby Thursday 25 June",
+      segments: [
+        seg({ from_station: "Wellingborough", to_station: "Leicester", departure_time: "00:00", departure_date: "2026-06-25", barcode_data: "AZTEC0750" }),
+        seg({ from_station: "Leicester", to_station: "Derby", departure_time: "00:00", departure_date: "2026-06-25" }),
+      ],
+    });
+
+    const out = deduplicateTrainlineBookings([conf0750, conf0713, eticketUnparsed]);
+    const transport = out.flatMap((b) => (b.type === "transport" ? [b] : []));
+    // BOTH real bookings survive — the 07:50 did not vanish into the 07:13.
+    const deps = transport.flatMap((b) => b.segments.map((s) => s.departure_time));
+    expect(deps).toContain("07:50");
+    expect(deps).toContain("07:13");
+    // Two distinct bookings, by reference.
+    const refs = new Set(transport.map((b) => b.booking_reference));
+    expect(refs.has("471218902520")).toBe(true);
+    expect(refs.has("MC287441")).toBe(true);
+    // The older 07:13 is flagged as superseded by the newer 07:50.
+    const old = transport.find((b) => b.booking_reference === "MC287441");
+    expect(old?.superseded_by).toBe("07:50");
+  });
+
   it("FLAGS a likely rebooking (not silently drop) — keeps both, marks the older (the real Derby case)", () => {
     // Same route + travel date, different departure, booked a month apart: the
     // 07:13 (booked 24 May) was scrapped by an EMR incident and rebooked as the

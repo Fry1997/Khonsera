@@ -49,8 +49,33 @@ export function extractJsonLd(html: string): Obj[] {
 }
 
 function isoDateTime(iso: unknown): { date: string; time: string } | null {
-  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(str(iso) ?? "");
-  return m ? { date: m[1], time: m[2] } : null;
+  const s = str(iso);
+  if (!s) return null;
+  const base = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(s);
+  if (!base) return null;
+  // No timezone offset → the wall-clock time is already local; take it as-is.
+  if (!/(Z|[+-]\d{2}:?\d{2})$/.test(s)) return { date: base[1], time: base[2] };
+  // Has an offset → normalise the instant to UK local time (Europe/London).
+  // Trainline encodes some legs in UTC (`...06:13:00+00:00`) and some in BST
+  // (`...07:50:00+01:00`); a 07:13 BST departure shows as 06:13Z, so we MUST
+  // convert or the old ticket imports an hour early.
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return { date: base[1], time: base[2] };
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/London",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value]),
+  );
+  const hh = parts.hour === "24" ? "00" : parts.hour;
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${hh}:${parts.minute}` };
 }
 
 // schema.org station/airport/stop → a name (+ optional code).

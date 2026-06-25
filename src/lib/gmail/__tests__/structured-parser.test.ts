@@ -66,4 +66,36 @@ describe("structured (JSON-LD) booking parser", () => {
   it("returns nothing for an email with no JSON-LD", () => {
     expect(parseStructuredFromHtml("<html><body>just marketing</body></html>", ctx)).toEqual([]);
   });
+
+  it("normalises a UTC-encoded departure to UK local time (06:13Z → 07:13)", () => {
+    // The real MC287441 ticket: Trainline encodes it in UTC (+00:00), not BST, so a
+    // 07:13 BST departure arrives as 06:13Z. Taking the wall-clock digits imported
+    // it an hour early; we must convert the instant to Europe/London.
+    const utcLd = `<script type="application/ld+json">
+      {"@type":"TrainReservation","reservationNumber":"MC287441","reservationStatus":"http://schema.org/ReservationConfirmed",
+       "reservationFor":{"@type":"TrainTrip","departureStation":{"name":"Wellingborough"},
+         "departureTime":"2026-06-25T06:13:00+00:00","arrivalStation":{"name":"Derby"},
+         "arrivalTime":"2026-06-25T08:32:00+00:00"}}
+    </script>`;
+    const out = parseStructuredFromHtml(utcLd, ctx);
+    expect(out).toHaveLength(1);
+    const b = out[0];
+    if (b.type !== "transport") throw new Error("expected transport");
+    expect(b.segments[0].departure_time).toBe("07:13");
+    expect(b.segments[0].arrival_time).toBe("09:32");
+  });
+
+  it("keeps a BST-encoded departure as-is (07:50+01:00 → 07:50)", () => {
+    const bstLd = `<script type="application/ld+json">
+      {"@type":"TrainReservation","reservationNumber":"471218902520","reservationStatus":"http://schema.org/ReservationConfirmed",
+       "reservationFor":{"@type":"TrainTrip","departureStation":{"name":"Wellingborough"},
+         "departureTime":"2026-06-25T07:50:00+01:00","arrivalStation":{"name":"Derby"},
+         "arrivalTime":"2026-06-25T09:08:00+01:00"}}
+    </script>`;
+    const out = parseStructuredFromHtml(bstLd, ctx);
+    const b = out[0];
+    if (b.type !== "transport") throw new Error("expected transport");
+    expect(b.segments[0].departure_time).toBe("07:50");
+    expect(b.segments[0].arrival_time).toBe("09:08");
+  });
 });

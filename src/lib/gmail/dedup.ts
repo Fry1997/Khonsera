@@ -51,15 +51,31 @@ export function deduplicateTrainlineBookings(bookings: ParsedBooking[]): ParsedB
 // booked one wins; the older is dropped from import (it stays in the inbox). Only
 // fires when the booking/email dates differ — genuine same-session double-bookings
 // are untouched.
-function routeDateKey(b: TransportBooking): string {
-  return [...stationsOf(b)].sort().join(",") + "|" + (getTravelDate(b) ?? "");
+// Group candidates by SAME ORIGIN + travel date. The destination set is NOT part of
+// the key: a rebooking can change the routing (the 07:13 ran direct WEL→Derby while
+// the 07:50 went via Leicester), so keying on every station would split the very
+// pair we want to compare. We then only flag within the group when destinations
+// actually overlap (below), so two unrelated trips from the same origin/day don't
+// false-match.
+function originDateKey(b: TransportBooking): string {
+  const origin = b.segments[0]
+    ? (b.segments[0].from_station_code ?? b.segments[0].from_station ?? "").slice(0, 3).toUpperCase()
+    : "";
+  return origin + "|" + (getTravelDate(b) ?? "");
+}
+function destinationsOf(b: TransportBooking): Set<string> {
+  const out = new Set<string>();
+  for (const s of b.segments) {
+    if (s.to_station_code || s.to_station) out.add((s.to_station_code ?? s.to_station).slice(0, 3).toUpperCase());
+  }
+  return out;
 }
 export function supersedeRebookings(bookings: ParsedBooking[]): ParsedBooking[] {
   const out: ParsedBooking[] = bookings.filter((b) => b.type !== "transport");
   const byRoute = new Map<string, TransportBooking[]>();
   for (const b of bookings) {
     if (b.type !== "transport") continue;
-    const k = routeDateKey(b);
+    const k = originDateKey(b);
     const g = byRoute.get(k) ?? [];
     g.push(b);
     byRoute.set(k, g);
@@ -69,17 +85,16 @@ export function supersedeRebookings(bookings: ParsedBooking[]): ParsedBooking[] 
       out.push(group[0]);
       continue;
     }
-    const distinctDates = new Set(group.map((b) => b.email_date));
-    if (distinctDates.size <= 1) {
-      out.push(...group); // booked together → not a rebooking; keep all
-      continue;
-    }
-    // Don't silently overrule the user: KEEP both, but flag the older one(s) as
-    // likely-superseded by the newest so the import surface can ASK and recommend.
+    // The most recently booked is the live one. Flag any OLDER booking that shares
+    // a destination with it (same trip, rebooked) — don't silently drop, so the
+    // import surface can ASK and recommend the newer.
     const newest = group.reduce((a, b) => (b.email_date > a.email_date ? b : a));
+    const newestDests = destinationsOf(newest);
     const newestDep = newest.segments[0]?.departure_time || "the later booking";
     for (const b of group) {
-      out.push(b === newest ? b : { ...b, superseded_by: newestDep });
+      const sharesDest = [...destinationsOf(b)].some((d) => newestDests.has(d));
+      const older = b.email_date < newest.email_date;
+      out.push(b !== newest && older && sharesDest ? { ...b, superseded_by: newestDep } : b);
     }
   }
   return out;
@@ -96,33 +111,52 @@ function stationsOf(b: TransportBooking): Set<string> {
   return out;
 }
 
-// Union bookings that share at least one station into clusters (same trip) —
-// UNLESS they have a departure-time CONFLICT at a shared origin (see below), which
-// marks them as two genuinely different bookings (e.g. a rebooking after a
-// cancellation: 07:13 cancelled, 07:50 rebooked, same route + date). Without the
-// conflict guard the rebooking gets merged into the cancelled trip and never shows.
+// Cluster the same-date Trainline emails into trips. The booking REFERENCE is the
+// natural key: Trainline gives one reference per booking and repeats it across that
+// booking's emails (confirmation + eticket). So:
+//   • two DIFFERENT valid references are two DIFFERENT bookings and NEVER merge
+//     (e.g. a cancelled-then-rebooked trip: MC287441 @07:13 vs 471218902520 @07:50,
+//     same route + date — both must survive so the new 07:50 shows); and
+//   • a reference-less member (an eticket whose ref didn't parse — often an unparsed
+//     PDF that comes through as all-00:00) joins the SINGLE best-matching reference
+//     cluster by shared station, so it can NEVER bridge two real bookings into one.
+// The old union-find keyed purely on shared-station + departure-conflict; a 00:00
+// eticket has no real departure so it "conflicted" with nothing and transitively
+// merged every Derby booking into one (the 07:50 vanished into the 07:13).
 function clusterBySharedStation(group: TransportBooking[]): TransportBooking[][] {
-  const stations = group.map(stationsOf);
-  const parent = group.map((_, i) => i);
-  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-  const union = (a: number, b: number) => {
-    parent[find(a)] = find(b);
-  };
-  for (let i = 0; i < group.length; i++) {
-    for (let j = i + 1; j < group.length; j++) {
-      if ([...stations[i]].some((s) => stations[j].has(s)) && !departuresConflict(group[i], group[j])) {
-        union(i, j);
+  const byRef = new Map<string, TransportBooking[]>();
+  const noRef: TransportBooking[] = [];
+  for (const b of group) {
+    const ref = validBookingRef(b.booking_reference) ? b.booking_reference : null;
+    if (ref) (byRef.get(ref) ?? byRef.set(ref, []).get(ref)!).push(b);
+    else noRef.push(b);
+  }
+  const clusters = [...byRef.values()];
+  for (const nb of noRef) {
+    const nbStations = stationsOf(nb);
+    let best = -1;
+    let bestScore = 0;
+    for (let i = 0; i < clusters.length; i++) {
+      // Don't attach to a cluster it can't board with (real departure conflict).
+      if (clusters[i].some((c) => departuresConflict(c, nb))) continue;
+      const score = clusters[i].reduce(
+        (acc, c) => acc + [...stationsOf(c)].filter((s) => nbStations.has(s)).length,
+        0,
+      );
+      if (score > bestScore) {
+        bestScore = score;
+        best = i;
       }
     }
+    if (best >= 0) clusters[best].push(nb);
+    else clusters.push([nb]); // no home → its own trip (don't force-merge)
   }
-  const byRoot = new Map<number, TransportBooking[]>();
-  for (let i = 0; i < group.length; i++) {
-    const r = find(i);
-    const c = byRoot.get(r) ?? [];
-    c.push(group[i]);
-    byRoot.set(r, c);
-  }
-  return [...byRoot.values()];
+  return clusters;
+}
+
+// A real booking reference (not null, not a mis-parsed "N"/"N/A" placeholder).
+function validBookingRef(r: string | null): r is string {
+  return !!r && r.length > 2 && !/^N\/?A?$/i.test(r);
 }
 
 // Real (non-placeholder) departure times per ORIGIN station for a booking.
