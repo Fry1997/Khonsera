@@ -74,7 +74,13 @@ export function supersedeRebookings(bookings: ParsedBooking[]): ParsedBooking[] 
       out.push(...group); // booked together → not a rebooking; keep all
       continue;
     }
-    out.push(group.reduce((a, b) => (b.email_date > a.email_date ? b : a))); // newest booking wins
+    // Don't silently overrule the user: KEEP both, but flag the older one(s) as
+    // likely-superseded by the newest so the import surface can ASK and recommend.
+    const newest = group.reduce((a, b) => (b.email_date > a.email_date ? b : a));
+    const newestDep = newest.segments[0]?.departure_time || "the later booking";
+    for (const b of group) {
+      out.push(b === newest ? b : { ...b, superseded_by: newestDep });
+    }
   }
   return out;
 }

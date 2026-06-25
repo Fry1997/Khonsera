@@ -77,17 +77,34 @@ function TransportBookingCard({
               Amendment
             </span>
           ) : null}
+          {booking.superseded_by ? (
+            <span
+              className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+              style={{ background: "var(--amber)", color: "var(--card)" }}
+            >
+              Earlier booking
+            </span>
+          ) : null}
         </div>
         <button
           type="button"
           className="btn-terra"
-          style={{ padding: "4px 12px", fontSize: 12, borderRadius: 8 }}
+          style={{ padding: "4px 12px", fontSize: 12, borderRadius: 8, opacity: booking.superseded_by ? 0.6 : 1 }}
           onClick={onImport}
           disabled={importing}
         >
           {importing ? "Importing..." : "Import"}
         </button>
       </div>
+
+      {booking.superseded_by ? (
+        <p className="text-xs" style={{ color: "var(--ink-dim)", margin: 0 }}>
+          Looks like you rebooked this trip — your{" "}
+          <strong style={{ color: "var(--ink)" }}>{booking.superseded_by}</strong> booking is more
+          recent. Import that one unless you&rsquo;re actually taking this{" "}
+          {booking.segments[0]?.departure_time}.
+        </p>
+      ) : null}
 
       <TrainTicketGroup
         segments={ticketSegments}

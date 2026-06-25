@@ -39,6 +39,10 @@ export type ParsedTransportBooking = {
   // every source message id — so importing it marks them ALL as imported. Without
   // this, the un-marked sibling reappears alone on the next scan (midnight eticket).
   source_message_ids?: string[];
+  // Set when a LATER booking exists for the same route + date (a likely rebooking).
+  // We don't silently drop this one — we flag it so the import surface can ASK the
+  // user, recommending the newer. Value is the newer booking's departure (e.g. "07:50").
+  superseded_by?: string | null;
   email_date: string;
 };
 

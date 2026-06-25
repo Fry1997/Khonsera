@@ -1438,3 +1438,11 @@ Newest at the bottom of each section.
   SEPARATE bookings with the same stations + travel date but DIFFERENT booking/email dates → the most
   recently booked wins, the older is dropped from import (stays in the inbox). Only fires on differing
   email dates, so genuine same-session double-bookings are untouched. tsc + 379 + build green.
+
+- **D102a — Rebooking: ASK the user, don't silently supersede (founder steer).** D102 auto-dropped the
+  older booking; founder: "or just ask the user" — right, since the data can't prove which of two
+  valid tickets is dead (the 07:13 was an EMR incident, not a cancellation). Changed
+  `supersedeRebookings` to KEEP both and instead set `superseded_by` (the newer's departure, e.g.
+  "07:50") on the older. The Gmail import panel shows an amber "Earlier booking" badge + a note
+  ("Looks like you rebooked — your 07:50 booking is more recent…"), dims that Import button, and lets
+  the user pick. No silent overrule. tsc + 379 + build green.

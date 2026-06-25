@@ -200,10 +200,11 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
     expect(out).toHaveLength(1);
   });
 
-  it("SUPERSEDES a cancelled-and-rebooked trip — newest booking wins (the real Derby case)", () => {
+  it("FLAGS a likely rebooking (not silently drop) — keeps both, marks the older (the real Derby case)", () => {
     // Same route + travel date, different departure, booked a month apart: the
     // 07:13 (booked 24 May) was scrapped by an EMR incident and rebooked as the
-    // 07:50. No cancellation email exists, so the newer booking supersedes the old.
+    // 07:50. No cancellation email exists, so we don't guess — we KEEP both and
+    // flag the older so the import surface asks, recommending the newer.
     const old0713 = booking({
       gmail_message_id: "old",
       email_date: "2026-05-24T17:22:00Z",
@@ -217,9 +218,12 @@ describe("Trainline confirmation + eticket merge (anytime day return)", () => {
       segments: [seg({ from_station: "Wellingborough", to_station: "Derby", departure_time: "07:50", departure_date: "2026-06-25" })],
     });
     const out = deduplicateTrainlineBookings([old0713, new0750]);
-    expect(out).toHaveLength(1);
-    const b = out[0];
-    if (b.type !== "transport") throw new Error("expected transport");
-    expect(b.segments[0].departure_time).toBe("07:50"); // the rebooking, not the scrapped 07:13
+    expect(out).toHaveLength(2); // both kept — the user decides
+    const byDep = Object.fromEntries(
+      out.flatMap((b) => (b.type === "transport" ? [[b.segments[0].departure_time, b]] : [])),
+    );
+    // The older 07:13 is flagged as superseded by the newer 07:50; the 07:50 is not.
+    expect((byDep["07:13"] as { superseded_by?: string }).superseded_by).toBe("07:50");
+    expect((byDep["07:50"] as { superseded_by?: string }).superseded_by).toBeUndefined();
   });
 });
