@@ -5,7 +5,9 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { SpineAnchor } from "./spine-model";
 import { navigateHref, londonClock, roleLabel } from "./spine-model";
-import { pickNextIndex, type EngineAnchor } from "@/lib/today/engine";
+import { pickNextIndex, READINESS_BUFFER_MIN, STATION_BUFFER_MIN, type EngineAnchor } from "@/lib/today/engine";
+import { computeGaps, type GapStop } from "@/lib/planning/gaps";
+import { ModeTag } from "@/components/concierge/mode-tag";
 
 // Today's spine — the whole day threaded on the rail, rebuilt to the v7 "paper"
 // language. Nodes are debossed icon medallions (filled charcoal for a real
@@ -60,6 +62,24 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
   }, [anchors, now]);
   const activeNextId = engineNextId ?? nextId;
 
+  // Genuine spare time before each anchor — the leftover once the leg INTO it is
+  // taken out of the window from the previous stop. Computed with the same pure
+  // gap engine the planner uses (minSpare=0 so a walk card can always show its
+  // true slack, not just gaps over the planner's 15-min threshold). Keyed by the
+  // destination anchor (beforeStopId) for the WalkCard's "{N} min spare" pill.
+  const spareByAnchorId = useMemo(() => {
+    const stops: GapStop[] = anchors.map((a) => ({
+      id: a.id,
+      startMs: a.arriveByIso ? Date.parse(a.arriveByIso) : null,
+      endMs: a.endIso ? Date.parse(a.endIso) : a.arriveByIso ? Date.parse(a.arriveByIso) : null,
+    }));
+    const legMinutes = anchors.slice(1).map((a) => a.plannedTravelMinutes);
+    const gaps = computeGaps(stops, legMinutes, 0);
+    const m = new Map<string, number>();
+    for (const g of gaps) m.set(g.beforeStopId, g.spareMinutes);
+    return m;
+  }, [anchors]);
+
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];
     const nextIdx = anchors.findIndex((a) => a.id === activeNextId);
@@ -103,7 +123,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
         {pastRows.length > 0 ? (
           <PastToggle count={pastRows.length} open={showPast} onToggle={() => setShowPast((v) => !v)} />
         ) : null}
-        {showPast ? pastRows.map((row) => <SpineEntry key={row.anchor.id} anchor={row.anchor} state="past" />) : null}
+        {showPast ? pastRows.map((row) => <SpineEntry key={row.anchor.id} anchor={row.anchor} state="past" spare={spareByAnchorId.get(row.anchor.id) ?? null} />) : null}
         {liveRows.map((row, i) =>
           row.kind === "now" ? (
             <div className="cc-node" key={`now-${i}`}>
@@ -117,7 +137,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
               </div>
             </div>
           ) : (
-            <SpineEntry key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} />
+            <SpineEntry key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} spare={spareByAnchorId.get(row.anchor.id) ?? null} />
           ),
         )}
       </div>
@@ -129,13 +149,16 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
 // when the plan carries a leg + a destination to navigate to) renders first on
 // its own transit node, then the anchor — or, for a station changeover, the
 // changeover card — renders below.
-function SpineEntry({ anchor, state, late }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean }) {
+function SpineEntry({ anchor, state, late, spare }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean; spare?: number | null }) {
   const showWalk = !!anchor.plannedTravelMinutes && !!navigateHref(anchor) && state !== "past";
+  const isAppointment = anchor.type === "appointment" || anchor.type === "reservation";
   return (
     <>
-      {showWalk ? <WalkLeg anchor={anchor} /> : null}
+      {showWalk ? <WalkLeg anchor={anchor} spare={spare} /> : null}
       {anchor.role === "changeover" ? (
         <ChangeoverNode anchor={anchor} state={state} />
+      ) : isAppointment ? (
+        <AppointmentCard anchor={anchor} state={state} late={late} />
       ) : (
         <AnchorNode anchor={anchor} state={state} late={late} />
       )}
@@ -179,16 +202,30 @@ function PastToggle({ count, open, onToggle }: { count: number; open: boolean; o
   );
 }
 
-// ─── Walk / movement leg — a defined cotton tile (mode chip + duration + the
-// destination it delivers you to + a charcoal Navigate pill). Only rendered when
-// the plan carries a leg into this anchor and a coordinate to route to. Mode is
-// inferred "walk" by default; we don't invent other modes without data. ───────
-function WalkLeg({ anchor }: { anchor: SpineAnchor }) {
+// ─── Walk / movement leg — the planner's richer WalkCard on raised cotton: a
+// mode chip, the {mins} headline + a charcoal Navigate pill, a dashed-rule time
+// WINDOW (depart → arrive, derived from the anchor's arrive time minus the leg)
+// with a "Direct" tag (a walk is one hop, no changeover), the sage "{N} min
+// spare" pill (from the gap engine), and a footer status strip with an inert
+// "Compare ways →" affordance. Only rendered when the plan carries a leg into
+// this anchor and a coordinate to route to. Where a bit's data is absent it is
+// omitted, never fabricated. ─────────────────────────────────────────────────
+function WalkLeg({ anchor, spare }: { anchor: SpineAnchor; spare?: number | null }) {
   const href = navigateHref(anchor)!;
   const mins = anchor.plannedTravelMinutes!;
   const word = anchor.navMode === "drive" ? "Drive" : anchor.navMode === "cycle" ? "Cycle" : "Walk";
   const icon = anchor.navMode === "drive" ? "car" : anchor.navMode === "cycle" ? "bike" : "walk";
   const dest = anchor.station ? anchor.title : anchor.place ?? anchor.title;
+
+  // The walk-in window: you ARRIVE at the anchor's arrive-by time; you DEPART
+  // `mins` earlier. Both ends come from real plan data — omit the strip if the
+  // arrive time is absent rather than inventing one.
+  const arriveAt = londonClock(anchor.arriveByIso);
+  const departAt = anchor.arriveByIso
+    ? londonClock(new Date(Date.parse(anchor.arriveByIso) - mins * 60_000).toISOString())
+    : null;
+  const showWindow = !!departAt && !!arriveAt;
+
   return (
     <div className="cc-node">
       <div className="cc-node-dot">
@@ -196,21 +233,116 @@ function WalkLeg({ anchor }: { anchor: SpineAnchor }) {
           <span className="engr-ico" style={ICO_FLEX}><Glyph name={icon} size={15} /></span>
         </span>
       </div>
-      <div className="pg" style={LEG_TILE}>
-        <span style={{ minWidth: 0, flex: 1 }}>
-          <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)" }}>{word}</span>
-            <span className="mono" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-dim)", whiteSpace: "nowrap" }}>{mins} min</span>
+      <div className="pg cc-walk">
+        <div className="cc-walk-head">
+          <span className="cc-walk-mode">
+            <span className="engr-ico" style={ICO_FLEX}><Glyph name={icon} size={12} /></span>
+            {word}
           </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, fontSize: 12, color: "var(--ink-dim)", minWidth: 0 }}>
-            <span style={{ color: "var(--ink-faint)", flex: "none", display: "inline-flex" }}><Glyph name="arrowRight" size={11} /></span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dest}</span>
+          <span className="cc-walk-mins mono engr">{mins} min</span>
+          <Link href={href} className="cc-btn cc-btn-gold cc-walk-nav" style={NAV_BTN}>
+            <span className="engr-ico-d" style={ICO_FLEX}><Glyph name="navigation" size={12} /></span>
+            Navigate
+          </Link>
+        </div>
+
+        {showWindow ? (
+          <div className="cc-walk-window">
+            <span className="mono cc-walk-time">{departAt}</span>
+            <span className="cc-walk-rule" aria-hidden />
+            <span className="mono cc-walk-time">{arriveAt}</span>
+            <span className="cc-walk-direct">Direct</span>
+          </div>
+        ) : null}
+
+        <div className="cc-walk-dest">
+          <span style={{ color: "var(--ink-faint)", flex: "none", display: "inline-flex" }}><Glyph name="arrowRight" size={11} /></span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dest}</span>
+          {spare != null && spare > 0 ? <span className="cc-walk-spare">{spare} min spare</span> : null}
+        </div>
+
+        <div className="cc-walk-foot">
+          <span className="sb cc-walk-proposed">Proposed</span>
+          {/* No per-leg compare route on Today yet — present-but-inert affordance. */}
+          <span className="cc-walk-compare" aria-disabled>
+            Compare ways
+            <Glyph name="arrowRight" size={11} />
           </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AppointmentCard — an appointment/reservation given the planner treatment:
+// a gold LEFT EDGE (gold is punctuation), the per-item WORK/Personal ModeTag,
+// the name + sub-place, an "Arrive by ~{t}" / "Leave by {t} · derived" pair (the
+// leave-by back-calculated from arrive-by minus the leg + a readiness buffer —
+// the same maths the live engine uses), and a "Notes / Add" footer. The derived
+// flag wears the gold accent; leave-by is omitted (not faked) when its inputs
+// aren't on the plan. ────────────────────────────────────────────────────────
+function AppointmentCard({ anchor, state, late }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean }) {
+  const past = state === "past";
+  const next = state === "next";
+  const arrive = londonClock(anchor.arriveByIso);
+
+  // Leave-by = arrive-by − (travel + a readiness buffer). Station boarding gets
+  // the bigger buffer; a plain appointment the light get-ready one. Derived only
+  // when both the arrive time and the planned leg exist.
+  const buffer = anchor.station ? STATION_BUFFER_MIN : READINESS_BUFFER_MIN;
+  const leaveBy =
+    anchor.arriveByIso && anchor.plannedTravelMinutes != null
+      ? londonClock(new Date(Date.parse(anchor.arriveByIso) - (anchor.plannedTravelMinutes + buffer) * 60_000).toISOString())
+      : null;
+
+  return (
+    <div className="cc-node" data-state={state}>
+      <div className="cc-node-dot">
+        <span className="cc-med-anchor">
+          <span className="engr-ico-d" style={ICO_FLEX}><Glyph name="calendar" size={19} /></span>
         </span>
-        <Link href={href} className="cc-btn cc-btn-gold" style={NAV_BTN}>
-          <span className="engr-ico-d" style={ICO_FLEX}><Glyph name="navigation" size={12} /></span>
-          Navigate
-        </Link>
+      </div>
+      <div className="pg cc-appt" data-past={past || undefined}>
+        <div className="cc-appt-head">
+          <span style={{ ...EYB, color: next ? "var(--gold-2)" : "var(--ink-dim)" }}>
+            {past ? "Done · " : ""}
+            {TYPE_LABEL[anchor.type]}
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+            <ModeTag mode={anchor.mode} />
+            {late ? (
+              <span style={{ ...EYB, color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: "var(--radius-xs)", padding: "1px 5px" }}>
+                Running late
+              </span>
+            ) : null}
+          </span>
+        </div>
+
+        <h3 className="cc-appt-title">{anchor.title}</h3>
+        {anchor.place && anchor.place !== anchor.title ? <p className="cc-appt-sub">{anchor.place}</p> : null}
+
+        <div className="cc-appt-times">
+          {arrive ? (
+            <span className="cc-appt-time">
+              <span style={{ ...EYB, color: "var(--ink-faint)" }}>Arrive by</span>
+              <span className="mono engr cc-appt-clock">~{arrive}</span>
+            </span>
+          ) : null}
+          {leaveBy ? (
+            <span className="cc-appt-time">
+              <span style={{ ...EYB, color: "var(--ink-faint)" }}>Leave by</span>
+              <span className="mono engr cc-appt-clock">
+                {leaveBy}
+                <span className="cc-appt-derived"> · derived</span>
+              </span>
+            </span>
+          ) : null}
+        </div>
+
+        <div className="cc-appt-foot">
+          <span className="cc-appt-notes">Notes</span>
+          <span className="cc-appt-add" aria-disabled>Add</span>
+        </div>
       </div>
     </div>
   );
@@ -388,16 +520,6 @@ function Glyph({ name, size = 16, style }: { name: GlyphName; size?: number; sty
 const ICO_FLEX: CSSProperties = { display: "inline-flex" };
 const EYB: CSSProperties = { fontSize: "var(--fs-micro)", textTransform: "uppercase", letterSpacing: "var(--ls-uc)" };
 const CARD_TILE: CSSProperties = {
-  background: "var(--widget)",
-  border: "1px solid var(--line)",
-  borderRadius: "var(--radius-md)",
-  boxShadow: "var(--lift)",
-};
-const LEG_TILE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 13,
-  padding: "12px 13px",
   background: "var(--widget)",
   border: "1px solid var(--line)",
   borderRadius: "var(--radius-md)",

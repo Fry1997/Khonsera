@@ -26,6 +26,9 @@ export interface SpineAnchor {
   // town. Its coordinate is the nav target and `title` is the station label.
   station: { name: string; code: string | null; kind: StationKind } | null;
   role: AnchorRole;
+  // Per-item work/personal classification (the parent Event's tag). Shown as a
+  // quiet ModeTag on appointment/reservation cards — never a lens or a toggle.
+  mode?: "work" | "personal" | null;
 }
 
 // You don't walk to "Harpenden" — you walk to Harpenden Station. Append the

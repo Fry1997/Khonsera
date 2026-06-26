@@ -57,6 +57,9 @@ type StopRow = {
   location: Geo;
   customer_site: Geo;
   transport_hub: Hub;
+  // Stamped from the parent Event's work/personal tag as stops are composed —
+  // the per-item classification the spine surfaces via ModeTag.
+  mode?: "work" | "personal" | null;
 };
 
 // First available coordinate — customer site, then saved location, then hub
@@ -155,9 +158,10 @@ export default async function TodayPage({
         .eq("itinerary_id", ev.id),
       loadJourneyTickets(ev.id),
     ]);
+    const evMode = (ev as { mode?: string | null }).mode === "work" ? "work" : (ev as { mode?: string | null }).mode === "personal" ? "personal" : null;
     for (const st of (s ?? []) as unknown as StopRow[]) {
       if (st.type === "start" && !baseCoord) baseCoord = coordOf(st);
-      if (isToday(st.start_time, today)) allStops.push(st);
+      if (isToday(st.start_time, today)) allStops.push({ ...st, mode: evMode });
     }
     for (const tr of (t ?? []) as Array<{ from_stop_id: string; to_stop_id: string; mode: string | null; computed_duration_minutes: number | null }>) {
       legFromStops.add(tr.from_stop_id);
@@ -234,6 +238,7 @@ export default async function TodayPage({
       navMode: navModeForTransition(leg?.mode),
       station,
       role: roleOf(s.type),
+      mode: s.mode ?? null,
     };
   });
 

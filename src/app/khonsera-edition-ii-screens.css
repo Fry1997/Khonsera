@@ -155,6 +155,61 @@
 .cc-spine-v7 .cc-dot-now { width: 13px; height: 13px; }
 
 /* ---------------------------------------------------------------------------
+ * WalkCard — the richer planner connector on raised stock. A mode chip, the
+ * {mins} headline + a charcoal Navigate pill, a dashed-rule depart→arrive
+ * window with a Direct tag, the sage spare pill, and a Proposed / Compare ways
+ * footer strip. Tokens only; gold stays punctuation (never a fill here).
+ * ------------------------------------------------------------------------- */
+.cc-walk { padding: var(--space-3) var(--space-3-5, 14px); display: flex; flex-direction: column; gap: 10px; }
+.cc-walk-head { display: flex; align-items: center; gap: 10px; }
+.cc-walk-mode { display: inline-flex; align-items: center; gap: 5px; flex: none;
+  font-family: var(--mono); font-size: 10.5px; font-weight: var(--fw-medium, 500);
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim);
+  background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  padding: 3px 9px; box-shadow: var(--sink); }
+.cc-walk-mins { flex: 1; min-width: 0; font-size: 18px; font-weight: 600; color: var(--ink); line-height: 1; }
+.cc-walk-nav { flex: none; }
+/* depart → arrive — a dashed connecting rule between two mono clocks + a Direct tag */
+.cc-walk-window { display: flex; align-items: center; gap: 9px; }
+.cc-walk-time { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.cc-walk-rule { flex: 1; min-width: 12px; height: 0; border-top: 1px dashed var(--rule-2); }
+.cc-walk-direct { flex: none; font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-faint); }
+.cc-walk-dest { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: var(--ink-dim); }
+.cc-walk-spare { flex: none; margin-left: auto; display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: var(--fw-medium, 500); color: var(--sage);
+  background: var(--sage-2); border-radius: var(--radius-pill); padding: 2px 9px; white-space: nowrap; }
+.cc-walk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding-top: 9px; border-top: 1px solid var(--line); }
+/* Proposed = a pre-commitment lifecycle state: a quiet dashed mono pill (reuses .sb) */
+.cc-walk-proposed { background: transparent; color: var(--ink-dim); border: 1px dashed var(--rule-2); }
+.cc-walk-compare { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+  color: var(--ink-faint); cursor: default; }
+
+/* ---------------------------------------------------------------------------
+ * AppointmentCard — the planner appointment/reservation treatment. A gold LEFT
+ * EDGE (punctuation), the per-item ModeTag, name + sub-place, an Arrive-by /
+ * Leave-by (derived) pair, and a Notes / Add footer. Tokens only.
+ * ------------------------------------------------------------------------- */
+.cc-appt { position: relative; padding: var(--space-3) var(--space-4); border-left: 2px solid var(--gold);
+  display: flex; flex-direction: column; gap: 2px; }
+.cc-appt[data-past] { opacity: 0.6; }
+.cc-appt-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.cc-appt-title { margin: 4px 0 0; font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600;
+  letter-spacing: -0.02em; color: var(--ink); }
+.cc-appt-sub { margin: 2px 0 0; font-size: var(--fs-label); color: var(--ink-dim); }
+.cc-appt-times { display: flex; gap: var(--space-5); margin-top: var(--space-3); padding-top: var(--space-3);
+  border-top: 1px solid var(--line); }
+.cc-appt-time { display: flex; flex-direction: column; gap: 4px; }
+.cc-appt-clock { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1; }
+.cc-appt-derived { font-family: var(--mono); font-size: 10px; font-weight: var(--fw-medium, 500);
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold-2); }
+.cc-appt-foot { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-3);
+  padding-top: 9px; border-top: 1px solid var(--line); }
+.cc-appt-notes, .cc-appt-add { font-size: 12.5px; color: var(--ink-dim); cursor: default; }
+.cc-appt-add { color: var(--gold-2); }
+
+/* ---------------------------------------------------------------------------
  * 1 · AnchorCard — a fixed point; the three-variable model
  * ------------------------------------------------------------------------- */
 .cc-anchor-card { background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
