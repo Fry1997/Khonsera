@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Khonsera · Solitaire</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; overflow:hidden; -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent; touch-action:none;
+    font-family:"Satoshi","Inter",system-ui,sans-serif; }
+  #root{ height:100dvh; }
+
+  /* ── the table: deep ink felt ─────────────────────────────────────────── */
+  .felt{
+    position:relative; height:100dvh; display:flex; flex-direction:column;
+    color:#e8e2d6;
+    background:
+      radial-gradient(130% 100% at 50% -8%, #25303a 0%, #1a232c 38%, #141a21 70%, #0e1318 100%);
+  }
+  .felt::before{ /* woven felt tooth */
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.12;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+    background-size:180px 180px;
+    mix-blend-mode:overlay;
+  }
+  .felt::after{ /* soft top sheen + corner vignette */
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient(80% 55% at 50% 120%, rgba(0,0,0,0.45), transparent 70%),
+      radial-gradient(70% 50% at 50% -20%, rgba(120,150,170,0.10), transparent 60%);
+  }
+
+  /* ── top bar ──────────────────────────────────────────────────────────── */
+  .bar{ position:relative; z-index:5; flex:0 0 auto;
+    display:flex; align-items:center; gap:10px;
+    padding:max(12px, env(safe-area-inset-top)) 14px 10px; }
+  .brand{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .brand .dot{ width:7px; height:7px; border-radius:50%; flex:0 0 auto;
+    background:radial-gradient(circle at 38% 32%, #c8ab6e, #93753c 60%, #6f5827);
+    box-shadow:0 0 0 1px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.4); }
+  .brand .word{ font-weight:300; letter-spacing:0.22em; text-transform:uppercase;
+    font-size:12px; color:#c3bdb0; white-space:nowrap; }
+
+  .stats{ display:flex; gap:5px; margin-left:auto; flex:0 1 auto; }
+  .stat{ text-align:center; min-width:40px; padding:5px 7px 6px; border-radius:9px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(0,0,0,0.12));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.3); }
+  .stat .k{ font:500 8.5px/1 "JetBrains Mono",monospace; letter-spacing:0.14em; text-transform:uppercase; color:#7c8590; }
+  .stat .v{ font:500 15px/1.1 "Satoshi","Inter",sans-serif; color:#ece6da; margin-top:3px;
+    font-variant-numeric:tabular-nums; letter-spacing:0.01em; }
+
+  .tools{ display:flex; gap:7px; flex:0 0 auto; }
+  .tool{ -webkit-appearance:none; appearance:none; border:0; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; padding:0 12px; height:34px; border-radius:9px;
+    font:500 12.5px/1 "Satoshi","Inter",sans-serif; letter-spacing:0.01em; color:#e6e0d4;
+    background:linear-gradient(180deg, #313c46, #232c34);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.35);
+    transition:transform .08s ease, filter .12s ease; }
+  .tool:hover{ filter:brightness(1.08); }
+  .tool:active{ transform:translateY(1px);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.4); }
+  .tool[disabled]{ opacity:.4; cursor:default; transform:none; filter:none; }
+  .tool svg{ width:15px; height:15px; display:block; }
+  @media (max-width:480px){ .tool .label{ display:none; } }
+  @media (max-width:468px){ .stat.score{ display:none; } }
+  .tool.toggle .seg{ font:500 11px/1 "JetBrains Mono",monospace; letter-spacing:0.06em;
+    padding:3px 6px; border-radius:5px; color:#9aa3ad; }
+  .tool.toggle .seg.on{ color:#15202a;
+    background:linear-gradient(180deg,#d8c089,#b9985a);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.3); }
+
+  /* ── board ────────────────────────────────────────────────────────────── */
+  .board{ position:relative; z-index:4; flex:1 1 auto; min-height:0;
+    width:100%; margin:0 auto; padding:6px 14px 16px;
+    display:flex; flex-direction:column; }
+  .toprow{ display:flex; gap:var(--gap); justify-content:flex-start; margin-bottom:calc(var(--cw)*0.34); }
+  .tableau{ display:flex; gap:var(--gap); justify-content:flex-start; flex:1 1 auto; min-height:0; }
+  .col{ position:relative; width:var(--cw); flex:0 0 var(--cw); }
+  .foundations{ display:flex; gap:var(--gap); margin-left:auto; }
+
+  /* pile slot (empty target) */
+  .slot{ position:relative; width:var(--cw); height:calc(var(--cw)*1.4); flex:0 0 var(--cw);
+    border-radius:calc(var(--cw)*0.075);
+    box-shadow:
+      inset 0 2px 5px rgba(0,0,0,0.5),
+      inset 0 -1px 0 rgba(255,255,255,0.05),
+      inset 0 0 0 1px rgba(0,0,0,0.3);
+    background:rgba(0,0,0,0.14); }
+  .slot.lit{ box-shadow:
+      inset 0 2px 5px rgba(0,0,0,0.4),
+      inset 0 0 0 1.5px rgba(201,171,110,0.6),
+      0 0 12px rgba(201,171,110,0.25); }
+  .slot .ghost{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:rgba(220,210,190,0.16); }
+  .slot .ghost svg{ width:42%; height:42%; }
+  .slot .recycle-ic{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:rgba(220,210,190,0.30); }
+  .slot .recycle-ic svg{ width:38%; height:38%; }
+
+  /* a positioned card within a pile */
+  .pc{ position:absolute; left:0; width:var(--cw); will-change:transform;
+    transition:top .18s cubic-bezier(.2,.7,.3,1); }
+  .pc.drag-src{ opacity:0; }
+  .pc .kc-card{ display:block; }
+  .pc.grabbable{ cursor:grab; }
+  .pc.playable .kc-card{ cursor:pointer; }
+
+  /* lift shadow under movable face-up tops */
+  .pc.lift .kc-card{ box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      inset 0 -1px 2px rgba(120,104,78,0.10),
+      inset 0 0 0 1px rgba(255,255,255,0.5),
+      0 2px 3px rgba(0,0,0,0.28),
+      0 calc(var(--cw)*0.03) calc(var(--cw)*0.08) rgba(0,0,0,0.4); }
+
+  @keyframes dealIn{ from{ opacity:0; transform:translateY(-14px) scale(.96); } to{ opacity:1; transform:none; } }
+  .pc.deal{ animation:dealIn .34s cubic-bezier(.2,.8,.3,1) backwards; }
+
+  /* drag layer */
+  .draglayer{ position:fixed; left:0; top:0; z-index:50; pointer-events:none; }
+  .draglayer .pc{ position:absolute; }
+  .draglayer .kc-card{ box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      inset 0 0 0 1px rgba(255,255,255,0.5),
+      0 8px 18px rgba(0,0,0,0.45),
+      0 calc(var(--cw)*0.05) calc(var(--cw)*0.12) rgba(0,0,0,0.4); }
+
+  /* foundation flash when a card lands */
+  @keyframes land{ 0%{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.5), 0 0 0 rgba(201,171,110,0);} 
+    40%{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.4), 0 0 16px rgba(201,171,110,0.5);} 
+    100%{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.5), 0 0 0 rgba(201,171,110,0);} }
+  .slot.flash{ animation:land .5s ease; }
+
+  /* ── win overlay (quiet & premium) ───────────────────────────────────── */
+  .win{ position:absolute; inset:0; z-index:30; display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .5s ease;
+    background:radial-gradient(60% 50% at 50% 45%, rgba(10,14,18,0.55), rgba(8,11,15,0.82)); }
+  .win.show{ opacity:1; pointer-events:auto; }
+  .win .plate{ width:min(86vw,340px); padding:30px 30px 26px; border-radius:16px; text-align:center;
+    background:linear-gradient(155deg, #fbf9f4, #efe9dd 60%, #e7e0d2);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(150,134,104,0.25),
+      0 30px 60px rgba(0,0,0,0.5);
+    transform:translateY(10px) scale(.97); transition:transform .5s cubic-bezier(.2,.8,.3,1); }
+  .win.show .plate{ transform:none; }
+  .win .mk{ display:inline-flex; align-items:center; gap:7px; }
+  .win .mk .dot{ width:7px; height:7px; border-radius:50%;
+    background:radial-gradient(circle at 38% 32%, #c8ab6e, #93753c 60%, #6f5827); }
+  .win .mk .word{ font-weight:300; letter-spacing:0.24em; text-transform:uppercase; font-size:11px; color:#7a6f5c; }
+  .win h2{ margin:16px 0 4px; font-weight:500; font-size:25px; letter-spacing:-0.02em; color:#2a241c; }
+  .win p{ margin:0; color:#8a8070; font-size:13px; }
+  .win .res{ display:flex; justify-content:center; gap:26px; margin:22px 0 24px; }
+  .win .res .k{ font:500 9px/1 "JetBrains Mono",monospace; letter-spacing:0.14em; text-transform:uppercase; color:#a99e87; }
+  .win .res .v{ font:500 22px/1 "Satoshi","Inter",sans-serif; color:#2a241c; margin-top:6px; font-variant-numeric:tabular-nums; }
+  .win .again{ -webkit-appearance:none; appearance:none; border:0; cursor:pointer;
+    padding:0 22px; height:42px; border-radius:10px; font:500 13.5px/1 "Satoshi","Inter",sans-serif;
+    letter-spacing:0.02em; color:#1c1610;
+    background:linear-gradient(180deg,#d8c089,#b9985a);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.45), inset 0 0 0 1px rgba(120,90,40,0.4), 0 4px 10px rgba(0,0,0,0.3); }
+  .win .again:active{ transform:translateY(1px); }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" fill="#16202a"/>
+      <rect x="30" y="22" width="26" height="38" rx="4" fill="#f6f3ec" stroke="#b7a987" transform="rotate(-9 43 41)"/>
+      <rect x="40" y="34" width="26" height="38" rx="4" fill="#fbf9f4" stroke="#b7a987" transform="rotate(7 53 53)"/>
+      <path d="M53 48c-4-5-11-2-11 3 0 5 6 8 11 13 5-5 11-8 11-13 0-5-7-8-11-3z" fill="#a8503c"/>
+    </svg>
+  </template>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="cards.jsx"></script>
+  <script type="text/babel" src="solitaire.jsx"></script>
+</body>
+</html>
