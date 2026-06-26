@@ -18,6 +18,8 @@ function tabs(mode: AppMode): Tab[] {
     mode === "work"
       ? { href: "/customers" as Route, label: "Clients", icon: "clients" }
       : { href: "/contacts" as Route, label: "People", icon: "people" },
+    // Pastimes — a leisure surface, so it sits last after the travel core.
+    { href: "/pastimes" as Route, label: "Pastimes", icon: "pastimes" },
   ];
 }
 
@@ -52,6 +54,9 @@ const GLYPHS = {
   tasks: "M9 11 l2.5 2.5 L17 8 M5 5 h14 a1 1 0 0 1 1 1 v12 a1 1 0 0 1-1 1 H5 a1 1 0 0 1-1-1 V6 a1 1 0 0 1 1-1 z",
   people: "M12 12 a4 4 0 1 0 0-8 a4 4 0 0 0 0 8 z M4 21 c0-4 4-7 8-7 s8 3 8 7",
   clients: "M4 8 h16 v11 a1 1 0 0 1-1 1 H5 a1 1 0 0 1-1-1 z M9 8 V6 a2 2 0 0 1 2-2 h2 a2 2 0 0 1 2 2 v2",
+  // Pastimes — a jigsaw puzzle piece (stands in for cards/sudoku/crosswords);
+  // distinct from every other tab glyph.
+  pastimes: "M10.5 4 a1.5 1.5 0 1 1 3 0 v1.5 h2.5 a1 1 0 0 1 1 1 V10 h1.5 a1.5 1.5 0 1 1 0 3 H17 v3 a1 1 0 0 1-1 1 h-3 v-1.5 a1.5 1.5 0 1 0-3 0 V17 H7 a1 1 0 0 1-1-1 v-3 H4.5 a1.5 1.5 0 1 1 0-3 H6 V6.5 a1 1 0 0 1 1-1 h3.5 z",
 } as const;
 
 function Glyph({ name }: { name: keyof typeof GLYPHS }) {

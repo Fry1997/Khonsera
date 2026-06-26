@@ -41,6 +41,12 @@ function navFor(mode: AppMode): NavGroup[] {
       ],
     },
     {
+      label: "Downtime",
+      items: [
+        { href: "/pastimes" as Route, label: "Pastimes", icon: "pastimes" },
+      ],
+    },
+    {
       label: "Account",
       items: [
         ...(mode === "work" ? [{ href: "/workspace" as Route, label: "Workspace", icon: "workspace" } as NavItem] : []),
@@ -124,6 +130,8 @@ const Glyphs = {
   mileage: "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M13.4 10.6L17 7 M4.5 16a8 8 0 1 1 15 0z",
   // Workspace — a building/office tower (distinct from Clients' briefcase).
   workspace: "M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16 M15 21V9h4a1 1 0 0 1 1 1v11 M4 21h17 M7.5 8h1M7.5 12h1M7.5 16h1M11 8h1M11 12h1M11 16h1",
+  // Pastimes — a jigsaw puzzle piece (cards/sudoku/crosswords); distinct glyph.
+  pastimes: "M10.5 4a1.5 1.5 0 1 1 3 0v1.5h2.5a1 1 0 0 1 1 1V10h1.5a1.5 1.5 0 1 1 0 3H17v3a1 1 0 0 1-1 1h-3v-1.5a1.5 1.5 0 1 0-3 0V17H7a1 1 0 0 1-1-1v-3H4.5a1.5 1.5 0 1 1 0-3H6V6.5a1 1 0 0 1 1-1h3.5z",
   exit: "M9 4H4v16h5 M16 17l5-5-5-5 M21 12H9",
 } as const;
 

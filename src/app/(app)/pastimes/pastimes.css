@@ -1,0 +1,133 @@
+/* Pastimes hub — layout only; colour/material come from tokens + the shared
+   .pg / .engr / .engr-ico paper classes. The hub lives on the app's light
+   cotton surface (NOT the game's dark felt — that's game-local, inside the
+   route below). Mobile-first: a single column that becomes a grid on wider
+   viewports. */
+
+.pastimes-screen {
+  min-height: 100%;
+}
+
+.pastimes-head {
+  margin-bottom: var(--space-5);
+}
+
+.pastimes-intro {
+  margin-top: var(--space-2);
+  max-width: 34ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.pastimes-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .pastimes-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Each card is a cotton sheet: lift + letterpress, a debossed glyph well, the
+   game name + blurb, and a state pill. The .pg class supplies the fibre tooth
+   and inherited text-deboss. */
+.pastime-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--widget);
+  box-shadow: var(--lift);
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+a.pastime-card:hover,
+a.pastime-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 0.5px rgba(40, 44, 52, 0.06),
+    0 24px 38px -18px rgba(34, 30, 24, 0.34),
+    0 8px 16px -8px rgba(34, 30, 24, 0.2);
+  outline: none;
+}
+
+a.pastime-card:focus-visible {
+  box-shadow:
+    var(--lift),
+    0 0 0 2px var(--gold);
+}
+
+/* Not-yet-built games: present but quiet — dimmed, no lift, no pointer. */
+.pastime-card.is-soon {
+  opacity: 0.62;
+  cursor: default;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 0 0.5px rgba(40, 44, 52, 0.05);
+}
+
+/* Debossed glyph well — a recessed cream chip carrying the letterpressed mark. */
+.pastime-ico {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--well);
+  box-shadow: var(--sink);
+  color: var(--char);
+}
+
+.pastime-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pastime-name {
+  font-family: var(--display);
+  font-weight: var(--fw-medium, 500);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.pastime-blurb {
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+
+/* State pill — gold "Play" affordance for live games; faint "Soon" for the
+   parked ones. */
+.pastime-state {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--gold-2);
+  background: var(--gold-tint);
+}
+
+.pastime-state.is-soon {
+  color: var(--ink-faint);
+  background: transparent;
+  border: 1px solid var(--line);
+}
