@@ -1,0 +1,502 @@
+/* ════════════════════════════════════════════════════════════════════════
+ * Khonsera · Solitaire table / board / HUD / win-overlay stylesheet.
+ * Ported VERBATIM (values) from the Solitaire.html <style> block.
+ *
+ * NOTE ON COLOURS: the felt / chrome / gold / win-plate colours and geometry
+ * below are intentional GAME-LOCAL values for this self-contained game
+ * surface — NOT app brand tokens (the same exception the journey-map makes).
+ * Only the typefaces are wired to the app font system: Satoshi via
+ * var(--font-display)/var(--sans), JetBrains Mono via var(--mono).
+ *
+ * All selectors are scoped under .solitaire-felt so the table chrome never
+ * leaks into the app shell.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* ── the table: deep ink felt ─────────────────────────────────────────── */
+.solitaire-felt {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: #e8e2d6;
+  background: radial-gradient(130% 100% at 50% -8%, #25303a 0%, #1a232c 38%, #141a21 70%, #0e1318 100%);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  font-family: var(--sans), "Satoshi", "Inter", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.solitaire-felt *,
+.solitaire-felt *::before,
+.solitaire-felt *::after {
+  box-sizing: border-box;
+}
+
+.solitaire-felt::before {
+  /* woven felt tooth */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+
+.solitaire-felt::after {
+  /* soft top sheen + corner vignette */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(80% 55% at 50% 120%, rgba(0, 0, 0, 0.45), transparent 70%),
+    radial-gradient(70% 50% at 50% -20%, rgba(120, 150, 170, 0.1), transparent 60%);
+}
+
+/* ── top bar ──────────────────────────────────────────────────────────── */
+.solitaire-felt .bar {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 14px 10px;
+}
+
+.solitaire-felt .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.solitaire-felt .brand .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: radial-gradient(circle at 38% 32%, #c8ab6e, #93753c 60%, #6f5827);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.solitaire-felt .brand .word {
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #c3bdb0;
+  white-space: nowrap;
+}
+
+.solitaire-felt .stats {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  flex: 0 1 auto;
+}
+
+.solitaire-felt .stat {
+  text-align: center;
+  min-width: 40px;
+  padding: 5px 7px 6px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(0, 0, 0, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.solitaire-felt .stat .k {
+  font: 500 8.5px/1 var(--mono), "JetBrains Mono", monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7c8590;
+}
+
+.solitaire-felt .stat .v {
+  font: 500 15px/1.1 var(--sans), "Satoshi", "Inter", sans-serif;
+  color: #ece6da;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.solitaire-felt .tools {
+  display: flex;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.solitaire-felt .tool {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 34px;
+  border-radius: 9px;
+  font: 500 12.5px/1 var(--sans), "Satoshi", "Inter", sans-serif;
+  letter-spacing: 0.01em;
+  color: #e6e0d4;
+  background: linear-gradient(180deg, #313c46, #232c34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.08s ease, filter 0.12s ease;
+}
+
+.solitaire-felt .tool:hover {
+  filter: brightness(1.08);
+}
+
+.solitaire-felt .tool:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.solitaire-felt .tool[disabled] {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+  filter: none;
+}
+
+.solitaire-felt .tool svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  .solitaire-felt .tool .label {
+    display: none;
+  }
+}
+
+@media (max-width: 468px) {
+  .solitaire-felt .stat.score {
+    display: none;
+  }
+}
+
+.solitaire-felt .tool.toggle .seg {
+  font: 500 11px/1 var(--mono), "JetBrains Mono", monospace;
+  letter-spacing: 0.06em;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #9aa3ad;
+}
+
+.solitaire-felt .tool.toggle .seg.on {
+  color: #15202a;
+  background: linear-gradient(180deg, #d8c089, #b9985a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* ── board ────────────────────────────────────────────────────────────── */
+.solitaire-felt .board {
+  position: relative;
+  z-index: 4;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  margin: 0 auto;
+  padding: 6px 14px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.solitaire-felt .toprow {
+  display: flex;
+  gap: var(--gap);
+  justify-content: flex-start;
+  margin-bottom: calc(var(--cw) * 0.34);
+}
+
+.solitaire-felt .tableau {
+  display: flex;
+  gap: var(--gap);
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.solitaire-felt .col {
+  position: relative;
+  width: var(--cw);
+  flex: 0 0 var(--cw);
+}
+
+.solitaire-felt .foundations {
+  display: flex;
+  gap: var(--gap);
+  margin-left: auto;
+}
+
+/* pile slot (empty target) */
+.solitaire-felt .slot {
+  position: relative;
+  width: var(--cw);
+  height: calc(var(--cw) * 1.4);
+  flex: 0 0 var(--cw);
+  border-radius: calc(var(--cw) * 0.075);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.solitaire-felt .slot.lit {
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1.5px rgba(201, 171, 110, 0.6),
+    0 0 12px rgba(201, 171, 110, 0.25);
+}
+
+.solitaire-felt .slot .ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(220, 210, 190, 0.16);
+}
+
+.solitaire-felt .slot .ghost svg {
+  width: 42%;
+  height: 42%;
+}
+
+.solitaire-felt .slot .recycle-ic {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(220, 210, 190, 0.3);
+}
+
+.solitaire-felt .slot .recycle-ic svg {
+  width: 38%;
+  height: 38%;
+}
+
+/* a positioned card within a pile */
+.solitaire-felt .pc {
+  position: absolute;
+  left: 0;
+  width: var(--cw);
+  will-change: transform;
+  transition: top 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.solitaire-felt .pc.drag-src {
+  opacity: 0;
+}
+
+.solitaire-felt .pc .kc-card {
+  display: block;
+}
+
+.solitaire-felt .pc.grabbable {
+  cursor: grab;
+}
+
+.solitaire-felt .pc.playable .kc-card {
+  cursor: pointer;
+}
+
+/* lift shadow under movable face-up tops */
+.solitaire-felt .pc.lift .kc-card .kc-face,
+.solitaire-felt .pc.lift .kc-card .kc-back {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 2px rgba(120, 104, 78, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 2px 3px rgba(0, 0, 0, 0.28),
+    0 calc(var(--cw) * 0.03) calc(var(--cw) * 0.08) rgba(0, 0, 0, 0.4);
+}
+
+@keyframes solitaireDealIn {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.solitaire-felt .pc.deal {
+  animation: solitaireDealIn 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+/* drag layer */
+.solitaire-felt .draglayer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.solitaire-felt .draglayer .pc {
+  position: absolute;
+}
+
+.solitaire-felt .draglayer .kc-card .kc-face,
+.solitaire-felt .draglayer .kc-card .kc-back {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 8px 18px rgba(0, 0, 0, 0.45),
+    0 calc(var(--cw) * 0.05) calc(var(--cw) * 0.12) rgba(0, 0, 0, 0.4);
+}
+
+/* foundation flash when a card lands */
+@keyframes solitaireLand {
+  0% {
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 0 rgba(201, 171, 110, 0);
+  }
+  40% {
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4), 0 0 16px rgba(201, 171, 110, 0.5);
+  }
+  100% {
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 0 rgba(201, 171, 110, 0);
+  }
+}
+
+.solitaire-felt .slot.flash {
+  animation: solitaireLand 0.5s ease;
+}
+
+/* ── win overlay (quiet & premium) ───────────────────────────────────── */
+.solitaire-felt .win {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  background: radial-gradient(60% 50% at 50% 45%, rgba(10, 14, 18, 0.55), rgba(8, 11, 15, 0.82));
+}
+
+.solitaire-felt .win.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.solitaire-felt .win .plate {
+  width: min(86vw, 340px);
+  padding: 30px 30px 26px;
+  border-radius: 16px;
+  text-align: center;
+  background: linear-gradient(155deg, #fbf9f4, #efe9dd 60%, #e7e0d2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(150, 134, 104, 0.25),
+    0 30px 60px rgba(0, 0, 0, 0.5);
+  transform: translateY(10px) scale(0.97);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.solitaire-felt .win.show .plate {
+  transform: none;
+}
+
+.solitaire-felt .win .mk {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.solitaire-felt .win .mk .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #c8ab6e, #93753c 60%, #6f5827);
+}
+
+.solitaire-felt .win .mk .word {
+  font-weight: 300;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #7a6f5c;
+}
+
+.solitaire-felt .win h2 {
+  margin: 16px 0 4px;
+  font-weight: 500;
+  font-size: 25px;
+  letter-spacing: -0.02em;
+  color: #2a241c;
+}
+
+.solitaire-felt .win p {
+  margin: 0;
+  color: #8a8070;
+  font-size: 13px;
+}
+
+.solitaire-felt .win .res {
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  margin: 22px 0 24px;
+}
+
+.solitaire-felt .win .res .k {
+  font: 500 9px/1 var(--mono), "JetBrains Mono", monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a99e87;
+}
+
+.solitaire-felt .win .res .v {
+  font: 500 22px/1 var(--sans), "Satoshi", "Inter", sans-serif;
+  color: #2a241c;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.solitaire-felt .win .again {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0 22px;
+  height: 42px;
+  border-radius: 10px;
+  font: 500 13.5px/1 var(--sans), "Satoshi", "Inter", sans-serif;
+  letter-spacing: 0.02em;
+  color: #1c1610;
+  background: linear-gradient(180deg, #d8c089, #b9985a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1px rgba(120, 90, 40, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.solitaire-felt .win .again:active {
+  transform: translateY(1px);
+}
