@@ -95,6 +95,13 @@ const Ico = {
       <path d="M4 20v-5h5" />
     </svg>
   ),
+  // white flag — concede / forfeit
+  forfeit: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 21V4" />
+      <path d="M5 4h11l-1.5 3.5L16 11H5" />
+    </svg>
+  ),
 };
 
 /* ── deck / deal ─────────────────────────────────────────────────────────── */
@@ -121,11 +128,68 @@ function freshGame(): Game {
 }
 
 /* ── move validation ─────────────────────────────────────────────────────── */
-const foundationOk = (pile: Card[], c: Card): boolean =>
-  pile.length ? pile[pile.length - 1].suit === c.suit && c.rank === pile[pile.length - 1].rank + 1 : c.rank === 1;
+// Suit-locked foundations: each foundation index is bound to a fixed suit
+// (SUIT_KEYS[fi] — index 0=S, 1=H, 2=D, 3=C, matching the empty-slot ghost).
+// An empty foundation only accepts the Ace of its OWN suit; a non-empty pile
+// already constrains both suit and ascending rank.
+const foundationOk = (pile: Card[], c: Card, fi: number): boolean =>
+  pile.length
+    ? pile[pile.length - 1].suit === c.suit && c.rank === pile[pile.length - 1].rank + 1
+    : c.rank === 1 && c.suit === SUIT_KEYS[fi];
 
 const tableauOk = (pile: Card[], c: Card): boolean =>
   pile.length ? RED[pile[pile.length - 1].suit] !== RED[c.suit] && c.rank === pile[pile.length - 1].rank - 1 : c.rank === 13;
+
+/* lowest face-up card index in a tableau column (the head of a movable run) */
+const firstUp = (pile: Card[]): number => {
+  for (let i = 0; i < pile.length; i++) if (pile[i].up) return i;
+  return -1;
+};
+
+/* ── pure stuck-detection ─────────────────────────────────────────────────── */
+// True if ANY legal move remains. Considers: stock still has cards (a draw is a
+// move); the waste can recycle into a non-empty stock-feed; the waste top can go
+// to a foundation or tableau; any tableau top can go to a foundation; any
+// face-up run head can move onto another tableau column. Pure over Game.
+function hasAnyLegalMove(g: Game): boolean {
+  // Drawing from a non-empty stock is always available.
+  if (g.stock.length) return true;
+  // Stock is empty. If the waste still has buried cards beneath its top, a
+  // recycle+redraw can re-expose them (and in draw-1 every buried card can
+  // eventually surface), so the position is NOT provably stuck — bail out rather
+  // than risk a false "no moves" nag. Only when ≤1 card is reachable do we judge.
+  if (g.waste.length > 1) return true;
+
+  const wasteTop = g.waste.length ? g.waste[g.waste.length - 1] : null;
+
+  // waste top → foundation / tableau
+  if (wasteTop) {
+    for (let f = 0; f < 4; f++) if (foundationOk(g.foundations[f], wasteTop, f)) return true;
+    for (let c = 0; c < g.tableau.length; c++) if (tableauOk(g.tableau[c], wasteTop)) return true;
+  }
+
+  for (let col = 0; col < g.tableau.length; col++) {
+    const pile = g.tableau[col];
+    if (!pile.length) continue;
+    const top = pile[pile.length - 1];
+    // tableau top → foundation
+    if (top.up) for (let f = 0; f < 4; f++) if (foundationOk(g.foundations[f], top, f)) return true;
+    // any face-up run head → another tableau column
+    const head = firstUp(pile);
+    if (head >= 0) {
+      const runHead = pile[head];
+      for (let c = 0; c < g.tableau.length; c++) {
+        if (c === col) continue;
+        // moving the whole column onto an empty column gains nothing; only count
+        // it when the head isn't already the bottom of its own column.
+        if (tableauOk(g.tableau[c], runHead)) {
+          if (g.tableau[c].length || head > 0) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
 
 const clone = (g: Game): Game => ({
   stock: g.stock.map((c) => ({ ...c })),
@@ -142,43 +206,54 @@ interface Saved {
   elapsed?: number;
 }
 
+/* read the saved snapshot synchronously (client-only — this component is mounted
+ * with ssr:false, so the lazy initializers below never run on the server and a
+ * hydration mismatch is impossible). Restoring *before* first paint removes the
+ * window in which a throwaway fresh game could be persisted over a real save —
+ * that race (a guarded `hydrated` flag + a fresh-game write firing before the
+ * async restore effect landed) was why a game in progress did not survive a
+ * reload. */
+function readSaved(): Saved | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(LS) || "null");
+  } catch {
+    return null;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════════════ */
 export function SolitaireGame() {
-  // localStorage is only read in an effect (below) to stay SSR-safe; initial
-  // render is always a fresh game so server and client markup agree.
-  const [g, setG] = useState<Game>(() => freshGame());
-  const [draw3, setDraw3] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
+  // Restore synchronously in the lazy initializers (ssr:false ⇒ client-only ⇒
+  // no SSR markup to mismatch). No async restore effect, no hydration flag.
+  // saved0 is read once at first render; the initializers below all read it.
+  const saved0 = useRef<Saved | null>(null);
+  if (saved0.current === null) saved0.current = readSaved() ?? {};
+  const [g, setG] = useState<Game>(() => saved0.current?.g ?? freshGame());
+  const [draw3, setDraw3] = useState<boolean>(() => !!saved0.current?.draw3);
+  const [elapsed, setElapsed] = useState<number>(() =>
+    saved0.current?.elapsed ? (saved0.current.elapsed | 0) : 0,
+  );
   const [hist, setHist] = useState<Game[]>([]);
   const [won, setWon] = useState(false);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [flash, setFlash] = useState<number | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  // Has the player committed to this deal yet? Drives the Draw 1/3 toggle lock
+  // (cannot change draw-count mid-game) and the forfeit confirm. A restored game
+  // with moves already made counts as underway.
+  const [confirmForfeit, setConfirmForfeit] = useState(false);
 
   const gRef = useRef(g);
   gRef.current = g;
   const boardRef = useRef<HTMLDivElement | null>(null);
   const pileRefs = useRef<Record<string, HTMLElement | null>>({});
-  const running = useRef(false);
+  // Resume the timer for a restored game-in-progress (moves already made).
+  const running = useRef(g.moves > 0);
 
   const wonNow = g.foundations.reduce((n, p) => n + p.length, 0) === 52;
-
-  /* restore saved game once on mount (SSR-safe) */
-  useEffect(() => {
-    let saved: Saved | null = null;
-    try {
-      saved = JSON.parse(localStorage.getItem(LS) || "null");
-    } catch {
-      saved = null;
-    }
-    if (saved) {
-      if (saved.g) setG(saved.g);
-      setDraw3(!!saved.draw3);
-      setElapsed(saved.elapsed ? saved.elapsed | 0 : 0);
-    }
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The deal is "underway" once any move/draw has happened — the draw-count
+  // toggle locks at that point and only frees again on a New deal / forfeit.
+  const underway = g.moves > 0;
 
   /* timer */
   useEffect(() => {
@@ -199,15 +274,15 @@ export function SolitaireGame() {
     }
   }, [wonNow, won]);
 
-  /* persist (only after hydration so we don't clobber the saved game) */
+  /* persist — restore happens synchronously in the state initializers, so every
+   * write here is a real game state (no throwaway fresh-game-over-save race). */
   useEffect(() => {
-    if (!hydrated) return;
     try {
       localStorage.setItem(LS, JSON.stringify({ g, draw3, elapsed }));
     } catch {
       /* ignore */
     }
-  }, [g, draw3, elapsed, hydrated]);
+  }, [g, draw3, elapsed]);
 
   /* commit a new state, pushing previous to history */
   const commit = useCallback((next: Game, scoreDelta = 0) => {
@@ -222,9 +297,17 @@ export function SolitaireGame() {
     setHist([]);
     setWon(false);
     setElapsed(0);
+    setConfirmForfeit(false);
     running.current = false;
     setG(freshGame());
   }, []);
+
+  // Forfeit = concede the current deal and start fresh. Same reset as New; the
+  // surface guards it behind a confirm so it isn't hit by accident.
+  const forfeit = useCallback(() => {
+    setConfirmForfeit(false);
+    newGame();
+  }, [newGame]);
 
   const undo = useCallback(() => {
     setHist((h) => {
@@ -274,7 +357,7 @@ export function SolitaireGame() {
         return false;
       }
       for (let f = 0; f < 4; f++) {
-        if (foundationOk(cur.foundations[f], card)) {
+        if (foundationOk(cur.foundations[f], card, f)) {
           pile.pop();
           cur.foundations[f].push(card);
           let sc = 10;
@@ -312,7 +395,7 @@ export function SolitaireGame() {
       if (tt === "f") {
         if (moving.length !== 1) return;
         const fi = +ti;
-        if (!foundationOk(cur.foundations[fi], moving[0])) return;
+        if (!foundationOk(cur.foundations[fi], moving[0], fi)) return;
         removeFromSource();
         cur.foundations[fi].push(moving[0]);
         scoreDelta += 10;
@@ -441,10 +524,12 @@ export function SolitaireGame() {
       if (!el) return;
       const W = el.clientWidth,
         H = el.clientHeight;
-      // padding is 14px each side; 7 columns + 6 gaps where gap = 0.16cw → 7.96cw
-      const byW = (W - 28) / 7.96;
+      // padding is 8px each side (16 total); 7 columns + 6 gaps where
+      // gap = 0.12cw → 7 + 6·0.12 = 7.72cw. Tighter than before so the 7 columns
+      // fill the phone width and the cards come up as large as comfortably fit.
+      const byW = (W - 16) / 7.72;
       const byH = H / (1.4 + 0.34 + 4.4);
-      let v = Math.max(40, Math.min(byW, byH, 104));
+      let v = Math.max(40, Math.min(byW, byH, 124));
       v = Math.floor(v);
       setCw((prev) => (prev === v ? prev : v));
     };
@@ -458,7 +543,7 @@ export function SolitaireGame() {
     };
   }, []);
 
-  const gap = Math.round(cw * 0.16);
+  const gap = Math.round(cw * 0.12);
   const downFan = cw * 0.2,
     upFan = cw * 0.34;
 
@@ -478,6 +563,10 @@ export function SolitaireGame() {
   };
 
   const fmtTime = (s: number) => `${(s / 60) | 0}:${String(s % 60).padStart(2, "0")}`;
+
+  // Stuck: no legal move remains and the game isn't already won. Surfaced as a
+  // quiet notice (not a nag) offering a New deal / forfeit.
+  const stuck = !wonNow && !hasAnyLegalMove(g);
 
   /* drag-source matching (to hide originals) */
   const isDragSrc = (type: "waste" | "tab", col: number, idx: number): boolean => {
@@ -508,12 +597,26 @@ export function SolitaireGame() {
           </div>
         </div>
         <div className="tools">
-          <button className="tool toggle" onClick={() => setDraw3((d) => !d)} title="Draw mode">
+          <button
+            className="tool toggle"
+            onClick={() => !underway && setDraw3((d) => !d)}
+            disabled={underway}
+            title={underway ? "Draw mode locks once the deal is underway" : "Draw mode"}
+          >
             <span className={"seg" + (!draw3 ? " on" : "")}>1</span>
             <span className={"seg" + (draw3 ? " on" : "")}>3</span>
           </button>
           <button className="tool" onClick={undo} disabled={!hist.length} title="Undo">
             {Ico.undo}
+          </button>
+          <button
+            className="tool"
+            onClick={() => (underway ? setConfirmForfeit(true) : undefined)}
+            disabled={!underway}
+            title="Forfeit this game"
+          >
+            {Ico.forfeit}
+            <span className="label">Forfeit</span>
           </button>
           <button className="tool" onClick={newGame} title="New game">
             {Ico.new}
@@ -529,7 +632,7 @@ export function SolitaireGame() {
           {
             "--cw": cw + "px",
             "--gap": gap + "px",
-            maxWidth: 7.96 * cw + 28 + "px",
+            maxWidth: 7.72 * cw + 16 + "px",
           } as CSSProperties
         }
       >
@@ -573,10 +676,15 @@ export function SolitaireGame() {
           <div className="foundations">
             {g.foundations.map((pile, f) => {
               const top = pile[pile.length - 1];
+              // Light a foundation only when the dragged single card is a legal
+              // drop there — which now respects the suit lock (an Ace lights only
+              // its own suit's empty slot).
+              const lit =
+                !!drag && drag.cards.length === 1 && foundationOk(pile, drag.cards[0], f);
               return (
                 <div
                   key={f}
-                  className={"slot" + (flash === f ? " flash" : "")}
+                  className={"slot" + (flash === f ? " flash" : "") + (lit ? " lit" : "")}
                   ref={setPileRef("f:" + f)}
                 >
                   {!pile.length && (
@@ -675,6 +783,32 @@ export function SolitaireGame() {
           <button className="again" onClick={newGame}>
             New game
           </button>
+        </div>
+      </div>
+
+      {/* no-moves notice — quiet, not a nag; only while the win isn't showing */}
+      {stuck && !won && (
+        <div className="notice" role="status">
+          <span className="msg">No moves left.</span>
+          <button className="ndeal" onClick={newGame}>
+            New deal
+          </button>
+        </div>
+      )}
+
+      {/* forfeit confirm */}
+      <div className={"confirm" + (confirmForfeit ? " show" : "")}>
+        <div className="cplate">
+          <h3>Forfeit this game?</h3>
+          <p>This deal is conceded and a fresh one begins. There is no undo.</p>
+          <div className="crow">
+            <button className="cbtn ghost" onClick={() => setConfirmForfeit(false)}>
+              Keep playing
+            </button>
+            <button className="cbtn" onClick={forfeit}>
+              Forfeit
+            </button>
+          </div>
         </div>
       </div>
     </div>

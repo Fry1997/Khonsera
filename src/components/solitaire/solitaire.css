@@ -215,7 +215,7 @@
   min-height: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 6px 14px 16px;
+  padding: 6px 8px 16px;
   display: flex;
   flex-direction: column;
 }
@@ -358,6 +358,10 @@
 
 .solitaire-felt .draglayer .pc {
   position: absolute;
+  /* the dragged card must pin to the pointer with zero lag — kill the slide
+     transition the in-pile .pc rule sets (that 0.18s on top made the drag
+     trail the finger). */
+  transition: none;
 }
 
 .solitaire-felt .draglayer .kc-card .kc-face,
@@ -498,5 +502,140 @@
 }
 
 .solitaire-felt .win .again:active {
+  transform: translateY(1px);
+}
+
+/* ── no-moves notice (quiet, not a nag) ──────────────────────────────────── */
+.solitaire-felt .notice {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 9px 9px 15px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(40, 49, 58, 0.96), rgba(28, 36, 44, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 10px 26px rgba(0, 0, 0, 0.5);
+}
+
+.solitaire-felt .notice .msg {
+  font: 500 13px/1 var(--sans), "Satoshi", "Inter", sans-serif;
+  letter-spacing: 0.01em;
+  color: #d9d3c6;
+}
+
+.solitaire-felt .notice .ndeal {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font: 500 12px/1 var(--sans), "Satoshi", "Inter", sans-serif;
+  letter-spacing: 0.01em;
+  color: #1c1610;
+  background: linear-gradient(180deg, #d8c089, #b9985a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.solitaire-felt .notice .ndeal:active {
+  transform: translateY(1px);
+}
+
+/* ── forfeit confirm ─────────────────────────────────────────────────────── */
+.solitaire-felt .confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+  background: radial-gradient(60% 50% at 50% 45%, rgba(10, 14, 18, 0.55), rgba(8, 11, 15, 0.82));
+}
+
+.solitaire-felt .confirm.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.solitaire-felt .confirm .cplate {
+  width: min(86vw, 320px);
+  padding: 24px 24px 20px;
+  border-radius: 16px;
+  text-align: center;
+  background: linear-gradient(155deg, #fbf9f4, #efe9dd 60%, #e7e0d2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(150, 134, 104, 0.25),
+    0 30px 60px rgba(0, 0, 0, 0.5);
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.solitaire-felt .confirm.show .cplate {
+  transform: none;
+}
+
+.solitaire-felt .confirm h3 {
+  margin: 0 0 6px;
+  font-weight: 500;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  color: #2a241c;
+}
+
+.solitaire-felt .confirm p {
+  margin: 0 0 18px;
+  color: #8a8070;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.solitaire-felt .confirm .crow {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.solitaire-felt .confirm .cbtn {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font: 500 13px/1 var(--sans), "Satoshi", "Inter", sans-serif;
+  letter-spacing: 0.01em;
+  color: #1c1610;
+  background: linear-gradient(180deg, #d8c089, #b9985a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1px rgba(120, 90, 40, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.solitaire-felt .confirm .cbtn.ghost {
+  color: #4a4234;
+  background: linear-gradient(180deg, #ece6d9, #ddd5c4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(150, 134, 104, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.solitaire-felt .confirm .cbtn:active {
   transform: translateY(1px);
 }

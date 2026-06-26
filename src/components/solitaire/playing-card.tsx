@@ -11,7 +11,7 @@
  *
  * Reusable across future card games (Spider, FreeCell, …) — no game logic here.
  * ════════════════════════════════════════════════════════════════════════ */
-import type { CSSProperties, PointerEventHandler } from "react";
+import { memo, type CSSProperties, type PointerEventHandler } from "react";
 import "./playing-card.css";
 
 export type Suit = "S" | "H" | "D" | "C";
@@ -174,7 +174,12 @@ export interface PlayingCardProps {
   onPointerDown?: PointerEventHandler<HTMLDivElement>;
 }
 
-export function PlayingCard({
+// Memoised: the card face is pure over its props. In the game, a single move
+// re-renders the whole board tree; without this every one of the 52 card faces
+// (each a non-trivial SVG/pip subtree) re-renders, which is the main source of
+// the sluggish tap/drag feel. memo lets unaffected cards bail out so only the
+// moved cards repaint, keeping interaction snappy.
+export const PlayingCard = memo(function PlayingCard({
   rank,
   suit,
   faceDown,
@@ -197,6 +202,6 @@ export function PlayingCard({
       )}
     </div>
   );
-}
+});
 
 export default PlayingCard;
