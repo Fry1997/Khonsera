@@ -218,6 +218,14 @@
   padding: 6px 8px 16px;
   display: flex;
   flex-direction: column;
+  /* Cards are sized by WIDTH now; long columns scroll rather than pre-shrinking
+     every card. Vertical pan only (no sideways scroll); grabbable cards opt out
+     of pan below so a drag never scrolls. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .solitaire-felt .toprow {
@@ -225,14 +233,23 @@
   gap: var(--gap);
   justify-content: flex-start;
   margin-bottom: calc(var(--cw) * 0.34);
+  /* Stay reachable (stock · waste · foundations) while a long tableau scrolls. */
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 2px 0 8px;
+  background: linear-gradient(#141a21 78%, rgba(20, 26, 33, 0));
 }
 
 .solitaire-felt .tableau {
   display: flex;
   gap: var(--gap);
   justify-content: flex-start;
-  flex: 1 1 auto;
-  min-height: 0;
+  align-items: flex-start;
+  /* take the columns' natural (possibly tall) height so the board scrolls past it,
+     rather than being clamped to one screen and shrinking the cards. */
+  flex: 0 0 auto;
+  padding-bottom: 8px;
 }
 
 .solitaire-felt .col {
@@ -303,6 +320,12 @@
   width: var(--cw);
   will-change: transform;
   transition: top 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* touching a non-movable card (face-down, buried) scrolls the board... */
+  touch-action: pan-y;
+}
+/* ...while a movable card captures the drag, so picking it up never scrolls. */
+.solitaire-felt .pc.grabbable {
+  touch-action: none;
 }
 
 .solitaire-felt .pc.drag-src {

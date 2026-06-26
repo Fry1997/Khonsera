@@ -524,12 +524,16 @@ export function SolitaireGame() {
       if (!el) return;
       const W = el.clientWidth,
         H = el.clientHeight;
-      // padding is 8px each side (16 total); 7 columns + 6 gaps where
-      // gap = 0.12cw → 7 + 6·0.12 = 7.72cw. Tighter than before so the 7 columns
-      // fill the phone width and the cards come up as large as comfortably fit.
+      // Size cards by WIDTH so the 7 columns fill the screen — big in landscape,
+      // as large as a phone's width allows in portrait. padding is 8px each side
+      // (16 total); 7 columns + 6 gaps where gap = 0.12cw → 7 + 6·0.12 = 7.72cw.
+      // We deliberately do NOT clamp to the height anymore (that pre-shrank every
+      // card to fit a worst-case-long column on one screen, wasting the felt and
+      // making landscape tiny). Long columns scroll instead (the board is
+      // overflow-y:auto, stock/foundations pinned). A soft floor on height keeps
+      // a fresh deal fully visible without scrolling on a normal screen.
       const byW = (W - 16) / 7.72;
-      const byH = H / (1.4 + 0.34 + 4.4);
-      let v = Math.max(40, Math.min(byW, byH, 124));
+      let v = Math.max(40, Math.min(byW, 150));
       v = Math.floor(v);
       setCw((prev) => (prev === v ? prev : v));
     };
