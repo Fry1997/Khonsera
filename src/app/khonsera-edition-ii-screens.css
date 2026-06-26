@@ -126,6 +126,35 @@
   50% { box-shadow: 0 0 0 4px var(--paper), 0 0 0 7px var(--gold-tint); } }
 
 /* ---------------------------------------------------------------------------
+ * Today spine — v7 "paper" rebuild. Bigger debossed icon medallions sit
+ * CENTRED on the rail; cards are cotton sheets (.pg). Scoped to .cc-spine-v7 so
+ * the planning spine (plain .cc-spine) is untouched. Rail x = 21px (node column
+ * is 42px, medallion centred at 21). Anchor medallions are ~40px filled
+ * charcoal, transit medallions ~30px pressed wells; both overhang the rail.
+ * ------------------------------------------------------------------------- */
+.cc-spine-v7 { position: relative; }
+.cc-spine-v7 .cc-spine-rail { left: 20px; top: 22px; bottom: 22px; width: 1.5px; background: var(--line); }
+.cc-spine-v7 .cc-node { grid-template-columns: 42px 1fr; column-gap: var(--space-3);
+  align-items: start; padding-bottom: var(--space-4); }
+.cc-spine-v7 .cc-node-dot { width: 42px; height: 42px; margin-top: 2px; }
+
+/* anchor / place — a FILLED charcoal medallion, the day's punctuation */
+.cc-med-anchor { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--char); color: var(--cream); border: 3px solid var(--screen);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.55), inset 0 -1px 0 rgba(255,255,255,0.08); }
+/* transit / leg — a LIGHT pressed-well medallion, subordinate connective tissue */
+.cc-med-leg { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--well); color: var(--ink-dim); border: 1px solid var(--line); box-shadow: var(--sink); }
+/* changeover — a light medallion ringed by its verdict colour */
+.cc-med-change { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--widget); box-shadow: var(--lift-sm); }
+.cc-med-change[data-verdict="comfortable"] { border: 3px solid var(--sage); }
+.cc-med-change[data-verdict="tight"] { border: 3px solid var(--amber); }
+.cc-med-change[data-verdict="risky"] { border: 3px solid var(--rust); }
+/* now — keep the single gold pulse, centred in the wider column */
+.cc-spine-v7 .cc-dot-now { width: 13px; height: 13px; }
+
+/* ---------------------------------------------------------------------------
  * 1 · AnchorCard — a fixed point; the three-variable model
  * ------------------------------------------------------------------------- */
 .cc-anchor-card { background: var(--card); border: 1px solid var(--rule); border-radius: 6px;

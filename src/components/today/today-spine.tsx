@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { SpineAnchor } from "./spine-model";
 import { navigateHref, londonClock, roleLabel } from "./spine-model";
 import { pickNextIndex, type EngineAnchor } from "@/lib/today/engine";
 
-// Today's spine — the whole day threaded on the gold rail (reusing the planning
-// spine's `.cc-spine` vocabulary). A live NOW pulse sits at the current time;
-// done anchors recede above it (dimmed, ticked), the next one is lifted, the
-// rest wait below. `now` ticks every 30s so as time passes the NOW marker
-// advances and events visibly move up past it — no reload. Every anchor with a
-// location carries a "Navigate" link into the point-to-point router.
+// Today's spine — the whole day threaded on the rail, rebuilt to the v7 "paper"
+// language. Nodes are debossed icon medallions (filled charcoal for a real
+// place; a light pressed well for a transit/changeover leg) centred on the rail;
+// cards are cotton sheets (`.pg`). A live NOW pulse sits at the current time;
+// done anchors recede above it (collapsed behind "Earlier"), the next one is
+// lifted with a quiet gold accent, the rest wait below. `now` ticks every 30s so
+// events visibly move up past NOW with no reload. Every anchor/leg with a
+// coordinate carries a Navigate link into the point-to-point router.
 
 const TYPE_LABEL: Record<SpineAnchor["type"], string> = {
   appointment: "Appointment",
@@ -95,12 +98,12 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
         Today · {liveRows.filter((r) => r.kind === "anchor").length || anchors.length}
         {pastRows.length > 0 ? ` · ${pastRows.length} done` : ""}
       </div>
-      <div className="cc-spine">
+      <div className="cc-spine cc-spine-v7">
         <div className="cc-spine-rail" />
         {pastRows.length > 0 ? (
           <PastToggle count={pastRows.length} open={showPast} onToggle={() => setShowPast((v) => !v)} />
         ) : null}
-        {showPast ? pastRows.map((row) => <AnchorNode key={row.anchor.id} anchor={row.anchor} state="past" />) : null}
+        {showPast ? pastRows.map((row) => <SpineEntry key={row.anchor.id} anchor={row.anchor} state="past" />) : null}
         {liveRows.map((row, i) =>
           row.kind === "now" ? (
             <div className="cc-node" key={`now-${i}`}>
@@ -114,11 +117,29 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
               </div>
             </div>
           ) : (
-            <AnchorNode key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} />
+            <SpineEntry key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} />
           ),
         )}
       </div>
     </section>
+  );
+}
+
+// An anchor occupies one or two spine rows: the travel leg INTO it (a walk card,
+// when the plan carries a leg + a destination to navigate to) renders first on
+// its own transit node, then the anchor — or, for a station changeover, the
+// changeover card — renders below.
+function SpineEntry({ anchor, state, late }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean }) {
+  const showWalk = !!anchor.plannedTravelMinutes && !!navigateHref(anchor) && state !== "past";
+  return (
+    <>
+      {showWalk ? <WalkLeg anchor={anchor} /> : null}
+      {anchor.role === "changeover" ? (
+        <ChangeoverNode anchor={anchor} state={state} />
+      ) : (
+        <AnchorNode anchor={anchor} state={state} late={late} />
+      )}
+    </>
   );
 }
 
@@ -128,7 +149,9 @@ function PastToggle({ count, open, onToggle }: { count: number; open: boolean; o
   return (
     <div className="cc-node">
       <div className="cc-node-dot">
-        <span className="cc-dot-leg" />
+        <span className="cc-med-leg" style={{ width: 26, height: 26 }}>
+          <span className="engr-ico" style={ICO_FLEX}><Glyph name="clock" size={13} /></span>
+        </span>
       </div>
       <button
         type="button"
@@ -150,81 +173,156 @@ function PastToggle({ count, open, onToggle }: { count: number; open: boolean; o
         aria-expanded={open}
       >
         {open ? "Hide" : "Earlier"} · {count} done
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 120ms" }}>
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+        <Glyph name="chevron" size={11} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 120ms" }} />
       </button>
     </div>
   );
 }
 
+// ─── Walk / movement leg — a defined cotton tile (mode chip + duration + the
+// destination it delivers you to + a charcoal Navigate pill). Only rendered when
+// the plan carries a leg into this anchor and a coordinate to route to. Mode is
+// inferred "walk" by default; we don't invent other modes without data. ───────
+function WalkLeg({ anchor }: { anchor: SpineAnchor }) {
+  const href = navigateHref(anchor)!;
+  const mins = anchor.plannedTravelMinutes!;
+  const word = anchor.navMode === "drive" ? "Drive" : anchor.navMode === "cycle" ? "Cycle" : "Walk";
+  const icon = anchor.navMode === "drive" ? "car" : anchor.navMode === "cycle" ? "bike" : "walk";
+  const dest = anchor.station ? anchor.title : anchor.place ?? anchor.title;
+  return (
+    <div className="cc-node">
+      <div className="cc-node-dot">
+        <span className="cc-med-leg">
+          <span className="engr-ico" style={ICO_FLEX}><Glyph name={icon} size={15} /></span>
+        </span>
+      </div>
+      <div className="pg" style={LEG_TILE}>
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)" }}>{word}</span>
+            <span className="mono" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-dim)", whiteSpace: "nowrap" }}>{mins} min</span>
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, fontSize: 12, color: "var(--ink-dim)", minWidth: 0 }}>
+            <span style={{ color: "var(--ink-faint)", flex: "none", display: "inline-flex" }}><Glyph name="arrowRight" size={11} /></span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dest}</span>
+          </span>
+        </span>
+        <Link href={href} className="cc-btn cc-btn-gold" style={NAV_BTN}>
+          <span className="engr-ico-d" style={ICO_FLEX}><Glyph name="navigation" size={12} /></span>
+          Navigate
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Changeover card — "Change at {station}", the available-time figure coloured
+// by verdict, and a verdict ring on the node. Available time is derived from the
+// stop's own arrive (start) → depart (end) window; platforms are not carried in
+// the spine model, so they are omitted truthfully (see report). ──────────────
+type Verdict = "comfortable" | "tight" | "risky";
+function changeVerdict(mins: number | null): { verdict: Verdict; color: string; label: string } {
+  // Comfortable ≥ 10m, tight 5–9m, risky < 5m (a conventional UK interchange band).
+  if (mins == null || mins >= 10) return { verdict: "comfortable", color: "var(--sage)", label: "Comfortable" };
+  if (mins >= 5) return { verdict: "tight", color: "var(--amber)", label: "Tight" };
+  return { verdict: "risky", color: "var(--rust)", label: "Risky" };
+}
+
+function ChangeoverNode({ anchor, state }: { anchor: SpineAnchor; state: "past" | "next" | "future" }) {
+  const past = state === "past";
+  const arriveMs = anchor.arriveByIso ? Date.parse(anchor.arriveByIso) : null;
+  const departMs = anchor.endIso ? Date.parse(anchor.endIso) : null;
+  const mins = arriveMs != null && departMs != null ? Math.max(0, Math.round((departMs - arriveMs) / 60000)) : null;
+  const v = changeVerdict(mins);
+  const at = anchor.station?.name ?? anchor.title;
+  return (
+    <div className="cc-node" data-state={state} style={past ? { opacity: 0.6 } : undefined}>
+      <div className="cc-node-dot">
+        <span className="cc-med-change" data-verdict={v.verdict}>
+          <span className="engr-ico" style={{ ...ICO_FLEX, color: "var(--ink-dim)" }}><Glyph name="swap" size={14} /></span>
+        </span>
+      </div>
+      <div className="pg" style={{ ...CARD_TILE, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 15px" }}>
+          <span style={CHANGE_CHIP}>
+            <span className="engr-ico" style={ICO_FLEX}><Glyph name="swap" size={16} /></span>
+          </span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)" }}>Change at {at}</span>
+            <span style={{ ...EYB, color: v.color, marginTop: 3, display: "block" }}>{v.label}</span>
+          </span>
+          {mins != null ? (
+            <span style={{ textAlign: "right", flex: "none" }}>
+              <span className="mono engr" style={{ display: "block", fontSize: 19, fontWeight: 600, color: v.color, lineHeight: 1 }}>{mins}m</span>
+              <span style={{ ...EYB, color: "var(--ink-faint)", marginTop: 3, display: "block" }}>TO CHANGE</span>
+            </span>
+          ) : null}
+        </div>
+        <div style={{ borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, padding: "12px 15px 13px" }}>
+          <span>
+            <span style={{ ...EYB, color: "var(--ink-faint)", marginBottom: 5, display: "block" }}>ARRIVE INTO</span>
+            <span className="mono" style={{ fontSize: 13, color: "var(--ink)" }}>{londonClock(anchor.arriveByIso) ?? "—"}</span>
+          </span>
+          <span>
+            <span style={{ ...EYB, color: "var(--ink-faint)", marginBottom: 5, display: "block" }}>DEPART FROM</span>
+            <span className="mono" style={{ fontSize: 13, color: "var(--ink)" }}>{londonClock(anchor.endIso) ?? "—"}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Anchor card — a real stop as a material cotton sheet with a filled charcoal
+// medallion node. Debossed title + mono time; the "next" anchor keeps a quiet
+// gold eyebrow + left edge (gold is punctuation, never a fill). ──────────────
 function AnchorNode({ anchor, state, late }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean }) {
   const href = navigateHref(anchor);
   const arrive = londonClock(anchor.arriveByIso);
+  const next = state === "next";
   const past = state === "past";
   const station = anchor.station;
+  const icon = anchorIcon(anchor);
 
-  // Eyebrow: a station reads as its role (Departure / Change / Arrival) with a
-  // rail/air glyph; a plain anchor keeps its type label.
+  // Eyebrow: a station reads as its role (Departure / Change / Arrival); a plain
+  // anchor keeps its type label.
   const eyebrow = station ? roleLabel(anchor.role, station) : TYPE_LABEL[anchor.type];
 
   return (
     <div className="cc-node" data-state={state}>
       <div className="cc-node-dot">
-        <span className={past ? "cc-dot-leg" : "cc-dot-anchor"} />
+        <span className="cc-med-anchor">
+          <span className="engr-ico-d" style={ICO_FLEX}><Glyph name={icon} size={19} /></span>
+        </span>
       </div>
       <div
+        className="pg"
         style={{
-          background: "var(--card)",
-          border: "1px solid var(--rule)",
-          borderLeft: state === "next" ? "2px solid var(--gold)" : station ? "2px solid var(--rule-2)" : "1px solid var(--rule)",
-          borderRadius: "var(--radius-md)",
-          padding: "var(--space-3)",
+          ...CARD_TILE,
+          borderLeft: next ? "2px solid var(--gold)" : CARD_TILE.border,
           opacity: past ? 0.6 : 1,
+          padding: "var(--space-3) var(--space-4)",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "var(--space-3)" }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "var(--space-1)",
-              fontSize: "var(--fs-micro)",
-              textTransform: "uppercase",
-              letterSpacing: "var(--ls-uc)",
-              color: state === "next" ? "var(--gold-2)" : "var(--ink-dim)",
-            }}
-          >
-            {station ? <StationGlyph kind={station.kind} /> : null}
+          <span style={{ ...EYB, color: next ? "var(--gold-2)" : "var(--ink-dim)" }}>
             {past ? "Done · " : ""}
             {eyebrow}
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
             {late ? (
-              <span style={{ fontSize: "var(--fs-micro)", textTransform: "uppercase", letterSpacing: "var(--ls-uc)", color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: "var(--radius-xs)", padding: "1px 5px" }}>
+              <span style={{ ...EYB, color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: "var(--radius-xs)", padding: "1px 5px" }}>
                 Running late
               </span>
             ) : null}
-            {arrive ? <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-label)", color: "var(--ink)" }}>{arrive}</span> : null}
+            {arrive ? <span className="mono engr" style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{arrive}</span> : null}
           </span>
         </div>
 
-        <h3 style={{ margin: "var(--space-1) 0 0", fontSize: "var(--fs-h3)", lineHeight: "var(--lh-h3)", display: "flex", alignItems: "baseline", gap: "var(--space-2)" }}>
+        <h3 style={{ margin: "4px 0 0", fontSize: "var(--fs-h3)", lineHeight: "var(--lh-h3)", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", display: "flex", alignItems: "baseline", gap: "var(--space-2)" }}>
           <span>{anchor.title}</span>
           {station?.code ? (
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--fs-micro)",
-                letterSpacing: "0.08em",
-                color: "var(--ink-dim)",
-                border: "1px solid var(--rule-2)",
-                borderRadius: "var(--radius-xs)",
-                padding: "1px 4px",
-              }}
-            >
-              {station.code}
-            </span>
+            <span className="mono" style={STATION_CODE}>{station.code}</span>
           ) : null}
         </h3>
         {anchor.place && anchor.place !== anchor.title ? (
@@ -233,8 +331,8 @@ function AnchorNode({ anchor, state, late }: { anchor: SpineAnchor; state: "past
 
         {href && !past ? (
           <div style={{ marginTop: "var(--space-2)" }}>
-            <Link href={href} className={state === "next" ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }}>
-              {station ? "Walk to station" : "Navigate"}
+            <Link href={href} className={next ? "cc-btn cc-btn-gold" : "cc-btn"} style={{ fontSize: "var(--fs-label)" }}>
+              Navigate
             </Link>
           </div>
         ) : null}
@@ -243,15 +341,85 @@ function AnchorNode({ anchor, state, late }: { anchor: SpineAnchor; state: "past
   );
 }
 
-// Small rail / air glyphs — same stroke idiom as the shell nav icons. No emojis.
-function StationGlyph({ kind }: { kind: "rail_station" | "airport" }) {
-  const path =
-    kind === "airport"
-      ? "M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"
-      : "M8 4h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z M5 11h14 M9 20l-2 2 M15 20l2 2 M9.5 14h.01 M14.5 14h.01";
+// Which medallion glyph a real stop wears: home/base → house, rail → train,
+// airport → plane, appointment → calendar, default → pin.
+function anchorIcon(a: SpineAnchor): GlyphName {
+  if (a.station) return a.station.kind === "airport" ? "plane" : "train";
+  if (a.type === "flight") return "plane";
+  if (a.type === "appointment" || a.type === "reservation") return "calendar";
+  if (a.type === "accommodation_check_in" || a.type === "accommodation_check_out") return "bed";
+  if (/\b(home|house|base)\b/i.test(a.title)) return "home";
+  return "pin";
+}
+
+// ─── Lucide-style stroke glyphs — one stroke idiom, debossed via .engr-ico. No
+// emojis. Paths kept simple; sized by the medallion. ─────────────────────────
+type GlyphName =
+  | "home" | "train" | "plane" | "calendar" | "bed" | "pin"
+  | "walk" | "car" | "bike" | "swap" | "navigation" | "arrowRight" | "chevron" | "clock";
+
+const GLYPH_PATHS: Record<GlyphName, string> = {
+  home: "M3 10.5 12 3l9 7.5 M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5 M9.5 21v-6h5v6",
+  train: "M8 4h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z M5 11h14 M9 20l-2 2 M15 20l2 2 M9.5 14h.01 M14.5 14h.01",
+  plane: "M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z",
+  calendar: "M7 3v3 M17 3v3 M4 8h16 M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z",
+  bed: "M3 18V8 M3 14h15a3 3 0 0 1 3 3v1 M21 18v-2 M7 11h4a2 2 0 0 1 2 2",
+  pin: "M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z M12 10.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z",
+  walk: "M13 4.5a1.3 1.3 0 1 0 0-.01 M11 9l-2 4 3 2v5 M9 13l-2 1 M13 11l3 1 1 4 M11 9l1-2 3 1",
+  car: "M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13 M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z M7.5 16h.01 M16.5 16h.01",
+  bike: "M6 18a3 3 0 1 0 0-.01 M18 18a3 3 0 1 0 0-.01 M9 18l3-7 4 7 M11 7h2l1.5 4 M9 18h0",
+  swap: "M16 3l4 4-4 4 M20 7H7 M8 21l-4-4 4-4 M4 17h13",
+  navigation: "M3 11l18-8-8 18-2-7-8-3z",
+  arrowRight: "M5 12h14M13 6l6 6-6 6",
+  chevron: "M6 9l6 6 6-6",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2",
+};
+
+function Glyph({ name, size = 16, style }: { name: GlyphName; size?: number; style?: CSSProperties }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={path} />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={style}>
+      <path d={GLYPH_PATHS[name]} />
     </svg>
   );
 }
+
+// ─── Shared inline style atoms (colour tokens; one-off px per the incremental
+// migration policy). Centralised so the JSX reads cleanly. ───────────────────
+const ICO_FLEX: CSSProperties = { display: "inline-flex" };
+const EYB: CSSProperties = { fontSize: "var(--fs-micro)", textTransform: "uppercase", letterSpacing: "var(--ls-uc)" };
+const CARD_TILE: CSSProperties = {
+  background: "var(--widget)",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--radius-md)",
+  boxShadow: "var(--lift)",
+};
+const LEG_TILE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 13,
+  padding: "12px 13px",
+  background: "var(--widget)",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--radius-md)",
+  boxShadow: "var(--lift)",
+};
+const CHANGE_CHIP: CSSProperties = {
+  display: "inline-grid",
+  placeItems: "center",
+  width: 32,
+  height: 32,
+  borderRadius: 10,
+  background: "var(--widget-2)",
+  color: "var(--ink-2)",
+  flex: "none",
+  boxShadow: "var(--lift-sm)",
+};
+const NAV_BTN: CSSProperties = { flex: "none", fontSize: "var(--fs-label)", display: "inline-flex", alignItems: "center", gap: 5 };
+const STATION_CODE: CSSProperties = {
+  fontSize: "var(--fs-micro)",
+  letterSpacing: "0.08em",
+  color: "var(--ink-dim)",
+  border: "1px solid var(--rule-2)",
+  borderRadius: "var(--radius-xs)",
+  padding: "1px 4px",
+};
