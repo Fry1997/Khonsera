@@ -3885,8 +3885,30 @@
 .cc-nudges .cc-nudge,
 .cc-nudges .NudgeCard {
   box-shadow: var(--lift);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.92), 0 -1px 1px rgba(36,30,22,0.12);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.95), 0 -1px 1px rgba(36,30,22,0.18);
 }
 [data-theme="dark"] :is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-nudges .cc-nudge,.cc-nudges .NudgeCard) {
   text-shadow: 0 -1px 1px rgba(0,0,0,0.5), 0 1px 0.5px rgba(255,255,255,0.08);
 }
+
+/* ── Cotton tooth — the fibre texture half of the look, applied to the same solid
+ * card faces. A z-index:-1 pseudo paints OVER the card's own background but UNDER
+ * its content, so no child needs touching (faithful to .pg without the layout risk).
+ * The leg/gap connectors stay transparent and untextured by design. */
+.cc-anchor-card, .cc-active-tile, .cc-readiness, .cc-recovery,
+.cc-pass, .cc-doc-card, .cc-ticket, .cc-changeover, .cc-walk-card {
+  position: relative;
+}
+:is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-ticket,.cc-changeover,.cc-walk-card)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background-image: var(--fibre); background-size: 140px 140px;
+  mix-blend-mode: multiply; opacity: 0.12; z-index: -1; pointer-events: none;
+}
+[data-theme="dark"] :is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-ticket,.cc-changeover,.cc-walk-card)::after {
+  mix-blend-mode: screen; opacity: 0.05;
+}
+
+/* ── Debossed icons — letterpress on glyphs (stroke/fill) the way .engr does on
+ * text. Applied to icon glyphs sitting on LIGHT card faces; dark-band icons opt out. */
+.engr-ico { filter: drop-shadow(0 1px 0 rgba(255,255,255,0.92)) drop-shadow(0 -0.5px 0.6px rgba(36,30,22,0.30)); }
+[data-theme="dark"] .engr-ico { filter: drop-shadow(0 -1px 0.6px rgba(0,0,0,0.55)) drop-shadow(0 1px 0.4px rgba(255,255,255,0.10)); }
