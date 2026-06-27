@@ -66,6 +66,25 @@
   gap: 12px;
   margin-bottom: 14px;
 }
+/* Back affordance — returns to /pastimes out of the full-screen game. Quiet,
+   sits at the left of the HUD top row. Colours are app brand tokens. */
+.desk .back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+}
+.desk .back:active {
+  transform: translateY(1px);
+}
 .desk .meta {
   display: flex;
   align-items: center;

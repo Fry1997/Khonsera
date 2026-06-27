@@ -179,6 +179,16 @@
   display: block;
 }
 
+/* Back affordance — an icon-only .tool that returns to /pastimes out of the
+   full-screen game. Square, no link underline; sits at the head of the HUD bar. */
+.solitaire-felt .tool.back {
+  padding: 0;
+  width: 34px;
+  justify-content: center;
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+
 @media (max-width: 480px) {
   .solitaire-felt .tool .label {
     display: none;

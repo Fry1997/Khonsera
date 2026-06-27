@@ -10,6 +10,8 @@
  * ════════════════════════════════════════════════════════════════════════ */
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import {
   useState,
   useEffect,
@@ -93,6 +95,12 @@ const Ico = {
       <path d="M20 4v5h-5" />
       <path d="M20 15a8 8 0 0 1-14 3l-2-2" />
       <path d="M4 20v-5h5" />
+    </svg>
+  ),
+  // chevron-left — back out of the full-screen game to Pastimes
+  back: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 6 9 12l6 6" />
     </svg>
   ),
   // white flag — concede / forfeit
@@ -582,6 +590,9 @@ export function SolitaireGame() {
   return (
     <div className="solitaire-felt">
       <div className="bar">
+        <Link href={"/pastimes" as Route} className="tool back" aria-label="Back to Pastimes" title="Back to Pastimes">
+          {Ico.back}
+        </Link>
         <div className="brand">
           <span className="dot" />
           <span className="word">Khonsera</span>

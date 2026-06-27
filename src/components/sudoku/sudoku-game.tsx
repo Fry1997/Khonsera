@@ -12,6 +12,8 @@
  * ════════════════════════════════════════════════════════════════════════ */
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import {
   useState,
   useEffect,
@@ -462,6 +464,16 @@ export function SudokuGame() {
       <div className="stage">
         {/* header */}
         <div className="top">
+          <Link
+            href={"/pastimes" as Route}
+            className="back"
+            aria-label="Back to Pastimes"
+            title="Back to Pastimes"
+          >
+            <Ic
+              d={<path d="M15 6 9 12l6 6" />}
+            />
+          </Link>
           <div className="seg">
             {(Object.keys(LEVELS) as Level[]).map((lv) => (
               <button

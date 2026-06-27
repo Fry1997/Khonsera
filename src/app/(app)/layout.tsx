@@ -52,7 +52,12 @@ export default async function AppLayout({
         />
         <main
           className="paper-tex"
-          style={{ padding: "16px 16px 96px", minHeight: "100vh" }}
+          style={{
+            // Bottom padding clears the FIXED tab bar (~96px) PLUS the
+            // home-indicator inset so the last items are never hidden behind it.
+            padding: "16px 16px calc(96px + env(safe-area-inset-bottom))",
+            minHeight: "100vh",
+          }}
         >
           {children}
         </main>

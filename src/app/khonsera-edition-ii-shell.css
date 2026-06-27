@@ -31,7 +31,12 @@
  * ========================================================================= */
 .cc-appbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
   height: 56px; padding: 0 var(--space-4); background: var(--paper);
-  border-bottom: 1px solid transparent; }
+  border-bottom: 1px solid transparent;
+  /* Safe area: with viewport-fit=cover the page paints under the status bar /
+     notch, so inset the bar's top by the notch height (0 on desktop). The 56px
+     height stays the hit-area; box-sizing keeps it from shrinking. */
+  padding-top: env(safe-area-inset-top);
+  box-sizing: content-box; }
 .cc-appbar[data-scrolled="true"] { border-bottom-color: var(--rule); background: var(--paper); }
 .cc-appbar-left { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
 .cc-appbar-right { display: flex; align-items: center; gap: var(--space-2); flex: none; }

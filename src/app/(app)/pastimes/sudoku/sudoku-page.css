@@ -1,40 +1,30 @@
-/* Sudoku route fill — breaks the game surface out of the (app) shell's
-   padded/narrow content column so the warm desk runs edge-to-edge of the main
-   area, in both the mobile and desktop shells. Self-contained to the route;
-   does not touch the shell itself. Mirrors solitaire-page.css. */
+/* Sudoku route fill — a TRUE full-screen takeover. The game is lifted out of the
+   (app) shell's padded column and pinned over the shell chrome (the mobile
+   appbar + bottom tab bar, the desktop sidebar) so the warm desk owns the whole
+   viewport. Self-contained to the route; it does not touch the shell itself.
+   Mirrors solitaire-page.css. */
 
 .sudoku-page-fill {
-  /* fill the available content region; the desk inside is height:100% */
-  height: 100dvh;
-  max-height: 100dvh;
-  width: 100%;
+  position: fixed;
+  inset: 0;
+  /* Above the bottom tab bar (z-index 20); a standalone surface over the shell. */
+  z-index: 80;
   display: flex;
   flex-direction: column;
   /* Warm cotton underlay so the client-only game (ssr:false) mounts onto paper,
      not a white flash, while its chunk loads. App brand token (the desk base). */
   background: var(--paper);
+  /* Clear the notch / status bar at the top and the home-indicator at the bottom
+     so the HUD (with its back button) and the board never sit under either.
+     Insets are 0 on desktop, so this is harmless there. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/* Mobile shell: <main class="paper-tex"> has 16px / 96px padding. Cancel it so
-   the desk is flush, and reclaim the height the bottom tabbar would steal. */
-@media (max-width: 1023px) {
-  .sudoku-page-fill {
-    margin: -16px -16px -96px;
-    width: calc(100% + 32px);
-    height: calc(100dvh - 16px);
-  }
-}
-
-/* Desktop shell: .cc-shell-col is max-width:600px with padding. Break out to the
-   full main canvas width and cancel the column padding so the desk fills it. */
-@media (min-width: 1024px) {
-  .cc-shell-col:has(> .sudoku-page-fill) {
-    max-width: none;
-    padding: 0;
-    height: 100%;
-  }
-  .sudoku-page-fill {
-    height: 100%;
-    max-height: 100%;
-  }
+/* The desk fills whatever the safe-area padding leaves. */
+.sudoku-page-fill > * {
+  flex: 1;
+  min-height: 0;
 }

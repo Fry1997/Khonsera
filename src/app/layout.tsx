@@ -42,7 +42,11 @@ export const metadata: Metadata = {
     "A quiet concierge for the slow blue hour. Plan the in-between hours of your travel — the train that might not be running, the taxi at dusk, the careful arithmetic of getting there.",
   manifest: "/manifest.webmanifest",
   applicationName: "Khonsera",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Khonsera" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Khonsera" },
+  other: {
+    // Android/Chrome PWA standalone hint (the apple-* meta above covers iOS).
+    "mobile-web-app-capable": "yes",
+  },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/icon.svg" }],
@@ -52,6 +56,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // viewport-fit=cover lets the app paint into the notch/home-indicator area so
+  // env(safe-area-inset-*) becomes non-zero — the appbar/tabbar then inset
+  // themselves to clear the status bar + home-indicator (see the shell layout).
+  viewportFit: "cover",
   themeColor: "#f5f1e8", // Edition II screen paper
 };
 
