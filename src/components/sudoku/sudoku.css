@@ -1,0 +1,533 @@
+/* ════════════════════════════════════════════════════════════════════════
+ * Khonsera · Sudoku — board / number-pad / controls / win overlay.
+ * Recreated faithfully from the design handoff's <style> block (Sudoku.html).
+ *
+ * Tokens (--paper / --well / --rust / --gold-200 / --sage-soft / --lift /
+ * --sink / --char / --display / --mono …) all resolve from the app's
+ * globals.css. Game-local literals (cell-sink shade, board ink tints like
+ * #eee9df, the charcoal foil #f3efe6, fibre tile sizes) are kept verbatim and
+ * commented as intentional game values — exactly the convention Solitaire uses
+ * for its felt/card colours.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+.desk *,
+.scrim * {
+  box-sizing: border-box;
+}
+
+/* ── the desk ─────────────────────────────────────────────────────────── */
+.desk {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* warm cotton desk gradient — top sheen literal #f0ece3 is a game value */
+  background: radial-gradient(
+    135% 95% at 50% -10%,
+    #f0ece3 0%,
+    var(--paper) 46%,
+    var(--paper-2) 100%
+  );
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--sans);
+}
+.desk::before {
+  /* dry cotton tooth on the desk */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: var(--fibre);
+  background-size: 200px 200px;
+  mix-blend-mode: multiply;
+}
+.stage {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 472px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: max(14px, env(safe-area-inset-top)) 16px 16px;
+}
+
+/* ── header ───────────────────────────────────────────────────────────── */
+.desk .top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.desk .meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.desk .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.desk .stat .k {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.desk .stat .v {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.desk .stat .v.warn {
+  color: var(--rust);
+}
+
+/* ── board ────────────────────────────────────────────────────────────── */
+.board-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+}
+.board {
+  position: relative;
+  --bs: min(100%, 440px, calc(100dvh - 326px));
+  width: var(--bs);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  background: var(--rule-2);
+  border-radius: 14px;
+  padding: 2.5px;
+  box-shadow: var(--lift);
+  gap: 1px;
+  /* each square pressed into the sheet — stacked inner shade + bright lower lip.
+     Game-local literal shade (board ink), kept as a commented game value. */
+  --cell-sink: inset 0 2px 3.5px rgba(40, 36, 28, 0.16),
+    inset 0 1px 1.5px rgba(40, 36, 28, 0.09),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.78);
+}
+.board::after {
+  /* paper tooth on the sheet */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  z-index: 0;
+  background-image: var(--fibre);
+  background-size: 150px 150px;
+  mix-blend-mode: multiply;
+  opacity: 0.12;
+  pointer-events: none;
+}
+/* thick 3x3 separators via cell borders */
+.cell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--well);
+  cursor: pointer;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: min(5.2vw, 6.6vh, 25px);
+  line-height: 1;
+  color: var(--slate-2);
+  overflow: hidden;
+  border: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--cell-sink);
+  transition: background 0.12s ease;
+}
+/* digits read pressed into the stock */
+.cell .d {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 1), 0 -1px 0 rgba(36, 30, 22, 0.28);
+}
+.cell.given {
+  color: var(--ink);
+  font-weight: 600;
+}
+.cell.wrong {
+  color: var(--rust);
+}
+.cell.wrong .d {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* heavy box grid: the board bg shows through 1px gaps as hairlines; the
+   3-boundaries widen to a 2.5px rule via margins (showing the darker bg) */
+.cell[data-c="3"],
+.cell[data-c="6"] {
+  margin-left: 2px;
+}
+.cell[data-r="3"],
+.cell[data-r="6"] {
+  margin-top: 2px;
+}
+
+/* cell states — peer tint #eee9df is a game-local literal (board well shade) */
+.cell.peer {
+  background: #eee9df;
+}
+.cell.same {
+  background: var(--gold-soft);
+}
+.cell.sel {
+  background: var(--gold-200);
+  box-shadow: var(--cell-sink), inset 0 0 0 2px var(--gold-2);
+}
+.cell.sel.wrong {
+  background: var(--rust-2);
+  box-shadow: var(--cell-sink), inset 0 0 0 2px var(--rust);
+}
+.cell .d {
+  animation: sdk-pop 0.14s ease;
+}
+@keyframes sdk-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cell .d {
+    animation: none;
+  }
+}
+
+/* flash a completed unit */
+.cell.flash {
+  animation: sdk-flash 0.5s ease;
+}
+@keyframes sdk-flash {
+  0%,
+  100% {
+    background: var(--well);
+  }
+  35% {
+    background: var(--sage-soft);
+  }
+}
+
+/* ── pencil notes ─────────────────────────────────────────────────────── */
+.notes {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 3px 4px;
+}
+.notes span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: clamp(7px, 2.1vw, 9.5px);
+  font-weight: 500;
+  color: var(--ink-faint);
+  line-height: 1;
+}
+.notes span.hot {
+  color: var(--gold-2);
+}
+
+/* ── number pad ───────────────────────────────────────────────────────── */
+.lower {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+  padding-top: 18px;
+  min-height: 0;
+}
+.tools {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.tool {
+  flex: 1;
+  max-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 0;
+  color: var(--ink-dim);
+}
+.tool .ic {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  box-shadow: var(--lift-sm);
+  position: relative;
+}
+.tool .ic svg {
+  filter: drop-shadow(0 0.7px 0 rgba(255, 255, 255, 0.95))
+    drop-shadow(0 -0.7px 0.3px rgba(36, 30, 22, 0.4));
+}
+.tool .lb {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tool:active .ic {
+  transform: translateY(1px);
+}
+.tool[data-on="true"] .ic {
+  background: var(--char);
+  box-shadow: var(--lift-char);
+  color: #f3efe6; /* warm-white foil on charcoal — game-local literal */
+}
+.tool[data-on="true"] .ic svg {
+  filter: drop-shadow(0 0.7px 0 rgba(255, 255, 255, 0.16))
+    drop-shadow(0 -0.7px 0.3px rgba(0, 0, 0, 0.6));
+}
+.tool[data-on="true"] .lb {
+  color: var(--ink);
+}
+.tool[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+.tool .badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--char);
+  color: #f3efe6; /* warm-white foil — game-local literal */
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* badge raise on charcoal — game-local literal (no --raise-chip-d token) */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1.5px 3px rgba(20, 16, 12, 0.32);
+}
+
+.pad {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 7px;
+}
+.key {
+  position: relative;
+  aspect-ratio: 1 / 1.18;
+  border: 0;
+  border-radius: 13px;
+  cursor: pointer;
+  background: var(--card);
+  box-shadow: var(--lift-sm);
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(20px, 6.2vw, 27px);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 1), 0 -1px 0 rgba(36, 30, 22, 0.28);
+  transition: transform 0.08s ease;
+}
+.key::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 13px;
+  background-image: var(--fibre);
+  background-size: 90px 90px;
+  mix-blend-mode: multiply;
+  opacity: 0.1;
+  pointer-events: none;
+}
+.key:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--shadow-sm);
+}
+.key .left {
+  position: absolute;
+  left: 7px;
+  bottom: 5px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  text-shadow: none;
+}
+.key[data-done="true"] {
+  color: var(--ink-faint);
+  box-shadow: var(--sink);
+  background: var(--card-2);
+}
+.key[data-done="true"] .left {
+  display: none;
+}
+
+/* ── win overlay ──────────────────────────────────────────────────────── */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 18, 14, 0.42);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.scrim[data-show="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.win {
+  width: 100%;
+  max-width: 340px;
+  background: var(--char);
+  border-radius: 18px;
+  padding: 30px 26px 24px;
+  box-shadow: var(--lift-char);
+  text-align: center;
+  transform: translateY(10px) scale(0.97);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.scrim[data-show="true"] .win {
+  transform: none;
+}
+.win .em {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--terra);
+}
+.win h2 {
+  margin: 12px 0 4px;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  color: #f3efe6; /* warm-white foil on charcoal — game-local literal */
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.win .sub {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: #a9a499; /* muted warm grey on charcoal — game-local literal */
+  margin-bottom: 20px;
+}
+.win .stats {
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  margin-bottom: 22px;
+}
+.win .stats .k {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a857c; /* dim warm grey on charcoal — game-local literal */
+  margin-bottom: 5px;
+}
+.win .stats .v {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: #f3efe6; /* warm-white foil — game-local literal */
+}
+
+/* segmented difficulty in header */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--card-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px;
+  box-shadow: var(--sink);
+}
+.seg button {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.seg button[data-active="true"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--lift-sm);
+}
+
+.ghost-btn {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #cfc9bd; /* warm grey on charcoal — game-local literal */
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 11px 22px;
+  cursor: pointer;
+}
+.ink-btn {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--char);
+  background: #f3efe6; /* warm-white foil — game-local literal */
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.5);
+}

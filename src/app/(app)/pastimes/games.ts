@@ -27,7 +27,7 @@ export const GAMES: Game[] = [
     name: "Sudoku",
     blurb: "Numbers to settle into.",
     icon: "sudoku",
-    ready: false,
+    ready: true,
   },
   {
     slug: "crosswords",
