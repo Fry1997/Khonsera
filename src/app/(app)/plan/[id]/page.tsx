@@ -949,7 +949,15 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             </section>
           ) : null}
 
-          <PlanSpine nodes={nodes} journeyDate={dateStart} eventId={id} isWork={journey.mode === "work"} />
+          <PlanSpine
+            nodes={nodes}
+            journeyDate={dateStart}
+            eventId={id}
+            isWork={journey.mode === "work"}
+            customers={pickCustomers ?? []}
+            customerSites={pickSites ?? []}
+            locations={(pickLocations ?? []) as PlacePickerLocation[]}
+          />
 
           {/* TripTools — the operational tray: BOOKINGS · BUDGET · SHARING · PREP ·
               CONSTRAINTS, plus the BUILD THE DAY group (the add/import/finder

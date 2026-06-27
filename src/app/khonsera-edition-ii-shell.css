@@ -543,6 +543,18 @@
 .cc-add-trigger:hover { border-color: var(--gold); color: var(--gold-2); }
 .cc-add-trigger span { font-size: 14px; }
 
+/* ---- Inline "+ Add here" between spine items (.cc-spine-add) --------------- */
+/* Sits in the gap on the timeline; understated until hovered/focused so it
+   never competes with the day, but always tappable on touch. */
+.cc-spine-add { display: inline-flex; align-items: center; gap: 7px; margin: 2px 0 2px 2px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-faint); background: none; border: 1px dashed var(--rule); border-radius: var(--radius-pill);
+  padding: 5px 11px; cursor: pointer; opacity: 0.72;
+  transition: opacity var(--dur-base,120ms) var(--ease-standard,ease), border-color var(--dur-base,120ms) var(--ease-standard,ease), color var(--dur-base,120ms) var(--ease-standard,ease); }
+.cc-spine-add:hover, .cc-spine-add:focus-visible { opacity: 1; border-color: var(--gold); color: var(--gold-2); }
+.cc-spine-add span:first-child { font-size: 13px; }
+.cc-spine-add-label { font-size: inherit; }
+
 /* ---- Constraints surface (.cc-constraints-*) — §5.8, calm summary ---------- */
 .cc-constraints { display: flex; flex-direction: column; gap: var(--space-3); }
 .cc-constraints-summary { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);

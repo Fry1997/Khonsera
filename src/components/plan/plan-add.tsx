@@ -44,15 +44,20 @@ export function PlanAdd({
   customerSites,
   locations,
   // "primary" renders a prominent always-visible button (the plan topbar's
-  // main action); "tile" is the quieter Build-the-day tile. Same sheet either way.
+  // main action); "tile" is the quieter Build-the-day tile; "inline" is the
+  // thin "+ Add here" affordance between two timeline items. Same sheet either way.
   variant = "tile",
+  // When opened from a gap on the spine, the surrounding time pre-fills the
+  // form (the clever bit: add IN context, not add-then-place).
+  seedTime,
 }: {
   journeyId: string;
   journeyDate: string;
   customers: PlacePickerCustomer[];
   customerSites: PlacePickerCustomerSite[];
   locations: PlacePickerLocation[];
-  variant?: "tile" | "primary";
+  variant?: "tile" | "primary" | "inline";
+  seedTime?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -61,12 +66,12 @@ export function PlanAdd({
   // anchor fields — arrive + leave (a window, e.g. 09:00–17:00). Both optional.
   const [title, setTitle] = useState("");
   const [place, setPlace] = useState<PlaceSelection | null>(null);
-  const [arriveBy, setArriveBy] = useState("");
+  const [arriveBy, setArriveBy] = useState(seedTime ?? "");
   const [leaveBy, setLeaveBy] = useState("");
 
   // dinner fields — a reservation: restaurant, date+time, party size, who.
   const [mealDate, setMealDate] = useState(journeyDate);
-  const [mealTime, setMealTime] = useState("19:30");
+  const [mealTime, setMealTime] = useState(seedTime ?? "19:30");
   const [partySize, setPartySize] = useState("");
   const [who, setWho] = useState<BoundContact | null>(null);
 
@@ -102,8 +107,8 @@ export function PlanAdd({
   const [pending, setPending] = useState(false);
 
   function reset() {
-    setTitle(""); setPlace(null); setArriveBy(""); setLeaveBy("");
-    setMealDate(journeyDate); setMealTime("19:30"); setPartySize(""); setWho(null);
+    setTitle(""); setPlace(null); setArriveBy(seedTime ?? ""); setLeaveBy("");
+    setMealDate(journeyDate); setMealTime(seedTime ?? "19:30"); setPartySize(""); setWho(null);
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
     setServiceNumber(""); setSeatNo(""); setTicketClass(""); setTprice(""); setChangeovers([]);
@@ -239,6 +244,16 @@ export function PlanAdd({
       {variant === "primary" ? (
         <button type="button" className="cc-btn cc-btn-gold" onClick={() => setOpen(true)}>
           <span aria-hidden>+</span> Add
+        </button>
+      ) : variant === "inline" ? (
+        <button
+          type="button"
+          className="cc-spine-add"
+          onClick={() => setOpen(true)}
+          aria-label={seedTime ? `Add something around ${seedTime}` : "Add something here"}
+        >
+          <span aria-hidden>+</span>
+          <span className="cc-spine-add-label">Add here{seedTime ? ` · ${seedTime}` : ""}</span>
         </button>
       ) : (
         <button type="button" className="cc-add-trigger" onClick={() => setOpen(true)}>

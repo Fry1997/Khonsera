@@ -18,6 +18,12 @@ import { wallClockToIso } from "@/lib/time-zone";
 import { AccommodationCard } from "@/components/plan/accommodation-card";
 import { NotesPanel } from "@/components/plan/notes-panel";
 import { TflLegPlan } from "@/components/plan/tfl-leg-plan";
+import { PlanAdd } from "@/components/plan/plan-add";
+import type {
+  PlacePickerCustomer,
+  PlacePickerCustomerSite,
+  PlacePickerLocation,
+} from "@/components/place-picker";
 import { RecoveryCard } from "@/components/plan/recovery-card";
 import type { RecoveryOption } from "@/lib/recovery/engine";
 import type { TflLegPlanVM } from "@/lib/integrations/tfl";
@@ -77,13 +83,32 @@ export function PlanSpine({
   journeyDate,
   eventId,
   isWork,
+  customers,
+  customerSites,
+  locations,
 }: {
   nodes: SpineNode[];
   journeyDate: string;
   eventId: string;
   isWork: boolean;
+  // Threaded through so the inline "+ Add here" between items can open the
+  // same add sheet, seeded with the surrounding time.
+  customers: PlacePickerCustomer[];
+  customerSites: PlacePickerCustomerSite[];
+  locations: PlacePickerLocation[];
 }) {
   const router = useRouter();
+
+  // A new thing dropped into the gap after an anchor starts around when that
+  // anchor wraps (its leave time, else its arrive time) — add IN context.
+  // formatClock renders in the display timezone (Europe/London) and returns
+  // "—" when there's no time to show.
+  function seedTimeAfter(n: SpineNode): string | undefined {
+    const iso = n.anchor?.time?.to ?? n.anchor?.time?.from;
+    if (!iso) return undefined;
+    const hhmm = formatClock(iso);
+    return hhmm === "—" ? undefined : hhmm;
+  }
   const [edit, setEdit] = useState<EditTarget | null>(null);
   const [compare, setCompare] = useState<CompareTarget | null>(null);
   const [scan, setScan] = useState<ScanTarget | null>(null);
@@ -171,6 +196,25 @@ export function PlanSpine({
                 ) : null}
               </div>
             </div>
+            {/* Inline "+ Add here" in the gap after this item — opens the add
+                sheet seeded with the surrounding time (add IN context). Shown
+                wherever there's an onward leg (i.e. a real gap to fill). */}
+            {n.after ? (
+              <div className="cc-node">
+                <div className="cc-node-dot" aria-hidden />
+                <div>
+                  <PlanAdd
+                    variant="inline"
+                    seedTime={seedTimeAfter(n)}
+                    journeyId={eventId}
+                    journeyDate={journeyDate}
+                    customers={customers}
+                    customerSites={customerSites}
+                    locations={locations}
+                  />
+                </div>
+              </div>
+            ) : null}
             {n.after ? (
               <div className="cc-node">
                 <div className="cc-node-dot">
