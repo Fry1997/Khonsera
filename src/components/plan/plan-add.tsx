@@ -43,12 +43,16 @@ export function PlanAdd({
   customers,
   customerSites,
   locations,
+  // "primary" renders a prominent always-visible button (the plan topbar's
+  // main action); "tile" is the quieter Build-the-day tile. Same sheet either way.
+  variant = "tile",
 }: {
   journeyId: string;
   journeyDate: string;
   customers: PlacePickerCustomer[];
   customerSites: PlacePickerCustomerSite[];
   locations: PlacePickerLocation[];
+  variant?: "tile" | "primary";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -232,17 +236,23 @@ export function PlanAdd({
 
   return (
     <>
-      <button type="button" className="cc-add-trigger" onClick={() => setOpen(true)}>
-        <span aria-hidden>+</span> Add a fact
-      </button>
+      {variant === "primary" ? (
+        <button type="button" className="cc-btn cc-btn-gold" onClick={() => setOpen(true)}>
+          <span aria-hidden>+</span> Add
+        </button>
+      ) : (
+        <button type="button" className="cc-add-trigger" onClick={() => setOpen(true)}>
+          <span aria-hidden>+</span> Add
+        </button>
+      )}
 
       {open ? (
         <div className="cc-sheet-scrim" onClick={() => setOpen(false)}>
           <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
             <div className="cc-sheet-grip" />
             <header className="cc-sheet-head">
-              <span className="cc-eyebrow">Add to the plan</span>
-              <h3 className="cc-sheet-title">A new fact</h3>
+              <span className="cc-eyebrow">Add to your day</span>
+              <h3 className="cc-sheet-title">What would you like to add?</h3>
             </header>
 
             <div className="cc-kind-row">

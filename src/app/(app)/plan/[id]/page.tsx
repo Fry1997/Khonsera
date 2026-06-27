@@ -849,8 +849,17 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         <Link href={"/plan" as Route} className="cc-event-back">
           ← Plan
         </Link>
-        {/* No global work/personal toggle (retired) — work is a per-item tag,
-            flipped on each anchor in the spine (setStopMode). */}
+        {/* The primary action, where you'd expect it: a persistent + Add at the
+            top of the day. Opens the same sheet as Build-the-day's tile. No
+            global work/personal toggle (retired) — work is a per-item tag. */}
+        <PlanAdd
+          variant="primary"
+          journeyId={id}
+          journeyDate={dateStart}
+          customers={pickCustomers ?? []}
+          customerSites={pickSites ?? []}
+          locations={(pickLocations ?? []) as PlacePickerLocation[]}
+        />
       </header>
 
       {/* DayHeader — mono date eyebrow → the day's PURPOSE as the H1 → From {base}
