@@ -1,0 +1,141 @@
+<!-- @dsCard group="Play" viewport="430x932" name="Pastimes" subtitle="The games tab — lists Solitaire, Sudoku & Gin Rummy, keeps your personal bests, and shows your circle and the weekly standings. v7 paper: raised tiles, debossed glyphs, gold as punctuation." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Khonsera · Pastimes</title>
+<link rel="stylesheet" href="../shared/styles.css">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent; font-family:var(--sans); }
+  #root{ height:100dvh; }
+
+  /* ── the desk ─────────────────────────────────────────────────────────── */
+  .desk{ position:relative; height:100dvh; display:flex; flex-direction:column; align-items:center;
+    background:radial-gradient(135% 95% at 50% -10%, #f0ece3 0%, var(--paper) 46%, var(--paper-2) 100%);
+    overflow:hidden; }
+  .desk::before{ content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:var(--fibre); background-size:200px 200px; mix-blend-mode:multiply; }
+  .stage{ position:relative; z-index:2; width:100%; max-width:472px; height:100%;
+    display:flex; flex-direction:column; padding:max(14px,env(safe-area-inset-top)) 0 0; }
+
+  /* ── header ───────────────────────────────────────────────────────────── */
+  .phead{ flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    padding:4px 18px 12px; }
+
+  /* ── scroll body ──────────────────────────────────────────────────────── */
+  .scroll{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:4px 18px 24px; display:flex; flex-direction:column; gap:18px; }
+  .scroll::-webkit-scrollbar{ width:0; }
+
+  .titleblock{ display:flex; flex-direction:column; gap:7px; padding-top:2px; }
+  .titleblock .eyebrow{ color:var(--gold-2); }
+  .titleblock h1{ font-size:34px; }
+  .titleblock .standfirst{ font-size:14.5px; color:var(--ink-dim); max-width:34ch; }
+
+  /* ── your stat strip ──────────────────────────────────────────────────── */
+  .statstrip{ display:flex; align-items:center; justify-content:space-between;
+    padding:15px 8px; border-radius:var(--radius-md); }
+  .ss{ flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .ss-k{ font-family:var(--mono); font-size:8.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint); }
+  .ss-v{ font-family:var(--display); font-weight:600; font-size:23px; color:var(--ink); letter-spacing:-.01em;
+    font-variant-numeric:tabular-nums; }
+  .ss-div{ width:1px; align-self:stretch; margin:4px 0; background:var(--rule); }
+
+  /* ── section flank ────────────────────────────────────────────────────── */
+  .sect{ margin:6px 2px -4px; color:var(--ink-dim); }
+  .sect svg{ filter:drop-shadow(0 .7px 0 rgba(255,255,255,.9)); }
+
+  /* ── games ────────────────────────────────────────────────────────────── */
+  .games{ display:flex; flex-direction:column; gap:12px; }
+  .game{ display:flex; align-items:center; gap:15px; padding:15px 14px; text-decoration:none;
+    border-radius:var(--radius-md); transition:transform .12s ease, box-shadow .2s ease; }
+  .game:active{ transform:translateY(1px); box-shadow:var(--lift-sm); }
+  .game-ic{ flex:0 0 auto; width:54px; height:54px; border-radius:15px; background:var(--card);
+    display:flex; align-items:center; justify-content:center; color:var(--ink); box-shadow:var(--lift-sm);
+    position:relative; }
+  .game-ic::after{ content:""; position:absolute; inset:0; border-radius:15px; background-image:var(--fibre);
+    background-size:90px 90px; mix-blend-mode:multiply; opacity:.1; pointer-events:none; }
+  .game-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .game-head{ display:flex; align-items:center; gap:9px; }
+  .game-name{ font-family:var(--display); font-weight:600; font-size:17px; color:var(--ink); letter-spacing:-.01em; white-space:nowrap; }
+  .game-line{ font-family:var(--sans); font-size:12.5px; color:var(--ink-dim); }
+  .game-stats{ display:flex; align-items:flex-end; gap:16px; margin-top:7px; }
+  .gs{ display:flex; flex-direction:column; gap:2px; }
+  .gs-k{ font-family:var(--mono); font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); }
+  .gs-v{ font-family:var(--mono); font-size:14px; font-weight:600; color:var(--ink-2); letter-spacing:.01em;
+    font-variant-numeric:tabular-nums; }
+  .gs-lead .gs-v{ font-size:16px; color:var(--ink); }
+  .game-go{ flex:0 0 auto; color:var(--ink-faint); }
+
+  /* ── circle ───────────────────────────────────────────────────────────── */
+  .circle{ padding:6px 14px 14px; border-radius:var(--radius-md); }
+  .friend{ display:flex; align-items:center; gap:13px; padding:11px 0; }
+  .fr-div{ display:block; height:1px; background:var(--rule); }
+  .avatar{ flex:0 0 auto; width:40px; height:40px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; background:var(--char); box-shadow:var(--raise-chip-d); }
+  .av-i{ font-family:var(--mono); font-size:12.5px; font-weight:600; letter-spacing:.02em; color:#ece6da; }
+  .avatar.tint-slate{ background:var(--slate-2); } .avatar.tint-sage{ background:var(--sage); }
+  .avatar.tint-plum{ background:var(--plum); }   .avatar.tint-terra{ background:var(--terra-2); }
+  .friend-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .friend-name{ font-family:var(--sans); font-weight:600; font-size:14px; color:var(--ink); }
+  .friend-line{ font-family:var(--sans); font-size:11.5px; color:var(--ink-dim); }
+  .friend-stat{ font-size:13px; font-weight:600; color:var(--ink-dim); letter-spacing:.02em;
+    font-variant-numeric:tabular-nums; }
+  .friend-stat.beat{ color:var(--gold-2); }
+  .invite{ margin-top:12px; }
+
+  /* ── leaderboard ──────────────────────────────────────────────────────── */
+  .board{ padding:15px 16px 16px; border-radius:var(--radius-md); }
+  .board-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:13px; }
+  .board-head .eyebrow{ color:var(--gold-2); }
+  .board-rows{ display:flex; flex-direction:column; gap:11px; }
+  .brow{ display:flex; align-items:center; gap:11px; }
+  .brank{ flex:0 0 16px; font-size:11px; color:var(--ink-faint); text-align:center; font-variant-numeric:tabular-nums; }
+  .bname{ flex:0 0 52px; font-family:var(--sans); font-size:13px; color:var(--ink-2); }
+  .brow.me .bname{ font-weight:700; color:var(--ink); }
+  .brow.me .brank{ color:var(--gold-2); font-weight:600; }
+  .bbar{ flex:1 1 auto; height:7px; border-radius:99px; background:var(--well); box-shadow:var(--sink); overflow:hidden; }
+  .bfill{ display:block; height:100%; border-radius:99px; background:var(--rule-2); }
+  .brow.me .bfill{ background:var(--gold); }
+  .bpts{ flex:0 0 auto; font-size:13px; font-weight:600; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .brow.me .bpts{ color:var(--ink); }
+
+  .footnote{ text-align:center; padding:4px 16px 2px; line-height:1.5; }
+
+  /* ── bottom tab bar ───────────────────────────────────────────────────── */
+  .tabbar{ flex:0 0 auto; display:flex; align-items:stretch; justify-content:space-around;
+    padding:9px 10px max(11px,env(safe-area-inset-bottom)); background:var(--card);
+    border-top:1px solid var(--line);
+    box-shadow:0 -10px 22px -16px rgba(34,30,24,.3), inset 0 1px 0 rgba(255,255,255,.8); }
+  .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; padding:5px 0;
+    background:none; border:0; cursor:pointer; color:var(--ink-faint); }
+  .tab-ic{ width:42px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:11px; }
+  .tab-lb{ font-family:var(--mono); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; }
+  .tab.active{ color:var(--ink); }
+  .tab.active .tab-ic{ background:var(--char); color:#f3efe6; box-shadow:var(--lift-char); }
+  .tab.active .tab-lb{ color:var(--ink); font-weight:500; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#eae6dd"/>
+    <g transform="translate(30,26)" fill="none" stroke="#20242b" stroke-width="2.4" stroke-linejoin="round">
+      <rect x="0" y="6" width="22" height="30" rx="3" fill="#fbfaf6" transform="rotate(-8 11 21)"/>
+      <rect x="16" y="2" width="22" height="30" rx="3" fill="#fbfaf6" transform="rotate(8 27 17)"/>
+    </g>
+    <circle cx="50" cy="78" r="3.4" fill="#93753c"/>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="pastimes.jsx"></script>
+</body>
+</html>

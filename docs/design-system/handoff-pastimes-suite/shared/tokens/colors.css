@@ -1,0 +1,174 @@
+/* ============================================================================
+ * Khonsera · Colour tokens — PAPER EDITION (v7 source of truth)
+ * Two themes: Stock (light, default) · Dark Cotton (dark).
+ *
+ * The surface language is heavy white cotton stock laid on a warm desk: every
+ * card is a single printed sheet that lifts on a tight contact shadow with a
+ * bright bevelled top lip; ink is letterpress-debossed into the paper; charcoal
+ * blocks are the SAME stock in black.
+ *
+ * Composition rule — ~60% stock · 24% ink · 12% structure · 4% gold.
+ * Ink is cool near-black (#20242B). Gold (#93753C) is MUTED PUNCTUATION — the
+ * brand dot, one status accent — never a fill field. Reference token NAMES
+ * only; never a raw #hex in product code.
+ * ========================================================================== */
+
+:root,
+[data-theme="light"] {
+  /* ── Grounds — warm cotton desk + white stock ─────────────────────────── */
+  --paper: #eae6dd;            /* the desk the sheets rest on */
+  --paper-2: #e1dcd1;
+  --sand: #f2efe8;             /* the lighter sheet the spine sits on */
+  --sand-2: #e7e2d7;
+  --card: #fbfaf6;             /* the workhorse surface — heavy white cotton stock */
+  --card-2: #ebe7dd;           /* recessed well — a clear letterpress step under the page */
+
+  /* ── Material aliases (the v7 names) → mapped onto the grounds above ───── */
+  --ground: var(--paper);
+  --screen: var(--sand);
+  --widget: var(--card);
+  --widget-2: #f4f1e9;
+  --well: var(--card-2);
+  --char: #1f2228;             /* charcoal — the same stock in black */
+  --char-2: #262a31;
+
+  /* ── Text — cool near-black, letterpress ink ──────────────────────────── */
+  --ink: #20242b;              /* primary text — cool near-black */
+  --ink-2: #2a2f37;            /* body */
+  --ink-dim: #565b64;          /* labels, eyebrows, secondary */
+  --ink-faint: #9499a1;        /* placeholders, disabled */
+
+  /* ── Dividers (cool hairlines) ────────────────────────────────────────── */
+  --rule: #dcd8ce;             /* hairline */
+  --rule-2: #c7c2b6;           /* stronger hairline / ghost nodes / leg frame */
+  --line: rgba(40, 44, 52, 0.10);
+  --line-soft: rgba(40, 44, 52, 0.055);
+
+  /* ── Gold — muted brass, PUNCTUATION ONLY. #93753C is the lead step. ───── */
+  --gold-100: #e6dac0;
+  --gold-200: #c7ab73;
+  --gold: #93753c;             /* 400 — the muted moon */
+  --gold-2: #8a6d38;           /* 600 — gold-on-light text */
+  --gold-800: #5c4a22;
+  --gold-soft: #e6dac0;
+  --gold-tint: rgba(147, 117, 60, 0.10);
+  --gold-soft-alpha: rgba(147, 117, 60, 0.16);
+
+  /* ── Rare salts — one per composition, never terra+plum together ──────── */
+  --terra: #bd5a3a;  --terra-2: #9c4a2c;  --terra-deep: #79381e;   /* celebratory / disruption */
+  --plum: #5a3a47;   --plum-soft: #ddd0d6;                         /* rare editorial */
+
+  /* ── Cool foil — non-warm chips / links / info ────────────────────────── */
+  --slate: #475569;  --slate-2: #334155;  --slate-soft: #dce1e8;
+
+  /* ── Status families ──────────────────────────────────────────────────── */
+  --sage: #5f7150;   --sage-2: #d9deca;   --sage-soft: #d9deca;   /* success / "fits" */
+  --amber: #9c6f24;  --amber-2: #ede0bc;  --amber-soft: #ede0bc;  /* caution / "tight" */
+  --rust: #97331f;   --rust-2: #eed3cb;   --rust-soft: #eed3cb;   /* danger / "infeasible" / disruption */
+
+  /* ── Elevation — the paper sheet-lift system ──────────────────────────── */
+  --hi: rgba(255, 255, 255, 0.95);
+  --sh-1: rgba(34, 30, 24, 0.09);
+  --sh-2: rgba(34, 30, 24, 0.15);
+  --sh-3: rgba(34, 30, 24, 0.28);
+  --ink-soft: rgba(32, 36, 43, 0.06);
+
+  --shadow-sm: 0 1.5px 3px rgba(34, 30, 24, 0.09);
+  --shadow: 0 10px 18px -12px rgba(34, 30, 24, 0.24), 0 3px 7px -5px rgba(34, 30, 24, 0.13);
+  --shadow-lg: 0 18px 30px -18px rgba(34, 30, 24, 0.28), 0 5px 12px -6px rgba(34, 30, 24, 0.15);
+
+  /* a single thick sheet lifting off the desk — tight contact + soft cast,
+     bevelled bright top lip, a hairline edge */
+  --lift: inset 0 1.5px 0 rgba(255, 255, 255, 0.9),
+          0 0 0 0.5px rgba(40, 44, 52, 0.045),
+          0 18px 30px -18px rgba(34, 30, 24, 0.28),
+          0 5px 12px -6px rgba(34, 30, 24, 0.15),
+          0 1.5px 3px rgba(34, 30, 24, 0.09); /* @kind shadow */
+  --lift-sm: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+          0 0 0 0.5px rgba(40, 44, 52, 0.04),
+          0 10px 18px -12px rgba(34, 30, 24, 0.24),
+          0 3px 7px -5px rgba(34, 30, 24, 0.13); /* @kind shadow */
+  /* letterpress recess — ink bitten into the stock, bright lower lip */
+  --sink: inset 0 2px 4px rgba(40, 36, 28, 0.16),
+          inset 0 1px 2px rgba(40, 36, 28, 0.10),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.65); /* @kind shadow */
+  /* charcoal block lifting off the sheet */
+  --lift-char: 0 14px 26px -14px rgba(20, 16, 12, 0.5),
+          0 3px 8px -3px rgba(20, 16, 12, 0.34),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08); /* @kind shadow */
+
+  /* badge/chip raise — a tiny tile lifting off the sheet: crisp bright lip +
+     a tight contact shadow, NO blur halo (blur reads as a smudge at this size).
+     --raise-chip on light fills, --raise-chip-d on charcoal/dark fills. */
+  --raise-chip:   inset 0 1px 0 rgba(255, 255, 255, 0.75),
+          0 0 0 0.5px rgba(40, 44, 52, 0.04),
+          0 1px 1.5px rgba(34, 30, 24, 0.13); /* @kind shadow */
+  --raise-chip-d: inset 0 1px 0 rgba(255, 255, 255, 0.14),
+          0 1.5px 3px rgba(20, 16, 12, 0.32); /* @kind shadow */
+
+  /* component elevation aliases — the sheet lift */
+  --elevation-card: var(--lift-sm);
+  --elevation-raised: var(--lift);
+
+  /* ── Semantic aliases over the brand ramp — follow the active theme ───── */
+  --success: var(--sage);    --success-soft: var(--sage-soft);
+  --warning: var(--amber);   --warning-soft: var(--amber-soft);
+  --danger: var(--rust);     --danger-soft: var(--rust-soft);
+  --disruption: var(--rust); --info: var(--slate);  --info-soft: var(--slate-soft);
+
+  /* ── Paper tooth — a baked fractal-noise tile (no JS needed). The planner
+   * pages regenerate --fibre at runtime for a crisper grain; this static
+   * fallback gives every consumer the dry cotton tooth out of the box. ──── */
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cdefs%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5 0.55' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.45 0 0 0 0 0.43 0 0 0 0 0.38 0 0 0 0.55 0'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"); /* @kind other */
+
+  color-scheme: light;
+}
+
+/* ── Dark Cotton — the same stock in black. Charcoal grounds, warm-white ink,
+ * muted brass. Used for Live / overnight / premium full-bleed. ──────────── */
+[data-theme="dark"] {
+  --paper: #16181d;  --paper-2: #101216;  --sand: #1c1f25;  --sand-2: #23272f;
+  --card: #20242b;   --card-2: #181b21;
+  --ground: var(--paper); --screen: var(--sand);
+  --widget: var(--card); --widget-2: #262a31; --well: var(--card-2);
+  --char: #0e1014;   --char-2: #16181d;
+  --ink: #f1ece2;    --ink-2: #d9d3c7;    --ink-dim: #9a958c;  --ink-faint: #6a665e;
+  --rule: #2e323a;   --rule-2: #3c414a;
+  --line: rgba(255, 255, 255, 0.07); --line-soft: rgba(255, 255, 255, 0.04);
+  --gold-100: #3a2f1c; --gold-200: #6e5824; --gold: #c2a05a; --gold-2: #ab8c44; --gold-800: #e6cf94;
+  --gold-soft: #2f2818; --gold-tint: rgba(194, 160, 90, 0.12); --gold-soft-alpha: rgba(194, 160, 90, 0.18);
+  --terra: #d2724f;  --terra-2: #bd5a3a;  --terra-deep: #9c4a2c;
+  --plum: #8a5a6e;   --plum-soft: #2e2029;
+  --slate: #8b9bb0;  --slate-2: #6f7e92;  --slate-soft: #242b35;
+  --sage: #8f9e74;   --sage-2: #262d20;   --sage-soft: #262d20;
+  --amber: #cf9f54;  --amber-2: #2f2613;  --amber-soft: #2f2613;
+  --rust: #d2674e;   --rust-2: #2f1c16;   --rust-soft: #2f1c16;
+  --hi: rgba(255, 255, 255, 0.10);
+  --sh-1: rgba(0, 0, 0, 0.4); --sh-2: rgba(0, 0, 0, 0.5); --sh-3: rgba(0, 0, 0, 0.65);
+  --ink-soft: rgba(241, 236, 226, 0.07);
+  --shadow-sm: 0 1.5px 3px rgba(0, 0, 0, 0.5);
+  --shadow: 0 10px 18px -12px rgba(0, 0, 0, 0.6), 0 3px 7px -5px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 34px -18px rgba(0, 0, 0, 0.7), 0 5px 12px -6px rgba(0, 0, 0, 0.55);
+  --lift: inset 0 1px 0 rgba(255, 255, 255, 0.08),
+          inset 0 0 0 0.5px rgba(0, 0, 0, 0.4),
+          0 18px 30px -18px rgba(0, 0, 0, 0.7),
+          0 5px 12px -6px rgba(0, 0, 0, 0.5); /* @kind shadow */
+  --lift-sm: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+          0 10px 18px -12px rgba(0, 0, 0, 0.6),
+          0 3px 7px -5px rgba(0, 0, 0, 0.45); /* @kind shadow */
+  --sink: inset 0 2px 5px rgba(0, 0, 0, 0.55),
+          inset 0 1px 2px rgba(0, 0, 0, 0.4),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.05); /* @kind shadow */
+  --lift-char: 0 14px 26px -14px rgba(0, 0, 0, 0.75),
+          0 3px 8px -3px rgba(0, 0, 0, 0.55),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06); /* @kind shadow */
+  --raise-chip:   inset 0 1px 0 rgba(255, 255, 255, 0.07),
+          0 1.5px 3px rgba(0, 0, 0, 0.5); /* @kind shadow */
+  --raise-chip-d: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+          0 1.5px 3px rgba(0, 0, 0, 0.6); /* @kind shadow */
+  --elevation-card: var(--lift-sm);
+  --elevation-raised: var(--lift);
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cdefs%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5 0.55' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.85 0 0 0 0 0.84 0 0 0 0 0.80 0 0 0 0.5 0'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"); /* @kind other */
+
+  color-scheme: dark;
+}
