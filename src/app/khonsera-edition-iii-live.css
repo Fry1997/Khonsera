@@ -213,3 +213,53 @@
 .cc-weather-hour-time { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .cc-weather-hour-temp { font-family: var(--display); font-size: 17px; font-weight: var(--fw-medium, 500); color: var(--ink); }
 .cc-weather-hour-cond { font-size: 10px; color: var(--ink-dim); text-align: center; line-height: 1.2; }
+
+/* ── Day header (2026-06-27) ─────────────────────────────────────────────────
+   The /today planner composition's opening movement, mirroring the handoff
+   DayHeader — minus its work/personal toggle (work is the inspection lens, not a
+   global control). A mono date eyebrow, the day's PURPOSE as the H1, the origin
+   row, then a ruled "THE POINT OF THE DAY" over the day's note rendered as the
+   Satoshi-light standfirst. Tokens only; gold is punctuation, never a fill. */
+.cc-day-header { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-day-header-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 10.5px);
+  letter-spacing: var(--ls-eyebrow, 0.22em); text-transform: uppercase; color: var(--ink-dim); }
+.cc-day-purpose { font-family: var(--display); font-weight: var(--fw-medium, 500);
+  font-size: var(--fs-h1, 40px); line-height: var(--lh-h1, 1.05); letter-spacing: var(--ls-h1, -0.03em);
+  margin: 0; color: var(--ink); text-wrap: balance; }
+.cc-day-origin { display: inline-flex; align-items: baseline; gap: var(--space-2);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-dim); }
+.cc-day-origin strong { color: var(--ink-2); font-weight: var(--fw-medium, 500); }
+
+/* THE POINT OF THE DAY — ruled-off mono eyebrow over the upright standfirst.
+   NEVER serif, NEVER italic: the note is Satoshi-light (300), emphasis via an
+   upright gold-2 medium <em>. .cc-standfirst is defined fresh here so it does NOT
+   inherit the retired serif/italic globals.css .standfirst. */
+.cc-day-point { display: flex; flex-direction: column; gap: var(--space-2-5);
+  margin-top: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--rule); }
+.cc-day-point-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 10.5px);
+  letter-spacing: var(--ls-eyebrow, 0.22em); text-transform: uppercase; color: var(--ink-faint); }
+.cc-standfirst { font-family: var(--sans); font-weight: var(--fw-light, 300); font-style: normal;
+  font-size: 17px; line-height: 1.5; letter-spacing: -0.005em; color: var(--ink-2);
+  margin: 0; max-width: 58ch; text-wrap: pretty; }
+.cc-standfirst em { font-style: normal; color: var(--gold-2); font-weight: var(--fw-medium, 500); }
+
+/* ── Route map band (2026-06-27) ─────────────────────────────────────────────
+   The real JourneyMap (PlanMap → .cc-plan-map) embedded on /today as a restrained
+   paper map of the day's door-to-door route. A mono eyebrow names it; the map
+   itself reuses the .cc-plan-map inset band from the Edition III layer. */
+.cc-today-map { display: flex; flex-direction: column; gap: var(--space-2-5); }
+.cc-today-map-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 10.5px);
+  letter-spacing: var(--ls-eyebrow, 0.22em); text-transform: uppercase; color: var(--ink-faint); }
+
+/* ── Build-the-day action group (2026-06-27) ─────────────────────────────────
+   Lives inside the TRIP TOOLS tray (.cc-plan-tools). A "BUILD THE DAY" eyebrow
+   over the existing add/import/finder actions, laid out as a soft tile grid so the
+   reused components (PlanImport, PlanAdd, FlightFinder, StayFinder, calendar) sit
+   coherently rather than as a loose button row. */
+.cc-build-day { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-build-day-eyebrow { font-family: var(--mono); font-size: var(--fs-micro, 10.5px);
+  letter-spacing: var(--ls-eyebrow, 0.22em); text-transform: uppercase; color: var(--ink-faint); }
+.cc-build-day-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+.cc-build-day-tiles { display: grid; grid-template-columns: 1fr; gap: var(--space-2); }
+@media (min-width: 560px) { .cc-build-day-tiles { grid-template-columns: 1fr 1fr; } }
+.cc-build-day-tiles > * { width: 100%; }

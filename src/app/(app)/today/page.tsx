@@ -24,6 +24,14 @@ import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import { TodayDemo } from "@/components/today/today-demo";
 import { isDemoModeActive } from "@/lib/demo-mode";
+import { PlanMap } from "@/components/plan/plan-map";
+import { buildJourneyFromStops, type StopForMap, type TransitionForMap } from "@/components/journey-map/from-stops";
+import { PlanAdd } from "@/components/plan/plan-add";
+import { PlanImport } from "@/components/plan/plan-import";
+import { PlanCalendarImport } from "@/components/plan/plan-calendar-import";
+import { FlightFinder } from "@/components/plan/flight-finder";
+import { StayFinder } from "@/components/plan/stay-finder";
+import type { PlacePickerLocation, PlacePickerCustomer, PlacePickerCustomerSite } from "@/components/place-picker";
 
 const londonHHMM = (iso?: string | null) =>
   iso
@@ -141,7 +149,16 @@ export default async function TodayPage({
   // "from" for the first leave-by when live location isn't granted, so the day
   // never loses its start point.
   let baseCoord: { lat: number; lng: number } | null = null;
+  // The day's origin name — the `start` stop's place, for the day-header "From …"
+  // row. Falls back to nothing (header omits the row) when no base is set.
+  let baseLabel: string | null = null;
   let tickets: TicketVM[] = [];
+  // Door-to-door route-map inputs. The JourneyMap reads ONE chronological stop
+  // list + its transition polylines; we build it from the single covering Event
+  // (the common case) so the map stays a coherent single route. With several
+  // overlapping plans there's no one door-to-door line, so the map is omitted.
+  let mapStops: StopForMap[] = [];
+  let mapTransitions: TransitionForMap[] = [];
   // Per-leg rail/air passes keyed by their BOARDING stop id — folded once here
   // from each event's booked transit run, so the spine can drop each pass inline
   // at the leg it belongs to (the run's departure / each changeover stop).
@@ -157,7 +174,7 @@ export default async function TodayPage({
         .order("sequence"),
       supabase
         .from("transitions")
-        .select("from_stop_id, to_stop_id, mode, computed_duration_minutes")
+        .select("from_stop_id, to_stop_id, mode, computed_duration_minutes, overview_polyline")
         .eq("itinerary_id", ev.id),
       loadJourneyTickets(ev.id),
     ]);
@@ -165,11 +182,40 @@ export default async function TodayPage({
     const evStops = (s ?? []) as unknown as Array<StopRow & { metadata?: Record<string, unknown> | null }>;
     for (const st of evStops) {
       if (st.type === "start" && !baseCoord) baseCoord = coordOf(st);
+      if (st.type === "start" && !baseLabel) baseLabel = placeOf(st) ?? st.title ?? null;
       if (isToday(st.start_time, today)) allStops.push({ ...st, mode: evMode });
     }
-    for (const tr of (t ?? []) as Array<{ from_stop_id: string; to_stop_id: string; mode: string | null; computed_duration_minutes: number | null }>) {
+    const evTransitions = (t ?? []) as Array<{ from_stop_id: string; to_stop_id: string; mode: string | null; computed_duration_minutes: number | null; overview_polyline?: string | null }>;
+    for (const tr of evTransitions) {
       legFromStops.add(tr.from_stop_id);
       if (tr.to_stop_id) travelByToStop.set(tr.to_stop_id, { minutes: tr.computed_duration_minutes, mode: tr.mode });
+    }
+    // Route map: only when exactly one plan covers today — a single coherent
+    // door-to-door line. Carries the full event's stops (incl. home base) +
+    // transition polylines so the map shows the whole route, not just today's slice.
+    if (covering.length === 1) {
+      const geo = (g: Geo) =>
+        g ? { name: g.name ?? null, latitude: g.latitude ?? null, longitude: g.longitude ?? null } : null;
+      mapStops = evStops.map((st) => ({
+        id: st.id,
+        title: st.title,
+        location: geo(st.location),
+        customer_site: geo(st.customer_site),
+        transport_hub: st.transport_hub
+          ? {
+              code: st.transport_hub.code ?? null,
+              name: st.transport_hub.name ?? null,
+              latitude: st.transport_hub.latitude ?? null,
+              longitude: st.transport_hub.longitude ?? null,
+            }
+          : null,
+      }));
+      mapTransitions = evTransitions.map((tr) => ({
+        from_stop_id: tr.from_stop_id,
+        mode: tr.mode ?? "walk",
+        overview_polyline: tr.overview_polyline ?? null,
+        computed_duration_minutes: tr.computed_duration_minutes ?? null,
+      }));
     }
     tickets = tickets.concat(jt);
 
@@ -312,6 +358,85 @@ export default async function TodayPage({
   // Weather where you are — the integration, made visible (cached → renders whole).
   const weather = await getLocalWeather();
 
+  // ── Day-header inputs ──────────────────────────────────────────────────────
+  // Mono date eyebrow (THU 25 JUN), and the day's PURPOSE as the H1: the day's
+  // primary appointment/title. Prefer an explicit appointment/event title, else
+  // the single plan's own title, else a calm fallback.
+  const dateEyebrow = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  })
+    .format(now)
+    .toUpperCase();
+
+  // The day's primary anchor — a real event/appointment, not a travel node
+  // (departure/arrival/changeover) or a base bookend (start/end). Its title is
+  // the most "what the day is for" label available.
+  const isEventStop = (s: StopRow) =>
+    roleOf(s.type) === "stop" && s.type !== "start" && s.type !== "end";
+  const primaryAnchor =
+    allStops.find((s) => s.type.includes("appointment")) ??
+    allStops.find(isEventStop) ??
+    null;
+  const dayPurpose =
+    primaryAnchor?.title?.trim() ||
+    (covering.length === 1 ? covering[0].title?.trim() : null) ||
+    "Your day";
+
+  // The day's note — the single covering plan's intention, rendered as the
+  // Satoshi-light standfirst. Omitted entirely when there's no note (never
+  // fabricated). Only the single-plan case has one unambiguous note.
+  let dayNote: string | null = null;
+  if (covering.length === 1) {
+    const { data: intent } = await supabase
+      .from("intentions")
+      .select("description")
+      .eq("itinerary_id", covering[0].id)
+      .limit(1)
+      .maybeSingle();
+    const d = (intent as { description?: string | null } | null)?.description?.trim();
+    dayNote = d || null;
+  }
+
+  // ── Route map ──────────────────────────────────────────────────────────────
+  // Build the real JourneyMap from the single covering plan's stops + transition
+  // polylines. Null (omitted) when nothing is routable or several plans overlap.
+  const todayJourney =
+    covering.length === 1
+      ? buildJourneyFromStops(mapStops, mapTransitions, {
+          id: covering[0].id,
+          eyebrow: `${dateEyebrow} · DOOR TO DOOR`,
+        })
+      : null;
+
+  // ── Trip-tools wiring ──────────────────────────────────────────────────────
+  // The plan tools (add / import / finders) are scoped to ONE itinerary; today
+  // can compose several. With exactly one covering plan we wire them to it; with
+  // several (or none) the tray links out to /plan instead of guessing a target.
+  const toolsEvent = covering.length === 1 ? covering[0] : null;
+  let toolPickers: {
+    customers: PlacePickerCustomer[];
+    customerSites: PlacePickerCustomerSite[];
+    locations: PlacePickerLocation[];
+  } | null = null;
+  if (toolsEvent) {
+    const [{ data: pc }, { data: psite }, { data: ploc }] = await Promise.all([
+      supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
+      supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
+      supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
+    ]);
+    toolPickers = {
+      customers: (pc ?? []) as PlacePickerCustomer[],
+      customerSites: (psite ?? []) as PlacePickerCustomerSite[],
+      locations: (ploc ?? []) as PlacePickerLocation[],
+    };
+  }
+  const [pgiven = "", pfamily = ""] = String(ctx.fullName ?? "").trim().split(/\s+/);
+  const toolPassenger = { givenName: pgiven, familyName: pfamily, email: ctx.email ?? "" };
+  const lastTodayStop = allStops.length ? allStops[allStops.length - 1] : null;
+
   return (
     <div className="cc-screen" data-disrupted={disruptions.length ? "true" : undefined}>
       {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
@@ -319,9 +444,18 @@ export default async function TodayPage({
       <header className="cc-today-head">
         <div>
           <span className="cc-eyebrow">Today</span>
-          <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-            Right now
-          </h1>
+          {/* When the day header renders below (it carries the page <h1> = the
+              day's purpose), this stays a quiet contextual strip — not a second
+              h1. With no day, it remains the screen's heading. */}
+          {anchors.length ? (
+            <p className="cc-screen-title" style={{ marginTop: 6 }}>
+              Right now
+            </p>
+          ) : (
+            <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
+              Right now
+            </h1>
+          )}
         </div>
         {weather ? (
           <div className="cc-weather" data-day={weather.isDay ? "true" : "false"}>
@@ -352,13 +486,88 @@ export default async function TodayPage({
 
       {anchors.length ? (
         <>
+          {/* 1 · Day header — the day's purpose as the H1, its origin, and the
+              point of the day as an upright Satoshi-light standfirst. No toggle:
+              work is the inspection lens, not a global control. */}
+          <header className="cc-day-header">
+            <span className="cc-day-header-eyebrow">{dateEyebrow}</span>
+            <h1 className="cc-day-purpose">{dayPurpose}</h1>
+            {baseLabel ? (
+              <p className="cc-day-origin">
+                From <strong>{baseLabel}</strong>
+              </p>
+            ) : null}
+            {dayNote ? (
+              <div className="cc-day-point">
+                <span className="cc-day-point-eyebrow">The point of the day</span>
+                <p className="cc-standfirst">{dayNote}</p>
+              </div>
+            ) : null}
+          </header>
+
           <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
+
+          {/* 2 · Route map — the real JourneyMap as a restrained paper map of the
+              day's door-to-door route. Omitted when nothing is routable. */}
+          {todayJourney ? (
+            <section className="cc-today-map" aria-label="The day's route">
+              <span className="cc-today-map-eyebrow">The route, door to door</span>
+              <PlanMap journey={todayJourney} />
+            </section>
+          ) : null}
 
           {(proj.state === "readiness" || proj.state === "in-transit") && showNextDocument && nextTicket ? (
             <TodayDocument ticket={nextTicket} />
           ) : null}
 
           <TodaySpine anchors={spineAnchors} nextId={nextSpine?.id ?? null} />
+
+          {/* 3 · Trip tools — a collapsible tray reusing the plan's add/import/
+              finder actions. Wired to the single covering plan; with several (or
+              none) it points to /plan rather than guessing a target. */}
+          <details className="cc-plan-tools">
+            <summary className="cc-plan-tools-summary">
+              <span className="cc-plan-tools-title">Trip tools</span>
+              <span className="cc-plan-tools-hint">build the day · import · finders</span>
+            </summary>
+            <div className="cc-plan-tools-body">
+              <div className="cc-build-day">
+                <span className="cc-build-day-eyebrow">Build the day</span>
+                {toolsEvent && toolPickers ? (
+                  <>
+                    <div className="cc-build-day-actions">
+                      <PlanImport
+                        itineraryId={toolsEvent.id}
+                        lastStopId={lastTodayStop?.id ?? null}
+                        lastStopLabel={lastTodayStop?.title ?? "your day"}
+                      />
+                    </div>
+                    <div className="cc-build-day-tiles">
+                      <PlanAdd
+                        journeyId={toolsEvent.id}
+                        journeyDate={today}
+                        customers={toolPickers.customers}
+                        customerSites={toolPickers.customerSites}
+                        locations={toolPickers.locations}
+                      />
+                      <PlanCalendarImport itineraryId={toolsEvent.id} />
+                      <FlightFinder itineraryId={toolsEvent.id} defaultDate={today} defaultPassenger={toolPassenger} />
+                      <StayFinder itineraryId={toolsEvent.id} defaultDate={today} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="cc-build-day-actions">
+                    <p className="cc-day-origin" style={{ marginBottom: "var(--space-1)" }}>
+                      {covering.length > 1 ? "Several plans cover today" : "Add to a plan"}
+                    </p>
+                    <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">
+                      Open the plan to build the day
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
 
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
             <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">
