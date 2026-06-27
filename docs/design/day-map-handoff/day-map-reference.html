@@ -1,0 +1,817 @@
+<!-- @dsCard group="Khonsera app" viewport="900x720" name="Day Map — journey visualisation" subtitle="Themed Protomaps vector basemap + route/marker overlays — the dusk visual contract" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Khonsera · Day Map — dusk theme reference</title>
+
+<template id="__bundler_thumbnail" data-bg-color="#ece6d6">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#ece6d6"/>
+    <path d="M360,640 L470,520" stroke="#b8893f" stroke-width="10" stroke-linecap="round" stroke-dasharray="10 34" fill="none"/>
+    <path d="M470,520 C 620,360 700,260 840,200" stroke="rgba(20,16,10,.4)" stroke-width="26" stroke-linecap="round" fill="none"/>
+    <path d="M470,520 C 620,360 700,260 840,200" stroke="#9c6714" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <circle cx="360" cy="640" r="34" fill="#9c6714" stroke="#fbf8f1" stroke-width="16"/>
+    <circle cx="470" cy="520" r="24" fill="#1a1612" stroke="#fbf8f1" stroke-width="13"/>
+    <circle cx="840" cy="200" r="34" fill="#9c6714" stroke="#fbf8f1" stroke-width="16"/>
+  </svg>
+</template>
+
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="styles.css">
+
+<style>
+  /* ── page chrome — Khonsera v7 paper ─────────────────────────────────── */
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased; }
+  :root{
+    --map-w: 430px;
+    /* ── PROPOSED DUSK PALETTE (the values Code drops into dusk.ts) ─────── */
+    --m-land:        #efe9da;
+    --m-land-edge:   #e8e2d1;
+    --m-water:       #c4cfd4;   /* calm pale slate-blue — no longer sage-green */
+    --m-park:        #dde2cd;   /* warm muted sage — greens live HERE, off water */
+    --m-road:        #fdfcf8;
+    --m-road-stroke: #e1d9c7;
+    --m-highway:     #efe4cf;   /* warm sand — NOT gold (gold stays the route) */
+    --m-rail:        #cdc2ab;
+    --m-building:    #e7e0ce;
+    --m-building-o:  #ddd4bf;
+    --m-boundary:    #b4a995;
+    --m-city-label:  #33302a;
+    --m-country-lab: #6e6557;
+    --m-halo:        #fbf8f1;
+    /* overlays */
+    --m-gold:        #9c6714;   /* outbound route */
+    --m-gold-muted:  #b8893f;
+    --m-return:      #1d6f73;   /* return-leg teal */
+    --m-casing:      rgba(20,16,10,.46);
+    --m-marker-end:  #9c6714;   /* origin / destination dot — gold punctuation */
+    --m-marker-mid:  #1a1612;   /* changeover dot — ink */
+    --m-marker-ring: #fbf8f1;
+    --m-badge:       #1a1612;
+    --m-badge-text:  #fbf8f1;
+  }
+  html,body{ background:var(--paper); color:var(--ink);
+    font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+  body{
+    background-image:var(--fibre);
+    background-blend-mode:multiply;
+    min-height:100vh;
+    padding:30px 26px 64px;
+  }
+  .mono{ font-family:'JetBrains Mono','SFMono-Regular',ui-monospace,monospace; }
+
+  .wrap{ max-width:1140px; margin:0 auto; }
+
+  /* ── header ──────────────────────────────────────────────────────────── */
+  .head{ display:flex; align-items:flex-start; gap:16px; margin-bottom:24px; }
+  .brand-dot{ width:9px; height:9px; border-radius:50%; background:var(--gold);
+    box-shadow:0 0 0 3px var(--gold-tint); margin-top:9px; flex:0 0 auto; }
+  .head h1{ font-size:27px; font-weight:600; letter-spacing:-.02em; line-height:1.08;
+    text-shadow:0 1px 0 rgba(255,255,255,.95), 0 -1px 0 rgba(36,30,22,.22); }
+  .head .sub{ font-size:13.5px; color:var(--ink-dim); margin-top:5px; max-width:62ch; line-height:1.5; }
+  .eyebrow{ font-size:10px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--gold-2); font-weight:600; margin-bottom:8px; }
+
+  /* ── layout: map + side spec ─────────────────────────────────────────── */
+  .stage{ display:grid; grid-template-columns:var(--map-w) 1fr; gap:30px; align-items:start; }
+  @media (max-width:920px){ .stage{ grid-template-columns:1fr; } }
+
+  /* phone frame holding the live map */
+  .phone{ width:var(--map-w); border-radius:34px; background:var(--card);
+    padding:11px; box-shadow:var(--lift); position:relative; }
+  .phone::after{ content:""; position:absolute; inset:11px; border-radius:24px;
+    pointer-events:none; box-shadow:inset 0 0 0 1px rgba(40,44,52,.05); z-index:5; }
+  .screen{ border-radius:24px; overflow:hidden; background:var(--m-land); position:relative;
+    height:740px; box-shadow:var(--sink); }
+  #map{ position:absolute; inset:0; }
+
+  /* in-map top caption (the /plan eyebrow) */
+  .map-cap{ position:absolute; top:0; left:0; right:0; z-index:3; padding:16px 16px 30px;
+    background:linear-gradient(180deg, rgba(251,250,246,.96) 0%, rgba(251,250,246,.8) 46%, rgba(251,250,246,0) 100%);
+    pointer-events:none; }
+  .map-cap .ttl{ font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-dim); font-weight:600; }
+  .map-cap .rt{ font-size:18px; font-weight:600; letter-spacing:-.01em; margin-top:3px;
+    display:flex; align-items:center; gap:9px;
+    text-shadow:0 1px 0 rgba(255,255,255,.9); }
+  .map-cap .rt b{ font-weight:600; }
+  .map-cap .arr{ color:var(--gold-2); }
+
+  /* bottom totals caption */
+  .map-foot{ position:absolute; left:0; right:0; bottom:0; z-index:3; padding:30px 14px 16px;
+    background:linear-gradient(0deg, rgba(251,250,246,.94) 0%, rgba(251,250,246,.7) 50%, rgba(251,250,246,0) 100%);
+    display:flex; gap:8px; align-items:flex-end; justify-content:space-between; pointer-events:none; }
+  .totals{ display:flex; gap:7px; }
+  .tot{ background:var(--card); border-radius:11px; padding:7px 11px 6px; box-shadow:var(--raise-chip); }
+  .tot .k{ font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-dim); display:block; }
+  .tot .v{ font-size:14px; font-weight:600; letter-spacing:-.01em; margin-top:1px; }
+  .tot .v .u{ font-size:9.5px; color:var(--ink-dim); font-weight:500; }
+
+  /* state switcher */
+  .states{ display:flex; gap:7px; margin-top:16px; flex-wrap:wrap; }
+  .seg{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; font-weight:500; color:var(--ink-dim);
+    background:var(--card); border:none; border-radius:10px; padding:9px 13px; cursor:pointer;
+    box-shadow:var(--raise-chip); transition:transform .12s, color .12s; }
+  .seg:hover{ color:var(--ink); }
+  .seg.on{ color:var(--m-badge-text); background:var(--char); box-shadow:var(--raise-chip-d); }
+  .seg:active{ transform:translateY(1px); }
+
+  /* legend */
+  .legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; padding:13px 15px;
+    background:var(--card); border-radius:14px; box-shadow:var(--lift-sm); }
+  .leg{ display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-2); }
+  .leg .sw{ width:22px; height:0; flex:0 0 auto; }
+  .leg .ln{ border-top:3px solid var(--m-gold); border-radius:2px; }
+  .leg .ln.ret{ border-top-color:var(--m-return); }
+  .leg .ln.walk{ border-top:2px dotted var(--ink-dim); }
+  .leg .dot{ width:11px; height:11px; border-radius:50%; box-shadow:0 0 0 2px var(--m-marker-ring); }
+  .leg .dot.end{ background:var(--m-marker-end); }
+  .leg .dot.mid{ background:var(--m-marker-mid); }
+
+  /* ── markers (HTML, drawn over the map) ──────────────────────────────── */
+  .mk-dot{ width:10px; height:10px; border-radius:50%; background:var(--m-marker-mid);
+    box-shadow:0 0 0 2.5px var(--m-marker-ring), 0 1px 3px rgba(20,16,12,.5); cursor:default; }
+  .mk-dot.end{ width:14px; height:14px; background:var(--m-marker-end);
+    box-shadow:0 0 0 3px var(--m-marker-ring), 0 1px 4px rgba(20,16,12,.55); }
+  .mk-pill{ position:absolute; top:50%; transform:translateY(-50%);
+    background:var(--m-badge); color:var(--m-badge-text); border-radius:7px;
+    padding:4px 8px 3px; font-family:'JetBrains Mono',monospace; font-size:10px;
+    letter-spacing:.07em; font-weight:500; white-space:nowrap; line-height:1;
+    box-shadow:0 2px 6px rgba(20,16,12,.4); pointer-events:none;
+    transition:opacity .14s; }
+  .mk-pill.right{ left:18px; }
+  .mk-pill.left{ right:18px; }
+  .mk-pill.hide{ opacity:0; }
+  .mk-pill .sub{ opacity:.62; font-size:8.5px; margin-left:5px; letter-spacing:.04em; }
+
+  /* ── spec panel ──────────────────────────────────────────────────────── */
+  .spec{ display:flex; flex-direction:column; gap:22px; padding-top:4px; }
+  .card{ background:var(--card); border-radius:16px; box-shadow:var(--lift-sm);
+    padding:19px 20px 20px; position:relative; overflow:hidden; }
+  .card::after{ content:""; position:absolute; inset:0; background-image:var(--fibre);
+    background-blend-mode:multiply; opacity:.5; pointer-events:none; }
+  .card > *{ position:relative; }
+  .card h2{ font-size:14px; font-weight:600; letter-spacing:-.01em; margin-bottom:3px;
+    text-shadow:0 1px 0 rgba(255,255,255,.9); }
+  .card .note{ font-size:11.5px; color:var(--ink-dim); line-height:1.5; margin-bottom:14px; }
+  .card .note b{ color:var(--ink-2); font-weight:600; }
+
+  table.slots{ width:100%; border-collapse:collapse; font-size:11.5px; }
+  table.slots th{ text-align:left; font-family:'JetBrains Mono',monospace; font-size:8.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); font-weight:500;
+    padding:0 8px 7px 0; border-bottom:1px solid var(--rule); }
+  table.slots td{ padding:7px 8px 7px 0; border-bottom:1px solid var(--line-soft); vertical-align:middle; }
+  table.slots tr:last-child td{ border-bottom:none; }
+  table.slots .tok{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-2); white-space:nowrap; }
+  table.slots .hex{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-dim); white-space:nowrap; }
+  table.slots .what{ color:var(--ink-dim); font-size:10.5px; line-height:1.4; }
+  .chip{ display:inline-flex; align-items:center; gap:7px; }
+  .sw-box{ width:15px; height:15px; border-radius:4px; flex:0 0 auto;
+    box-shadow:inset 0 0 0 1px rgba(40,44,52,.12), 0 1px 2px rgba(34,30,24,.18); }
+  .chg{ font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--gold-2);
+    background:var(--gold-tint); border-radius:5px; padding:2px 6px; margin-left:6px; letter-spacing:.04em; }
+
+  .geom-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; font-size:11.5px; }
+  .geom-grid .g{ display:flex; justify-content:space-between; align-items:baseline;
+    border-bottom:1px solid var(--line-soft); padding-bottom:6px; }
+  .geom-grid .g .gk{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-2); }
+  .geom-grid .g .gv{ font-family:'JetBrains Mono',monospace; font-size:10px; }
+  .geom-grid .g .gv .old{ color:var(--ink-faint); text-decoration:line-through; margin-right:5px; }
+  .geom-grid .g .gv .new{ color:var(--gold-2); font-weight:600; }
+
+  ul.rules{ list-style:none; display:flex; flex-direction:column; gap:11px; }
+  ul.rules li{ font-size:11.5px; color:var(--ink-2); line-height:1.5; padding-left:18px; position:relative; }
+  ul.rules li::before{ content:""; position:absolute; left:0; top:7px; width:6px; height:6px;
+    border-radius:50%; background:var(--gold); box-shadow:0 0 0 2px var(--gold-tint); }
+  ul.rules li b{ font-weight:600; color:var(--ink); }
+
+  .newtok{ display:flex; flex-direction:column; gap:9px; }
+  .newtok .nt{ display:flex; gap:10px; align-items:baseline; font-size:11px; }
+  .newtok .nt .ntk{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-2); white-space:nowrap; }
+  .newtok .nt .ntd{ color:var(--ink-dim); font-size:10.5px; line-height:1.4; }
+
+  .full{ grid-column:1 / -1; }
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media (max-width:1140px){ .two{ grid-template-columns:1fr; } }
+
+  .recreate{ font-size:11px; color:var(--ink-dim); line-height:1.55; }
+  .recreate code{ font-family:'JetBrains Mono',monospace; font-size:10px;
+    background:var(--card-2); border-radius:4px; padding:1px 5px; color:var(--ink-2);
+    box-shadow:var(--sink); }
+  .recreate b{ color:var(--ink-2); font-weight:600; }
+
+  .loadnote{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:2; flex-direction:column; gap:10px; color:var(--ink-dim); text-align:center; padding:30px; }
+  .loadnote .sp{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+  .loadnote.gone{ display:none; }
+  .loadnote small{ font-size:10px; max-width:30ch; line-height:1.5; color:var(--ink-faint); }
+
+  /* maplibre attribution → quiet */
+  .maplibregl-ctrl-attrib{ font-size:9px !important; background:rgba(251,250,246,.7) !important; }
+  .maplibregl-ctrl-bottom-right{ z-index:4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="brand-dot"></div>
+    <div>
+      <div class="eyebrow">Spec return · Map / journey visualisation · dusk</div>
+      <h1>The day map, themed as a concierge map</h1>
+      <p class="sub">A <b>real Protomaps vector basemap</b> (MapLibre + <span class="mono">protomaps-themes-base</span>), recoloured with the proposed <span class="mono">dusk</span> palette below, with Khonsera's route, marker and label overlays on top. This is the visual contract — every colour here is a slot value Code drops into <span class="mono">dusk.ts</span> / <span class="mono">brand-vector-theme.ts</span>. Nothing is hand-painted, so it recreates 1:1.</p>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <!-- ── live map ──────────────────────────────────────────────────── -->
+    <div>
+      <div class="phone">
+        <div class="screen">
+          <div id="map"></div>
+
+          <!-- fallback: overlay treatment over the land-colour field (shown when
+               live Protomaps tiles are blocked, e.g. a locked-down preview) -->
+          <svg id="overlayFallback" viewBox="0 0 408 740" preserveAspectRatio="xMidYMid slice" style="display:none">
+            <defs>
+              <filter id="pillShadow" x="-30%" y="-30%" width="160%" height="180%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2.4" flood-color="#14100a" flood-opacity="0.4"/>
+              </filter>
+            </defs>
+
+            <!-- MULTI-LEG -->
+            <g data-scene="multi">
+              <path d="M84,628 L132,540" stroke="#b8893f" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.6 6.4" fill="none"/>
+              <path d="M300,210 L344,150" stroke="#b8893f" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.6 6.4" fill="none"/>
+              <path d="M132,540 C 190,450 220,320 300,210" stroke="rgba(20,16,10,.46)" stroke-width="4" stroke-linecap="round" fill="none"/>
+              <path d="M132,540 C 190,450 220,320 300,210" stroke="#9c6714" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <circle cx="84" cy="628" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <circle cx="132" cy="540" r="4.5" fill="#1a1612" stroke="#fbf8f1" stroke-width="2.4"/>
+              <circle cx="300" cy="210" r="4.5" fill="#1a1612" stroke="#fbf8f1" stroke-width="2.4"/>
+              <circle cx="344" cy="150" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <g filter="url(#pillShadow)">
+                <rect x="100" y="617" width="98" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="109" y="631.5" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">Wilce Avenue</text>
+                <rect x="150" y="529.5" width="140" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="159" y="544" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">WEL <tspan fill="#fbf8f1" opacity="0.6" font-size="9">Wellingborough</tspan></text>
+                <rect x="186" y="199.5" width="100" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="195" y="214" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">LEI <tspan fill="#fbf8f1" opacity="0.6" font-size="9">Leicester</tspan></text>
+                <rect x="362" y="139.5" width="0" height="21" rx="6.5" fill="#1a1612" opacity="0"/>
+                <rect x="262" y="139.5" width="74" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="271" y="154" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">New Walk</text>
+              </g>
+            </g>
+
+            <!-- ROUND TRIP -->
+            <g data-scene="round" style="display:none">
+              <path d="M84,628 L132,540" stroke="#b8893f" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.6 6.4" fill="none"/>
+              <path d="M132,540 C 170,440 200,320 300,210" stroke="rgba(20,16,10,.46)" stroke-width="4" stroke-linecap="round" fill="none"/>
+              <path d="M132,540 C 170,440 200,320 300,210" stroke="#9c6714" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M300,210 C 360,330 320,470 132,540" stroke="#1d6f73" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <circle cx="84" cy="628" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <circle cx="132" cy="540" r="4.5" fill="#1a1612" stroke="#fbf8f1" stroke-width="2.4"/>
+              <circle cx="300" cy="210" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <g filter="url(#pillShadow)">
+                <rect x="100" y="617" width="98" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="109" y="631.5" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">Wilce Avenue</text>
+                <rect x="150" y="529.5" width="140" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="159" y="544" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">WEL <tspan fill="#fbf8f1" opacity="0.6" font-size="9">Wellingborough</tspan></text>
+                <rect x="196" y="199.5" width="86" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="205" y="214" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">LEI <tspan fill="#fbf8f1" opacity="0.6" font-size="9">Leicester</tspan></text>
+              </g>
+            </g>
+
+            <!-- FLIGHT ARC -->
+            <g data-scene="flight" style="display:none">
+              <path d="M110,500 Q 214,250 318,300" stroke="#9c6714" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 4.4" fill="none"/>
+              <circle cx="110" cy="500" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <circle cx="318" cy="300" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <g filter="url(#pillShadow)">
+                <rect x="128" y="489.5" width="106" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="137" y="504" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">LHR <tspan fill="#fbf8f1" opacity="0.6" font-size="9">Heathrow</tspan></text>
+                <rect x="212" y="289.5" width="92" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="221" y="304" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">GVA <tspan fill="#fbf8f1" opacity="0.6" font-size="9">Genève</tspan></text>
+              </g>
+            </g>
+
+            <!-- SINGLE ROAD -->
+            <g data-scene="single" style="display:none">
+              <path d="M110,470 C 180,430 240,360 300,300" stroke="rgba(20,16,10,.46)" stroke-width="4" stroke-linecap="round" fill="none"/>
+              <path d="M110,470 C 180,430 240,360 300,300" stroke="#9c6714" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+              <circle cx="110" cy="470" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <circle cx="300" cy="300" r="6.5" fill="#9c6714" stroke="#fbf8f1" stroke-width="3"/>
+              <g filter="url(#pillShadow)">
+                <rect x="128" y="459.5" width="98" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="137" y="474" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">Wilce Avenue</text>
+                <rect x="170" y="289.5" width="130" height="21" rx="6.5" fill="#1a1612"/>
+                <text x="179" y="304" fill="#fbf8f1" font-family="'JetBrains Mono',monospace" font-size="10.5" letter-spacing="0.5">Vocation Brewery</text>
+              </g>
+            </g>
+
+            <text x="204" y="712" text-anchor="middle" fill="#9499a1" font-family="'JetBrains Mono',monospace" font-size="8.5" letter-spacing="1.5">OVERLAY TREATMENT · BASEMAP RENDERS LIVE WITH NETWORK / HOSTED TILES</text>
+          </svg>
+
+          <div class="loadnote" id="loadnote">
+            <div class="sp">Loading vector basemap…</div>
+            <small>Live Protomaps tiles. If your network blocks them, the overlay treatment + the palette/values on the right are the deliverable.</small>
+          </div>
+            <div class="sp">Loading vector basemap…</div>
+            <small>Live Protomaps tiles. If your network blocks them, the palette + values on the right are the deliverable.</small>
+          </div>
+          <div class="map-cap">
+            <div class="ttl">The route · door to door</div>
+            <div class="rt" id="routeTitle"><b>Wellingborough</b> <span class="arr">→</span> <b>Leicester</b></div>
+          </div>
+          <div class="map-foot">
+            <div class="totals" id="totals">
+              <div class="tot"><span class="k">Distance</span><span class="v" id="totDist">38<span class="u"> mi</span></span></div>
+              <div class="tot"><span class="k">Door to door</span><span class="v" id="totDur">1h 12m</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="states">
+        <button class="seg on" data-state="multi">Multi-leg</button>
+        <button class="seg" data-state="round">Round trip</button>
+        <button class="seg" data-state="flight">Flight arc</button>
+        <button class="seg" data-state="single">Single road</button>
+      </div>
+
+      <div class="legend">
+        <div class="leg"><span class="sw ln"></span> Outbound</div>
+        <div class="leg"><span class="sw ln ret"></span> Return</div>
+        <div class="leg"><span class="sw ln walk"></span> Walk</div>
+        <div class="leg"><span class="dot end"></span> Origin / destination</div>
+        <div class="leg"><span class="dot mid"></span> Changeover</div>
+      </div>
+    </div>
+
+    <!-- ── spec panel ────────────────────────────────────────────────── -->
+    <div class="spec">
+
+      <div class="card">
+        <h2>Basemap palette — <span class="mono">JourneyTheme.mapStyle</span></h2>
+        <p class="note">The brand-carrying slots. Recolouring one here recolours the whole map (the other ~70 Protomaps slots inherit from <span class="mono">namedTheme("light")</span>). <b>Changed</b> values are flagged against the current <span class="mono">dusk</span>.</p>
+        <table class="slots">
+          <thead><tr><th>Slot</th><th>Value</th><th>Paints</th></tr></thead>
+          <tbody>
+            <tr><td class="tok">land</td><td><span class="chip"><span class="sw-box" style="background:#efe9da"></span><span class="hex">#efe9da</span></span></td><td class="what">Ground / land fill</td></tr>
+            <tr><td class="tok">landEdge</td><td><span class="chip"><span class="sw-box" style="background:#e8e2d1"></span><span class="hex">#e8e2d1</span></span></td><td class="what">Land tonal edge</td></tr>
+            <tr><td class="tok">water</td><td><span class="chip"><span class="sw-box" style="background:#c4cfd4"></span><span class="hex">#c4cfd4</span><span class="chg">was sage #b8c2a8</span></span></td><td class="what">Rivers, lakes, sea — now a calm pale slate-blue so water reads as water, not parkland</td></tr>
+            <tr><td class="tok">road</td><td><span class="chip"><span class="sw-box" style="background:#fdfcf8"></span><span class="hex">#fdfcf8</span></span></td><td class="what">Road fill — clean paper white</td></tr>
+            <tr><td class="tok">roadStroke</td><td><span class="chip"><span class="sw-box" style="background:#e1d9c7"></span><span class="hex">#e1d9c7</span><span class="chg">softer</span></span></td><td class="what">Road casing — lightened so the network recedes under the route</td></tr>
+            <tr><td class="tok">rail</td><td><span class="chip"><span class="sw-box" style="background:#cdc2ab"></span><span class="hex">#cdc2ab</span></span></td><td class="what">Railway lines</td></tr>
+            <tr><td class="tok">cityLabel</td><td><span class="chip"><span class="sw-box" style="background:#33302a"></span><span class="hex">#33302a</span></span></td><td class="what">Place / city label text</td></tr>
+            <tr><td class="tok">countryLabel</td><td><span class="chip"><span class="sw-box" style="background:#6e6557"></span><span class="hex">#6e6557</span></span></td><td class="what">Region / country label text</td></tr>
+            <tr><td class="tok">boundary</td><td><span class="chip"><span class="sw-box" style="background:#b4a995"></span><span class="hex">#b4a995</span><span class="chg">lighter</span></span></td><td class="what">Admin boundaries — quieted so they don't compete with the route</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Derived slots <span style="font-weight:400;color:var(--ink-dim);font-size:11px">(brandVectorTheme)</span></h2>
+        <p class="note">Not direct knobs — Code derives these from the slots above. Called out so the intent is unambiguous.</p>
+        <table class="slots">
+          <thead><tr><th>Derived</th><th>Value</th><th>From / intent</th></tr></thead>
+          <tbody>
+            <tr><td class="tok">parks / woods</td><td><span class="chip"><span class="sw-box" style="background:#dde2cd"></span><span class="hex">#dde2cd</span></span></td><td class="what"><b>New green, decoupled from water.</b> A warm muted sage so green now means parkland only</td></tr>
+            <tr><td class="tok">buildings</td><td><span class="chip"><span class="sw-box" style="background:#e7e0ce"></span><span class="hex">#e7e0ce</span></span></td><td class="what">A shade of <span class="mono">land</span>, slightly more contrast at high zoom; outline #ddd4bf</td></tr>
+            <tr><td class="tok">highways</td><td><span class="chip"><span class="sw-box" style="background:#efe4cf"></span><span class="hex">#efe4cf</span></span></td><td class="what"><b>Less gold.</b> Warm sand, not brass — gold is reserved for the route line</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Overlays — <span class="mono">JourneyTheme.colors</span></h2>
+        <p class="note">Drawn by us in <span class="mono">journey-map.tsx</span>, over the basemap.</p>
+        <table class="slots">
+          <thead><tr><th>Token</th><th>Value</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td class="tok">gold</td><td><span class="chip"><span class="sw-box" style="background:#9c6714"></span><span class="hex">#9c6714</span></span></td><td class="what">Outbound route line — gold as <b>punctuation</b></td></tr>
+            <tr><td class="tok">goldMuted</td><td><span class="chip"><span class="sw-box" style="background:#b8893f"></span><span class="hex">#b8893f</span></span></td><td class="what">Route under-glow / walk legs</td></tr>
+            <tr><td class="tok">routeReturn</td><td><span class="chip"><span class="sw-box" style="background:#1d6f73"></span><span class="hex">#1d6f73</span></span></td><td class="what">Return-leg line — cool teal, distinct from outbound</td></tr>
+            <tr><td class="tok">routeCasing</td><td><span class="chip"><span class="sw-box" style="background:#14100a"></span><span class="hex">rgba(20,16,10,.46)</span><span class="chg">.62 → .46</span></span></td><td class="what">Dark casing under the route — thinner + softer for an editorial line</td></tr>
+            <tr><td class="tok">markerFill <span style="color:var(--gold-2)">↳ split</span></td><td><span class="chip"><span class="sw-box" style="background:#9c6714"></span><span class="sw-box" style="background:#1a1612"></span></span></td><td class="what"><b>New rule:</b> endpoints gold (<span class="mono">#9c6714</span>), changeovers ink (<span class="mono">#1a1612</span>) — gold marks only what matters</td></tr>
+            <tr><td class="tok">markerStroke</td><td><span class="chip"><span class="sw-box" style="background:#fbf8f1"></span><span class="hex">#fbf8f1</span><span class="chg">→ cream</span></span></td><td class="what">Cream ring so dots read on any base tone</td></tr>
+            <tr><td class="tok">labelBadge</td><td><span class="chip"><span class="sw-box" style="background:#1a1612"></span><span class="hex">#1a1612</span></span></td><td class="what">Marker label pill — the ink chip</td></tr>
+            <tr><td class="tok">labelBadgeText</td><td><span class="chip"><span class="sw-box" style="background:#fbf8f1"></span><span class="hex">#fbf8f1</span></span></td><td class="what">Pill text</td></tr>
+            <tr><td class="tok">labelHalo</td><td><span class="chip"><span class="sw-box" style="background:#fbf8f1"></span><span class="hex">#fbf8f1</span></span></td><td class="what">Halo behind basemap labels</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two">
+        <div class="card">
+          <h2>Geometry — <span class="mono">JourneyTheme.geom</span></h2>
+          <p class="note">A lighter, more confident line. <span style="color:var(--gold-2)">New</span> values vs current.</p>
+          <div class="geom-grid">
+            <div class="g"><span class="gk">railWidth</span><span class="gv"><span class="old">2.8</span><span class="new">2.2</span></span></div>
+            <div class="g"><span class="gk">railGlowWidth</span><span class="gv"><span class="old">9</span><span class="new">6</span></span></div>
+            <div class="g"><span class="gk">casingWidth</span><span class="gv"><span class="old">5.5</span><span class="new">4</span></span></div>
+            <div class="g"><span class="gk">walkWidth</span><span class="gv"><span class="new">1.6</span></span></div>
+            <div class="g"><span class="gk">walkDash</span><span class="gv"><span class="old">2 5</span><span class="new">1 4</span></span></div>
+            <div class="g"><span class="gk">markerRadius</span><span class="gv"><span class="old">5</span><span class="new">4.5</span></span></div>
+            <div class="g"><span class="gk">originRadius</span><span class="gv"><span class="old">7</span><span class="new">6.5</span></span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>New tokens to register</h2>
+          <p class="note">Values Design introduced — register back into the theme as real slots, never hardcode.</p>
+          <div class="newtok">
+            <div class="nt"><span class="ntk">parkFill</span><span class="ntd">Warm sage green for parks/woods, decoupled from <span class="mono">water</span></span></div>
+            <div class="nt"><span class="ntk">markerEndFill</span><span class="ntd">Gold endpoint dots — splits the old single <span class="mono">markerFill</span></span></div>
+            <div class="nt"><span class="ntk">markerMidFill</span><span class="ntd">Ink changeover dots</span></div>
+            <div class="nt"><span class="ntk">buildingOutline</span><span class="ntd">High-zoom building edge</span></div>
+            <div class="nt"><span class="ntk">labelHaloWidth</span><span class="ntd">1.4px — keeps labels legible over the route</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Marker, label & route treatment</h2>
+        <p class="note">The look <b>and</b> the collision rule — so crowded markers survive (the "WEL over ILCE AVENUE" bug).</p>
+        <ul class="rules">
+          <li><b>Dot is always drawn; the label can drop.</b> Markers are <b>point-anchored at the centre</b> (not left-anchored), so two close dots never sit on top of each other.</li>
+          <li><b>Label anchors to the side with room.</b> Each pill renders left or right of its dot by free space; on screen edges it flips inward.</li>
+          <li><b>Priority collision.</b> When two pills would overlap, the lower-priority one hides (keeping its dot). Priority: <b>origin / destination &gt; changeover</b>. Re-evaluated on every <span class="mono">moveend</span>.</li>
+          <li><b>Pill = ink chip, mono caps.</b> Station <b>code</b> ("WEL") or place name, white on <span class="mono">#1a1612</span>, soft contact shadow — reads on any base tone.</li>
+          <li><b>Route weight is editorial.</b> Thin gold line (2.2) on a soft dark casing (4 @ .46), walk legs a fine 1.6 dotted <span class="mono">1 4</span>. The line should feel drawn, not piped.</li>
+          <li><b>Out vs back never overlap as one line.</b> Outbound gold, return teal (<span class="mono">#1d6f73</span>), drawn with a slight bow so a round-trip reads as two journeys.</li>
+          <li><b>Flight = great-circle arc</b> in gold, dashed, endpoints only — no road casing.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:9px">Why this recreates 1:1</h2>
+        <p class="recreate">This is a real <b>MapLibre</b> map on a <b>Protomaps</b> vector source, themed by post-processing <code>protomaps-themes-base</code>'s <code>light</code> layers — the same path as <code>brandVectorTheme()</code>. To reproduce: take the slot values above into <code>themes/dusk.ts</code>, the geometry into <code>JourneyTheme.geom</code>, and the marker/route paint into <code>journey-map.tsx</code>. Once <code>NEXT_PUBLIC_PMTILES_URL</code> points at the hosted <code>.pmtiles</code>, <code>/plan</code> · <code>/today</code> · <code>/navigate</code> render exactly this. <b>No painted map, nothing to trace.</b></p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ── proposed dusk palette (mirrors the CSS vars above) ─────────────────
+  var P = {
+    land:"#efe9da", landEdge:"#e8e2d1", water:"#c4cfd4", park:"#dde2cd",
+    road:"#fdfcf8", roadStroke:"#e1d9c7", highway:"#efe4cf", rail:"#cdc2ab",
+    building:"#e7e0ce", buildingOutline:"#ddd4bf", boundary:"#b4a995",
+    cityLabel:"#33302a", countryLabel:"#6e6557", halo:"#fbf8f1"
+  };
+  var O = {
+    gold:"#9c6714", goldMuted:"#b8893f", ret:"#1d6f73",
+    casing:"rgba(20,16,10,.46)", markerEnd:"#9c6714", markerMid:"#1a1612"
+  };
+
+  var PM_URL = "pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles";
+  var GLYPHS = "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf";
+
+  // ── hand-authored brand style over the Protomaps v4 vector schema ──────
+  // Recolouring a slot in P recolours the whole map — this IS brandVectorTheme().
+  function brandStyle(){
+    var z = ["zoom"];
+    return {
+      version:8, glyphs:GLYPHS,
+      sources:{ protomaps:{ type:"vector", url:PM_URL,
+        attribution:'<a href="https://protomaps.com">Protomaps</a> · OpenStreetMap' } },
+      layers:[
+        { id:"bg", type:"background", paint:{"background-color":P.land} },
+        { id:"earth", type:"fill", source:"protomaps", "source-layer":"earth",
+          paint:{"fill-color":P.land} },
+        { id:"landuse-green", type:"fill", source:"protomaps", "source-layer":"landuse",
+          filter:["in",["get","kind"],["literal",["park","garden","recreation_ground",
+            "cemetery","pitch","golf_course","wood","forest","grass","nature_reserve",
+            "meadow","scrub","village_green","allotments","farmland"]]],
+          paint:{"fill-color":P.park, "fill-opacity":0.75} },
+        { id:"natural-green", type:"fill", source:"protomaps", "source-layer":"natural",
+          paint:{"fill-color":P.park, "fill-opacity":0.6} },
+        { id:"water", type:"fill", source:"protomaps", "source-layer":"water",
+          paint:{"fill-color":P.water} },
+        { id:"waterway", type:"line", source:"protomaps", "source-layer":"physical_line",
+          filter:["in",["get","kind"],["literal",["river","stream","canal","drain","ditch"]]],
+          paint:{"line-color":P.water, "line-width":["interpolate",["linear"],z, 9,0.6, 14,2]} },
+
+        // road casings then fills
+        { id:"roads-minor-case", type:"line", source:"protomaps", "source-layer":"roads",
+          minzoom:11,
+          filter:["in",["get","kind"],["literal",["minor_road","other","path"]]],
+          layout:{"line-cap":"round","line-join":"round"},
+          paint:{"line-color":P.roadStroke,
+            "line-width":["interpolate",["linear"],z, 12,1.0, 16,4.0, 19,9]} },
+        { id:"roads-major-case", type:"line", source:"protomaps", "source-layer":"roads",
+          minzoom:7,
+          filter:["in",["get","kind"],["literal",["highway","major_road","medium_road"]]],
+          layout:{"line-cap":"round","line-join":"round"},
+          paint:{"line-color":P.roadStroke,
+            "line-width":["interpolate",["linear"],z, 7,1.4, 11,4.0, 15,9, 18,18]} },
+        { id:"roads-minor", type:"line", source:"protomaps", "source-layer":"roads",
+          minzoom:12,
+          filter:["in",["get","kind"],["literal",["minor_road","other","path"]]],
+          layout:{"line-cap":"round","line-join":"round"},
+          paint:{"line-color":P.road,
+            "line-width":["interpolate",["linear"],z, 12,0.5, 16,2.6, 19,7]} },
+        { id:"roads-major", type:"line", source:"protomaps", "source-layer":"roads",
+          minzoom:7,
+          filter:["in",["get","kind"],["literal",["highway","major_road","medium_road"]]],
+          layout:{"line-cap":"round","line-join":"round"},
+          paint:{"line-color":["match",["get","kind"],"highway",P.highway,P.road],
+            "line-width":["interpolate",["linear"],z, 7,0.7, 11,2.6, 15,6.5, 18,14]} },
+
+        // rail
+        { id:"rail", type:"line", source:"protomaps", "source-layer":"transit",
+          minzoom:8,
+          filter:["in",["get","kind"],["literal",["rail","railway"]]],
+          layout:{"line-cap":"round"},
+          paint:{"line-color":P.rail, "line-width":["interpolate",["linear"],z, 8,0.6, 13,1.6, 16,3]} },
+
+        // buildings
+        { id:"buildings", type:"fill", source:"protomaps", "source-layer":"buildings",
+          minzoom:13,
+          paint:{"fill-color":P.building, "fill-outline-color":P.buildingOutline,
+            "fill-opacity":["interpolate",["linear"],z, 13,0, 14.5,0.85]} },
+
+        // boundaries
+        { id:"boundaries", type:"line", source:"protomaps", "source-layer":"boundaries",
+          paint:{"line-color":P.boundary,
+            "line-width":["interpolate",["linear"],z, 4,0.6, 10,1.4],
+            "line-dasharray":[3,2], "line-opacity":0.7} },
+
+        // labels — localities then regions
+        { id:"label-locality", type:"symbol", source:"protomaps", "source-layer":"places",
+          filter:["in",["get","kind"],["literal",["locality","city","town","village","neighbourhood","suburb"]]],
+          layout:{ "text-field":["coalesce",["get","name:en"],["get","name"]],
+            "text-font":["Noto Sans Regular"],
+            "text-size":["interpolate",["linear"],z, 6,11, 10,13.5, 14,17],
+            "text-max-width":7, "text-padding":4 },
+          paint:{ "text-color":P.cityLabel, "text-halo-color":P.halo, "text-halo-width":1.4 } },
+        { id:"label-region", type:"symbol", source:"protomaps", "source-layer":"places",
+          filter:["in",["get","kind"],["literal",["region","province","state","country"]]],
+          layout:{ "text-field":["coalesce",["get","name:en"],["get","name"]],
+            "text-font":["Noto Sans Regular"],
+            "text-transform":"uppercase", "text-letter-spacing":0.12,
+            "text-size":["interpolate",["linear"],z, 4,10, 8,13] },
+          paint:{ "text-color":P.countryLabel, "text-halo-color":P.halo, "text-halo-width":1.2, "text-opacity":0.85 } }
+      ]
+    };
+  }
+
+  // ── journey data (real coordinates; overlays are our data) ─────────────
+  var DEST_MID = [ // outbound rail spine WEL → LEI via Kettering / Mkt Harborough
+    [-0.6936,52.2966],[-0.7236,52.3980],[-0.9210,52.4760],[-1.1255,52.6313]
+  ];
+  var SCENES = {
+    multi: {
+      title:'<b>Wellingborough</b> <span class="arr">→</span> <b>Leicester</b>',
+      dist:"38", dur:"1h 12m",
+      center:[-0.92,52.47], zoom:8.9,
+      walk:[ [[-0.6770,52.3050],[-0.6936,52.2966]], [[-1.1255,52.6313],[-1.1390,52.6360]] ],
+      rail:[ DEST_MID ], road:[], retr:[],
+      markers:[
+        {c:[-0.6770,52.3050], label:"Wilce Avenue", sub:"", kind:"end"},
+        {c:[-0.6936,52.2966], label:"WEL", sub:"Wellingborough", kind:"mid"},
+        {c:[-1.1255,52.6313], label:"LEI", sub:"Leicester", kind:"mid"},
+        {c:[-1.1390,52.6360], label:"New Walk", sub:"", kind:"end"}
+      ]
+    },
+    round: {
+      title:'<b>Wellingborough</b> <span class="arr">⇄</span> <b>Leicester</b>',
+      dist:"76", dur:"2h 28m",
+      center:[-0.92,52.47], zoom:8.9,
+      walk:[ [[-0.6770,52.3050],[-0.6936,52.2966]] ],
+      rail:[ DEST_MID ],
+      retr:[ [[-1.1255,52.6313],[-0.9050,52.5060],[-0.7080,52.4180],[-0.6936,52.2966]] ],
+      road:[],
+      markers:[
+        {c:[-0.6770,52.3050], label:"Wilce Avenue", sub:"", kind:"end"},
+        {c:[-0.6936,52.2966], label:"WEL", sub:"Wellingborough", kind:"mid"},
+        {c:[-1.1255,52.6313], label:"LEI", sub:"Leicester", kind:"end"}
+      ]
+    },
+    flight: {
+      title:'<b>London</b> <span class="arr">→</span> <b>Geneva</b>',
+      dist:"468", dur:"3h 05m",
+      center:[2.7,49.0], zoom:5.1,
+      walk:[], rail:[], road:[], retr:[],
+      arc:[[-0.4543,51.4700],[6.1090,46.2380]],
+      markers:[
+        {c:[-0.4543,51.4700], label:"LHR", sub:"Heathrow T2", kind:"end"},
+        {c:[6.1090,46.2380], label:"GVA", sub:"Genève", kind:"end"}
+      ]
+    },
+    single: {
+      title:'<b>Home</b> <span class="arr">→</span> <b>Vocation Brewery</b>',
+      dist:"14", dur:"27m",
+      center:[-0.74,52.34], zoom:10.4,
+      walk:[], rail:[],
+      road:[ [[-0.6770,52.3050],[-0.700,52.330],[-0.740,52.360],[-0.7980,52.3760]] ],
+      retr:[],
+      markers:[
+        {c:[-0.6770,52.3050], label:"Wilce Avenue", sub:"", kind:"end"},
+        {c:[-0.7980,52.3760], label:"Vocation Brewery", sub:"", kind:"end"}
+      ]
+    }
+  };
+
+  // build a great-circle-ish arc between two points
+  function arc(a,b,n){
+    n = n||64;
+    var out=[];
+    for (var i=0;i<=n;i++){
+      var t=i/n;
+      var lng=a[0]+(b[0]-a[0])*t;
+      var lat=a[1]+(b[1]-a[1])*t;
+      lat += Math.sin(Math.PI*t)*2.4;     // bow upward for a flown look
+      out.push([lng,lat]);
+    }
+    return out;
+  }
+  function fc(lines){
+    return { type:"FeatureCollection", features:(lines||[]).map(function(coords){
+      return { type:"Feature", geometry:{type:"LineString", coordinates:coords}, properties:{} };
+    })};
+  }
+
+  var map, markerEls=[], curState="multi", loaded=false, fallbackMode=false;
+
+  function setSrc(id,data){ var s=map.getSource(id); if(s) s.setData(data); }
+
+  function clearMarkers(){ markerEls.forEach(function(m){ m.marker.remove(); }); markerEls=[]; }
+
+  // ── fallback (tiles blocked): show the SVG overlay treatment ───────────
+  function enterFallback(){
+    if(fallbackMode || loaded) return;
+    fallbackMode = true;
+    var ln=document.getElementById("loadnote"); if(ln) ln.classList.add("gone");
+    var fb=document.getElementById("overlayFallback"); if(fb) fb.style.display="block";
+    showFallbackScene(curState);
+  }
+  function showFallbackScene(key){
+    curState=key;
+    var S=SCENES[key]; if(!S) return;
+    document.getElementById("routeTitle").innerHTML = S.title;
+    document.getElementById("totDist").innerHTML = S.dist + '<span class="u"> mi</span>';
+    document.getElementById("totDur").textContent = S.dur;
+    document.querySelectorAll("#overlayFallback g[data-scene]").forEach(function(g){
+      g.style.display = (g.getAttribute("data-scene")===key) ? "block" : "none";
+    });
+  }
+
+  function drawScene(key){
+    var S = SCENES[key]; if(!S) return;
+    curState = key;
+    document.getElementById("routeTitle").innerHTML = S.title;
+    document.getElementById("totDist").innerHTML = S.dist + '<span class="u"> mi</span>';
+    document.getElementById("totDur").textContent = S.dur;
+
+    setSrc("casing", fc([].concat(S.rail||[], S.road||[], S.retr||[], S.arc?[arc(S.arc[0],S.arc[1])]:[])));
+    setSrc("rail", fc(S.rail||[]));
+    setSrc("road", fc(S.road||[]));
+    setSrc("walk", fc(S.walk||[]));
+    setSrc("retr", fc(S.retr||[]));
+    setSrc("arc", S.arc ? fc([arc(S.arc[0],S.arc[1])]) : fc([]));
+    setSrc("dots", { type:"FeatureCollection", features:S.markers.map(function(m){
+      return { type:"Feature", geometry:{type:"Point",coordinates:m.c},
+               properties:{ kind:m.kind } };
+    })});
+
+    // HTML label pills (collision-managed)
+    clearMarkers();
+    S.markers.forEach(function(m){
+      var el=document.createElement("div");
+      var pill=document.createElement("div");
+      pill.className="mk-pill right";
+      pill.innerHTML = m.label + (m.sub?('<span class="sub">'+m.sub+'</span>'):"");
+      el.appendChild(pill);
+      var mk=new maplibregl.Marker({element:el, anchor:"center"}).setLngLat(m.c).addTo(map);
+      markerEls.push({marker:mk, el:el, pill:pill, kind:m.kind, c:m.c,
+        prio:(m.kind==="end"?2:1)});
+    });
+
+    map.easeTo({center:S.center, zoom:S.zoom, duration:650});
+    setTimeout(resolveCollisions, 700);
+  }
+
+  // priority collision: hide lower-priority pills that overlap, pick the side with room
+  function resolveCollisions(){
+    if(!map) return;
+    var w=map.getContainer().clientWidth;
+    var placed=[];
+    // sort by priority desc so endpoints win
+    var sorted=markerEls.slice().sort(function(a,b){ return b.prio-a.prio; });
+    sorted.forEach(function(it){
+      it.pill.classList.remove("hide");
+      var pt=map.project(it.c);
+      // choose side with more horizontal room
+      var side=(pt.x > w*0.62) ? "left" : "right";
+      it.pill.classList.remove("left","right"); it.pill.classList.add(side);
+      // measure
+      var pw=it.pill.offsetWidth||60, ph=it.pill.offsetHeight||20;
+      var x0=(side==="right")? pt.x+18 : pt.x-18-pw;
+      var box={x:x0, y:pt.y-ph/2, w:pw, h:ph};
+      var hit=placed.some(function(b){
+        return !(box.x+box.w < b.x-6 || box.x > b.x+b.w+6 || box.y+box.h < b.y-4 || box.y > b.y+b.h+4);
+      });
+      if(hit){ it.pill.classList.add("hide"); }
+      else { placed.push(box); }
+    });
+  }
+
+  // ── init ───────────────────────────────────────────────────────────────
+  function init(){
+    try {
+      var protocol = new pmtiles.Protocol();
+      maplibregl.addProtocol("pmtiles", protocol.tile);
+    } catch(e){}
+
+    map = new maplibregl.Map({
+      container:"map", style:brandStyle(), center:[-0.92,52.47], zoom:8.9,
+      attributionControl:{compact:true}, dragRotate:false, pitchWithRotate:false
+    });
+    map.scrollZoom.disable();
+    map.addControl(new maplibregl.NavigationControl({showCompass:false}), "bottom-right");
+
+    var failTimer = setTimeout(function(){
+      if(!loaded){ enterFallback(); }
+    }, 4500);
+
+    map.on("load", function(){
+      loaded=true; clearTimeout(failTimer);
+      document.getElementById("loadnote").classList.add("gone");
+
+      // overlay sources
+      ["casing","rail","road","walk","retr","arc","dots"].forEach(function(id){
+        if(!map.getSource(id)) map.addSource(id,{type:"geojson",data:fc([])});
+      });
+
+      // casing under everything
+      map.addLayer({ id:"l-casing", type:"line", source:"casing",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.casing, "line-width":4} });
+      // rail (gold)
+      map.addLayer({ id:"l-railglow", type:"line", source:"rail",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.goldMuted, "line-width":6, "line-blur":4, "line-opacity":.4} });
+      map.addLayer({ id:"l-rail", type:"line", source:"rail",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.gold, "line-width":2.2} });
+      // road leg (solid hairline gold)
+      map.addLayer({ id:"l-road", type:"line", source:"road",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.gold, "line-width":2.4} });
+      // return (teal)
+      map.addLayer({ id:"l-retr", type:"line", source:"retr",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.ret, "line-width":2.2} });
+      // flight arc (gold dashed)
+      map.addLayer({ id:"l-arc", type:"line", source:"arc",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.gold, "line-width":2, "line-dasharray":[2,2.2]} });
+      // walk (fine dotted)
+      map.addLayer({ id:"l-walk", type:"line", source:"walk",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":O.goldMuted, "line-width":1.6, "line-dasharray":[1,4]} });
+      // dots
+      map.addLayer({ id:"l-dots", type:"circle", source:"dots",
+        paint:{
+          "circle-radius":["case",["==",["get","kind"],"end"],6.5,4.5],
+          "circle-color":["case",["==",["get","kind"],"end"],O.markerEnd,O.markerMid],
+          "circle-stroke-width":2.4, "circle-stroke-color":P.halo
+        } });
+
+      drawScene("multi");
+      map.on("moveend", resolveCollisions);
+      map.on("move", resolveCollisions);
+    });
+
+    map.on("error", function(e){
+      // keep quiet; sprite/glyph 404s for absent slots are non-fatal
+    });
+  }
+
+  // state switcher
+  document.querySelectorAll(".seg").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".seg").forEach(function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      if(loaded) drawScene(b.dataset.state);
+      else if(fallbackMode) showFallbackScene(b.dataset.state);
+      else { curState=b.dataset.state; }
+    });
+  });
+
+  if (window.maplibregl && window.pmtiles) init();
+  else window.addEventListener("load", init);
+})();
+</script>
+</body>
+</html>

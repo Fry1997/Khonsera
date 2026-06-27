@@ -16,6 +16,8 @@ export const sahara: JourneyTheme = {
     routeCasing: "rgba(32, 24, 14, 0.55)",
     water: "#c2ccb0",
     markerFill: "#a87826",
+    // Untuned (Design tuned dusk only) — ink changeover dots, matching the ink stroke.
+    markerFillMid: "#20180e",
     markerStroke: "#20180e",
     labelBadge: "#20180e",
     labelBadgeText: "#f7f0db",

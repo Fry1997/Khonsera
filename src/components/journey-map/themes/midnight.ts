@@ -16,6 +16,9 @@ export const midnight: JourneyTheme = {
     routeCasing: "rgba(0, 0, 0, 0.60)",
     water: "#1a2a28",
     markerFill: "#d4a04d",
+    // Untuned (Design tuned dusk only) — a calm mid tone for changeover dots,
+    // distinct from the gold ends and visible on the dark basemap.
+    markerFillMid: "#9a8f7d",
     markerStroke: "#f4e8cf",
     labelBadge: "#0e0b14",
     labelBadgeText: "#f4e8cf",

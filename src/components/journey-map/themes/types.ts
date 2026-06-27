@@ -13,6 +13,12 @@ export interface MapThemeColors {
   boundary: string;
   sky: string; // upper-sky colour revealed when the guidance camera tilts
   skyHorizon: string; // warm haze band where the sky meets the ground
+  // Optional explicit values for slots brandVectorTheme() otherwise DERIVES
+  // from the palette. Design (handoff 2026-06-27) pins these on `dusk`; unset
+  // on a theme → the derived maths still applies (midnight/sahara untouched).
+  park?: string; // greens / open land (warm muted sage)
+  building?: string; // building fill (low contrast, just above land)
+  highway?: string; // major roads — warm sand, NEVER gold (gold = route only)
 }
 
 export interface JourneyTheme {
@@ -32,6 +38,10 @@ export interface JourneyTheme {
     routeCasing: string;
     water: string;
     markerFill: string;
+    // Two-tier markers (Design 2026-06-27): the ends (origin/destination) use
+    // markerFill (gold); changeover/intermediate dots use markerFillMid (ink),
+    // so only the ends carry gold. markerStroke is the paper halo ring.
+    markerFillMid: string;
     markerStroke: string;
     // Label badge (station code / appointment / place) — styled independently of the
     // marker dots so it reads above basemap town names (Design D84: dark ground +

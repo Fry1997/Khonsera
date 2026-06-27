@@ -46,7 +46,10 @@ export function JourneyMap({
         out.push({ lat: leg.to.lat, lng: leg.to.lng, label: leg.to.code ?? leg.to.name, role: i === journey.legs.length - 1 ? "destination" : "intermediate" });
       }
     });
-    return out;
+    // Label side: pills open INWARD (toward the journey's centre) so they don't
+    // clip at the map edge and the two ends' labels point away from each other.
+    const cLng = out.reduce((s, o) => s + o.lng, 0) / (out.length || 1);
+    return out.map((o) => ({ ...o, side: (o.lng > cLng ? "left" : "right") as "left" | "right" }));
   }, [journey]);
 
   // Initialise map
@@ -164,8 +167,8 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     id: "j-casing",
     type: "line",
     source: SOURCE_ID,
-    // Not under walk — a solid casing would fill the dashed walk line's gaps.
-    filter: ["!=", ["get", "mode"], "walk"],
+    // Not under dashed legs (walk / flight) — a solid casing would fill the gaps.
+    filter: ["all", ["!=", ["get", "mode"], "walk"], ["!=", ["get", "mode"], "flight"]],
     paint: { "line-color": theme.colors.routeCasing, "line-width": g.casingWidth, "line-opacity": 0.9 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
@@ -175,7 +178,8 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     type: "line",
     source: SOURCE_ID,
     filter: ["==", ["get", "mode"], "rail"],
-    paint: { "line-color": dirColor, "line-width": g.railGlowWidth, "line-opacity": 0.15, "line-blur": 4 },
+    // A soft lift, not a halo (Design): a touch stronger now the line is thinner.
+    paint: { "line-color": dirColor, "line-width": g.railGlowWidth, "line-opacity": 0.32, "line-blur": 4 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
@@ -205,55 +209,55 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
     paint: { "line-color": dirColor, "line-width": g.railWidth, "line-opacity": 1 },
     layout: { "line-cap": "round", "line-join": "round" },
   });
+
+  // Flight — a dashed line in the leg's direction colour (Design §4.5: same dash
+  // as walk). The track is a great-circle arc when the leg carries one.
+  map.addLayer({
+    id: "j-flight",
+    type: "line",
+    source: SOURCE_ID,
+    filter: ["==", ["get", "mode"], "flight"],
+    paint: {
+      "line-color": dirColor,
+      "line-width": g.railWidth,
+      "line-opacity": 0.95,
+      "line-dasharray": walkDash.length >= 2 ? walkDash : [2, 5],
+    },
+    layout: { "line-cap": "round", "line-join": "round" },
+  });
 }
 
-function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLElement {
+// Two-tier markers (Design 2026-06-27): the ends (origin/destination) are the
+// larger GOLD dot; changeover/intermediate stops are the smaller INK dot. Both
+// sit on a paper halo ring so they read on any basemap colour. Labels go on the
+// ends only and open toward `side` (inward) so close stops don't collide.
+function createMarkerEl(
+  role: string,
+  label: string,
+  side: "left" | "right",
+  theme: JourneyTheme,
+): HTMLElement {
   const el = document.createElement("div");
   el.style.display = "flex";
   el.style.alignItems = "center";
   el.style.gap = "5px";
   el.style.pointerEvents = "none";
 
+  const isEnd = role === "origin" || role === "destination";
   const dot = document.createElement("div");
-  const sz = role === "origin" ? 12 : role === "destination" ? 10 : 8;
+  const sz = (isEnd ? theme.geom.originRadius : theme.geom.markerRadius) * 2;
   dot.style.width = `${sz}px`;
   dot.style.height = `${sz}px`;
   dot.style.borderRadius = "50%";
   dot.style.flexShrink = "0";
+  dot.style.background = isEnd ? theme.colors.markerFill : theme.colors.markerFillMid;
+  // Paper halo ring + a soft drop so the dot lifts off the map.
+  dot.style.boxShadow = `0 0 0 2px ${theme.colors.markerStroke}, 0 1px 3px rgba(20,16,10,0.28)`;
 
-  if (role === "origin") {
-    dot.style.background = "transparent";
-    dot.style.border = `2px solid ${theme.colors.markerStroke}`;
-    dot.style.boxShadow = `inset 0 0 0 2px transparent, inset 0 0 0 3px ${theme.colors.markerStroke}`;
-    const inner = document.createElement("div");
-    inner.style.width = "5px";
-    inner.style.height = "5px";
-    inner.style.borderRadius = "50%";
-    inner.style.background = theme.colors.markerStroke;
-    inner.style.margin = "auto";
-    dot.style.display = "flex";
-    dot.style.alignItems = "center";
-    dot.style.justifyContent = "center";
-    dot.appendChild(inner);
-  } else if (role === "destination") {
-    dot.style.background = theme.colors.markerFill;
-  } else {
-    dot.style.background = theme.colors.labelHalo;
-    dot.style.border = `1.5px solid ${theme.colors.markerFill}`;
-  }
-
-  el.appendChild(dot);
-
-  // Label only the two ends. Intermediate stops (changeover stations) are
-  // dot-only — when several sit close together (home + its nearest station,
-  // a changeover beside the route) their badges piled up and overlapped
-  // ("WEL" over "ILCE AVENUE", "LEI" clipped). Ends carry the names; the
-  // dots carry the rest. (Design owns the richer collision-aware treatment.)
-  if (role !== "intermediate") {
-    // A solid badge, not bare text — our labels (station code, appointment,
-    // place) must sit ABOVE the basemap's town/place names, which they used to
-    // merge into (e.g. "WEL" lost in "Wellingborough"). Ink ground + paper text
-    // + a soft lift reads unmistakably as ours.
+  const makeLabel = (): HTMLElement => {
+    // A solid badge, not bare text — our labels must sit ABOVE the basemap's
+    // town/place names, which they used to merge into (e.g. "WEL" lost in
+    // "Wellingborough").
     const lbl = document.createElement("span");
     lbl.textContent = label.toUpperCase();
     lbl.style.fontFamily = theme.fonts.mono;
@@ -266,20 +270,42 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
     lbl.style.borderRadius = "3px";
     lbl.style.whiteSpace = "nowrap";
     lbl.style.boxShadow = "0 1px 3px rgba(0,0,0,0.35)";
-    el.appendChild(lbl);
+    return lbl;
+  };
+
+  // Ends carry a pill; intermediates are dot-only (they yield first, killing the
+  // WEL/ILCE-AVENUE pile-up). The pill sits on the open side so the dot stays on
+  // the coordinate (see anchor in addMarkers).
+  if (isEnd && side === "left") {
+    el.appendChild(makeLabel());
+    el.appendChild(dot);
+  } else if (isEnd) {
+    el.appendChild(dot);
+    el.appendChild(makeLabel());
+  } else {
+    el.appendChild(dot);
   }
   return el;
 }
 
 function addMarkers(
   map: maplibregl.Map,
-  stations: Array<{ lat: number; lng: number; label: string; role: string }>,
+  stations: Array<{ lat: number; lng: number; label: string; role: string; side: "left" | "right" }>,
   theme: JourneyTheme,
   markersRef: React.RefObject<maplibregl.Marker[]>,
 ) {
   for (const s of stations) {
-    const el = createMarkerEl(s.role, s.label, theme);
-    const marker = new maplibregl.Marker({ element: el, anchor: "left" })
+    const el = createMarkerEl(s.role, s.label, s.side, theme);
+    // Anchor the element so the DOT stays on the coordinate while the pill
+    // extends to the open side: pill-left → element right-anchored, vice versa.
+    // Dot-only intermediates centre on their point.
+    const isEnd = s.role === "origin" || s.role === "destination";
+    const anchor: maplibregl.PositionAnchor = !isEnd
+      ? "center"
+      : s.side === "left"
+        ? "right"
+        : "left";
+    const marker = new maplibregl.Marker({ element: el, anchor })
       .setLngLat([s.lng, s.lat])
       .addTo(map);
     markersRef.current.push(marker);

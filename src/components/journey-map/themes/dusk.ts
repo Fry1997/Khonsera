@@ -12,11 +12,14 @@ export const dusk: JourneyTheme = {
     goldMuted: "#b8893f",
     // Return leg = a cool teal that reads clearly apart from the warm gold + roads.
     routeReturn: "#1d6f73",
-    // Dark casing lifts both route colours off the pale roads on this light theme.
-    routeCasing: "rgba(20, 16, 10, 0.62)",
-    water: "#b8c2a8",
-    markerFill: "#a07520",
-    markerStroke: "#1a1612",
+    // Casing lifts both route colours off the pale roads on this light theme —
+    // lighter than before so the line reads editorial, not heavy (Design).
+    routeCasing: "rgba(20, 16, 10, 0.46)",
+    water: "#c4cfd4",
+    // Ends are gold; changeover dots are ink; the ring is the paper halo.
+    markerFill: "#9c6714",
+    markerFillMid: "#1a1612",
+    markerStroke: "#fbf8f1",
     labelBadge: "#1a1612",
     labelBadgeText: "#fbf8f1",
     labelText: "#3a342c",
@@ -28,25 +31,30 @@ export const dusk: JourneyTheme = {
     mono: "JetBrains Mono, monospace",
   },
   geom: {
-    railWidth: 2.8,
-    railGlowWidth: 9,
-    casingWidth: 5.5,
+    railWidth: 2.2,
+    railGlowWidth: 6,
+    casingWidth: 4,
     walkWidth: 1.6,
-    walkDash: "2 5",
-    markerRadius: 5,
-    originRadius: 7,
+    walkDash: "1 4",
+    markerRadius: 4.5,
+    originRadius: 6.5,
   },
   mapStyle: {
-    water: "#b8c2a8",
+    water: "#c4cfd4",
     land: "#efe9da",
-    landEdge: "#e7e1d0",
-    rail: "#d6cdb8",
-    road: "#fffefb",
-    roadStroke: "#dcd2bb",
-    cityLabel: "#3a342c",
+    landEdge: "#e8e2d1",
+    rail: "#cdc2ab",
+    road: "#fdfcf8",
+    roadStroke: "#e1d9c7",
+    cityLabel: "#33302a",
     countryLabel: "#6e6557",
-    boundary: "#9c917f",
+    boundary: "#b4a995",
     sky: "#aebccf",
     skyHorizon: "#ecdfca",
+    // Explicit derived-slot values (Design): greens warm muted sage, buildings
+    // low-contrast, highways warm sand (never gold).
+    park: "#dde2cd",
+    building: "#e7e0ce",
+    highway: "#efe4cf",
   },
 };

@@ -27,8 +27,13 @@ export function brandVectorTheme(jt: JourneyTheme): Theme {
   const landB = shade(ms.land, jt.name === "midnight" ? 10 : -8);
   const road = ms.road;
   const roadCasing = ms.roadStroke;
-  const building = shade(ms.land, jt.name === "midnight" ? 18 : -14);
-  const green = jt.name === "midnight" ? shade(ms.land, 14) : shade(ms.water, 6);
+  // Prefer the theme's EXPLICIT slot (Design pins these on dusk); otherwise
+  // fall back to the derived maths so untuned themes are unchanged.
+  const building = ms.building ?? shade(ms.land, jt.name === "midnight" ? 18 : -14);
+  const green = ms.park ?? (jt.name === "midnight" ? shade(ms.land, 14) : shade(ms.water, 6));
+  // Highways read warm sand, not gold — gold is reserved for the route overlay.
+  const highwayColor = ms.highway ?? c.goldMuted;
+  const highwayCasing = shade(highwayColor, -18);
 
   return {
     ...base,
@@ -67,14 +72,14 @@ export function brandVectorTheme(jt: JourneyTheme): Theme {
     minor_b: shade(road, -4),
     link: road,
     major: shade(road, jt.name === "midnight" ? 8 : -4),
-    highway: c.goldMuted,
+    highway: highwayColor,
     minor_service_casing: roadCasing,
     minor_casing: roadCasing,
     link_casing: roadCasing,
     major_casing_early: roadCasing,
     major_casing_late: roadCasing,
-    highway_casing_early: shade(c.goldMuted, -30),
-    highway_casing_late: shade(c.goldMuted, -30),
+    highway_casing_early: highwayCasing,
+    highway_casing_late: highwayCasing,
     railway: ms.rail,
 
     boundaries: ms.boundary,
