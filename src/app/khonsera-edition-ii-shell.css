@@ -593,6 +593,12 @@
   text-transform: uppercase; color: var(--ink-dim); text-decoration: none; margin-bottom: var(--space-3); }
 .cc-event-back:hover { color: var(--gold-2); }
 
+/* Plan detail TopBar — ← Plan back on the left, per-day controls on the right.
+   A detail page keeps the back affordance (founder ruling); no global toggle. */
+.cc-plan-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  margin-bottom: var(--space-2); }
+.cc-plan-topbar .cc-event-back { margin-bottom: 0; }
+
 /* ---- Reminders strip (.cc-reminder*) on the Plan index — proposal §4 -------- */
 .cc-reminders { display: flex; flex-direction: column; gap: var(--space-3); }
 .cc-reminders-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }

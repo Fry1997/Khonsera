@@ -17,7 +17,6 @@ import { PlanConstraints } from "@/components/plan/plan-constraints";
 import { loadConstraints } from "@/lib/actions/constraints";
 import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
 import { PlanMap } from "@/components/plan/plan-map";
-import { PlanModeFlip } from "@/components/plan/plan-mode-flip";
 import { PlanTitleEditor } from "@/components/plan/plan-title-editor";
 import { PlanBase } from "@/components/plan/plan-base";
 import { PlanIntention } from "@/components/plan/plan-intention";
@@ -663,6 +662,36 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const named = !!(journey.title && String(journey.title).trim());
   const title = named ? (journey.title as string) : spanLabel(dateStart, dateStart);
 
+  // ── Day-header inputs (recomposed to the full-day planner design) ──────────
+  // Mono date eyebrow (THU 25 JUN) over the day's PURPOSE as the H1. The purpose
+  // is the most "what the day is for" label: a real appointment/event title, else
+  // the named plan title, else the span. Mirrors today/page.tsx's day header so
+  // the two surfaces read identically. Travel/base bookend stops never qualify.
+  const dateEyebrow = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  })
+    .format(new Date(`${dateStart}T12:00:00`))
+    .toUpperCase();
+  const isTravelType = (t: string) =>
+    t.includes("departure") || t.includes("arrival") || t.includes("changeover") || t.includes("transit");
+  const primaryAnchor =
+    stops.find((s) => s.type.includes("appointment")) ??
+    stops.find(
+      (s) => s.type !== "start" && s.type !== "end" && s.type !== "accommodation" && !isTravelType(s.type) && (s.title?.trim() || s.location?.name),
+    ) ??
+    null;
+  const dayPurpose =
+    (named ? (journey.title as string).trim() : "") ||
+    primaryAnchor?.title?.trim() ||
+    primaryAnchor?.location?.name?.trim() ||
+    title;
+  // The day's note — the stated Intention, rendered as the Satoshi-light upright
+  // standfirst (NO serif, NO italic). Omitted entirely when there's no note.
+  const dayNote = intentions[0]?.description?.trim() || null;
+
   // Decision-clock (P9) — the day's single reassuring number: when to set off.
   const startStop = stops.find((s) => s.type === "start");
   const baseLabel =
@@ -806,22 +835,29 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="cc-screen" data-plan-state={planState} style={{ minHeight: "100%" }}>
-      <header className="cc-event-head">
+      {/* TopBar — a detail page keeps the ← Plan back button (founder ruling); the
+          add affordance opens the same toolkit, ⋯ is the per-day overflow. NO
+          global work/personal toggle (retired): work is a per-item tag. */}
+      <header className="cc-plan-topbar">
         <Link href={"/plan" as Route} className="cc-event-back">
           ← Plan
         </Link>
-        <span className="cc-eyebrow">{spanLabel(dateStart, dateEnd)}</span>
-        <div style={{ marginTop: 6 }}>
-          <PlanTitleEditor itineraryId={id} title={title} named={named} />
-        </div>
-        <div style={{ marginTop: "var(--space-2)" }}>
-          <PlanModeFlip itineraryId={id} mode={journey.mode === "work" ? "work" : "personal"} />
-        </div>
+        {/* No global work/personal toggle (retired) — work is a per-item tag,
+            flipped on each anchor in the spine (setStopMode). */}
       </header>
 
-      {/* The day's anchor + purpose — always present (plan elevation): the base it
-          departs from/returns to, and what it's for. */}
-      <div className="cc-plan-frame">
+      {/* DayHeader — mono date eyebrow → the day's PURPOSE as the H1 → From {base}
+          origin → "THE POINT OF THE DAY" upright Satoshi-light standfirst. The
+          base + intention stay editable in place (PlanBase / PlanIntention). */}
+      <header className="cc-day-header">
+        <span className="cc-day-header-eyebrow">{dateEyebrow}</span>
+        <div className="cc-day-purpose-edit" style={{ marginTop: 6 }}>
+          {/* The PURPOSE as the H1 — editable. When the day has its own title we
+              edit that; when unnamed we show the derived purpose (the primary
+              appointment) but the editor still writes the JOURNEY title, never the
+              anchor's name. */}
+          <PlanTitleEditor itineraryId={id} title={named ? (journey.title as string) : dayPurpose} named={named} />
+        </div>
         <PlanBase
           itineraryId={id}
           baseLabel={baseLabel}
@@ -829,8 +865,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           customerSites={pickSites ?? []}
           locations={(pickLocations ?? []) as PlacePickerLocation[]}
         />
-        <PlanIntention itineraryId={id} initial={intentions[0]?.description ?? null} />
-      </div>
+        <PlanIntention itineraryId={id} initial={dayNote} />
+      </header>
 
       {stops.length === 0 ? (
         <div className="cc-plan-empty">
@@ -842,12 +878,32 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </div>
       ) : (
         <>
+          {/* SetOffHero — the day's single calm instruction: the leave-by as the
+              giant debossed figure, seated in a lifted cotton sheet (the same
+              .cc-setoff treatment Today's live hero uses, here static from the
+              solved leave-by). Omitted when the day has no computed set-off. */}
           {leaveByIso ? (
-            <div className="cc-decision-clock">
-              <span className="label">Set off by</span>
-              <span className="figure">{londonHHMM(leaveByIso)}</span>
-              {firstDest ? <span className="for">for {firstDest}</span> : null}
-            </div>
+            (() => {
+              const clock = londonHHMM(leaveByIso);
+              const parts = clock ? clock.split(":") : null;
+              return (
+                <section className="cc-setoff">
+                  <div className="pg cc-setoff-sheet">
+                    <div className="cc-setoff-eyb">
+                      <span className="cc-setoff-kicker">Set off by</span>
+                      {firstDest ? <span className="cc-setoff-for">for {firstDest}</span> : null}
+                    </div>
+                    {parts ? (
+                      <div className="mono engr-deep cc-setoff-figure" aria-label={`Set off by ${clock}`}>
+                        <span>{parts[0]}</span>
+                        <span className="cc-setoff-colon">:</span>
+                        <span>{parts[1]}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              );
+            })()
           ) : null}
 
           {ripple ? (
@@ -868,16 +924,25 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
               page is a hierarchy, not a 16-panel pile.) */}
           <PlanNudges itineraryId={id} nudges={nudges} />
 
-          {journeyMap ? <PlanMap journey={journeyMap} /> : null}
+          {/* RouteMap — the real JourneyMap as a restrained paper map of the day's
+              door-to-door route, framed like Today's. */}
+          {journeyMap ? (
+            <section className="cc-today-map" aria-label="The day's route">
+              <span className="cc-today-map-eyebrow">The route, door to door</span>
+              <PlanMap journey={journeyMap} />
+            </section>
+          ) : null}
 
           <PlanSpine nodes={nodes} journeyDate={dateStart} eventId={id} isWork={journey.mode === "work"} />
 
-          {/* Trip tools — bookings, money, sharing, prep, constraints. Present but
-              quiet: collapsed by default, opened when the user wants to manage. */}
+          {/* TripTools — the operational tray: BOOKINGS · BUDGET · SHARING · PREP ·
+              CONSTRAINTS, plus the BUILD THE DAY group (the add/import/finder
+              toolkit, folded in here per the design rather than a loose bottom
+              row). Collapsed by default; opened to manage. */}
           <details className="cc-plan-tools">
             <summary className="cc-plan-tools-summary">
               <span className="cc-plan-tools-title">Trip tools</span>
-              <span className="cc-plan-tools-hint">bookings · budget · sharing · prep · constraints</span>
+              <span className="cc-plan-tools-hint">bookings · budget · sharing · prep · constraints · build</span>
             </summary>
             <div className="cc-plan-tools-body">
               {bookedConnections.length > 0 ? <ManageBookings itineraryId={id} bookings={bookedConnections} /> : null}
@@ -885,28 +950,62 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
               <ShareControl itineraryId={id} isWork={journey.mode === "work"} shares={locationShares} arriveIso={tripEndIso} multiDay={multiDay} />
               <ReadinessPanel itineraryId={id} items={readiness} />
               <PlanConstraints initial={constraints} />
+
+              {/* BUILD THE DAY — the same add/import/finder actions, grouped (Scan
+                  email · Add a fact · From calendar · Find a flight · Find a stay). */}
+              <div className="cc-build-day">
+                <span className="cc-build-day-eyebrow">Build the day</span>
+                <div className="cc-build-day-actions">
+                  <PlanImport
+                    itineraryId={id}
+                    lastStopId={stops.length ? stops[stops.length - 1].id : null}
+                    lastStopLabel={stops.length ? (stops[stops.length - 1].title ?? "your day") : "your day"}
+                  />
+                </div>
+                <div className="cc-build-day-tiles">
+                  <PlanAdd
+                    journeyId={id}
+                    journeyDate={dateStart}
+                    customers={pickCustomers ?? []}
+                    customerSites={pickSites ?? []}
+                    locations={(pickLocations ?? []) as PlacePickerLocation[]}
+                  />
+                  <PlanCalendarImport itineraryId={id} />
+                  <FlightFinder itineraryId={id} defaultDate={dateStart} defaultPassenger={connDefaultPassenger} />
+                  <StayFinder itineraryId={id} defaultDate={dateStart} />
+                </div>
+              </div>
             </div>
           </details>
         </>
       )}
 
-      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-        <PlanAdd
-          journeyId={id}
-          journeyDate={dateStart}
-          customers={pickCustomers ?? []}
-          customerSites={pickSites ?? []}
-          locations={(pickLocations ?? []) as PlacePickerLocation[]}
-        />
-        <PlanImport
-          itineraryId={id}
-          lastStopId={stops.length ? stops[stops.length - 1].id : null}
-          lastStopLabel={stops.length ? (stops[stops.length - 1].title ?? "your day") : "your day"}
-        />
-        <PlanCalendarImport itineraryId={id} />
-        <FlightFinder itineraryId={id} defaultDate={dateStart} defaultPassenger={connDefaultPassenger} />
-        <StayFinder itineraryId={id} defaultDate={dateStart} />
-      </div>
+      {/* Empty day still needs the toolkit reachable — keep BUILD THE DAY available
+          when there are no stops yet so a blank plan can be filled. */}
+      {stops.length === 0 ? (
+        <div className="cc-build-day" style={{ marginTop: "var(--space-4)" }}>
+          <span className="cc-build-day-eyebrow">Build the day</span>
+          <div className="cc-build-day-actions">
+            <PlanImport
+              itineraryId={id}
+              lastStopId={null}
+              lastStopLabel="your day"
+            />
+          </div>
+          <div className="cc-build-day-tiles">
+            <PlanAdd
+              journeyId={id}
+              journeyDate={dateStart}
+              customers={pickCustomers ?? []}
+              customerSites={pickSites ?? []}
+              locations={(pickLocations ?? []) as PlacePickerLocation[]}
+            />
+            <PlanCalendarImport itineraryId={id} />
+            <FlightFinder itineraryId={id} defaultDate={dateStart} defaultPassenger={connDefaultPassenger} />
+            <StayFinder itineraryId={id} defaultDate={dateStart} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

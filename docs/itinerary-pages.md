@@ -1,6 +1,47 @@
 # Itinerary Pages — Design & Technical Reference
 
-Last updated: 2026-05-26
+Last updated: 2026-06-27
+
+---
+
+## `/plan/[id]` — the full-day planner composition (current canonical surface)
+
+> The "Two-Page Model" below is legacy context. `/plan/[id]` is now the single
+> canonical itinerary surface AND intake (see CLAUDE.md). As of 2026-06-27 its
+> presentation matches the approved full-day planner design
+> (`docs/design-system/handoff-planner-full-day/planner-full-day.html`), reusing
+> the sections already built for `/today`.
+
+Composition order (top to bottom) in `src/app/(app)/plan/[id]/page.tsx`:
+
+1. **TopBar** (`.cc-plan-topbar`) — the `← Plan` back button. A detail page keeps
+   the back affordance (founder ruling). **No** global work/personal toggle
+   (retired); work is a per-item tag flipped per-anchor in the spine
+   (`setStopMode` via `AnchorCard.onFlipMode`).
+2. **DayHeader** (`.cc-day-header`, shared with `/today`) — mono date eyebrow →
+   the day's PURPOSE as the H1 (the inline `PlanTitleEditor`, lifted to
+   `.cc-day-purpose` weight; unnamed days show the derived primary-appointment
+   title but the editor still writes the JOURNEY title) → `From {base}` origin
+   (editable `PlanBase`) → "THE POINT OF THE DAY" note (editable `PlanIntention`,
+   rendered as the upright Satoshi-light `.cc-standfirst` — **NO serif, NO
+   italic**; legacy serif/italic overridden in `khonsera-edition-iii-live.css`).
+3. **SetOffHero** (`.cc-setoff` sheet, shared with `/today`'s live hero) — the
+   solved leave-by as the giant debossed mono figure. Static here (from the
+   decision-clock `leaveByIso`), reactive on `/today`.
+4. **RouteMap** (`.cc-today-map` → `PlanMap`) — the door-to-door JourneyMap.
+5. **The measured spine** — `PlanSpine` (the **editable** canonical spine), which
+   already renders the refined cards: `AnchorCard` (three-variable editor),
+   `LegCard` (door-to-door window + spare/buffer pill + Compare ways), inline
+   `LivePass` rail tickets, `GapCard`, accommodation, notes, recovery, TfL, live
+   alerts. Editing is fully preserved — the recomposition is page-level only.
+6. **TripTools** (`.cc-plan-tools`) — BOOKINGS · BUDGET · SHARING · PREP ·
+   CONSTRAINTS, plus a **BUILD THE DAY** group (`.cc-build-day`, shared with
+   `/today`) folding in the add/import/finder toolkit: `PlanImport` (Scan email),
+   `PlanAdd` (Add a fact), `PlanCalendarImport` (From calendar), `FlightFinder`,
+   `StayFinder`. On an empty day the BUILD THE DAY group renders standalone so a
+   blank plan is still fillable.
+
+Gold is `var(--gold)`/`var(--gold-2)` punctuation only; all colour is token-based.
 
 ---
 
