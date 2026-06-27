@@ -201,7 +201,9 @@ import { createLocation } from "@/lib/actions/locations";
 
 export async function addManualAnchor(input: {
   itineraryId: string;
-  kind: "appointment" | "place" | "accommodation";
+  // Dinner (meal) and Event are bespoke anchor types alongside the generic
+  // appointment / place / accommodation kinds — each lands its own stop type.
+  kind: "appointment" | "place" | "accommodation" | "meal" | "event";
   title: string;
   iso?: string | null; // arrive-by (start)
   leaveIso?: string | null; // leave-by (end) — set both for a fixed window ("9 to 5")
@@ -213,6 +215,12 @@ export async function addManualAnchor(input: {
   customerSiteId?: string | null;
   address?: string | null; // raw-text fallback → geocoded to coords
   details?: AccommodationDetails | null; // ED1 — structured stay payload (accommodation kind only)
+  // Who it's with (dinner / appointment) — a bound contact id.
+  contactId?: string | null;
+  // Dinner-specific: how many covers. Rides in metadata.
+  partySize?: number | null;
+  // Sub-role for meals (dinner / lunch / breakfast), stamped on metadata.
+  role?: string | null;
 }): Promise<{ ok: boolean; error?: string }> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "Give it a name." };
@@ -236,9 +244,30 @@ export async function addManualAnchor(input: {
       ? Math.max(0, Math.round((new Date(leaveIso).getTime() - new Date(arriveIso).getTime()) / 60_000))
       : input.durationMinutes ?? null;
 
+  const stopType =
+    input.kind === "appointment"
+      ? "appointment"
+      : input.kind === "accommodation"
+        ? "accommodation"
+        : input.kind === "meal"
+          ? "meal"
+          : input.kind === "event"
+            ? "event"
+            : "other";
+
+  let metadata: Record<string, unknown> | undefined;
+  if (input.kind === "accommodation") {
+    metadata = { kind: "accommodation", accommodation: input.details ?? {} };
+  } else {
+    const m: Record<string, unknown> = {};
+    if (input.role) m.role = input.role;
+    if (input.partySize != null) m.party_size = input.partySize;
+    if (Object.keys(m).length > 0) metadata = m;
+  }
+
   const created = await createStop({
     itinerary_id: input.itineraryId,
-    type: input.kind === "appointment" ? "appointment" : input.kind === "accommodation" ? "accommodation" : "other",
+    type: stopType,
     title,
     start_time: arriveIso,
     end_time: leaveIso,
@@ -246,10 +275,8 @@ export async function addManualAnchor(input: {
     is_time_fixed: Boolean(arriveIso || leaveIso),
     location_id: locationId,
     customer_site_id: customerSiteId,
-    metadata:
-      input.kind === "accommodation"
-        ? { kind: "accommodation", accommodation: input.details ?? {} }
-        : undefined,
+    contact_id: input.contactId ?? null,
+    metadata,
   });
   if (!created.ok) {
     const msg = "message" in created.error ? created.error.message : "Couldn't add that.";

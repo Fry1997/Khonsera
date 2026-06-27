@@ -47,6 +47,17 @@ Composition order (top to bottom) in `src/app/(app)/plan/[id]/page.tsx`:
    `StayFinder`. On an empty day the BUILD THE DAY group renders standalone so a
    blank plan is still fillable.
 
+`PlanAdd` (`src/components/plan/plan-add.tsx`) offers bespoke per-type forms so
+each thing has only its natural fields (the "could my Dad use it?" bar):
+**Appointment** (what/where/window/who) · **Dinner** (restaurant + date/time +
+party size + who) · **Event** (what/where/window) · **Place** · **Transport**
+(train/flight, changeovers, service no./seat/class/price) · **Stay**. Appointment/
+Dinner/Event/Place land via `addManualAnchor` (`plan-edit.ts`) — extended to
+carry stop types `meal`/`event`, a bound `contact_id` (who), and `party_size` in
+metadata; Transport lands as a first-class run via `addBookingRun`. "Who" reuses
+`src/components/plan/contact-picker.tsx` (debounced `searchContacts` + inline
+`createContactQuick`).
+
 Gold is `var(--gold)`/`var(--gold-2)` punctuation only; all colour is token-based.
 
 ---

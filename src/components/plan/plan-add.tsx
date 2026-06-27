@@ -12,6 +12,7 @@ import {
 } from "@/lib/accommodation/types";
 import { wallClockToIso } from "@/lib/time-zone";
 import { TransportHubPicker } from "@/components/transport-hub-picker";
+import { ContactPicker, type BoundContact } from "@/components/plan/contact-picker";
 import {
   PlacePicker,
   type PlaceSelection,
@@ -26,7 +27,13 @@ import {
 // Transport as a STANDALONE fact (a train/flight from A to B at a time — no
 // fixed anchor required first).
 
-type Kind = "appointment" | "place" | "transport" | "accommodation";
+type Kind =
+  | "appointment"
+  | "dinner"
+  | "event"
+  | "place"
+  | "transport"
+  | "accommodation";
 type TMode = "train" | "flight";
 type Hub = { id: string | null; label: string | null };
 
@@ -52,6 +59,12 @@ export function PlanAdd({
   const [place, setPlace] = useState<PlaceSelection | null>(null);
   const [arriveBy, setArriveBy] = useState("");
   const [leaveBy, setLeaveBy] = useState("");
+
+  // dinner fields — a reservation: restaurant, date+time, party size, who.
+  const [mealDate, setMealDate] = useState(journeyDate);
+  const [mealTime, setMealTime] = useState("19:30");
+  const [partySize, setPartySize] = useState("");
+  const [who, setWho] = useState<BoundContact | null>(null);
 
   // accommodation fields (check-in-from / check-out-by — constraints, not events)
   const [checkInDate, setCheckInDate] = useState(journeyDate);
@@ -86,6 +99,7 @@ export function PlanAdd({
 
   function reset() {
     setTitle(""); setPlace(null); setArriveBy(""); setLeaveBy("");
+    setMealDate(journeyDate); setMealTime("19:30"); setPartySize(""); setWho(null);
     setFrom({ id: null, label: null }); setTo({ id: null, label: null });
     setDate(journeyDate); setDepart(""); setArrive(""); setReference("");
     setServiceNumber(""); setSeatNo(""); setTicketClass(""); setTprice(""); setChangeovers([]);
@@ -168,8 +182,32 @@ export function PlanAdd({
       return;
     }
 
-    // For a Place, the bound place name IS the title when the user hasn't typed
-    // a more specific one. An Appointment keeps its own "what" + a place it sits at.
+    if (kind === "dinner") {
+      // A dinner reservation: the restaurant is the place; time is fixed;
+      // party size + who ride along as metadata / a bound contact.
+      if (!place?.label) {
+        setError("Pick or name the restaurant.");
+        return;
+      }
+      setPending(true);
+      const iso = mealTime ? wallClockToIso(mealDate, mealTime) || null : null;
+      void addManualAnchor({
+        itineraryId: journeyId,
+        kind: "meal",
+        role: "dinner",
+        title: title.trim() || place.label,
+        locationId: place.kind === "location" ? place.location_id : null,
+        customerSiteId: place.kind === "customer_site" ? place.customer_site_id : null,
+        iso,
+        partySize: partySize ? Number(partySize) : null,
+        contactId: who?.id ?? null,
+      }).then(done);
+      return;
+    }
+
+    // Appointment / Event / Place all sit at a place across an arrive→leave
+    // window. For a Place the bound place name IS the title; an Appointment or
+    // Event keeps its own "what".
     const resolvedTitle = title.trim() || (kind === "place" ? place?.label?.trim() ?? "" : "");
     if (!resolvedTitle) {
       setError(kind === "place" ? "Pick or name a place." : "Give it a name.");
@@ -180,12 +218,13 @@ export function PlanAdd({
     const leaveIso = leaveBy ? wallClockToIso(journeyDate, leaveBy) || null : null;
     void addManualAnchor({
       itineraryId: journeyId,
-      kind: kind === "appointment" ? "appointment" : "place",
+      kind: kind === "appointment" ? "appointment" : kind === "event" ? "event" : "place",
       title: resolvedTitle,
       locationId: place?.kind === "location" ? place.location_id : null,
       customerSiteId: place?.kind === "customer_site" ? place.customer_site_id : null,
       iso,
       leaveIso,
+      contactId: kind === "appointment" ? who?.id ?? null : null,
     }).then(done);
   }
 
@@ -207,9 +246,19 @@ export function PlanAdd({
             </header>
 
             <div className="cc-kind-row">
-              {(["appointment", "place", "transport", "accommodation"] as Kind[]).map((k) => (
+              {(["appointment", "dinner", "event", "place", "transport", "accommodation"] as Kind[]).map((k) => (
                 <button key={k} type="button" className="cc-kind-chip" data-active={kind === k ? "" : undefined} onClick={() => setKind(k)}>
-                  {k === "appointment" ? "Appointment" : k === "place" ? "Place" : k === "transport" ? "Transport" : "Stay"}
+                  {k === "appointment"
+                    ? "Appointment"
+                    : k === "dinner"
+                      ? "Dinner"
+                      : k === "event"
+                        ? "Event"
+                        : k === "place"
+                          ? "Place"
+                          : k === "transport"
+                            ? "Transport"
+                            : "Stay"}
                 </button>
               ))}
             </div>
@@ -404,16 +453,55 @@ export function PlanAdd({
                   </div>
                 ) : null}
               </>
+            ) : kind === "dinner" ? (
+              <>
+                {/* A dinner reservation: the restaurant, a fixed time, how many,
+                    and who. Its own bespoke fields — nothing extraneous. */}
+                <div className="cc-time-field">
+                  <span className="cc-var-label">Restaurant</span>
+                  <PlacePicker
+                    customers={customers}
+                    customerSites={customerSites}
+                    locations={locations}
+                    value={place}
+                    onChange={setPlace}
+                    googleTypes="restaurant"
+                    placeholder="Search the restaurant, or type its name"
+                  />
+                </div>
+                <div className="cc-dur-row">
+                  <label>
+                    <span className="cc-var-label">Date</span>
+                    <input type="date" value={mealDate} onChange={(e) => setMealDate(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Time</span>
+                    <input type="time" value={mealTime} onChange={(e) => setMealTime(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="cc-var-label">Party size</span>
+                    <input type="number" min="1" max="50" value={partySize} onChange={(e) => setPartySize(e.target.value)} placeholder="2" />
+                  </label>
+                </div>
+                <div className="cc-time-field">
+                  <span className="cc-var-label">Who’s coming (optional)</span>
+                  <ContactPicker value={who} onChange={setWho} />
+                </div>
+                <label className="cc-time-field">
+                  <span className="cc-var-label">Name (optional)</span>
+                  <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Birthday dinner" />
+                </label>
+              </>
             ) : (
               <>
-                {/* An Appointment has its own name ("what"), distinct from where
-                    it happens. A Place IS its place — one search box, no separate
-                    name field (the picked place's name becomes the title). */}
-                {kind === "appointment" ? (
+                {/* An Appointment or Event has its own name ("what"), distinct from
+                    where it happens. A Place IS its place — one search box, no
+                    separate name field (the picked place's name becomes the title). */}
+                {kind === "appointment" || kind === "event" ? (
                   <label className="cc-time-field">
                     <span className="cc-var-label">What</span>
                     <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Client meeting" autoFocus />
+                      placeholder={kind === "event" ? "Keynote, show, expo…" : "Client meeting"} autoFocus />
                   </label>
                 ) : null}
                 {/* NOT a <label>: PlacePicker renders its own input plus a
@@ -421,14 +509,14 @@ export function PlanAdd({
                     clicks to its control, which swallowed the option click and
                     left the selection unsaved. Use a plain div. */}
                 <div className="cc-time-field">
-                  <span className="cc-var-label">{kind === "appointment" ? "Where" : "Place"}</span>
+                  <span className="cc-var-label">{kind === "place" ? "Place" : "Where"}</span>
                   <PlacePicker
                     customers={customers}
                     customerSites={customerSites}
                     locations={locations}
                     value={place}
                     onChange={setPlace}
-                    placeholder={kind === "appointment" ? "Search where it happens" : "Search a place, or type a new one"}
+                    placeholder={kind === "place" ? "Search a place, or type a new one" : "Search where it happens"}
                   />
                 </div>
                 {/* Arrive + leave — set both for a window ("at the office 9 to 5"),
@@ -443,6 +531,12 @@ export function PlanAdd({
                     <input type="time" value={leaveBy} onChange={(e) => setLeaveBy(e.target.value)} />
                   </label>
                 </div>
+                {kind === "appointment" ? (
+                  <div className="cc-time-field">
+                    <span className="cc-var-label">Who (optional)</span>
+                    <ContactPicker value={who} onChange={setWho} />
+                  </div>
+                ) : null}
                 <p style={{ marginTop: "calc(-1 * var(--space-1))", fontSize: "var(--fs-micro)", color: "var(--ink-faint)" }}>
                   Set both for a window, e.g. 09:00 to 17:00. Leave blank if it’s flexible.
                 </p>
