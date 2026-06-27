@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
+import type { CSSProperties } from "react";
 import type {
   AnchorVM,
   AnchorVariable,
@@ -8,7 +11,28 @@ import type {
   IntentionVM,
   LegVM,
 } from "./types";
-import { formatClock, formatMoney } from "./types";
+import { formatClock } from "./types";
+
+// Minimal stroke glyphs for the LegCard (mode chip · Navigate · Compare ways),
+// in the same one-stroke idiom as the rest of the spine. No emojis.
+const LEG_GLYPH: Record<string, string> = {
+  walk: "M13 4.5a1.3 1.3 0 1 0 0-.01 M11 9l-2 4 3 2v5 M9 13l-2 1 M13 11l3 1 1 4 M11 9l1-2 3 1",
+  car: "M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13 M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z M7.5 16h.01 M16.5 16h.01",
+  bike: "M6 18a3 3 0 1 0 0-.01 M18 18a3 3 0 1 0 0-.01 M9 18l3-7 4 7 M11 7h2l1.5 4 M9 18h0",
+  train: "M8 4h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z M5 11h14 M9 20l-2 2 M15 20l2 2 M9.5 14h.01 M14.5 14h.01",
+  plane: "M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z",
+  navigation: "M3 11l18-8-8 18-2-7-8-3z",
+  route: "M6 19a2 2 0 1 0 0-.01 M18 5a2 2 0 1 0 0-.01 M8 19h6a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8h6",
+  arrowRight: "M5 12h14M13 6l6 6-6 6",
+};
+const LEG_ICO_FLEX: CSSProperties = { display: "inline-flex" };
+function LegGlyph({ name, size = 13 }: { name: keyof typeof LEG_GLYPH; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={LEG_GLYPH[name]} />
+    </svg>
+  );
+}
 
 // The four spine primitives, rebuilt to Design's Edition II screen contract
 // (`khonsera-edition-ii-screens.css` · `.cc-*` + data-* states). Code keeps the
@@ -240,64 +264,101 @@ const LEG_STATE: Record<LegVM["bookingStatus"], "chosen" | "proposed" | "unresol
   unbooked_stub: "unresolved",
 };
 
+// Which glyph the mode chip wears.
+const LEG_MODE_GLYPH: Record<LegVM["mode"], keyof typeof LEG_GLYPH> = {
+  walk: "walk",
+  drive: "car",
+  taxi: "car",
+  bus: "train",
+  tube: "train",
+  train: "train",
+  flight: "plane",
+  mixed: "walk",
+};
+
+// LegCard — the door-to-door travel between two anchors, restyled to the design's
+// WalkCard (the same `.cc-walk` paper as Today): a mode chip · a DOOR-TO-DOOR
+// eyebrow over the `{mins} min` headline · a charcoal Navigate pill (deep-links
+// into the router when the destination carries a coordinate) · a divider · a
+// `{depart} → {arrive}` row with a DIRECT tag + the sage `● {N} MIN SPARE` pill ·
+// the "Arrive {t} — {N} min before {dest}" sub-line · a footer with a PROPOSED
+// lifecycle pill and the COMPARE WAYS → affordance (still opens the compare
+// sheet via onCompare). Tokens only; gold stays punctuation.
 export function LegCard({ leg, onCompare }: { leg: LegVM; onCompare?: (id: string) => void }) {
-  const total = leg.notes ?? (leg.departure && leg.arrival
+  const state = leg.atRisk ? "at-risk" : LEG_STATE[leg.bookingStatus];
+  const word = LEG_LABEL[leg.mode];
+  const glyph = LEG_MODE_GLYPH[leg.mode];
+  // The headline is the duration. Prefer the explicit "N min" note the plan
+  // carries; fall back to a depart–arrive window, then to a calm prompt.
+  const headline = leg.notes ?? (leg.departure && leg.arrival
     ? `${formatClock(leg.departure)}–${formatClock(leg.arrival)}`
     : "Travel needed");
-  const Tag = onCompare ? "button" : "div";
-  const state = leg.atRisk ? "at-risk" : LEG_STATE[leg.bookingStatus];
   // The buffer made legible: how many minutes you LAND EARLY before the next fixed
   // thing. Shown as a real number on every leg, not a vague "Comfortable".
   const spare = leg.buffer?.slackMinutes;
-  const bufferLabel = !leg.buffer || leg.buffer.state === "unknown"
-    ? null
-    : leg.buffer.state === "late"
-      ? "Won't make it"
-      : leg.buffer.state === "tight"
-        ? `Tight · ${spare ?? 0} min`
-        : spare != null && spare > 0
-          ? `${spare} min spare`
-          : null; // flexible destination — nothing to be early for
+  const showWindow = !!leg.departure && !!leg.arrival;
+  const lifecycle = state === "chosen" ? "Booked" : "Proposed";
+
   return (
-    <Tag
-      className="cc-leg-card"
-      data-state={state}
-      onClick={onCompare ? () => onCompare(leg.id) : undefined}
-      style={onCompare ? { width: "100%", textAlign: "left", cursor: "pointer", background: "transparent" } : undefined}
-    >
-      <div className="cc-leg-head">
-        <span className="cc-leg-total">{total} door-to-door</span>
-        <span className="cc-leg-head-right">
-          {bufferLabel ? (
-            <span className="cc-leg-buffer" data-buffer={leg.buffer!.state}>
-              {bufferLabel}
-            </span>
-          ) : null}
-          <span className="cc-leg-pattern">Direct</span>
+    <div className="cc-walk cc-leg-card" data-state={state}>
+      <div className="cc-walk-head">
+        <span className="cc-walk-mode">
+          <span style={LEG_ICO_FLEX}><LegGlyph name={glyph} size={12} /></span>
+          {word}
         </span>
-      </div>
-      <div className="cc-subseq">
-        <span className="cc-subleg">{LEG_LABEL[leg.mode]}</span>
-      </div>
-      <div className="cc-leg-meta">
-        <span className="cc-mono">
-          {formatClock(leg.departure)} &rarr; {formatClock(leg.arrival)}
+        <span className="cc-leg-doortodoor">
+          <span className="cc-leg-doortodoor-eyb">Door-to-door</span>
+          <span className="cc-walk-mins mono engr">{headline}</span>
         </span>
-        {leg.cost != null ? (
-          <span className="cc-mono">{formatMoney(leg.cost, leg.currency)}</span>
+        {leg.navHref ? (
+          <Link href={leg.navHref as Route} className="cc-btn cc-btn-gold cc-walk-nav" style={LEG_NAV_BTN}>
+            <span style={LEG_ICO_FLEX}><LegGlyph name="navigation" size={12} /></span>
+            Navigate
+          </Link>
         ) : null}
       </div>
+
+      {showWindow ? (
+        <div className="cc-walk-window">
+          <span className="mono cc-walk-time">{formatClock(leg.departure)}</span>
+          <span className="cc-walk-rule" aria-hidden />
+          <span className="mono cc-walk-time">{formatClock(leg.arrival)}</span>
+          <span className="cc-walk-direct">Direct</span>
+          {spare != null && spare > 0 ? (
+            <span className="cc-walk-spare">
+              <span className="cc-walk-spare-dot" aria-hidden />
+              {spare} min spare
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       {spare != null && spare > 0 && leg.arriveBeforeLabel ? (
         <p className="cc-leg-spare">
           Arrive {formatClock(leg.arrival)} — {spare} min before {leg.arriveBeforeLabel}
         </p>
       ) : null}
+
       {leg.atRisk && leg.riskNote ? (
         <p className="cc-leg-risk">
           <span aria-hidden>!</span> {leg.riskNote}
         </p>
       ) : null}
-      {onCompare ? <p className="cc-leg-tap">Tap to compare &rarr;</p> : null}
-    </Tag>
+
+      <div className="cc-walk-foot">
+        <span className="cc-walk-proposed-strip">
+          <span style={LEG_ICO_FLEX}><LegGlyph name="route" size={13} /></span>
+          <span className="sb cc-walk-proposed">{lifecycle}</span>
+        </span>
+        {onCompare ? (
+          <button type="button" className="cc-walk-compare cc-leg-compare-btn" onClick={() => onCompare(leg.id)}>
+            Compare ways
+            <LegGlyph name="arrowRight" size={11} />
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
+
+const LEG_NAV_BTN: CSSProperties = { flex: "none", display: "inline-flex", alignItems: "center", gap: 5 };

@@ -345,6 +345,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       toFixed && to.start_time && realArrivalIso
         ? Math.round((new Date(to.start_time).getTime() - new Date(realArrivalIso).getTime()) / 60_000)
         : undefined;
+    // "Take me there" deep-link into the point-to-point router, pre-filling the
+    // leg's destination — present only when the destination carries a coordinate.
+    const toCoord = coordOfStop(to);
+    const navHref = toCoord
+      ? `/navigate?${new URLSearchParams({ dlat: String(toCoord.lat), dlng: String(toCoord.lng), dname: to.title ?? "Destination" }).toString()}`
+      : undefined;
     return {
       id: `${tr.from_stop_id}->${tr.to_stop_id}`,
       mode: mapLegMode(tr.mode),
@@ -355,6 +361,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       arriveBeforeLabel: spareMinutes != null && spareMinutes > 0 ? (to.title ?? undefined) : undefined,
       notes: travelMin ? `${travelMin} min` : undefined,
       bookingStatus: tr.is_locked ? "booked_in_app" : "manual",
+      navHref,
       atRisk,
       riskNote: atRisk && "message" in feas ? feas.message : undefined,
       buffer: {

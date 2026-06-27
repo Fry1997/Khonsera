@@ -185,7 +185,7 @@
 .cc-walk-direct { flex: none; font-family: var(--mono); font-size: 10px; text-transform: uppercase;
   letter-spacing: 0.1em; color: var(--ink-faint); }
 .cc-walk-dest { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: var(--ink-dim); }
-.cc-walk-spare { flex: none; margin-left: auto; display: inline-flex; align-items: center;
+.cc-walk-spare { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: var(--fw-medium, 500); color: var(--sage);
   background: var(--sage-2); border-radius: var(--radius-pill); padding: 2px 9px; white-space: nowrap; }
 .cc-walk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -254,34 +254,31 @@
 .cc-anchor-card[data-type="accommodation_check_in"], .cc-anchor-card[data-type="accommodation_check_out"] { border-left: 2px solid var(--sage); }
 
 /* ---------------------------------------------------------------------------
- * 2 · LegCard — travel between anchors; door-to-door is the headline
+ * 2 · LegCard — the door-to-door travel between two anchors. Restyled to the
+ * design's WalkCard: it reuses the `.cc-walk*` paper (mode chip · DOOR-TO-DOOR
+ * eyebrow over the {mins} headline · charcoal Navigate · dashed window with a
+ * DIRECT tag + sage spare pill · a PROPOSED / COMPARE WAYS → footer). Only the
+ * leg-specific bits live here. Tokens only; gold stays punctuation.
  * ------------------------------------------------------------------------- */
 .cc-leg-card { position: relative; background: var(--widget); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--lift); padding: var(--space-3) var(--space-3-5, 14px); }
-.cc-leg-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-.cc-leg-total { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 17px;
-  letter-spacing: -0.01em; color: var(--ink); }            /* the ONLY rank key */
-.cc-leg-pattern { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink-dim); }
-/* the sub-leg run: walk → train → taxi, hairline connected */
-.cc-subseq { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2-5,10px); }
-.cc-subleg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.cc-subleg .cc-mode-ico { width: 15px; height: 15px; color: var(--ink-dim); }
-.cc-subseq .cc-sep { color: var(--ink-faint); font-size: 11px; }
-.cc-leg-meta { display: flex; gap: var(--space-4); margin-top: var(--space-2); font-family: var(--mono);
-  font-size: 11px; color: var(--ink-dim); }
-/* leg STATES */
-.cc-leg-card[data-state="unresolved"] { border-left: 1.5px dashed var(--rule-2); padding-left: var(--space-3); }
-.cc-leg-card[data-state="unresolved"] .cc-leg-total { color: var(--ink-dim); }
-.cc-leg-card[data-state="proposed"] .cc-leg-total::after { content: "proposed"; font-family: var(--mono);
-  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint);
-  margin-left: var(--space-2); vertical-align: middle; }
-.cc-leg-card[data-state="at-risk"] { border-left: 2px solid var(--warning); padding-left: var(--space-3); }
-.cc-leg-risk { display: flex; align-items: center; gap: 6px; margin-top: var(--space-2); font-size: 12px;
-  color: var(--warning); }
-.cc-leg-tap { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--gold-2); margin-top: var(--space-2-5,10px); }
+/* DOOR-TO-DOOR eyebrow stacked over the {mins} headline — takes the flexible
+   middle of the chip row (mode chip left, Navigate right). */
+.cc-leg-doortodoor { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cc-leg-doortodoor-eyb { font-family: var(--mono); font-size: 8.5px; font-weight: var(--fw-medium, 500);
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); }
+/* the sage spare pill, mirrored from Today's WalkCard, with its dot */
+.cc-walk-spare-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); flex: none; }
+/* the lifecycle strip (route glyph + PROPOSED/BOOKED pill) on the footer left */
+.cc-walk-proposed-strip { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-dim); }
+/* Compare ways → is a real button on the plan (opens the compare sheet) */
+.cc-leg-compare-btn { border: none; background: transparent; cursor: pointer; padding: 0; }
+/* leg STATES — a hairline left edge carries unresolved/at-risk; the proposed
+   lifecycle is told by the footer pill, not a ::after on the headline. */
+.cc-leg-card[data-state="unresolved"] { border-left: 1.5px dashed var(--rule-2); }
+.cc-leg-card[data-state="at-risk"] { border-left: 2px solid var(--warning); }
+.cc-leg-risk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--warning); }
 /* The comfort buffer made legible — you land this early before the next fixed thing. */
-.cc-leg-spare { margin-top: var(--space-2); font-size: 12px; color: var(--success, var(--sage)); }
+.cc-leg-spare { font-size: 12px; color: var(--success, var(--sage)); }
 
 /* ---------------------------------------------------------------------------
  * 3 · GapCard — unallocated time; binary-reveal prompt
@@ -386,17 +383,19 @@
  * its reactive behaviour and sits quietly beneath.
  * ------------------------------------------------------------------------- */
 .cc-setoff { display: flex; flex-direction: column; gap: var(--space-3); }
-.cc-setoff-sheet { padding: var(--space-4) var(--space-5) var(--space-4-5, 18px);
+/* Prototype SetOffHero: label-left, giant figure-right on ONE sheet (side by
+   side via space-between), not stacked. */
+.cc-setoff-sheet { padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-lg); background: var(--widget); box-shadow: var(--lift);
-  display: flex; flex-direction: column; }
-.cc-setoff-eyb { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.cc-setoff-eyb { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .cc-setoff-kicker { font-family: var(--mono); font-size: 10px; font-weight: var(--fw-medium, 500);
   letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-faint); }
 .cc-setoff-for { font-size: var(--fs-label); font-weight: var(--fw-medium, 500); color: var(--gold-2);
   letter-spacing: -0.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the one giant figure — thin debossed mono, ~52px, the day's single emphasis */
-.cc-setoff-figure { display: flex; align-items: baseline; margin-top: var(--space-2);
-  font-size: 52px; font-weight: 300; line-height: 0.9; letter-spacing: -0.04em; color: var(--ink);
+.cc-setoff-figure { display: flex; align-items: baseline; flex: none;
+  font-size: 52px; font-weight: 300; line-height: 0.84; letter-spacing: -0.05em; color: var(--ink);
   font-variant-numeric: tabular-nums; }
 .cc-setoff-figure--word { font-size: 40px; letter-spacing: -0.03em; }
 .cc-setoff-colon { color: var(--ink-faint); padding: 0 1px; font-weight: 400; }

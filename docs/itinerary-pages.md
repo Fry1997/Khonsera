@@ -31,7 +31,13 @@ Composition order (top to bottom) in `src/app/(app)/plan/[id]/page.tsx`:
 4. **RouteMap** (`.cc-today-map` → `PlanMap`) — the door-to-door JourneyMap.
 5. **The measured spine** — `PlanSpine` (the **editable** canonical spine), which
    already renders the refined cards: `AnchorCard` (three-variable editor),
-   `LegCard` (door-to-door window + spare/buffer pill + Compare ways), inline
+   `LegCard` — restyled to the design's WalkCard (the `.cc-walk*` paper): a mode
+   chip · a DOOR-TO-DOOR eyebrow over the `{mins} min` headline · a charcoal
+   **Navigate** pill (deep-links `/navigate?dlat=&dlng=&dname=` to the leg's
+   destination, from `LegVM.navHref`) · a dashed `{depart} → {arrive}` window with
+   a DIRECT tag + sage `● {N} min spare` pill · the "Arrive … min before {dest}"
+   sub-line · a footer with a PROPOSED/BOOKED lifecycle pill and a **Compare ways
+   →** button (still opens the compare sheet via `onCompare`), inline
    `LivePass` rail tickets, `GapCard`, accommodation, notes, recovery, TfL, live
    alerts. Editing is fully preserved — the recomposition is page-level only.
 6. **TripTools** (`.cc-plan-tools`) — BOOKINGS · BUDGET · SHARING · PREP ·

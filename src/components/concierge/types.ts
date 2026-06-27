@@ -108,6 +108,10 @@ export type LegVM = {
   // Buffer classification on this leg (P6) — a calm badge on every leg, not only
   // the risky ones; slack present for 'tight'.
   buffer?: { state: "ok" | "tight" | "late" | "unknown"; slackMinutes?: number };
+  // Deep-link into the point-to-point router for this leg's destination
+  // (`/navigate?dlat=&dlng=&dname=`). Present only when the destination carries a
+  // coordinate; the LegCard's charcoal Navigate pill is omitted otherwise.
+  navHref?: string;
 };
 
 // One scheduled-transport option in the §7 comparison (two bracket the target).
