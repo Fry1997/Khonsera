@@ -169,7 +169,7 @@
  * window with a Direct tag, the sage spare pill, and a Proposed / Compare ways
  * footer strip. Tokens only; gold stays punctuation (never a fill here).
  * ------------------------------------------------------------------------- */
-.cc-walk { padding: var(--space-3) var(--space-3-5, 14px); display: flex; flex-direction: column; gap: 10px; }
+.cc-walk { position: relative; background: var(--widget); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--lift); padding: var(--space-3) var(--space-3-5, 14px); display: flex; flex-direction: column; gap: 10px; }
 .cc-walk-head { display: flex; align-items: center; gap: 10px; }
 .cc-walk-mode { display: inline-flex; align-items: center; gap: 5px; flex: none;
   font-family: var(--mono); font-size: 10.5px; font-weight: var(--fw-medium, 500);
@@ -256,7 +256,7 @@
 /* ---------------------------------------------------------------------------
  * 2 · LegCard — travel between anchors; door-to-door is the headline
  * ------------------------------------------------------------------------- */
-.cc-leg-card { background: transparent; padding: 2px 0 var(--space-2); }
+.cc-leg-card { position: relative; background: var(--widget); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--lift); padding: var(--space-3) var(--space-3-5, 14px); }
 .cc-leg-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .cc-leg-total { font-family: var(--display); font-weight: var(--fw-medium,500); font-size: 17px;
   letter-spacing: -0.01em; color: var(--ink); }            /* the ONLY rank key */

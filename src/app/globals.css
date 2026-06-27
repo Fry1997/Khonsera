@@ -3896,15 +3896,15 @@
  * its content, so no child needs touching (faithful to .pg without the layout risk).
  * The leg/gap connectors stay transparent and untextured by design. */
 .cc-anchor-card, .cc-active-tile, .cc-readiness, .cc-recovery,
-.cc-pass, .cc-doc-card, .cc-ticket, .cc-changeover, .cc-walk-card {
+.cc-pass, .cc-doc-card, .cc-ticket, .cc-changeover, .cc-walk, .cc-leg-card {
   position: relative;
 }
-:is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-ticket,.cc-changeover,.cc-walk-card)::after {
+:is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-ticket,.cc-changeover,.cc-walk, .cc-leg-card)::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
   background-image: var(--fibre); background-size: 140px 140px;
   mix-blend-mode: multiply; opacity: 0.13; z-index: -1; pointer-events: none;
 }
-[data-theme="dark"] :is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-ticket,.cc-changeover,.cc-walk-card)::after {
+[data-theme="dark"] :is(.cc-anchor-card,.cc-active-tile,.cc-readiness,.cc-recovery,.cc-pass,.cc-doc-card,.cc-ticket,.cc-changeover,.cc-walk, .cc-leg-card)::after {
   mix-blend-mode: screen; opacity: 0.05;
 }
 
