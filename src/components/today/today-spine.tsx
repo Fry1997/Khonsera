@@ -8,6 +8,9 @@ import { navigateHref, londonClock, roleLabel } from "./spine-model";
 import { pickNextIndex, READINESS_BUFFER_MIN, STATION_BUFFER_MIN, type EngineAnchor } from "@/lib/today/engine";
 import { computeGaps, type GapStop } from "@/lib/planning/gaps";
 import { ModeTag } from "@/components/concierge/mode-tag";
+import { LivePass } from "@/components/plan/live-pass";
+import { ScanView } from "@/components/concierge";
+import type { TicketVM, BarcodeVM } from "@/components/concierge";
 
 // Today's spine — the whole day threaded on the rail, rebuilt to the v7 "paper"
 // language. Nodes are debossed icon medallions (filled charcoal for a real
@@ -37,6 +40,14 @@ type AnchorRow = Extract<Row, { kind: "anchor" }>;
 export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnchor[]; nextId?: string | null; nowOverride?: number | null }) {
   const [internalNow, setInternalNow] = useState(() => Date.now());
   const [showPast, setShowPast] = useState(false);
+  // One ScanView for every inline pass node — the barrier surface (the saved
+  // Aztec), opened from a pass's "Show ticket" without leaving the spine.
+  const [scan, setScan] = useState<{ summary: string; barcodes: BarcodeVM[] } | null>(null);
+  const openScan = (ticket: TicketVM) => {
+    const leg = ticket.legs[0];
+    if (!leg?.barcodes?.length) return;
+    setScan({ summary: `${ticket.operator} · ${leg.origin.place} → ${leg.destination.place}`, barcodes: leg.barcodes });
+  };
 
   useEffect(() => {
     if (nowOverride != null) return; // driven externally (demo time-travel)
@@ -123,7 +134,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
         {pastRows.length > 0 ? (
           <PastToggle count={pastRows.length} open={showPast} onToggle={() => setShowPast((v) => !v)} />
         ) : null}
-        {showPast ? pastRows.map((row) => <SpineEntry key={row.anchor.id} anchor={row.anchor} state="past" spare={spareByAnchorId.get(row.anchor.id) ?? null} />) : null}
+        {showPast ? pastRows.map((row) => <SpineEntry key={row.anchor.id} anchor={row.anchor} state="past" spare={spareByAnchorId.get(row.anchor.id) ?? null} onShow={openScan} />) : null}
         {liveRows.map((row, i) =>
           row.kind === "now" ? (
             <div className="cc-node" key={`now-${i}`}>
@@ -137,10 +148,11 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
               </div>
             </div>
           ) : (
-            <SpineEntry key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} spare={spareByAnchorId.get(row.anchor.id) ?? null} />
+            <SpineEntry key={row.anchor.id} anchor={row.anchor} state={row.state} late={row.late} spare={spareByAnchorId.get(row.anchor.id) ?? null} onShow={openScan} />
           ),
         )}
       </div>
+      {scan ? <ScanView summary={scan.summary} barcodes={scan.barcodes} onClose={() => setScan(null)} /> : null}
     </section>
   );
 }
@@ -149,7 +161,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
 // when the plan carries a leg + a destination to navigate to) renders first on
 // its own transit node, then the anchor — or, for a station changeover, the
 // changeover card — renders below.
-function SpineEntry({ anchor, state, late, spare }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean; spare?: number | null }) {
+function SpineEntry({ anchor, state, late, spare, onShow }: { anchor: SpineAnchor; state: "past" | "next" | "future"; late?: boolean; spare?: number | null; onShow?: (ticket: TicketVM) => void }) {
   const showWalk = !!anchor.plannedTravelMinutes && !!navigateHref(anchor) && state !== "past";
   const isAppointment = anchor.type === "appointment" || anchor.type === "reservation";
   return (
@@ -162,7 +174,31 @@ function SpineEntry({ anchor, state, late, spare }: { anchor: SpineAnchor; state
       ) : (
         <AnchorNode anchor={anchor} state={state} late={late} />
       )}
+      {/* The booked ticket boards HERE — drop its pass inline, right after the
+         departure / changeover node, so the journey carries its own credential
+         on the spine rather than in a block above. Dimmed once it's behind us. */}
+      {anchor.pass ? <PassNode pass={anchor.pass} state={state} onShow={onShow} /> : null}
     </>
+  );
+}
+
+// ─── Inline rail/air pass node — a diamond medallion (a credential, distinct
+// from the round place/leg medallions) seated on the rail, carrying the live
+// Pass (charcoal band · big station codes · DEPART/ARRIVE/PLATFORM/SEAT stub ·
+// "Show ticket · ref"). The pass IS the boarding-pass card; live Darwin status
+// folds onto it via LivePass. Recedes with the rest of the day once past. ─────
+function PassNode({ pass, state, onShow }: { pass: NonNullable<SpineAnchor["pass"]>; state: "past" | "next" | "future"; onShow?: (ticket: TicketVM) => void }) {
+  return (
+    <div className="cc-node" data-state={state} style={state === "past" ? { opacity: 0.6 } : undefined}>
+      <div className="cc-node-dot">
+        <span className="cc-med-pass">
+          <span className="engr-ico" style={{ ...ICO_FLEX, color: "var(--ink-dim)" }}><Glyph name="ticket" size={13} /></span>
+        </span>
+      </div>
+      <div className="cc-pass-inline">
+        <LivePass ticket={pass.ticket} crs={pass.crs} time={pass.time} dest={pass.dest} onShow={onShow} />
+      </div>
+    </div>
   );
 }
 
@@ -488,7 +524,7 @@ function anchorIcon(a: SpineAnchor): GlyphName {
 // emojis. Paths kept simple; sized by the medallion. ─────────────────────────
 type GlyphName =
   | "home" | "train" | "plane" | "calendar" | "bed" | "pin"
-  | "walk" | "car" | "bike" | "swap" | "navigation" | "arrowRight" | "chevron" | "clock";
+  | "walk" | "car" | "bike" | "swap" | "navigation" | "arrowRight" | "chevron" | "clock" | "ticket";
 
 const GLYPH_PATHS: Record<GlyphName, string> = {
   home: "M3 10.5 12 3l9 7.5 M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5 M9.5 21v-6h5v6",
@@ -505,6 +541,7 @@ const GLYPH_PATHS: Record<GlyphName, string> = {
   arrowRight: "M5 12h14M13 6l6 6-6 6",
   chevron: "M6 9l6 6 6-6",
   clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2",
+  ticket: "M4 7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4z M14 6v12",
 };
 
 function Glyph({ name, size = 16, style }: { name: GlyphName; size?: number; style?: CSSProperties }) {

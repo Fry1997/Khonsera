@@ -17,7 +17,6 @@ import { liveDeparture } from "@/lib/integrations/darwin";
 import { delayConsequence } from "@/lib/live/engine";
 import { ticketUseMoment } from "@/components/concierge";
 import { TodayDocument } from "@/components/today/today-document";
-import { TodayPasses } from "@/components/today/today-passes";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { LiveDay } from "@/components/today/live-day";
 import { TodaySpine } from "@/components/today/today-spine";
@@ -143,12 +142,16 @@ export default async function TodayPage({
   // never loses its start point.
   let baseCoord: { lat: number; lng: number } | null = null;
   let tickets: TicketVM[] = [];
+  // Per-leg rail/air passes keyed by their BOARDING stop id — folded once here
+  // from each event's booked transit run, so the spine can drop each pass inline
+  // at the leg it belongs to (the run's departure / each changeover stop).
+  const legCardByOriginId = new Map<string, { ticket: TicketVM; crs: string | null; time: string | null; dest: string | null }>();
   for (const ev of covering) {
     const [{ data: s }, { data: t }, jt] = await Promise.all([
       supabase
         .from("stops")
         .select(
-          "id, type, title, start_time, end_time, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(name, code, kind, latitude, longitude)",
+          "id, type, title, start_time, end_time, metadata, location:locations(name, latitude, longitude), customer_site:customer_sites(name, latitude, longitude), transport_hub:transport_hubs(name, code, kind, latitude, longitude)",
         )
         .eq("itinerary_id", ev.id)
         .order("sequence"),
@@ -159,7 +162,8 @@ export default async function TodayPage({
       loadJourneyTickets(ev.id),
     ]);
     const evMode = (ev as { mode?: string | null }).mode === "work" ? "work" : (ev as { mode?: string | null }).mode === "personal" ? "personal" : null;
-    for (const st of (s ?? []) as unknown as StopRow[]) {
+    const evStops = (s ?? []) as unknown as Array<StopRow & { metadata?: Record<string, unknown> | null }>;
+    for (const st of evStops) {
       if (st.type === "start" && !baseCoord) baseCoord = coordOf(st);
       if (isToday(st.start_time, today)) allStops.push({ ...st, mode: evMode });
     }
@@ -168,6 +172,34 @@ export default async function TodayPage({
       if (tr.to_stop_id) travelByToStop.set(tr.to_stop_id, { minutes: tr.computed_duration_minutes, mode: tr.mode });
     }
     tickets = tickets.concat(jt);
+
+    // Fold this event's booked transit runs into one pass per boarded hop, keyed
+    // by the boarding (origin) stop id — the spine matches these to its departure
+    // / changeover nodes. Only hops whose boarding stop is part of today's slice
+    // surface; a changeover's true departure is its end_time.
+    const byId = new Map(evStops.map((st) => [st.id, st]));
+    const legs = foldStopsToLegTickets(
+      evStops.map((st) => ({
+        id: st.id,
+        type: st.type,
+        title: st.title,
+        start_time: st.start_time,
+        end_time: st.end_time,
+        code: st.transport_hub?.code ?? null,
+        metadata: st.metadata ?? null,
+      })),
+    );
+    for (const lt of legs) {
+      const o = byId.get(lt.originStopId);
+      if (!o || !isToday(o.start_time, today)) continue;
+      const iso = o.type === "transit_changeover" ? o.end_time : o.start_time;
+      legCardByOriginId.set(lt.originStopId, {
+        ticket: lt.ticket,
+        crs: o.transport_hub?.code ?? null,
+        time: londonHHMM(iso),
+        dest: lt.ticket.legs[0]?.destination.code ?? null,
+      });
+    }
   }
 
   allStops.sort((a, b) => {
@@ -239,6 +271,7 @@ export default async function TodayPage({
       station,
       role: roleOf(s.type),
       mode: s.mode ?? null,
+      pass: legCardByOriginId.get(s.id) ?? null,
     };
   });
 
@@ -262,40 +295,12 @@ export default async function TodayPage({
       .filter((x) => new Date(x.m).getTime() >= nowMs - 30 * 60000)
       .sort((a, b) => a.m.localeCompare(b.m))[0]?.tk ?? tickets[0];
 
-  // Per-leg rail cards for the surfaced journey: each booked hop (the ticket id IS
-  // the run's departure stop id) as its own live card — boarding station CRS +
-  // planned departure feed the live Darwin lookup on the card itself.
-  let legCards: Array<{ key: string; ticket: TicketVM; crs: string | null; time: string | null; dest: string | null }> | undefined;
-  if (nextTicket) {
-    const { data: depRow } = await supabase.from("stops").select("itinerary_id").eq("id", nextTicket.id).maybeSingle();
-    if (depRow?.itinerary_id) {
-      const { data: runStops } = await supabase
-        .from("stops")
-        .select("id, type, title, start_time, end_time, metadata, transport_hub:transport_hubs(code)")
-        .eq("itinerary_id", depRow.itinerary_id)
-        .order("sequence");
-      const rows = (runStops ?? []) as unknown as Array<{
-        id: string; type: string; title: string | null; start_time: string | null; end_time: string | null;
-        metadata: Record<string, unknown> | null; transport_hub: { code?: string | null } | null;
-      }>;
-      const byId = new Map(rows.map((s) => [s.id, s]));
-      legCards = foldStopsToLegTickets(
-        rows.map((s) => ({ id: s.id, type: s.type, title: s.title, start_time: s.start_time, end_time: s.end_time, code: s.transport_hub?.code ?? null, metadata: s.metadata })),
-      )
-        .filter((lt) => lt.runDepartureStopId === nextTicket.id)
-        .map((lt) => {
-          const o = byId.get(lt.originStopId);
-          const iso = o?.type === "transit_changeover" ? o.end_time : o?.start_time;
-          return {
-            key: lt.originStopId,
-            ticket: lt.ticket,
-            crs: o?.transport_hub?.code ?? null,
-            time: londonHHMM(iso),
-            dest: lt.ticket.legs[0]?.destination.code ?? null,
-          };
-        });
-    }
-  }
+  // Rail/air passes now ride INLINE on the spine at each leg's boarding node
+  // (legCardByOriginId → spineAnchors.pass). The standalone surface stays only
+  // for the document that has NO spine leg to sit on — a stay (check-in/out is a
+  // constraint, not a journey hop) that's the next thing needed.
+  const nextTicketInline = nextTicket ? legCardByOriginId.has(nextTicket.id) : false;
+  const showNextDocument = !!nextTicket && !nextTicketInline && nextTicket.kind === "stay";
 
   const sub =
     covering.length === 1
@@ -349,12 +354,8 @@ export default async function TodayPage({
         <>
           <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
 
-          {(proj.state === "readiness" || proj.state === "in-transit") && nextTicket ? (
-            legCards?.length ? (
-              <TodayPasses legs={legCards} />
-            ) : (
-              <TodayDocument ticket={nextTicket} />
-            )
+          {(proj.state === "readiness" || proj.state === "in-transit") && showNextDocument && nextTicket ? (
+            <TodayDocument ticket={nextTicket} />
           ) : null}
 
           <TodaySpine anchors={spineAnchors} nextId={nextSpine?.id ?? null} />

@@ -1,6 +1,16 @@
-import type { AnchorType } from "@/components/concierge";
+import type { AnchorType, TicketVM } from "@/components/concierge";
 import type { NavMode } from "@/lib/nav/types";
 import type { Route } from "next";
+
+// A booked rail/air pass that BOARDS at this anchor — folded server-side and
+// dropped inline on the spine at the leg's departure / changeover node, so the
+// ticket sits with the journey it belongs to (not in a separate block above).
+export interface SpinePass {
+  ticket: TicketVM;
+  crs: string | null;
+  time: string | null; // planned departure, London HH:MM (matches Darwin <std>)
+  dest: string | null; // hop destination CRS — disambiguates same-minute departures
+}
 
 // Shared serialisable shape the Today spine + next-move card render from. Built
 // server-side in today/page.tsx (one place that reads the DB), consumed by the
@@ -29,6 +39,10 @@ export interface SpineAnchor {
   // Per-item work/personal classification (the parent Event's tag). Shown as a
   // quiet ModeTag on appointment/reservation cards — never a lens or a toggle.
   mode?: "work" | "personal" | null;
+  // The booked rail/air pass that BOARDS here (present on departure/changeover
+  // stops of a booked run). Rendered as an inline pass node right after the
+  // anchor — the journey's ticket, on the spine, where you board it.
+  pass?: SpinePass | null;
 }
 
 // You don't walk to "Harpenden" — you walk to Harpenden Station. Append the

@@ -116,22 +116,48 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
 
   const modeOptions = Array.from(new Set<NavMode>([next.navMode, "drive"]));
 
+  // The calm SET OFF BY figure — one giant debossed mono numeral, the day's
+  // single emphatic time. When the leave-by is known (not a cliff) it's the
+  // computed HH:MM; on a cliff (already late) it reads "Now". The colon dims so
+  // the hours/minutes read as the figure. All the live detail (ETA, mode, the
+  // actions) keeps its reactive engine and sits quietly beneath.
+  const setOffClock = feas && feas.band !== "cliff" ? HHMM(feas.leaveByMs) : null;
+  const setOffParts = setOffClock ? setOffClock.split(":") : null;
+  // What you're setting off FOR — the station you board / the place you're due.
+  const forLabel = next.station ? next.station.name : next.title;
+
   return (
-    <section className="cc-active-tile" data-urgency={urgencyOf(feas)} style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+    <section className="cc-active-tile cc-setoff" data-urgency={urgencyOf(feas)}>
       <span className="cc-at-status">
         <span className="cc-at-dot" />
         {state.phase === "in_transit" || isLate ? "On your way" : "Next move"}
       </span>
 
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-3)" }}>
-        <h2 className="cc-at-headline" style={{ margin: 0 }}>{headline(feas)}</h2>
-        {feas && feas.band !== "cliff" ? <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-h3)", color: "var(--ink)" }}>{HHMM(feas.leaveByMs)}</span> : null}
+      {/* SET OFF BY — the lifted cotton sheet with the giant debossed figure */}
+      <div className="pg cc-setoff-sheet">
+        <div className="cc-setoff-eyb">
+          <span className="cc-setoff-kicker">Set off by</span>
+          <span className="cc-setoff-for">for {forLabel}</span>
+        </div>
+        {setOffParts ? (
+          <div className="mono engr-deep cc-setoff-figure" aria-label={`Set off by ${setOffClock}`}>
+            <span>{setOffParts[0]}</span>
+            <span className="cc-setoff-colon">:</span>
+            <span>{setOffParts[1]}</span>
+          </div>
+        ) : (
+          <div className="mono engr-deep cc-setoff-figure cc-setoff-figure--word" aria-label="Set off now">
+            {headline(feas) === "Running late" ? "Late" : "Now"}
+          </div>
+        )}
+        {/* the move it serves — quiet, beneath the figure. The readiness phrase
+           (leave-in countdown / buffer / running-late) carries the live nuance
+           the single figure can't; the destination follows it. */}
+        <p className="cc-setoff-move">
+          {headline(feas)} · to {next.title}
+          {next.place && next.place !== next.title && next.place !== forLabel ? ` · ${next.place}` : ""}
+        </p>
       </div>
-
-      <p className="cc-at-sub" style={{ margin: 0 }}>
-        To {next.title}
-        {next.place && next.place !== next.title ? ` · ${next.place}` : ""}
-      </p>
 
       {arrivalMs != null ? (
         <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: "var(--fs-label)", color: isLate ? "var(--amber)" : "var(--ink-dim)" }}>

@@ -151,6 +151,15 @@
 .cc-med-change[data-verdict="comfortable"] { border: 3px solid var(--sage); }
 .cc-med-change[data-verdict="tight"] { border: 3px solid var(--amber); }
 .cc-med-change[data-verdict="risky"] { border: 3px solid var(--rust); }
+/* inline pass — a DIAMOND credential medallion (a rotated square), set apart
+   from the round place/leg/change nodes: this node carries the booked ticket */
+.cc-med-pass { width: 26px; height: 26px; border-radius: 6px; transform: rotate(45deg);
+  display: grid; place-items: center; background: var(--widget); border: 1px solid var(--line);
+  box-shadow: var(--lift-sm); }
+.cc-med-pass > * { transform: rotate(-45deg); }
+/* the inline pass card sits flush in the spine's content column */
+.cc-spine-v7 .cc-pass-inline { min-width: 0; }
+.cc-spine-v7 .cc-pass-inline .cc-pass { width: 100%; }
 /* now — keep the single gold pulse, centred in the wider column */
 .cc-spine-v7 .cc-dot-now { width: 13px; height: 13px; }
 
@@ -368,6 +377,31 @@
   margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--rule); }
 .cc-at-next .who { font-size: 14px; color: var(--ink); }
 .cc-at-next .when { font-family: var(--mono); font-size: 14px; color: var(--ink-2); }
+
+/* ---------------------------------------------------------------------------
+ * SetOffHero — Today's calm hero. A SET OFF BY mono eyebrow + "for {place}",
+ * the leave time as ONE giant debossed mono numeral (the colon dimmed) seated on
+ * a lifted cotton sheet (.pg). Satoshi/mono only — no serif, no italic; gold is
+ * left untouched (punctuation only). The live engine (ETA, mode, actions) keeps
+ * its reactive behaviour and sits quietly beneath.
+ * ------------------------------------------------------------------------- */
+.cc-setoff { display: flex; flex-direction: column; gap: var(--space-3); }
+.cc-setoff-sheet { padding: var(--space-4) var(--space-5) var(--space-4-5, 18px);
+  border-radius: var(--radius-lg); background: var(--widget); box-shadow: var(--lift);
+  display: flex; flex-direction: column; }
+.cc-setoff-eyb { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.cc-setoff-kicker { font-family: var(--mono); font-size: 10px; font-weight: var(--fw-medium, 500);
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-faint); }
+.cc-setoff-for { font-size: var(--fs-label); font-weight: var(--fw-medium, 500); color: var(--gold-2);
+  letter-spacing: -0.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the one giant figure — thin debossed mono, ~52px, the day's single emphasis */
+.cc-setoff-figure { display: flex; align-items: baseline; margin-top: var(--space-2);
+  font-size: 52px; font-weight: 300; line-height: 0.9; letter-spacing: -0.04em; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.cc-setoff-figure--word { font-size: 40px; letter-spacing: -0.03em; }
+.cc-setoff-colon { color: var(--ink-faint); padding: 0 1px; font-weight: 400; }
+.cc-setoff-move { margin: var(--space-2) 0 0; font-size: var(--fs-label); color: var(--ink-dim);
+  letter-spacing: -0.01em; }
 
 /* ---------------------------------------------------------------------------
  * 7 · NudgeCard — the raised voice. Rare; earns the accent

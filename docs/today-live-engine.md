@@ -92,6 +92,27 @@ direction-agnostic; obligation *resolution* is conservative — silent only when
 certain, a fork when not, and never an assumed abandonment. The **from** is
 always current GPS.
 
+## 3a. Surface presentation (planner-full-day handoff)
+
+Two presentation choices align Today with the approved planner design
+(`docs/design-system/handoff-planner-full-day` · `ui_kits/planner/planner-v7*.jsx`):
+
+- **SetOffHero** — the live next-move hero (`LiveDay`) presents the computed
+  leave-by as ONE giant debossed mono numeral (`.cc-setoff`, ~52px, `.engr-deep`,
+  the colon dimmed) under a `SET OFF BY` mono eyebrow + `for {station/place}`,
+  on a lifted cotton sheet (`.pg`). The reactive engine is unchanged — ETA, the
+  Walk/Taxi mode toggle, Navigate / Tell-them / Not-going, the spare-time line all
+  sit quietly beneath; on a cliff the figure reads "Now"/"Late". Satoshi + mono
+  only (no serif/italic); gold stays punctuation.
+- **Inline rail passes** — booked rail/air passes ride INLINE on the spine at each
+  leg's boarding node, not in a standalone block above it. `today/page.tsx` folds
+  every covering event's transit run into one pass per boarded hop
+  (`foldStopsToLegTickets`), keyed by the boarding stop id, onto `SpineAnchor.pass`;
+  `TodaySpine`'s `PassNode` draws a diamond credential medallion (`.cc-med-pass`)
+  + the live `Pass` (`LivePass`, Darwin status folded on), with a single shared
+  `ScanView` for the barrier. The old `TodayPasses` block is removed;
+  `TodayDocument` survives only for a next-needed **stay** (no spine leg to sit on).
+
 ## 4. The day as a state machine (what each phase shows)
 
 - **At rest** — nothing imminent; the day at a glance.

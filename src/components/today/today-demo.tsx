@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActiveTile, Pass } from "@/components/concierge";
+import { ActiveTile } from "@/components/concierge";
 import type { ActiveUrgency } from "@/components/concierge/active-tile";
-import type { AnchorVM, BoardingVM, TicketVM } from "@/components/concierge";
+import type { AnchorVM, TicketVM } from "@/components/concierge";
 import { TodaySpine } from "@/components/today/today-spine";
 import { NextLegMap } from "@/components/today/next-leg-map";
 import { navModeForTransition, type SpineAnchor } from "@/components/today/spine-model";
@@ -88,21 +88,15 @@ export function TodayDemo() {
     [at],
   );
 
-  const boarding: BoardingVM = {
-    platform: "2",
-    toward: "Corby",
-    earlier: "Platform 2 also has the 16:58 to Bedford before yours — let that one go.",
-  };
-
   // Home is the base (no clock); the spine is the timed commitments.
   const walk = navModeForTransition("walk");
   const spineAnchors: SpineAnchor[] = useMemo(
     () => [
-      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: travelMin ?? 16, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure" },
+      { id: "demo-luton", type: "transport_arrival", title: "Luton Station", arriveByIso: at(DEP), endIso: at(DEP), coord: LUTON, plannedTravelMinutes: travelMin ?? 16, navMode: navModeForTransition(mode), station: { name: "Luton", code: "LUT", kind: "rail_station" }, role: "departure", pass: { ticket, crs: "LUT", time: londonClock(depMs), dest: "WEL" } },
       { id: "demo-welly", type: "transport_arrival", title: "Wellingborough Station", arriveByIso: at(ARR), endIso: at(ARR), coord: WELLINGBOROUGH, plannedTravelMinutes: 25, navMode: walk, station: { name: "Wellingborough", code: "WEL", kind: "rail_station" }, role: "arrival" },
       { id: "demo-review", type: "appointment", title: "Project review", place: "Wellingborough", arriveByIso: at(REVIEW), endIso: at(REVIEW + 60), coord: WELLINGBOROUGH, plannedTravelMinutes: 8, navMode: walk, station: null, role: "stop" },
     ],
-    [at, walk, travelMin, mode],
+    [at, walk, travelMin, mode, ticket, depMs],
   );
 
   const nextSpine = spineAnchors.find((a) => a.arriveByIso && new Date(a.arriveByIso).getTime() > now) ?? null;
@@ -149,15 +143,8 @@ export function TodayDemo() {
         </>
       ) : null}
 
-      {now < arrMs ? (
-        <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-          <span className="cc-eyebrow" style={{ color: "var(--gold-2)" }}>
-            Ready when you are
-          </span>
-          <Pass ticket={ticket} boarding={boarding} />
-        </section>
-      ) : null}
-
+      {/* The rail pass now rides INLINE on the spine at its boarding node (the
+         demo Luton departure carries it), mirroring the live Today. */}
       <TodaySpine anchors={spineAnchors} nextId={nextSpine?.id ?? null} nowOverride={now} />
 
       <p style={{ fontSize: "var(--fs-micro)", color: "var(--ink-dim)", marginTop: "var(--space-2)" }}>
