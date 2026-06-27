@@ -1,23 +1,55 @@
 /* Pastimes hub — layout only; colour/material come from tokens + the shared
    .pg / .engr / .engr-ico paper classes. The hub lives on the app's light
    cotton surface (NOT the game's dark felt — that's game-local, inside the
-   route below). Mobile-first: a single column that becomes a grid on wider
-   viewports. */
+   route below). Recomposed to the approved "Pastimes / The table" handoff:
+   a title block, a "Games" section flank, then raised game tiles with a
+   debossed glyph well and a chevron / "Soon" affordance. Mobile-first: a
+   single column that becomes a grid on wider viewports. */
 
 .pastimes-screen {
   min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
+/* ── title block ─────────────────────────────────────────────────────────── */
 .pastimes-head {
-  margin-bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.pastimes-intro {
-  margin-top: var(--space-2);
+.pastimes-eyebrow {
+  color: var(--gold-2);
+}
+
+.pastimes-title {
+  margin: 0;
+}
+
+.pastimes-standfirst {
+  margin: 0;
   max-width: 34ch;
-  font-size: 15px;
-  line-height: 1.5;
+}
+
+/* ── section + flank ─────────────────────────────────────────────────────── */
+.pastimes-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The flank label — a quiet debossed mono header sitting above the tiles. */
+.pastimes-flank {
+  margin: 0 2px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: var(--fw-medium, 500);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--ink-dim);
+  text-shadow: 0 0.7px 0 rgba(255, 255, 255, 0.9);
 }
 
 .pastimes-grid {
@@ -35,9 +67,10 @@
   }
 }
 
-/* Each card is a cotton sheet: lift + letterpress, a debossed glyph well, the
-   game name + blurb, and a state pill. The .pg class supplies the fibre tooth
-   and inherited text-deboss. */
+/* ── game tile ───────────────────────────────────────────────────────────── */
+/* Each card is a raised cotton sheet: lift + letterpress, a debossed glyph
+   well, the game name + line, and a chevron (live) or "Soon" pill (parked).
+   The .pg class supplies the fibre tooth and inherited text-deboss. */
 .pastime-card {
   display: flex;
   align-items: center;
@@ -62,6 +95,11 @@ a.pastime-card:focus-visible {
   outline: none;
 }
 
+a.pastime-card:active {
+  transform: translateY(0);
+  box-shadow: var(--lift-sm);
+}
+
 a.pastime-card:focus-visible {
   box-shadow:
     var(--lift),
@@ -80,11 +118,11 @@ a.pastime-card:focus-visible {
 /* Debossed glyph well — a recessed cream chip carrying the letterpressed mark. */
 .pastime-ico {
   flex: 0 0 auto;
-  width: 46px;
-  height: 46px;
+  width: 54px;
+  height: 54px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-md);
+  border-radius: 15px;
   background: var(--well);
   box-shadow: var(--sink);
   color: var(--char);
@@ -100,20 +138,28 @@ a.pastime-card:focus-visible {
 
 .pastime-name {
   font-family: var(--display);
-  font-weight: var(--fw-medium, 500);
-  font-size: 18px;
+  font-weight: var(--fw-semibold, 600);
+  font-size: 17px;
   letter-spacing: -0.01em;
   color: var(--ink);
 }
 
 .pastime-blurb {
-  font-size: 13.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: var(--ink-dim);
 }
 
-/* State pill — gold "Play" affordance for live games; faint "Soon" for the
-   parked ones. */
+/* Chevron go-affordance on live tiles — gold is reserved for punctuation, so
+   this stays faint ink (the headline cue is the whole raised, tappable tile). */
+.pastime-go {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+}
+
+/* "Soon" pill — faint, outlined, no fill — marks the parked games. */
 .pastime-state {
   flex: 0 0 auto;
   font-family: var(--mono);
@@ -122,12 +168,19 @@ a.pastime-card:focus-visible {
   text-transform: uppercase;
   padding: 5px 10px;
   border-radius: var(--radius-pill);
-  color: var(--gold-2);
-  background: var(--gold-tint);
 }
 
 .pastime-state.is-soon {
   color: var(--ink-faint);
   background: transparent;
   border: 1px solid var(--line);
+}
+
+/* ── footnote ────────────────────────────────────────────────────────────── */
+.pastimes-footnote {
+  margin: 0;
+  padding-top: var(--space-1, 4px);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
 }

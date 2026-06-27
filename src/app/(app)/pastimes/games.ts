@@ -4,7 +4,7 @@ import type { Route } from "next";
 // array keeps adding a future game (Sudoku, Crosswords, …) to a single line:
 // give it a slug, a name, a one-line blurb, a stroke glyph, and `ready`. A live
 // game links to `/pastimes/<slug>`; a not-yet-built one renders dimmed as "Soon".
-export type GameGlyph = "cards" | "sudoku" | "crossword";
+export type GameGlyph = "cards" | "sudoku" | "crossword" | "gin";
 
 export type Game = {
   slug: string;
@@ -30,6 +30,13 @@ export const GAMES: Game[] = [
     ready: true,
   },
   {
+    slug: "gin-rummy",
+    name: "Gin Rummy",
+    blurb: "Melds, knocks, and gins.",
+    icon: "gin",
+    ready: false,
+  },
+  {
     slug: "crosswords",
     name: "Crosswords",
     blurb: "A grid of small clues.",
@@ -47,6 +54,8 @@ export function gameHref(slug: string): Route {
 export const GAME_GLYPHS: Record<GameGlyph, string> = {
   // a fanned pair of playing cards
   cards: "M4 8a1 1 0 0 1 .7-1.3l7-2a1 1 0 0 1 1.2.7l3 11a1 1 0 0 1-.7 1.2l-7 2a1 1 0 0 1-1.2-.7z M9 5l7-2a1 1 0 0 1 1.2.7l3 11a1 1 0 0 1-.7 1.2l-2 .6",
+  // a fanned pair of cards — distinct from Solitaire's single deck (Gin Rummy)
+  gin: "M5 9.5a1 1 0 0 1 .6-1.3l6.4-2.3a1 1 0 0 1 1.3.6l3 8.3a1 1 0 0 1-.6 1.3l-6.4 2.3a1 1 0 0 1-1.3-.6z M10 5.7l1.6-.6a1 1 0 0 1 1.3.6l3 8.3a1 1 0 0 1-.6 1.3l-1.6.6",
   // a 9-cell grid
   sudoku: "M4 4h16v16H4z M4 9.3h16 M4 14.7h16 M9.3 4v16 M14.7 4v16",
   // crossword grid with two filled cells
