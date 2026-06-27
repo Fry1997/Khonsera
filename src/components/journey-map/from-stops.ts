@@ -53,6 +53,30 @@ function haversineMi(a: LatLng, b: LatLng): number {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+// A stored route is only trustworthy if its endpoints actually sit at this
+// leg's two stops. A mis-keyed / stale cache (e.g. a Leicester→Birmingham
+// polyline cached under the wrong CRS pair) decodes to a line that wanders off
+// to the wrong place — the "phantom branch" that forks off the real route.
+// Reject anything whose ends don't match the leg, in either orientation, and
+// fall back to the straight line instead of drawing the bad geometry.
+const MAX_ENDPOINT_DRIFT_MI = 6; // generous vs rail-node snapping (<1mi), tight vs a wrong city (30mi+)
+
+export function polylineOrientation(
+  track: LatLng[],
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+): "forward" | "reverse" | null {
+  if (track.length < 2) return null;
+  const s = track[0];
+  const e = track[track.length - 1];
+  const f: LatLng = [from.lat, from.lng];
+  const t: LatLng = [to.lat, to.lng];
+  const tol = MAX_ENDPOINT_DRIFT_MI;
+  if (haversineMi(s, f) <= tol && haversineMi(e, t) <= tol) return "forward";
+  if (haversineMi(s, t) <= tol && haversineMi(e, f) <= tol) return "reverse";
+  return null;
+}
+
 function fmtDuration(mins: number): string {
   if (mins <= 0) return "";
   const h = Math.floor(mins / 60);
@@ -88,9 +112,16 @@ export function buildJourneyFromStops(
     const fromStation: Station = { name: nameOf(fromStop), code: fromStop.transport_hub?.code ?? undefined, lat: from.lat, lng: from.lng };
     const toStation: Station = { name: nameOf(toStop), code: toStop.transport_hub?.code ?? undefined, lat: to.lat, lng: to.lng };
 
-    const track: LatLng[] = transition.overview_polyline
-      ? decodePolyline(transition.overview_polyline)
-      : [[from.lat, from.lng], [to.lat, to.lng]];
+    // Default to the straight line; only trust a stored polyline whose ends
+    // actually connect this leg's stops (guards against the phantom branch).
+    const straight: LatLng[] = [[from.lat, from.lng], [to.lat, to.lng]];
+    let track: LatLng[] = straight;
+    if (transition.overview_polyline) {
+      const decoded = decodePolyline(transition.overview_polyline);
+      const orient = polylineOrientation(decoded, from, to);
+      if (orient === "forward") track = decoded;
+      else if (orient === "reverse") track = [...decoded].reverse();
+    }
 
     const durationMins = transition.computed_duration_minutes ?? 0;
     totalMinutes += durationMins;

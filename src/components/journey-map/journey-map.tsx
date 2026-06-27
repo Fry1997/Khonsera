@@ -242,25 +242,32 @@ function createMarkerEl(role: string, label: string, theme: JourneyTheme): HTMLE
     dot.style.border = `1.5px solid ${theme.colors.markerFill}`;
   }
 
-  // A solid badge, not bare text — our labels (station code, appointment, place)
-  // must sit ABOVE the basemap's town/place names, which they used to merge into
-  // (e.g. "WEL" lost in "Wellingborough"). Ink ground + paper text + a soft lift
-  // reads unmistakably as ours, regardless of what the basemap labels underneath.
-  const lbl = document.createElement("span");
-  lbl.textContent = label.toUpperCase();
-  lbl.style.fontFamily = theme.fonts.mono;
-  lbl.style.fontSize = "9px";
-  lbl.style.fontWeight = "600";
-  lbl.style.letterSpacing = "0.06em";
-  lbl.style.color = theme.colors.labelBadgeText;
-  lbl.style.background = theme.colors.labelBadge;
-  lbl.style.padding = "1.5px 5px";
-  lbl.style.borderRadius = "3px";
-  lbl.style.whiteSpace = "nowrap";
-  lbl.style.boxShadow = "0 1px 3px rgba(0,0,0,0.35)";
-
   el.appendChild(dot);
-  el.appendChild(lbl);
+
+  // Label only the two ends. Intermediate stops (changeover stations) are
+  // dot-only — when several sit close together (home + its nearest station,
+  // a changeover beside the route) their badges piled up and overlapped
+  // ("WEL" over "ILCE AVENUE", "LEI" clipped). Ends carry the names; the
+  // dots carry the rest. (Design owns the richer collision-aware treatment.)
+  if (role !== "intermediate") {
+    // A solid badge, not bare text — our labels (station code, appointment,
+    // place) must sit ABOVE the basemap's town/place names, which they used to
+    // merge into (e.g. "WEL" lost in "Wellingborough"). Ink ground + paper text
+    // + a soft lift reads unmistakably as ours.
+    const lbl = document.createElement("span");
+    lbl.textContent = label.toUpperCase();
+    lbl.style.fontFamily = theme.fonts.mono;
+    lbl.style.fontSize = "9px";
+    lbl.style.fontWeight = "600";
+    lbl.style.letterSpacing = "0.06em";
+    lbl.style.color = theme.colors.labelBadgeText;
+    lbl.style.background = theme.colors.labelBadge;
+    lbl.style.padding = "1.5px 5px";
+    lbl.style.borderRadius = "3px";
+    lbl.style.whiteSpace = "nowrap";
+    lbl.style.boxShadow = "0 1px 3px rgba(0,0,0,0.35)";
+    el.appendChild(lbl);
+  }
   return el;
 }
 
