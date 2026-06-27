@@ -34,7 +34,7 @@ export const GAMES: Game[] = [
     name: "Gin Rummy",
     blurb: "Melds, knocks, and gins.",
     icon: "gin",
-    ready: false,
+    ready: true,
   },
   {
     slug: "crosswords",

@@ -1,0 +1,752 @@
+/* ════════════════════════════════════════════════════════════════════════
+ * Khonsera · Gin Rummy — the felt table.
+ *
+ * Ported from the design handoff (docs/design-system/handoff-pastimes-suite/
+ * gin-rummy/GinRummy.html <style>). Like Solitaire/Sudoku, the felt + card
+ * literal colours here are INTENTIONAL game-local values (the ink-felt table is
+ * the Pastimes hero surface, not app chrome) — they are commented as such and
+ * deliberately not tokenised. App-chrome colours (the route underlay) use
+ * tokens. Gold is used as punctuation via the design's gold literals, matching
+ * --gold / --gold-2 in spirit.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* ── felt surface (game-local: the ink-felt table hero) ──────────────────── */
+.gin-felt {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: #e8e2d6;
+  background: radial-gradient(
+    135% 105% at 50% -10%,
+    #25303a 0%,
+    #1a232c 40%,
+    #131a21 72%,
+    #0d1217 100%
+  );
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+.gin-felt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.11;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+.gin-felt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(82% 56% at 50% 122%, rgba(0, 0, 0, 0.46), transparent 70%),
+    radial-gradient(72% 52% at 50% -22%, rgba(120, 150, 170, 0.1), transparent 60%);
+}
+
+/* ── top bar ─────────────────────────────────────────────────────────────── */
+.gin-tbar {
+  position: relative;
+  z-index: 6;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 8px;
+}
+.gin-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.gin-brand .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  /* gold punctuation mark (design gold) */
+  background: radial-gradient(circle at 38% 32%, #c8ab6e, #93753c 60%, #6f5827);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.gin-brand .word {
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: #c3bdb0;
+}
+
+.gin-scoreline {
+  display: flex;
+  align-items: stretch;
+  margin: 0 auto;
+  border-radius: 11px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.16));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.gin-scoreline .sc {
+  text-align: center;
+  padding: 5px 13px 6px;
+  min-width: 50px;
+  position: relative;
+}
+.gin-scoreline .sc + .sc {
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.3), inset 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+.gin-scoreline .sc.tgt {
+  background: rgba(0, 0, 0, 0.18);
+}
+.gin-scoreline .sc .k {
+  font: 500 8px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #828b96;
+}
+.gin-scoreline .sc .v {
+  font: 500 17px/1 var(--sans, system-ui, sans-serif);
+  color: #ece6da;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.gin-scoreline .sc.tgt .v {
+  font-size: 13px;
+  color: #aeb6bf;
+  margin-top: 5px;
+}
+.gin-scoreline .sc.lead .v {
+  color: #d9bd84; /* gold lead accent */
+}
+
+.gin-ico-t {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c2bcb0;
+  text-decoration: none;
+  background: linear-gradient(180deg, #313c46, #232c34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.gin-ico-t:active {
+  transform: translateY(1px);
+}
+.gin-ico-t svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ── table body ──────────────────────────────────────────────────────────── */
+.gin-table {
+  position: relative;
+  z-index: 4;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 14px;
+}
+
+/* opponent zone */
+.gin-opp {
+  flex: 0 0 auto;
+  padding: 6px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.gin-opp-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gin-pres {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.gin-pres.on {
+  background: radial-gradient(circle at 38% 32%, #7d9168, #5f7150 65%, #46553b);
+  box-shadow: 0 0 0 2px rgba(95, 113, 80, 0.16);
+}
+.gin-opp-id .nm {
+  font: 500 13.5px/1 var(--sans, system-ui, sans-serif);
+  color: #d8d2c6;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.gin-opp-id .cards {
+  font: 500 10.5px/1 var(--mono, ui-monospace, monospace);
+  color: #737c86;
+  letter-spacing: 0.06em;
+}
+.gin-opp-fan {
+  position: relative;
+  height: calc(var(--ocw) * 1.4);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.gin-opp-fan .kc-card {
+  position: absolute;
+  top: 0;
+}
+.gin-opp-reveal {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.gin-opp-reveal .ln {
+  font: 500 11.5px/1.2 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.04em;
+  color: #9aa3ad;
+}
+.gin-tok {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-weight: 600;
+}
+.gin-tok.red {
+  color: #cf7d63;
+}
+.gin-tok.black {
+  color: #d8d2c6;
+}
+
+/* centre: piles + turn */
+.gin-centre {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+}
+.gin-piles {
+  display: flex;
+  gap: 26px;
+  align-items: flex-start;
+  justify-content: center;
+}
+.gin-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.gin-pile .lbl {
+  font: 500 9px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a929c;
+}
+.gin-pile-card {
+  position: relative;
+  width: var(--ccw);
+  height: calc(var(--ccw) * 1.4);
+  cursor: default;
+}
+.gin-pile-card .kc-card {
+  position: absolute;
+  inset: 0;
+}
+.gin-pile-card.tap {
+  cursor: pointer;
+}
+.gin-pile-empty {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--ccw) * 0.075);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gin-pile-empty .cnt {
+  font: 500 13px/1 var(--mono, ui-monospace, monospace);
+  color: rgba(220, 210, 190, 0.3);
+}
+.gin-pile-card.lit::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: calc(var(--ccw) * 0.1);
+  /* gold "your move" glow */
+  box-shadow: 0 0 0 1.5px rgba(201, 171, 110, 0.65), 0 0 16px rgba(201, 171, 110, 0.3);
+  pointer-events: none;
+  animation: ginLitpulse 1.7s ease-in-out infinite;
+}
+@keyframes ginLitpulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gin-pile .cap {
+  font: 500 9px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.06em;
+  color: #737c86;
+  min-height: 9px;
+}
+
+/* turn banner */
+.gin-turn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+  min-height: 40px;
+  justify-content: center;
+}
+.gin-turn .ph {
+  font: 500 9.5px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.gin-turn.you .ph {
+  color: #d4b878; /* gold — your move */
+}
+.gin-turn.them .ph {
+  color: #828b96;
+}
+.gin-turn .msg {
+  font: 500 15px/1.2 var(--sans, system-ui, sans-serif);
+  letter-spacing: -0.01em;
+  color: #e6e0d4;
+}
+.gin-turn .sub {
+  font: 500 11.5px/1.3 var(--mono, ui-monospace, monospace);
+  color: #9099a3;
+  letter-spacing: 0.02em;
+}
+.gin-turn .dotline {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d4b878;
+  box-shadow: 0 0 8px rgba(212, 184, 120, 0.6);
+  animation: ginLitpulse 1.6s ease-in-out infinite;
+}
+.gin-pass {
+  margin-top: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: 500 12px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9099a3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* your hand zone */
+.gin-hand-zone {
+  flex: 0 0 auto;
+  padding-bottom: 16px;
+}
+.gin-hand-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 4px 8px;
+}
+.gin-dw {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.gin-dw .k {
+  font: 500 9px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #828b96;
+}
+.gin-dw .v {
+  font: 500 20px/1 var(--sans, system-ui, sans-serif);
+  color: #cfd5dc;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s ease;
+}
+.gin-dw.ready .v,
+.gin-dw.gin .v {
+  color: #d9bd84; /* gold — can knock / gin */
+}
+.gin-dw .tag {
+  font: 500 9px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: 6px;
+  color: #cdd3da;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.18));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+.gin-dw.ready .tag,
+.gin-dw.gin .tag {
+  color: #1a2029;
+  background: linear-gradient(180deg, #d8c089, #bb9a5c); /* gold pill */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.gin-arrange-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  color: #6f7882;
+  font: 500 10px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.gin-arrange-hint .ic {
+  opacity: 0.6;
+}
+
+.gin-actions {
+  display: flex;
+  gap: 8px;
+}
+.gin-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font: 500 13px/1 var(--sans, system-ui, sans-serif);
+  letter-spacing: 0.02em;
+  transition: transform 0.1s ease, filter 0.12s;
+}
+.gin-btn:active {
+  transform: translateY(1px);
+}
+.gin-btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+  filter: none;
+}
+.gin-btn.gold {
+  color: #1a2029;
+  /* gold action — knock / gin */
+  background: linear-gradient(180deg, #d8c089, #bb9a5c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1px rgba(120, 90, 40, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.32);
+}
+.gin-btn.gold .gl {
+  font-family: var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+.gin-btn.ink {
+  color: #e6e0d4;
+  background: linear-gradient(180deg, #313c46, #232c34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.32);
+}
+
+/* the hand rail */
+.gin-hand {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.gin-hc {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--hcw);
+  cursor: grab;
+  touch-action: none;
+  transition: left 0.18s cubic-bezier(0.2, 0.8, 0.3, 1),
+    transform 0.16s cubic-bezier(0.2, 0.8, 0.3, 1);
+  will-change: left, transform;
+}
+.gin-hc.sel {
+  transform: translateY(-18px);
+}
+.gin-hc.dragging {
+  cursor: grabbing;
+  transform: translateY(-22px) scale(1.03);
+}
+/* gold meld underline beneath cards the engine reads as part of a meld */
+.gin-hc.meld .kc-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -7px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(201, 171, 110, 0.2),
+    rgba(201, 171, 110, 0.85),
+    rgba(201, 171, 110, 0.2)
+  );
+}
+.gin-hc .kc-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3), 0 calc(var(--hcw) * 0.04) calc(var(--hcw) * 0.1) rgba(0, 0, 0, 0.45);
+}
+.gin-hc.sel .kc-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 10px 22px rgba(0, 0, 0, 0.5), 0 0 0 1.5px rgba(201, 171, 110, 0.55);
+}
+.gin-hc.dim .kc-card {
+  filter: saturate(0.82) brightness(0.99);
+}
+
+/* ── overlays (round / game over) ────────────────────────────────────────── */
+.gin-ov {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(64% 54% at 50% 44%, rgba(10, 14, 18, 0.62), rgba(7, 10, 14, 0.86));
+}
+.gin-ov.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.gin-plate {
+  width: min(92vw, 360px);
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 26px 24px 22px;
+  border-radius: 18px;
+  text-align: center;
+  transform: translateY(12px) scale(0.975);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+  /* cotton sheet (game-local) */
+  position: relative;
+  color: #20242b;
+  background: linear-gradient(158deg, #fcfbf7, #f4f0e6 64%, #ece7db);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.9), 0 0 0 0.5px rgba(40, 44, 52, 0.05),
+    0 20px 34px -22px rgba(34, 30, 24, 0.32), 0 6px 14px -8px rgba(34, 30, 24, 0.16);
+}
+.gin-ov.show .gin-plate {
+  transform: none;
+}
+.gin-mk {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.gin-mk .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #c8ab6e, #93753c 60%, #6f5827);
+}
+.gin-mk .word {
+  font-weight: 300;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: #8a8070;
+}
+.gin-kind-eye {
+  margin-top: 13px;
+  font: 500 10px/1 var(--mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+.gin-plate h2 {
+  margin: 14px 0 5px;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: #26221a;
+}
+.gin-plate p {
+  margin: 8px 0 0;
+  color: #7d7464;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.gin-res {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin: 20px 0;
+}
+.gin-res .k {
+  font: 500 9px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a99e87;
+}
+.gin-res .v {
+  font: 500 23px/1 var(--sans, system-ui, sans-serif);
+  color: #26221a;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.gin-res .v.gold {
+  color: #8a6d38; /* gold-on-light, matches --gold-2 */
+}
+.gin-laid {
+  font: 500 11px/1.4 var(--mono, ui-monospace, monospace);
+  color: #8a8070;
+  margin: -6px 0 12px;
+}
+.gin-mini {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+.gin-mini .grp {
+  display: flex;
+}
+.gin-mini .grp .kc-card {
+  border-radius: calc(var(--cw, 30px) * 0.062);
+}
+.gin-plate-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 22px;
+  border-radius: 13px;
+  font: 500 15px/1 var(--sans, system-ui, sans-serif);
+  width: 100%;
+  margin-top: 18px;
+}
+.gin-plate-btn.ink {
+  color: #f2ede3;
+  background: linear-gradient(180deg, #2a2f37, #1d2128);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.5),
+    0 10px 20px -10px rgba(34, 30, 24, 0.5);
+}
+.gin-plate-btn.ghost {
+  color: #3a3f48;
+  background: linear-gradient(180deg, #fbfaf6, #efeade);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.9), 0 0 0 0.5px rgba(40, 44, 52, 0.06),
+    0 8px 16px -10px rgba(34, 30, 24, 0.3);
+  height: 44px;
+  margin-top: 10px;
+}
+
+/* ── how-to-play sheet ───────────────────────────────────────────────────── */
+.gin-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+  background: rgba(8, 11, 15, 0.5);
+  display: flex;
+  align-items: flex-end;
+}
+.gin-sheet.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.gin-sheet .panel {
+  width: 100%;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px 18px;
+  background: linear-gradient(180deg, #222931, #1a2027);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #dcd6ca;
+}
+.gin-sheet.show .panel {
+  transform: none;
+}
+.gin-sheet .panel .ph {
+  font: 500 9px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #828b96;
+  padding: 4px 4px 12px;
+}
+.gin-sheet .panel p {
+  font: 500 13px/1.6 var(--sans, system-ui, sans-serif);
+  color: #c3bdb0;
+  margin: 0 0 10px;
+  padding: 0 4px;
+}
+.gin-sheet .panel .close {
+  width: 100%;
+  margin-top: 6px;
+  height: 44px;
+  border: 0;
+  cursor: pointer;
+  border-radius: 11px;
+  color: #e6e0d4;
+  font: 500 14px/1 var(--sans, system-ui, sans-serif);
+  background: linear-gradient(180deg, #313c46, #232c34);
+}
+
+/* ── landscape / short viewport — compact the vertical rhythm ─────────────── */
+.gin-felt.land .gin-table {
+  padding: 0 18px;
+}
+.gin-felt.land .gin-opp {
+  padding: 2px 0 4px;
+  gap: 5px;
+}
+.gin-felt.land .gin-centre {
+  gap: 7px;
+}
+.gin-felt.land .gin-turn {
+  min-height: 30px;
+}
+.gin-felt.land .gin-hand-zone {
+  padding-bottom: 8px;
+}
+.gin-felt.land .gin-hand-meta {
+  padding: 0 4px 5px;
+}
+.gin-felt.land .gin-opp-reveal {
+  min-height: 15px;
+}
