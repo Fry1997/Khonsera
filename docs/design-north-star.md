@@ -39,8 +39,12 @@ language or removed. There is no third aesthetic.
    flat. You can sense the grain.
 4. **Layers stack.** Material on material (widget on screen on ground), each with
    its own press and shadow, so the eye reads physical depth.
-5. **Charcoal ink, letterpress.** Type sits *in* the stock like print
-   (`--char / --ink`), with the engrave/emboss treatment, never floating.
+5. **All text is debossed — none flat.** Every bit of type — heading, body,
+   label, number, the smallest caption — is pressed *into* the cotton like
+   letterpress (`--char / --ink` + the engrave/deboss treatment). There is **no
+   flat text anywhere**. If type sits *on* the surface instead of *in* it, it's
+   not done. (This is part of the finger test: you should be able to feel the
+   words, not just the cards.)
 6. **Gold is punctuation.** `--gold` is the one foil accent — a pressed dot, a
    single mark — **never a fill**. Used once per composition, if at all.
 7. **Premium by default.** No surface gets the "it's only a budget thing"
