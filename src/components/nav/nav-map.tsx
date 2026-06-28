@@ -18,7 +18,7 @@ import type { NavRoute } from "@/lib/nav/types";
 
 export interface NavMapProps {
   route: NavRoute | null;
-  themeName?: "dusk" | "midnight" | "sahara";
+  themeName?: "dusk" | "midnight" | "sahara" | "cotton";
   // Live fix + snapped point during guidance; the dot rides the snap.
   position?: { lat: number; lng: number; heading?: number | null } | null;
   follow?: boolean; // guidance mode: keep the camera on the dot
@@ -169,7 +169,7 @@ function routeBounds(route: NavRoute): maplibregl.LngLatBounds {
   return b;
 }
 
-export function NavMap({ route, themeName = "dusk", position, follow = false, height, progress = 0 }: NavMapProps) {
+export function NavMap({ route, themeName = "cotton", position, follow = false, height, progress = 0 }: NavMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);

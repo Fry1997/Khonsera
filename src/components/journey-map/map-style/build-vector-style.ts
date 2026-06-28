@@ -76,6 +76,19 @@ export function buildVectorStyle(theme: JourneyTheme): maplibregl.StyleSpecifica
     layers,
   };
 
+  // Cotton lighting — a soft warm light fixed to the VIEWPORT (so the extruded
+  // building faces keep consistent top-down shading as the nav camera rotates,
+  // the way real clay catches a single light). Only for cotton; other themes
+  // keep MapLibre's default light.
+  if (theme.name === "cotton") {
+    style.light = {
+      anchor: "viewport",
+      color: "#fff5e6",
+      intensity: 0.42,
+      position: [1.4, 205, 26],
+    } as maplibregl.LightSpecification;
+  }
+
   // Terrain / hillshade — subtle relief, free DEM. Degrades to flat offline (the
   // DEM isn't corridor-cached). Opt out with NEXT_PUBLIC_TERRAIN_URL=off.
   const dem = terrainUrl();

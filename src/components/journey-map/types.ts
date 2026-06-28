@@ -41,7 +41,7 @@ export interface Journey {
 
 export interface JourneyMapProps {
   journey: Journey;
-  themeName?: "dusk" | "midnight" | "sahara";
+  themeName?: "dusk" | "midnight" | "sahara" | "cotton";
   mode: "planning" | "day-of";
   height?: number;
   width?: number;

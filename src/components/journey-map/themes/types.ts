@@ -22,7 +22,7 @@ export interface MapThemeColors {
 }
 
 export interface JourneyTheme {
-  name: "dusk" | "midnight" | "sahara";
+  name: "dusk" | "midnight" | "sahara" | "cotton";
   colors: {
     paper: string;
     paperInner: string;
