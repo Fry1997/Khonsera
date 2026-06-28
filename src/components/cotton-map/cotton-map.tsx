@@ -194,73 +194,22 @@ export function CottonMap({
         <rect x="0" y="0" width={VB_W} height={VB_H} fill="url(#cm-vign)" />
         <rect x="0" y="0" width={VB_W} height={VB_H} fill={C.land} filter="url(#cm-weave)" opacity="0.5" />
 
-        {/* Decorative fabric — fixed texture (contours, water, roads, rail, paths,
-            buildings). Not real geography; the journey is the real data. */}
-        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-          <g stroke={C.contour} strokeWidth="1.1">
-            <path d="M18,70 C46,40 96,44 120,72 C140,96 128,134 96,148 C60,164 22,142 14,108 C9,90 8,82 18,70 Z" />
-            <path d="M34,80 C56,58 92,60 110,82 C126,100 116,128 92,138 C64,150 36,132 30,106 C26,92 26,90 34,80 Z" />
-            <path d="M50,90 C66,76 88,78 100,92 C112,106 104,122 88,128 C68,136 52,124 48,108 C46,98 44,96 50,90 Z" />
-            <path d="M210,330 C248,308 300,316 322,348 C338,372 330,410 300,424 C262,440 220,420 210,386 C204,364 200,348 210,330 Z" />
-            <path d="M226,342 C256,326 296,332 312,356 C324,374 318,400 294,410 C264,422 232,406 224,382 C220,366 218,354 226,342 Z" />
-            <path d="M244,354 C266,344 292,348 302,364 C310,378 304,394 288,400 C266,408 246,396 240,380 C238,370 238,362 244,354 Z" />
+        {/* Decorative fabric — a faint, calm whisper of "map" under the route.
+            It's fixed texture (NOT real geography), so the contour rings, water
+            blob and building clusters that landed randomly over the route were
+            clutter — removed. What's left is a few quiet engraved hairlines so
+            the field reads as a map without competing with the channel + nodes. */}
+        <g fill="none" strokeLinecap="round" opacity="0.45">
+          {/* a couple of long roads */}
+          <g stroke="rgba(40,44,52,.07)" strokeWidth="2">
+            <path d="M-10,318 C70,302 140,308 200,300 C260,292 300,298 340,288" />
+            <path d="M56,-10 C70,80 50,150 70,222 C86,284 70,352 92,432" />
           </g>
-          <g stroke={C.contourHi} strokeWidth="0.7" transform="translate(0,1)" opacity="0.85">
-            <path d="M18,70 C46,40 96,44 120,72 C140,96 128,134 96,148 C60,164 22,142 14,108 C9,90 8,82 18,70 Z" />
-            <path d="M50,90 C66,76 88,78 100,92 C112,106 104,122 88,128 C68,136 52,124 48,108 C46,98 44,96 50,90 Z" />
-            <path d="M210,330 C248,308 300,316 322,348 C338,372 330,410 300,424 C262,440 220,420 210,386 C204,364 200,348 210,330 Z" />
+          {/* one rail line with faint cross-ties */}
+          <g stroke="rgba(40,44,52,.08)" strokeLinecap="butt">
+            <path d="M22,210 C110,232 214,250 330,244" strokeWidth="1.1" />
+            <path d="M22,210 C110,232 214,250 330,244" strokeWidth="3.5" strokeDasharray="1.4 10" />
           </g>
-        </g>
-
-        {/* WATER — debossed, NO blue */}
-        <g>
-          <path d="M250,116 C278,102 308,110 314,134 C320,158 304,180 278,186 C250,192 230,176 228,152 C226,132 232,126 250,116 Z" fill={C.water} />
-          <path d="M250,116 C278,102 308,110 314,134 C320,158 304,180 278,186 C250,192 230,176 228,152 C226,132 232,126 250,116 Z" fill="none" stroke="rgba(40,44,52,.15)" strokeWidth="1.4" transform="translate(0,-0.8)" />
-          <path d="M250,116 C278,102 308,110 314,134 C320,158 304,180 278,186 C250,192 230,176 228,152 C226,132 232,126 250,116 Z" fill="none" stroke="rgba(255,255,250,.65)" strokeWidth="1" transform="translate(0,1)" />
-          <path d="M330,54 C302,86 300,124 290,150 C276,184 280,214 266,240 C254,262 256,290 246,316" fill="none" stroke={C.water} strokeWidth="8.5" strokeLinecap="round" />
-          <path d="M330,54 C302,86 300,124 290,150 C276,184 280,214 266,240 C254,262 256,290 246,316" fill="none" stroke="rgba(40,44,52,.10)" strokeWidth="8.5" strokeLinecap="round" transform="translate(0,-0.7)" />
-        </g>
-
-        {/* ROADS & STREETS — engraved grooves */}
-        <g fill="none" strokeLinecap="round">
-          <g stroke={C.contourHi} strokeWidth="0.8" transform="translate(0,1)" opacity="0.7">
-            <path d="M-10,322 C70,304 130,310 190,302 C250,294 300,300 340,290" />
-            <path d="M58,-10 C72,80 50,150 70,220 C86,282 68,350 92,432" />
-            <path d="M-10,150 C60,158 120,150 184,158" />
-          </g>
-          <g stroke="rgba(40,44,52,.12)" strokeWidth="3">
-            <path d="M-10,322 C70,304 130,310 190,302 C250,294 300,300 340,290" />
-            <path d="M58,-10 C72,80 50,150 70,220 C86,282 68,350 92,432" />
-          </g>
-          <g stroke="rgba(40,44,52,.095)" strokeWidth="1.5">
-            <path d="M-10,150 C60,158 120,150 184,158" />
-            <path d="M120,258 L120,300 M142,252 L150,300 M168,250 L176,300" />
-            <path d="M196,82 L196,120 M214,78 L218,116 M232,84 L240,118" />
-            <path d="M64,400 L112,400 M66,418 L114,418 M70,436 L110,436" />
-          </g>
-        </g>
-
-        {/* RAILWAY — engraved baseline + cross-ties */}
-        <g fill="none" strokeLinecap="butt">
-          <path d="M26,206 C110,230 210,250 322,246" stroke="rgba(40,44,52,.15)" strokeWidth="1.4" />
-          <path d="M26,206 C110,230 210,250 322,246" stroke="rgba(40,44,52,.15)" strokeWidth="5" strokeDasharray="1.6 9" />
-        </g>
-
-        {/* PATHS — dashed engraved hairlines */}
-        <g fill="none" stroke="rgba(40,44,52,.13)" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="2 4.5">
-          <path d="M118,300 C140,338 108,378 132,420" />
-          <path d="M240,180 C262,206 250,236 268,262" />
-        </g>
-
-        {/* BUILDINGS — raised cotton footprints */}
-        <g filter="url(#cm-bldg)" fill={C.widget} stroke="rgba(40,44,52,0.10)" strokeWidth="0.5">
-          <rect x="170" y="230" width="9" height="7" rx="1" />
-          <rect x="182" y="235" width="7" height="9" rx="1" />
-          <rect x="170" y="243" width="10" height="6" rx="1" />
-          <rect x="236" y="58" width="8" height="7" rx="1" />
-          <rect x="247" y="62" width="7" height="8" rx="1" />
-          <rect x="58" y="402" width="8" height="7" rx="1" />
-          <rect x="69" y="406" width="7" height="8" rx="1" />
         </g>
 
         {/* THE JOURNEY — a channel debossed into the cotton (the hero, no colour) */}
@@ -319,21 +268,33 @@ export function CottonMap({
           </g>
         ) : null}
 
-        {/* ENGRAVED LABELS — beside each node */}
+        {/* ENGRAVED LABELS — beside each node. A "change" label is dropped when it
+            sits on top of an endpoint (the brewery is next to Derby station, home
+            next to Wellingborough station, so they project together) — the
+            endpoint keeps its name, the change keeps just its dot. */}
         <g fontFamily="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif" fill={C.label} filter="url(#cm-engrave)">
-          {nodes.map((n, i) => (
-            <text
-              key={i}
-              x={n.x + (n.x > VB_W * 0.62 ? -13 : 13)}
-              y={n.y + 4}
-              textAnchor={n.x > VB_W * 0.62 ? "end" : "start"}
-              fontSize="12.5"
-              fontWeight={n.role === "mid" ? 600 : 700}
-            >
-              {n.label}
-              {n.role === "mid" ? " · change" : ""}
-            </text>
-          ))}
+          {nodes.map((n, i) => {
+            const origin = nodes[0];
+            const dest = nodes[nodes.length - 1];
+            const near = (a: NodeVM, b: NodeVM) => Math.hypot(a.x - b.x, a.y - b.y) < 34;
+            if (n.role === "mid" && origin && dest && (near(n, origin) || near(n, dest))) {
+              return null;
+            }
+            const rightSide = n.x > VB_W * 0.62;
+            return (
+              <text
+                key={i}
+                x={n.x + (rightSide ? -13 : 13)}
+                y={n.y + 4}
+                textAnchor={rightSide ? "end" : "start"}
+                fontSize="12.5"
+                fontWeight={n.role === "mid" ? 600 : 700}
+              >
+                {n.label}
+                {n.role === "mid" ? " · change" : ""}
+              </text>
+            );
+          })}
         </g>
       </svg>
 
