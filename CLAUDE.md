@@ -45,8 +45,21 @@ the triage in `docs/foundation-rebuild-triage.md`. Honour these every turn:
   clean provider interface; fake the transaction.
 
 **Locked stack:** Next.js App Router + React + TypeScript (mobile-first, PWA-capable) · Supabase
-(Postgres + Auth + RLS) · token-driven styling (CSS vars proxied by Tailwind) · MapLibre + Protomaps
-(keep) · Valhalla (routing) + OpenTripPlanner (transit) + TfL (London) when nav is reached.
+(Postgres + Auth + RLS) · token-driven styling (CSS vars proxied by Tailwind) · **web maps** =
+MapLibre + self-hosted Protomaps (keep) · Valhalla (routing) + OpenTripPlanner (transit) + TfL
+(London) when nav is reached.
+
+**Maps — platform split (decided; see `docs/native-map-strategy.md` + DECISIONS D104).** The product
+is going **true-native** (Swift iOS + Kotlin Android, plus web desktop). The **flagship** map / offline
+/ turn-by-turn experience is built **native with Mapbox** — its native SDKs do offline region+route
+downloads and first-class navigation, and the **Standard style** gives realtime lighting/shadows/AO
+(the "clay" look) for free; high free tier. Mapbox offline is a *native* capability — on **web (GL JS)**
+it's unsupported + against ToS to cache tiles — so **web stays MapLibre + self-hosted Protomaps**
+(free, self-hostable, offline-capable via the `khnav://` IDB cache). **Do NOT build the flagship map
+twice:** no deck.gl / Three.js / clay-3D engine on web. MapLibre's flat-shaded `fill-extrusion` can't
+do soft shadows/AO/rounded edges — the web clay attempts (abstract SVG, extruded buildings, a buffered
+"raised route" that rendered as a beige block) were dead ends; the web day map is the calm MapLibre
+**cotton** vector theme (`themes/cotton.ts`) and that's where it stays.
 
 **Core data model (migration 0010 + 0030):** `Journey`=itineraries · `Anchor`=stops · `Leg`=transitions
 · `Intention` · `Gap` · `ResourceState` · `Task` · identity = profiles/workspaces/memberships +

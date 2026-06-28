@@ -10,7 +10,6 @@ import type { JourneyTheme } from "./themes/types";
 import { buildMapStyle } from "./map-style/build-map-style";
 import { registerBasemapProtocol } from "./pmtiles-source";
 import { computeBounds } from "./utils/compute-bounds";
-import { buildRouteRibbon } from "./utils/route-ribbon";
 
 /**
  * JourneyMap — interactive MapLibre-based map for Khonsera itineraries.
@@ -93,8 +92,6 @@ export function JourneyMap({
     if (!m || !layersAdded.current) return;
     const src = m.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
     if (src) src.setData(buildGeoJSON(journey));
-    const ribbon = m.getSource(RIBBON_ID) as maplibregl.GeoJSONSource | undefined;
-    if (ribbon) ribbon.setData(buildRouteRibbon(journey));
 
     clearMarkers(markersRef);
     addMarkers(m, stations, theme, markersRef);
@@ -129,7 +126,6 @@ export function JourneyMap({
 // ── Helpers ─────────────────────────────────────────────────────────
 
 const SOURCE_ID = "journey-lines";
-const RIBBON_ID = "journey-ribbon";
 
 function buildGeoJSON(journey: Journey): GeoJSON.FeatureCollection {
   return {
@@ -151,27 +147,6 @@ function addJourneyLayers(map: maplibregl.Map, journey: Journey, theme: JourneyT
   if (map.getSource(SOURCE_ID)) return;
 
   map.addSource(SOURCE_ID, { type: "geojson", data: buildGeoJSON(journey) });
-
-  // Raised cotton route RIBBON — the route buffered to a road-width polygon and
-  // extruded, so at street zoom it lifts off the flat roads and catches the same
-  // light as the buildings (Connor's clay reference). The one linear feature we
-  // can raise on a live map. Below street zoom it's sub-pixel; the flat line
-  // layers below carry the wide overview. Roads stay flat (lines can't extrude).
-  const ribbonColor = theme.mapStyle.highway ?? theme.mapStyle.land;
-  map.addSource(RIBBON_ID, { type: "geojson", data: buildRouteRibbon(journey) });
-  map.addLayer({
-    id: "j-ribbon",
-    type: "fill-extrusion",
-    source: RIBBON_ID,
-    minzoom: 14,
-    paint: {
-      "fill-extrusion-color": ribbonColor,
-      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, 4.5],
-      "fill-extrusion-base": 0,
-      "fill-extrusion-vertical-gradient": true,
-      "fill-extrusion-opacity": 0.97,
-    },
-  });
 
   // Outbound = gold, return = the theme's contrasting routeReturn — so the two
   // directions never merge into one ambiguous line.

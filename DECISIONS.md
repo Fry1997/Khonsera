@@ -1458,3 +1458,19 @@ Newest at the bottom of each section.
   `findHtmlAttachmentId` locates the text/html attachment part and fetches it via gmailGetAttachment,
   feeding the full html to the structured parser. Diagnosed end-to-end via the Gmail connector + Supabase
   + Vercel runtime logs. tsc + 379 + build green.
+
+- **D104 — Maps: Mapbox on true-native for the flagship; MapLibre stays on web.** A long iteration on a
+  "clay/cotton 3D map" established that MapLibre's flat-shaded `fill-extrusion` cannot produce soft
+  shadows / ambient occlusion / matte material / rounded edges — so the clay look is unreachable on the
+  web stack (the abstract SVG map, the extruded-buildings pass, and a buffered "raised route" that
+  rendered as a beige block under the line were all the wrong tool; the ribbon was reverted). Decisive
+  product facts: the app is going **true-native** (Swift iOS + Kotlin Android + web desktop), and
+  **offline + first-class turn-by-turn** are pillars. **Mapbox** delivers both as *native-SDK* features
+  (offline region/route downloads; polished Navigation SDK) and its **Standard style** gives realtime
+  lighting/shadows/AO (the clay look) for free, on a high free tier. Crucially, Mapbox offline is a
+  **native** capability — on **web GL JS** it's unsupported and against ToS to cache tiles — so Mapbox
+  only pays off on native, which is exactly where the app is heading. **Decision:** flagship map / nav /
+  offline = **native Mapbox** (Standard cotton style + OfflineManager/TileStore + Navigation SDK); the
+  **web** app keeps **MapLibre + self-hosted Protomaps** (free, self-hostable, offline-capable; the calm
+  cotton vector theme is the web day map). **Do not build the flagship map twice** — no deck.gl/Three.js/
+  clay engine on web. Native build is a separate future workstream, spec'd in `docs/native-map-strategy.md`.
