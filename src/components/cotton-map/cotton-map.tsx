@@ -137,6 +137,11 @@ export function CottonMap({
   const you = position ? project(position.lat, position.lng) : null;
   const distMi = Math.round(journey.totalDistanceMi);
 
+  // No box: the map isn't framed — its edge is simply where the content fades
+  // out, dissolving into the same cotton page (Connor's note). A soft radial
+  // mask feathers the field so there's no hard rectangle.
+  const edgeMask =
+    "radial-gradient(125% 100% at 50% 44%, #000 60%, rgba(0,0,0,0.55) 82%, transparent 100%)";
   return (
     <div
       className={className}
@@ -144,17 +149,21 @@ export function CottonMap({
         position: "relative",
         width: "100%",
         aspectRatio: "330 / 460",
-        borderRadius: 18,
-        overflow: "hidden",
-        background: C.landLo,
-        boxShadow:
-          "inset 0 2px 4px rgba(40,36,28,0.16), inset 0 1px 2px rgba(40,36,28,0.10), inset 0 -1px 0 rgba(255,255,255,0.65)",
+        background: "transparent",
       }}
     >
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          display: "block",
+          maskImage: edgeMask,
+          WebkitMaskImage: edgeMask,
+        }}
         aria-label="Day map — the journey, debossed into cotton"
       >
         <defs>

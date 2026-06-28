@@ -8,10 +8,7 @@ import { CottonMap } from "@/components/cotton-map/cotton-map";
 // passed in serialised. The map is now the abstract "cotton material map"
 // (Design v8) — pure SVG, no tiles, renders offline at any size.
 export function PlanMap({ journey }: { journey: Journey }) {
-  // .cc-plan-map is Design's framed inset band (Edition III skin); the map fills it.
-  return (
-    <div className="cc-plan-map">
-      <CottonMap journey={journey} />
-    </div>
-  );
+  // No frame (Connor's note): the cotton map isn't boxed — it dissolves into the
+  // page, its bounds defined by what's drawn. So no .cc-plan-map border/inset.
+  return <CottonMap journey={journey} />;
 }
