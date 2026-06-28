@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildJourneyFromStops,
   polylineOrientation,
+  acceptPolylineLength,
   type StopForMap,
   type TransitionForMap,
 } from "./from-stops";
@@ -54,6 +55,41 @@ describe("polylineOrientation — the phantom-branch guard", () => {
 
   it("rejects a degenerate (<2 point) track", () => {
     expect(polylineOrientation([[LEICESTER.lat, LEICESTER.lng]], LEICESTER, DERBY)).toBeNull();
+  });
+});
+
+describe("acceptPolylineLength — the detour guard (correct ends, wrong middle)", () => {
+  it("accepts a roughly-direct route", () => {
+    const direct: LatLng[] = [
+      [LEICESTER.lat, LEICESTER.lng],
+      [52.75, -1.3],
+      [DERBY.lat, DERBY.lng],
+    ];
+    expect(acceptPolylineLength(direct, LEICESTER, DERBY)).toBe(true);
+  });
+
+  it("rejects a route that detours via the wrong city (Leicester→Derby via Birmingham)", () => {
+    // Correct endpoints, but the middle swings out to Birmingham — ~3× the
+    // crow-flies. This is exactly the phantom-branch case.
+    const detour: LatLng[] = [
+      [LEICESTER.lat, LEICESTER.lng],
+      [BIRMINGHAM.lat, BIRMINGHAM.lng],
+      [DERBY.lat, DERBY.lng],
+    ];
+    expect(acceptPolylineLength(detour, LEICESTER, DERBY)).toBe(false);
+  });
+
+  it("does not nuke short windy legs (below the distance floor)", () => {
+    // A ~0.5 mi walk traced as a wiggly 1 mi — still fine.
+    const a = { lat: 52.9164, lng: -1.4626 };
+    const b = { lat: 52.9205, lng: -1.4690 };
+    const wiggly: LatLng[] = [
+      [a.lat, a.lng],
+      [a.lat + 0.002, a.lng + 0.004],
+      [a.lat - 0.001, a.lng + 0.006],
+      [b.lat, b.lng],
+    ];
+    expect(acceptPolylineLength(wiggly, a, b)).toBe(true);
   });
 });
 

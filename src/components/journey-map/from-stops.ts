@@ -61,6 +61,30 @@ function haversineMi(a: LatLng, b: LatLng): number {
 // fall back to the straight line instead of drawing the bad geometry.
 const MAX_ENDPOINT_DRIFT_MI = 6; // generous vs rail-node snapping (<1mi), tight vs a wrong city (30mi+)
 
+// Even with correct endpoints, a cached route can wander to the wrong city in
+// the MIDDLE (e.g. a Leicester→Derby polyline routed via Birmingham — ~3× the
+// crow-flies). Endpoints alone won't catch that, so we also reject a track whose
+// traced length is disproportionate to the straight-line distance. Skipped for
+// short legs so genuinely windy walks aren't nuked.
+const DETOUR_MIN_MI = 4; // below this, any squiggle is fine
+const MAX_DETOUR_RATIO = 2.2; // traced / crow-flies above this = a detour bug
+
+function tracedMiles(track: LatLng[]): number {
+  let mi = 0;
+  for (let k = 1; k < track.length; k++) mi += haversineMi(track[k - 1], track[k]);
+  return mi;
+}
+
+export function acceptPolylineLength(
+  track: LatLng[],
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+): boolean {
+  const straightMi = haversineMi([from.lat, from.lng], [to.lat, to.lng]);
+  if (straightMi <= DETOUR_MIN_MI) return true;
+  return tracedMiles(track) <= straightMi * MAX_DETOUR_RATIO;
+}
+
 export function polylineOrientation(
   track: LatLng[],
   from: { lat: number; lng: number },
@@ -119,8 +143,11 @@ export function buildJourneyFromStops(
     if (transition.overview_polyline) {
       const decoded = decodePolyline(transition.overview_polyline);
       const orient = polylineOrientation(decoded, from, to);
-      if (orient === "forward") track = decoded;
-      else if (orient === "reverse") track = [...decoded].reverse();
+      if (orient) {
+        const oriented = orient === "reverse" ? [...decoded].reverse() : decoded;
+        // Endpoints connect — accept only if it doesn't also detour wildly.
+        if (acceptPolylineLength(oriented, from, to)) track = oriented;
+      }
     }
 
     const durationMins = transition.computed_duration_minutes ?? 0;
