@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { loadReadiness } from "@/lib/actions/readiness";
+import { deriveReviewLeaveBy, type ReviewStopRow, type ReviewTransitionRow } from "@/lib/actions/review-derive";
 
 // The night-before review (Phase 5, B3.6) — preparation's payoff. NOT a new
 // entity: a calm composition of what the day-object, the timing engine, and the
@@ -27,20 +28,8 @@ export type DayReview = {
   verdict: string;
 };
 
-type StopRow = {
-  id: string;
-  type: string;
-  title: string | null;
-  start_time: string | null;
-  end_time: string | null;
-};
-type TransRow = {
-  from_stop_id: string;
-  to_stop_id: string;
-  mode: string;
-  is_locked: boolean | null;
-  computed_duration_minutes: number | null;
-};
+type StopRow = ReviewStopRow;
+type TransRow = ReviewTransitionRow;
 
 function clock(iso: string | null): string | null {
   if (!iso) return null;
@@ -75,15 +64,10 @@ export async function buildDayReview(itineraryId: string): Promise<DayReview | n
   const transitions = (t ?? []) as TransRow[];
   const byId = new Map(stops.map((st) => [st.id, st]));
 
-  // Leave-by: when you leave home — the home stop's computed departure, else the
-  // first leg's departure.
-  const home = stops.find((st) => st.type === "start");
-  let leaveBy = home?.end_time ?? null;
-  if (!leaveBy && transitions.length) {
-    const first = transitions.find((tr) => tr.from_stop_id === home?.id) ?? transitions[0];
-    const from = byId.get(first.from_stop_id);
-    leaveBy = from?.end_time ?? from?.start_time ?? null;
-  }
+  // Leave-by is a departure from the user's base/day origin. Never derive it
+  // from a transit arrival or changeover when legacy imported journeys are
+  // missing the explicit home/start bookend.
+  const leaveBy = deriveReviewLeaveBy(stops, transitions);
 
   // Route shape + fragility (a leg with no slack the day can't absorb).
   let totalMinutes = 0;
