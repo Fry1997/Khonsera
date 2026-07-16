@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { AppScreen } from "@/components/ui/page-shell";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
@@ -37,11 +38,7 @@ export default async function ExpensesPage() {
   const byMonth = groupByMonth(expenses, wsCfg.timezone);
 
   return (
-    <div className="cc-screen">
-      <header>
-        <span className="cc-eyebrow">Ledger</span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>Expenses</h1>
-      </header>
+    <AppScreen eyebrow="Ledger" title="Expenses">
 
       {expenses.length === 0 ? (
         <div className="cc-empty">
@@ -78,7 +75,7 @@ export default async function ExpensesPage() {
           ))}
         </>
       )}
-    </div>
+    </AppScreen>
   );
 }
 

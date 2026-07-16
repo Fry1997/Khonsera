@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { AppScreen } from "@/components/ui/page-shell";
 import { requireUserContext } from "@/lib/auth";
 import { TasksScreen } from "@/components/tasks/tasks-screen";
 import type { TaskVM } from "@/components/concierge";
@@ -24,17 +25,8 @@ export default async function TasksPage() {
   }));
 
   return (
-    <div className="cc-screen">
-      <header>
-        <span className="cc-eyebrow">
-          Tasks
-        </span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-          Things to do
-        </h1>
-      </header>
-
+    <AppScreen eyebrow="Tasks" title="Things to do">
       <TasksScreen initial={tasks} />
-    </div>
+    </AppScreen>
   );
 }

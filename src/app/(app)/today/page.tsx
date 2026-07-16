@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppScreen } from "@/components/ui/page-shell";
 import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -438,26 +439,15 @@ export default async function TodayPage({
   const lastTodayStop = allStops.length ? allStops[allStops.length - 1] : null;
 
   return (
-    <div className="cc-screen" data-disrupted={disruptions.length ? "true" : undefined}>
-      {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
-      <OfflineTicketSync tickets={tickets} />
-      <header className="cc-today-head">
-        <div>
-          <span className="cc-eyebrow">Today</span>
-          {/* When the day header renders below (it carries the page <h1> = the
-              day's purpose), this stays a quiet contextual strip — not a second
-              h1. With no day, it remains the screen's heading. */}
-          {anchors.length ? (
-            <p className="cc-screen-title" style={{ marginTop: 6 }}>
-              Right now
-            </p>
-          ) : (
-            <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-              Right now
-            </h1>
-          )}
-        </div>
-        {weather ? (
+    <AppScreen
+      eyebrow="Today"
+      title="Right now"
+      titleAs={anchors.length ? "p" : "h1"}
+      headerClassName="cc-today-head"
+      headerStyle={{ alignItems: "flex-start" }}
+      data-disrupted={disruptions.length ? "true" : undefined}
+      actions={
+        weather ? (
           <div className="cc-weather" data-day={weather.isDay ? "true" : "false"}>
             <span className="cc-weather-temp">{weather.tempC}&deg;</span>
             <span className="cc-weather-meta">
@@ -465,8 +455,11 @@ export default async function TodayPage({
               <span className="cc-weather-place">{weather.place}</span>
             </span>
           </div>
-        ) : null}
-      </header>
+        ) : null
+      }
+    >
+      {/* Keep today's tickets on-device for the barrier (no-signal Aztec). */}
+      <OfflineTicketSync tickets={tickets} />
 
       {weather && weather.hours.length > 0 ? (
         <div className="cc-weather-hours" aria-label="Today's forecast by the hour">
@@ -599,6 +592,6 @@ export default async function TodayPage({
       )}
 
       {tomorrowReview ? <DayReviewCard review={tomorrowReview} eyebrow="Tomorrow" /> : null}
-    </div>
+    </AppScreen>
   );
 }

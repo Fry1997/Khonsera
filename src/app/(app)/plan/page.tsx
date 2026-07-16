@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { AppScreen } from "@/components/ui/page-shell";
 import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
 import { PlanCreate } from "@/components/plan/plan-create";
@@ -107,13 +108,7 @@ export default async function PlanIndexPage() {
   ]);
 
   return (
-    <div className="cc-screen">
-      <header>
-        <span className="cc-eyebrow">Plan</span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-          What are you planning?
-        </h1>
-      </header>
+    <AppScreen eyebrow="Plan" title="What are you planning?">
 
       <PlanCreate />
 
@@ -171,6 +166,6 @@ export default async function PlanIndexPage() {
           ) : null}
         </>
       )}
-    </div>
+    </AppScreen>
   );
 }
