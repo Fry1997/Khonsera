@@ -39,6 +39,7 @@ type SegmentRow = {
 
 type BookingRow = {
   id: string;
+  booking_intent_id: string;
   provider: string | null;
   booking_reference: string | null;
   ticket_status: string | null;
@@ -108,20 +109,21 @@ async function ticketsForItineraries(itinIds: string[]): Promise<TicketVM[]> {
     byItin.set(st.itinerary_id as string, arr);
   }
   const stopTickets: TicketVM[] = [];
-  for (const list of byItin.values()) {
-    for (const f of foldStopsToTickets(list)) stopTickets.push(f.ticket);
+  for (const [itineraryId, list] of byItin.entries()) {
+    for (const f of foldStopsToTickets(list)) stopTickets.push({ ...f.ticket, itineraryId });
   }
 
   // Secondary source: travel_bookings rows (future/affiliate path), deduped by
   // reference so we don't double-list the same booking.
-  const { data: intents } = await supabase.from("booking_intents").select("id").in("itinerary_id", itinIds);
+  const { data: intents } = await supabase.from("booking_intents").select("id, itinerary_id").in("itinerary_id", itinIds);
+  const intentItinerary = new Map((intents ?? []).map((r) => [r.id as string, r.itinerary_id as string]));
   const intentIds = (intents ?? []).map((r) => r.id as string);
   let bookingTickets: TicketVM[] = [];
   if (intentIds.length) {
     const { data: bookings } = await supabase
       .from("travel_bookings")
       .select(
-        `id, provider, booking_reference, ticket_status, actual_price, currency,
+        `id, booking_intent_id, provider, booking_reference, ticket_status, actual_price, currency,
          departure_at, arrival_at, seat_reservation, source,
          segments:travel_booking_segments(
            sequence, from_location_name, to_location_name, from_station_code, to_station_code,
@@ -129,7 +131,7 @@ async function ticketsForItineraries(itinIds: string[]): Promise<TicketVM[]> {
            ticket_type, route_restriction, coach, seat, barcode_ref, barcode_data)`,
       )
       .in("booking_intent_id", intentIds);
-    bookingTickets = ((bookings ?? []) as unknown as BookingRow[]).map(toTicket);
+    bookingTickets = ((bookings ?? []) as unknown as BookingRow[]).map((b) => ({ ...toTicket(b), itineraryId: intentItinerary.get(b.booking_intent_id) }));
   }
 
   const seen = new Set(stopTickets.map((t) => t.reference).filter(Boolean));

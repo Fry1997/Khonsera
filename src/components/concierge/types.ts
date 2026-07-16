@@ -228,6 +228,7 @@ export type TicketVM = {
   price?: number; // minor units
   currency?: string;
   source: DocumentSource;
+  itineraryId?: string; // owning plan/day when the document is associated with one
   legs: TicketLegVM[]; // 1 = single · 2 = booking-pair (outbound + return)
   consequence?: string; // the live band: "this return → leave the museum by 16:10"
   // stay
