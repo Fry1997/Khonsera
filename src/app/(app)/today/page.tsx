@@ -9,7 +9,6 @@ import { projectToday, type ProjectionStop, type TodayUrgency } from "@/lib/plan
 import { loadJourneyTickets } from "@/lib/actions/wallet";
 import { buildDayReview } from "@/lib/actions/review";
 import { DayReviewCard } from "@/components/plan/day-review";
-import { PlanCreate } from "@/components/plan/plan-create";
 import { TflLineStatus } from "@/components/today/tfl-line-status";
 import { getLocalWeather } from "@/lib/actions/weather";
 import { TodayDisruption, type TodayDisruptionItem } from "@/components/today/today-disruption";
@@ -20,7 +19,8 @@ import { TodayDocument } from "@/components/today/today-document";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { LiveDay } from "@/components/today/live-day";
 import { TodaySpine } from "@/components/today/today-spine";
-import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
+import { TodayActionSummary, type TodayActionSummaryState } from "@/components/today/today-action-summary";
+import { navigateHref, navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import { TodayDemo } from "@/components/today/today-demo";
 import { isDemoModeActive } from "@/lib/demo-mode";
@@ -385,6 +385,24 @@ export default async function TodayPage({
     (covering.length === 1 ? covering[0].title?.trim() : null) ||
     "Your day";
 
+  const missingTicketAnchor = spineAnchors.find((a) =>
+    (a.role === "departure" || a.role === "changeover") && !a.pass,
+  );
+  const actionState: TodayActionSummaryState =
+    anchors.length === 0
+      ? tomorrowReview
+        ? { kind: "upcoming-plan", title: tomorrowReview.title }
+        : { kind: "no-plan" }
+      : !baseCoord
+        ? { kind: "missing-base", title: dayPurpose }
+        : disruptions.length > 0
+          ? { kind: "disruption", title: disruptions[0].title, severe: disruptions.some((d) => d.severe) }
+          : missingTicketAnchor
+            ? { kind: "missing-ticket", title: missingTicketAnchor.title }
+            : nextSpine
+              ? { kind: "active-next-leg", title: nextSpine.title, href: navigateHref(nextSpine), detail: nextSpine.place ? `Head to ${nextSpine.place}.` : null }
+              : { kind: "completed-day" };
+
   // The day's note — the single covering plan's intention, rendered as the
   // Satoshi-light standfirst. Omitted entirely when there's no note (never
   // fabricated). Only the single-plan case has one unambiguous note.
@@ -457,16 +475,19 @@ export default async function TodayPage({
             </h1>
           )}
         </div>
-        {weather ? (
-          <div className="cc-weather" data-day={weather.isDay ? "true" : "false"}>
-            <span className="cc-weather-temp">{weather.tempC}&deg;</span>
-            <span className="cc-weather-meta">
-              <span className="cc-weather-headline">{weather.headline}</span>
-              <span className="cc-weather-place">{weather.place}</span>
-            </span>
-          </div>
-        ) : null}
       </header>
+
+      <TodayActionSummary state={actionState} />
+
+      {weather ? (
+        <div className="cc-weather" data-day={weather.isDay ? "true" : "false"}>
+          <span className="cc-weather-temp">{weather.tempC}&deg;</span>
+          <span className="cc-weather-meta">
+            <span className="cc-weather-headline">{weather.headline}</span>
+            <span className="cc-weather-place">{weather.place}</span>
+          </span>
+        </div>
+      ) : null}
 
       {weather && weather.hours.length > 0 ? (
         <div className="cc-weather-hours" aria-label="Today's forecast by the hour">
@@ -480,7 +501,7 @@ export default async function TodayPage({
         </div>
       ) : null}
 
-      <TodayDisruption items={disruptions} />
+      <div id="today-disruptions"><TodayDisruption items={disruptions} /></div>
 
       {inLondon ? <TflLineStatus /> : null}
 
@@ -579,23 +600,21 @@ export default async function TodayPage({
           </div>
         </>
       ) : (
-        <div className="cc-active-tile" data-urgency="comfortable">
-          <span className="cc-at-status">
-            <span className="cc-at-dot" />
-            At rest
-          </span>
-          <h2 className="cc-at-headline">Let&apos;s set up your day</h2>
-          <p className="cc-at-sub">
-            Add what&apos;s coming up — your trains, stays and meetings — or import the bookings
-            from your inbox, and Khonsera threads the day: the next move, the leave-by, the chain ahead.
-          </p>
-          <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            <PlanCreate label="Plan a day" />
+        <details className="cc-plan-tools">
+          <summary className="cc-plan-tools-summary">
+            <span className="cc-plan-tools-title">How Today works</span>
+            <span className="cc-plan-tools-hint">weather · tickets · route · timeline</span>
+          </summary>
+          <div className="cc-plan-tools-body">
+            <p className="cc-at-sub">
+              Add what&apos;s coming up — your trains, stays and meetings — or import the bookings
+              from your inbox, and Khonsera threads the day: the next move, the leave-by, the chain ahead.
+            </p>
             <Link href={"/plan" as Route} className="cc-btn">
               Open the plan
             </Link>
           </div>
-        </div>
+        </details>
       )}
 
       {tomorrowReview ? <DayReviewCard review={tomorrowReview} eyebrow="Tomorrow" /> : null}
