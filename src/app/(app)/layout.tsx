@@ -49,6 +49,7 @@ export default async function AppLayout({
           firstName={firstName}
           initials={initials}
           isStaff={ctx.isStaff}
+          mode={ctx.activeMode}
         />
         <main
           className="paper-tex"
