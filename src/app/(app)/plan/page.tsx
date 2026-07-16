@@ -9,6 +9,8 @@ import { RecurringOffers } from "@/components/plan/recurring-offers";
 import { loadReminders } from "@/lib/actions/reminders";
 import { listRecurringEvents, materializeRecurring, listRecurringOffers } from "@/lib/actions/recurring";
 import type { PlacePickerLocation } from "@/components/place-picker";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
+import { loadOnboardingChecklistState } from "@/lib/onboarding";
 
 // Plan — the INDEX of Events (proposal §3a). The two-level structure that fixes
 // the singleton bug: this lists every Event (a day or a multi-day trip) hinged
@@ -94,10 +96,11 @@ export default async function PlanIndexPage() {
   archive.reverse(); // most-recent past first
 
   const empty = itins.length === 0;
-  const [reminders, recurringRules, recurringOffers, { data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
+  const [reminders, recurringRules, recurringOffers, checklist, { data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
     loadReminders(),
     listRecurringEvents(),
     listRecurringOffers(),
+    loadOnboardingChecklistState(),
     supabase.from("customers").select("id, name").eq("workspace_id", ctx.workspaceId).order("name"),
     supabase.from("customer_sites").select("id, customer_id, name, address").eq("workspace_id", ctx.workspaceId),
     supabase.from("locations").select("id, name, type, address").eq("workspace_id", ctx.workspaceId).order("type").order("name"),
@@ -127,6 +130,7 @@ export default async function PlanIndexPage() {
 
       {empty ? (
         <div className="cc-plan-empty">
+          <OnboardingChecklist state={checklist} context="plan-empty" />
           <p className="cc-plan-empty-lead">Nothing planned yet.</p>
           <p className="cc-plan-empty-sub">
             Add a day by hand — your trains, stays and meetings — or import the bookings

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { GmailImportPanel } from "@/app/(app)/itineraries/[id]/gmail-import-panel";
 
 // Bring a booking in from email, on the new Plan flow (the user's "I can't bring
@@ -35,7 +36,10 @@ export function PlanImport({
       lastStopId={lastStopId}
       lastStopLabel={lastStopLabel}
       onClose={() => setOpen(false)}
-      onImported={() => router.refresh()}
+      onImported={() => {
+        router.push(`/plan/${itineraryId}` as Route);
+        router.refresh();
+      }}
       standaloneRuns
     />
   );
