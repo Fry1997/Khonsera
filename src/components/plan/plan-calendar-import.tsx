@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import {
   loadCalendarProposals,
   importCalendarEvents,
@@ -57,6 +58,7 @@ export function PlanCalendarImport({ itineraryId }: { itineraryId: string }) {
         return;
       }
       setOpen(false);
+      router.push(`/plan/${itineraryId}` as Route);
       router.refresh();
     });
   }

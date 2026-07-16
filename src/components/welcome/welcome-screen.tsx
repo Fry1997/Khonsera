@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import type { Mode } from "@/components/concierge";
 import { chooseAndContinue } from "@/lib/actions/welcome";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
+import type { OnboardingChecklistState } from "@/lib/onboarding";
 
 // First-run (§3) — Design Round 2 (`.cc-welcome`). Chromeless: emblem, a warm
 // Satoshi self-intro (one Spectral-gold word), then the honest fork.
@@ -13,7 +15,7 @@ const Chevron = () => (
   </svg>
 );
 
-export function WelcomeScreen({ mode }: { mode: Mode }) {
+export function WelcomeScreen({ mode, checklist }: { mode: Mode; checklist: OnboardingChecklistState }) {
   const [step, setStep] = useState<"intro" | "booked">("intro");
   const [pending, startTransition] = useTransition();
   const go = (target: string) => startTransition(() => chooseAndContinue(target));
@@ -23,6 +25,8 @@ export function WelcomeScreen({ mode }: { mode: Mode }) {
       <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="cc-welcome-emblem" src="/brand/mk-ink.png" alt="" />
+
+        <OnboardingChecklist state={checklist} context="welcome" />
 
         {step === "intro" ? (
           <>
@@ -53,7 +57,7 @@ export function WelcomeScreen({ mode }: { mode: Mode }) {
               Is it <em>booked</em> — in part or full? However much you know, I&apos;ll take it from there.
             </h1>
             <div className="cc-welcome-fork">
-              <button type="button" className="cc-fork-option" data-primary="true" disabled={pending} onClick={() => go("/settings")}>
+              <button type="button" className="cc-fork-option" data-primary="true" disabled={pending} onClick={() => go("/settings#gmail")}>
                 <div>
                   <span className="t">It&apos;s booked — in my inbox</span>
                   <span className="s">Connect your email; I&apos;ll find the confirmations and build the cards.</span>

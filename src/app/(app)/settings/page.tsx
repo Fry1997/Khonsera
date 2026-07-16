@@ -123,7 +123,8 @@ export default async function SettingsPage({
           ) : null}
         </div>
 
-        <CalendarSection
+        <div id="calendar" className="scroll-mt-24">
+          <CalendarSection
           connection={
             calendarConn
               ? {
@@ -133,8 +134,10 @@ export default async function SettingsPage({
               : null
           }
         />
+        </div>
 
-        <GmailSection
+        <div id="gmail" className="scroll-mt-24">
+          <GmailSection
           connection={
             gmailConn
               ? {
@@ -145,6 +148,7 @@ export default async function SettingsPage({
               : null
           }
         />
+        </div>
 
         <div className="j-card p-5 md:col-span-2">
           <h2 className="h3 mb-4">International</h2>
@@ -153,7 +157,7 @@ export default async function SettingsPage({
           </div>
         </div>
 
-        <div className="j-card p-5 md:col-span-2">
+        <div id="travel-profile" className="j-card p-5 md:col-span-2 scroll-mt-24">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="h3">Travel preferences</h2>
             <Link href="/locations" className="small underline">
