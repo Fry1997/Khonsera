@@ -10,6 +10,7 @@ import {
   type PlacePickerCustomerSite,
   type PlacePickerLocation,
 } from "@/components/place-picker";
+import { Sheet } from "@/components/ui/sheet";
 
 // The day's BASE — home/office it departs from and returns to (plan elevation
 // 2026-06-15). Without it the door-to-door spine has no origin, so this is the
@@ -83,14 +84,12 @@ export function PlanBase({
       </button>
 
       {open ? (
-        <div className="cc-sheet-scrim" onClick={() => setOpen(false)}>
-          <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-            <div className="cc-sheet-grip" />
+        <Sheet titleId="plan-base-sheet-title" descriptionId="plan-base-sheet-description" onClose={() => setOpen(false)}>
             <header className="cc-sheet-head">
               <span className="cc-eyebrow">The day&rsquo;s base</span>
-              <h3 className="cc-sheet-title">Where do you start &amp; end?</h3>
+              <h3 id="plan-base-sheet-title" className="cc-sheet-title" tabIndex={-1}>Where do you start &amp; end?</h3>
             </header>
-            <p className="cc-sheet-note">Home or the office — Khonsera threads the door-to-door from here, and back.</p>
+            <p id="plan-base-sheet-description" className="cc-sheet-note">Home or the office — Khonsera threads the door-to-door from here, and back.</p>
             <div className="cc-time-field">
               <span className="cc-var-label">Base</span>
               <PlacePicker
@@ -107,8 +106,7 @@ export function PlanBase({
               <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
               <button type="button" className="cc-btn cc-btn-gold" onClick={save}>Set base</button>
             </div>
-          </div>
-        </div>
+        </Sheet>
       ) : null}
     </>
   );

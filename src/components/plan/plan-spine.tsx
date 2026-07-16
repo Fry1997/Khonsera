@@ -19,6 +19,7 @@ import { AccommodationCard } from "@/components/plan/accommodation-card";
 import { NotesPanel } from "@/components/plan/notes-panel";
 import { TflLegPlan } from "@/components/plan/tfl-leg-plan";
 import { PlanAdd } from "@/components/plan/plan-add";
+import { Sheet } from "@/components/ui/sheet";
 import type {
   PlacePickerCustomer,
   PlacePickerCustomerSite,
@@ -304,12 +305,10 @@ function RenameSheet({ target, onClose }: { target: RenameTarget; onClose: () =>
   }
 
   return (
-    <div className="cc-sheet-scrim" onClick={onClose}>
-      <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-        <div className="cc-sheet-grip" />
+    <Sheet titleId="rename-sheet-title" onClose={onClose}>
         <header className="cc-sheet-head">
           <span className="cc-eyebrow">This stop</span>
-          <h3 className="cc-sheet-title">Rename</h3>
+          <h3 id="rename-sheet-title" className="cc-sheet-title" tabIndex={-1}>Rename</h3>
         </header>
         <label className="cc-time-field">
           <span className="cc-var-label">Name</span>
@@ -327,8 +326,7 @@ function RenameSheet({ target, onClose }: { target: RenameTarget; onClose: () =>
           <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose} disabled={pending}>Cancel</button>
           <button type="button" className="cc-btn cc-btn-gold" onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</button>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -376,12 +374,10 @@ function CompareSheet({ target, onClose }: { target: CompareTarget; onClose: () 
   }
 
   return (
-    <div className="cc-sheet-scrim" onClick={onClose}>
-      <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-        <div className="cc-sheet-grip" />
+    <Sheet titleId="compare-sheet-title" onClose={onClose}>
         <header className="cc-sheet-head">
           <span className="cc-eyebrow">How you get there</span>
-          <h3 className="cc-sheet-title">Fastest first</h3>
+          <h3 id="compare-sheet-title" className="cc-sheet-title" tabIndex={-1}>Fastest first</h3>
         </header>
 
         {loading ? (
@@ -414,8 +410,7 @@ function CompareSheet({ target, onClose }: { target: CompareTarget; onClose: () 
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -511,12 +506,10 @@ function VariableEditor({
   }
 
   return (
-    <div className="cc-sheet-scrim" onClick={onClose}>
-      <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-        <div className="cc-sheet-grip" />
+    <Sheet titleId="variable-editor-sheet-title" descriptionId={!needsValue ? "variable-editor-sheet-description" : undefined} onClose={onClose}>
         <header className="cc-sheet-head">
           <span className="cc-eyebrow">{anchor.title}</span>
-          <h3 className="cc-sheet-title">{SLOT_TITLE[slot]}</h3>
+          <h3 id="variable-editor-sheet-title" className="cc-sheet-title" tabIndex={-1}>{SLOT_TITLE[slot]}</h3>
         </header>
 
         <div className="cc-kind-row">
@@ -554,7 +547,7 @@ function VariableEditor({
             </label>
           )
         ) : (
-          <p className="cc-sheet-note">
+          <p id="variable-editor-sheet-description" className="cc-sheet-note">
             Khonsera will hold this as elastic and bound it by your constraints.
           </p>
         )}
@@ -569,8 +562,7 @@ function VariableEditor({
             {pending ? "Saving…" : "Set"}
           </button>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { createEvent } from "@/lib/actions/events";
+import { Sheet } from "@/components/ui/sheet";
 
 // Start a new Event from any "plan a day" entry point (proposal §3a; unified
 // 2026-06-15). Needs a start date (the hinge) + an optional name; opens straight
@@ -65,12 +66,10 @@ export function PlanCreate({
       )}
 
       {open ? (
-        <div className="cc-sheet-scrim" onClick={() => setOpen(false)}>
-          <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-            <div className="cc-sheet-grip" />
+        <Sheet titleId="plan-create-sheet-title" onClose={() => setOpen(false)}>
             <header className="cc-sheet-head">
               <span className="cc-eyebrow">A new day or trip</span>
-              <h3 className="cc-sheet-title">When does it start?</h3>
+              <h3 id="plan-create-sheet-title" className="cc-sheet-title" tabIndex={-1}>When does it start?</h3>
             </header>
 
             <label className="cc-time-field">
@@ -98,8 +97,7 @@ export function PlanCreate({
                 {pending ? "Starting…" : "Start"}
               </button>
             </div>
-          </div>
-        </div>
+        </Sheet>
       ) : null}
     </>
   );

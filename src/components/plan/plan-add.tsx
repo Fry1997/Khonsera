@@ -20,6 +20,7 @@ import {
   type PlacePickerCustomerSite,
   type PlacePickerLocation,
 } from "@/components/place-picker";
+import { Sheet } from "@/components/ui/sheet";
 
 // Manual structured add (planner master brief §4.2) — the precise / fallback
 // capture door. Three fact types: an Appointment or Place (bound to a real,
@@ -262,12 +263,10 @@ export function PlanAdd({
       )}
 
       {open ? (
-        <div className="cc-sheet-scrim" onClick={() => setOpen(false)}>
-          <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-            <div className="cc-sheet-grip" />
+        <Sheet titleId="plan-add-sheet-title" onClose={() => setOpen(false)}>
             <header className="cc-sheet-head">
               <span className="cc-eyebrow">Add to your day</span>
-              <h3 className="cc-sheet-title">What would you like to add?</h3>
+              <h3 id="plan-add-sheet-title" className="cc-sheet-title" tabIndex={-1}>What would you like to add?</h3>
             </header>
 
             <div className="cc-kind-row">
@@ -578,8 +577,7 @@ export function PlanAdd({
                 {pending ? "Adding…" : "Add it"}
               </button>
             </div>
-          </div>
-        </div>
+        </Sheet>
       ) : null}
     </>
   );
