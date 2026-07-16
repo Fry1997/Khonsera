@@ -20,7 +20,7 @@ import { TodayDocument } from "@/components/today/today-document";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { LiveDay } from "@/components/today/live-day";
 import { TodaySpine } from "@/components/today/today-spine";
-import { navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
+import { navigateHref, navModeForTransition, stationLabel, roleOf, type SpineAnchor } from "@/components/today/spine-model";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import { TodayDemo } from "@/components/today/today-demo";
 import { isDemoModeActive } from "@/lib/demo-mode";
@@ -332,6 +332,7 @@ export default async function TodayPage({
 
   // The next obligation for the spine highlight + the ticket-surfacing window.
   const nextSpine = proj.nextIndex != null ? spineAnchors[proj.nextIndex] : null;
+  const nextNavigateHref = nextSpine ? navigateHref(nextSpine) : null;
 
   const nowMs = now.getTime();
   const nextTicket =
@@ -507,6 +508,21 @@ export default async function TodayPage({
 
           <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
 
+          {(tickets.length > 0 || nextNavigateHref) ? (
+            <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+              {tickets.length > 0 ? (
+                <Link href={"/wallet" as Route} className="cc-btn cc-btn-ghost">
+                  Wallet
+                </Link>
+              ) : null}
+              {nextNavigateHref ? (
+                <Link href={nextNavigateHref} className="cc-btn cc-btn-ghost">
+                  Navigate
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* 2 · Route map — the real JourneyMap as a restrained paper map of the
               day's door-to-door route. Omitted when nothing is routable. */}
           {todayJourney ? (
@@ -573,9 +589,11 @@ export default async function TodayPage({
             <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">
               Open the plan
             </Link>
-            <Link href={"/navigate" as Route} className="cc-btn">
-              Navigate
-            </Link>
+            {nextNavigateHref ? (
+              <Link href={nextNavigateHref} className="cc-btn">
+                Navigate
+              </Link>
+            ) : null}
           </div>
         </>
       ) : (

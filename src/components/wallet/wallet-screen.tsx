@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { Pass, PassPeek, ScanView } from "@/components/concierge";
 import type { TicketVM, BarcodeVM } from "@/components/concierge";
@@ -97,6 +99,7 @@ function Stack({
         {hero ? (
           <div className="cc-pass-wrap">
             <Pass ticket={hero} onShow={onScan} />
+            <PlanLink ticket={hero} />
             <button type="button" className="cc-pass-del" onClick={() => onRemove(hero)} aria-label="Remove booking" title="Remove">×</button>
           </div>
         ) : null}
@@ -105,6 +108,7 @@ function Stack({
             {openId === t.id ? (
               <>
                 <Pass ticket={t} onShow={onScan} />
+                <PlanLink ticket={t} />
                 <button type="button" className="cc-pass-collapse" onClick={() => setOpenId(null)} aria-label="Collapse" title="Collapse">Collapse</button>
               </>
             ) : (
@@ -115,6 +119,15 @@ function Stack({
         ))}
       </div>
     </section>
+  );
+}
+
+function PlanLink({ ticket }: { ticket: TicketVM }) {
+  if (!ticket.itineraryId) return null;
+  return (
+    <Link href={`/plan/${ticket.itineraryId}` as Route} className="cc-btn cc-btn-ghost" style={{ alignSelf: "center" }}>
+      Open plan
+    </Link>
   );
 }
 

@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { listTrips, mileageReport } from "@/lib/actions/mileage";
 import { MileageLedger } from "@/components/mileage/mileage-ledger";
 import { DriveRecorder } from "@/components/mileage/drive-recorder";
@@ -16,6 +18,18 @@ export default async function MileagePage() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <DriveRecorder />
+        {trips.length === 0 ? (
+          <div className="cc-empty">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/mk-ink.png" alt="" />
+            <p className="cc-empty-title">No trips yet</p>
+            <p className="cc-empty-sub">Drive legs from a plan or trips you record here become your mileage ledger.</p>
+            <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", justifyContent: "center" }}>
+              <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">Open plan</Link>
+              <Link href={"/navigate" as Route} className="cc-btn cc-btn-ghost">Navigate</Link>
+            </div>
+          </div>
+        ) : null}
         <MileageLedger trips={trips} report={report} />
       </div>
     </div>

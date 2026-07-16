@@ -841,6 +841,13 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     { id, eyebrow: `${spanLabel(dateStart, dateStart)} · DOOR TO DOOR`.toUpperCase() },
   );
 
+  const firstNavigableStop = stops.find((st) => st.type !== "start" && !!coordOfStop(st));
+  const firstNavigableCoord = coordOfStop(firstNavigableStop);
+  const relatedNavigateHref = firstNavigableStop && firstNavigableCoord
+    ? (`/navigate?${new URLSearchParams({ dlat: String(firstNavigableCoord.lat), dlng: String(firstNavigableCoord.lng), dname: firstNavigableStop.title ?? "Destination" }).toString()}` as Route)
+    : null;
+  const hasDriveLeg = transitions.some((tr) => tr.mode === "drive" || tr.mode === "taxi" || tr.mode === "car");
+
   return (
     <div className="cc-screen" data-plan-state={planState} style={{ minHeight: "100%" }}>
       {/* TopBar — a detail page keeps the ← Plan back button (founder ruling); the
@@ -949,6 +956,13 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
               <PlanMap journey={journeyMap} />
             </section>
           ) : null}
+
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }} aria-label="Related tools">
+            {legTickets.length > 0 ? <Link href={"/wallet" as Route} className="cc-btn cc-btn-ghost">Wallet</Link> : null}
+            {journey.mode === "work" ? <Link href={"/expenses" as Route} className="cc-btn cc-btn-ghost">Expenses</Link> : null}
+            {hasDriveLeg ? <Link href={"/mileage" as Route} className="cc-btn cc-btn-ghost">Mileage</Link> : null}
+            {relatedNavigateHref ? <Link href={relatedNavigateHref} className="cc-btn cc-btn-ghost">Navigate</Link> : null}
+          </div>
 
           <PlanSpine
             nodes={nodes}

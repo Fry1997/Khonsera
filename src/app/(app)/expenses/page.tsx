@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
@@ -49,6 +51,11 @@ export default async function ExpensesPage() {
           <img src="/brand/mk-ink.png" alt="" />
           <p className="cc-empty-title">Nothing to settle</p>
           <p className="cc-empty-sub">Tickets, mileage, parking and receipts captured against a journey land here.</p>
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", justifyContent: "center" }}>
+            <Link href={"/plan" as Route} className="cc-btn cc-btn-gold">Open plan</Link>
+            <Link href={"/wallet" as Route} className="cc-btn cc-btn-ghost">Wallet tickets</Link>
+            <Link href={"/mileage" as Route} className="cc-btn cc-btn-ghost">Mileage</Link>
+          </div>
         </div>
       ) : (
         <>
