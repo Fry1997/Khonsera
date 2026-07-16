@@ -8,6 +8,7 @@ import {
   importCalendarEvents,
   type CalendarProposal,
 } from "@/lib/actions/calendar-import";
+import { Sheet } from "@/components/ui/sheet";
 
 // Calendar capture (C1, method 3): pull the structured fields as confirmable
 // proposals — the user ticks which land as appointments. Nothing auto-inserts.
@@ -70,12 +71,10 @@ export function PlanCalendarImport({ itineraryId }: { itineraryId: string }) {
       </button>
 
       {open ? (
-        <div className="cc-sheet-scrim" onClick={() => setOpen(false)}>
-          <div className="cc-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
-            <div className="cc-sheet-grip" />
+        <Sheet titleId="plan-calendar-import-sheet-title" onClose={() => setOpen(false)}>
             <header className="cc-sheet-head">
               <span className="cc-eyebrow">From your calendar</span>
-              <h3 className="cc-sheet-title">Add events to this day</h3>
+              <h3 id="plan-calendar-import-sheet-title" className="cc-sheet-title" tabIndex={-1}>Add events to this day</h3>
             </header>
 
             {loading ? (
@@ -114,8 +113,7 @@ export function PlanCalendarImport({ itineraryId }: { itineraryId: string }) {
                 {pending ? "Adding…" : "Add selected"}
               </button>
             </div>
-          </div>
-        </div>
+        </Sheet>
       ) : null}
     </>
   );
