@@ -38,6 +38,7 @@ import { setTransitionMode } from "@/lib/actions/transitions";
 import { ensureHomeBookend } from "@/lib/actions/plan-edit";
 import { checkLegFeasibility } from "@/lib/feasibility/check";
 import { comfortBufferMinutes, stopModeOf } from "@/lib/itinerary/buffers";
+import { deriveReviewLeaveBy } from "@/lib/actions/review-derive";
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import {
   formatClock,
@@ -703,7 +704,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const startStop = stops.find((s) => s.type === "start");
   const baseLabel =
     startStop?.location?.name ?? startStop?.customer_site?.name ?? startStop?.transport_hub?.name ?? null;
-  const leaveByIso = startStop?.end_time ?? null;
+  const leaveByIso = deriveReviewLeaveBy(stops, transitions);
   const firstLeg = transitions.find((tr) => tr.from_stop_id === startStop?.id);
   const firstDest = firstLeg ? stopById.get(firstLeg.to_stop_id)?.title ?? null : null;
 

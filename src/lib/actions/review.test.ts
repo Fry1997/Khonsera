@@ -18,6 +18,15 @@ describe("deriveReviewLeaveBy", () => {
     expect(deriveReviewLeaveBy(stops, [tr("home", "station")])).toBe(at("05:55"));
   });
 
+  it("back-calculates from the first start leg when the base has no stored departure", () => {
+    const stops: StopRow[] = [
+      { id: "office", type: "start", title: "Office", start_time: null, end_time: null },
+      { id: "breww", type: "appointment", title: "Breww Office Day", start_time: at("09:00"), end_time: at("17:00") },
+    ];
+
+    expect(deriveReviewLeaveBy(stops, [tr("office", "breww")])).toBe(at("08:25"));
+  });
+
   it("falls back to the first real departure when a legacy journey has no start bookend", () => {
     const stops: StopRow[] = [
       { id: "wel", type: "transit_departure", title: "Wellingborough", start_time: at("06:25"), end_time: null },
