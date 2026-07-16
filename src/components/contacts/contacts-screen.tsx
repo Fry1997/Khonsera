@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ContactChip } from "@/components/concierge";
 import type { ContactVM } from "@/components/concierge";
 import { createContactQuick } from "@/lib/actions/contact-search";
+import { EmptyStateActions } from "@/components/ui/empty-state-actions";
 
 // People — Design Round 2 secondary template: .cc-add + a .cc-contact-chip grid,
 // the faint-emblem empty state.
 export function ContactsScreen({ initial }: { initial: ContactVM[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
 
   function add() {
@@ -32,6 +34,7 @@ export function ContactsScreen({ initial }: { initial: ContactVM[] }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
         </span>
         <input
+          ref={inputRef}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
@@ -42,12 +45,15 @@ export function ContactsScreen({ initial }: { initial: ContactVM[] }) {
       </label>
 
       {initial.length === 0 ? (
-        <div className="cc-empty">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mk-ink.png" alt="" />
-          <p className="cc-empty-title">No one here yet</p>
-          <p className="cc-empty-sub">Add the people you meet and travel to see — Khonsera keeps them close to the days they belong to.</p>
-        </div>
+        <EmptyStateActions
+          title="No people or clients yet"
+          description="Add them once, then attach them to visits and meeting days in Plan."
+          actions={[{ label: "Add client", href: "/customers/new", variant: "secondary" }]}
+        >
+          <button type="button" className="btn-terra" onClick={() => inputRef.current?.focus()}>
+            Add person
+          </button>
+        </EmptyStateActions>
       ) : (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
           {initial.map((c) => <ContactChip key={c.id} contact={c} />)}

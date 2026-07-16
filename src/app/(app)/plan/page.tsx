@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
 import { PlanCreate } from "@/components/plan/plan-create";
+import { EmptyStateActions } from "@/components/ui/empty-state-actions";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
 import { DeleteEventButton } from "@/components/plan/delete-event-button";
 import { RecurringManager } from "@/components/plan/recurring-manager";
@@ -126,16 +127,18 @@ export default async function PlanIndexPage() {
       <RemindersStrip initial={reminders} />
 
       {empty ? (
-        <div className="cc-plan-empty">
-          <p className="cc-plan-empty-lead">Nothing planned yet.</p>
-          <p className="cc-plan-empty-sub">
-            Add a day by hand — your trains, stays and meetings — or import the bookings
-            from your inbox, and Khonsera threads the rest.
-          </p>
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <PlanCreate label="Plan a day" />
-          </div>
-        </div>
+        <EmptyStateActions
+          className="cc-plan-empty"
+          title="Nothing planned yet"
+          description="Start a day, pull in calendar events, or scan booking emails."
+          image={false}
+          actions={[
+            { label: "Import calendar", href: "/api/auth/google/connect", variant: "secondary" },
+            { label: "Scan booking emails", href: "/api/auth/gmail/connect", variant: "secondary" },
+          ]}
+        >
+          <PlanCreate label="Plan a day" />
+        </EmptyStateActions>
       ) : (
         <>
           {liveGroups.map((g) => (

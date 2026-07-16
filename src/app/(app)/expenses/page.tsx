@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUserContext } from "@/lib/auth";
 import { getWorkspaceConfig } from "@/lib/flags/workspace-flags";
 import { formatDateInTz } from "@/lib/types/time";
+import { EmptyStateActions } from "@/components/ui/empty-state-actions";
 
 // Expenses — Design Round 2 secondary template (.cc-total-bar + .cc-section /
 // .cc-list-row + .cc-empty). Per-month, mode-scoped.
@@ -44,12 +45,14 @@ export default async function ExpensesPage() {
       </header>
 
       {expenses.length === 0 ? (
-        <div className="cc-empty">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mk-ink.png" alt="" />
-          <p className="cc-empty-title">Nothing to settle</p>
-          <p className="cc-empty-sub">Tickets, mileage, parking and receipts captured against a journey land here.</p>
-        </div>
+        <EmptyStateActions
+          title="Nothing to settle"
+          description="Mileage and planned journeys capture costs here."
+          actions={[
+            { label: "Open Mileage", href: "/mileage" },
+            { label: "Open Plan", href: "/plan", variant: "secondary" },
+          ]}
+        />
       ) : (
         <>
           <div className="cc-total-bar">
