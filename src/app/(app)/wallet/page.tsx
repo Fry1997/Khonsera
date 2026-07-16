@@ -1,4 +1,5 @@
 import { requireUserContext } from "@/lib/auth";
+import { AppScreen } from "@/components/ui/page-shell";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
 import { OfflineTicketSync } from "@/components/offline/offline-ticket-sync";
 import { loadWalletTickets } from "@/lib/actions/wallet";
@@ -24,17 +25,10 @@ export default async function WalletPage({
   const tickets: TicketVM[] = demo ? DEMO_TICKETS : await loadWalletTickets();
 
   return (
-    <div className="cc-screen">
-      <header>
-        <span className="cc-eyebrow">Wallet</span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-          Your tickets
-        </h1>
-      </header>
-
+    <AppScreen eyebrow="Wallet" title="Your tickets">
       <WalletScreen tickets={tickets} />
       {/* Mirror the wallet to the device so /offline can show the Aztec with no signal. */}
       {demo ? null : <OfflineTicketSync tickets={tickets} />}
-    </div>
+    </AppScreen>
   );
 }

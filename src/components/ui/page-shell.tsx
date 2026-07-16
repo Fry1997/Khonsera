@@ -1,4 +1,82 @@
+import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
+
+type AppScreenProps<T extends ElementType = "h1"> = ComponentPropsWithoutRef<"div"> & {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  titleAs?: T;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+  contentClassName?: string;
+  headerClassName?: string;
+  headerStyle?: CSSProperties;
+};
+
+export function AppScreen<T extends ElementType = "h1">({
+  eyebrow,
+  title,
+  titleAs,
+  description,
+  actions,
+  children,
+  className,
+  contentClassName,
+  headerClassName,
+  headerStyle,
+  ...props
+}: AppScreenProps<T>) {
+  const Title = titleAs ?? "h1";
+
+  return (
+    <div className={cn("cc-screen", className)} {...props}>
+      <header
+        className={headerClassName}
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+          flexWrap: "wrap",
+          ...headerStyle,
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          {eyebrow ? <span className="cc-eyebrow">{eyebrow}</span> : null}
+          <Title className="cc-screen-title" style={{ marginTop: eyebrow ? 6 : 0 }}>
+            {title}
+          </Title>
+          {description ? (
+            <p
+              className="serif-i"
+              style={{
+                fontSize: 16,
+                color: "var(--ink-dim)",
+                margin: "8px 0 0",
+                maxWidth: "60ch",
+                lineHeight: 1.55,
+              }}
+            >
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {actions ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {actions}
+          </div>
+        ) : null}
+      </header>
+      <div
+        className={contentClassName}
+        style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function PageShell({
   title,
@@ -11,8 +89,8 @@ export function PageShell({
   title: string;
   description?: string;
   eyebrow?: string;
-  actions?: React.ReactNode;
-  children?: React.ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
   className?: string;
 }) {
   return (

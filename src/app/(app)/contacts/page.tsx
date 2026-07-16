@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { AppScreen } from "@/components/ui/page-shell";
 import { requireUserContext } from "@/lib/auth";
 import { ContactsScreen } from "@/components/contacts/contacts-screen";
 import type { ContactVM } from "@/components/concierge";
@@ -27,17 +28,8 @@ export default async function ContactsPage() {
   });
 
   return (
-    <div className="cc-screen">
-      <header>
-        <span className="cc-eyebrow">
-          People
-        </span>
-        <h1 className="cc-screen-title" style={{ marginTop: 6 }}>
-          People
-        </h1>
-      </header>
-
+    <AppScreen eyebrow="People" title="People">
       <ContactsScreen initial={contacts} />
-    </div>
+    </AppScreen>
   );
 }
