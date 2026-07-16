@@ -2,60 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Route } from "next";
 import { signOut } from "@/app/login/actions";
 import { PlanCreate } from "@/components/plan/plan-create";
 import type { AppMode } from "@/lib/mode";
+import { isActiveNav, navFor, navigationGlyphs, type NavigationIcon } from "@/lib/navigation";
 
 // Desktop rail — Design Round 2 (`.cc-rail`): lockup top, nav list, then a foot
-// with the create action + profile. One unified day (Edition III D1): no mode
-// toggle; `mode` only picks the People↔Clients nav variant for the user's
-// primary context.
-//
-// Coherence pass (deep review 2026-06-15): the nav is GROUPED, not a flat pile —
-// Day (the trip itself) · Money & travel (the tools) · Account. Every item has a
-// DISTINCT glyph (Mileage + Workspace no longer borrow Navigate's / Clients').
-type NavItem = { href: Route; label: string; icon: keyof typeof Glyphs };
-type NavGroup = { label: string; items: NavItem[] };
-
-function navFor(mode: AppMode): NavGroup[] {
-  return [
-    {
-      label: "Day",
-      items: [
-        { href: "/today" as Route, label: "Today", icon: "today" },
-        { href: "/plan" as Route, label: "Plan", icon: "plan" },
-        { href: "/tasks" as Route, label: "Tasks", icon: "tasks" },
-        mode === "work"
-          ? { href: "/customers" as Route, label: "Clients", icon: "clients" }
-          : { href: "/contacts" as Route, label: "People", icon: "people" },
-        { href: "/wallet" as Route, label: "Wallet", icon: "wallet" },
-      ],
-    },
-    {
-      label: "Money & travel",
-      items: [
-        { href: "/navigate" as Route, label: "Navigate", icon: "navigate" },
-        { href: "/expenses" as Route, label: "Expenses", icon: "receipt" },
-        { href: "/mileage" as Route, label: "Mileage", icon: "mileage" },
-      ],
-    },
-    {
-      label: "Downtime",
-      items: [
-        { href: "/pastimes" as Route, label: "Pastimes", icon: "pastimes" },
-      ],
-    },
-    {
-      label: "Account",
-      items: [
-        ...(mode === "work" ? [{ href: "/workspace" as Route, label: "Workspace", icon: "workspace" } as NavItem] : []),
-        { href: "/settings" as Route, label: "Settings", icon: "settings" },
-      ],
-    },
-  ];
-}
-
+// with the create action + profile. Navigation content, labels, glyphs, active
+// matching, and mode variants are shared with mobile via `@/lib/navigation`.
 export function AppSidebar({
   email,
   firstName,
@@ -74,7 +28,7 @@ export function AppSidebar({
 
   return (
     <aside className="cc-rail">
-      <Link href={"/today" as Route} className="cc-lockup" aria-label="Khonsera">
+      <Link href="/today" className="cc-lockup" aria-label="Khonsera">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/mk-ink.png" alt="" />
         <span className="wm">KHONSERA</span>
@@ -85,7 +39,7 @@ export function AppSidebar({
           <div key={g.label} className="cc-rail-group">
             <span className="cc-rail-group-label">{g.label}</span>
             {g.items.map((n) => {
-              const active = pathname === n.href || pathname.startsWith(`${n.href}/`);
+              const active = isActiveNav(pathname, n.href);
               return (
                 <Link key={n.href} href={n.href} className="cc-rail-item" data-active={active ? "true" : "false"}>
                   <span className="ic"><Glyph name={n.icon} /></span>
@@ -116,29 +70,10 @@ export function AppSidebar({
   );
 }
 
-const Glyphs = {
-  today: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 8v4l3 2",
-  plan: "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M4 10h16M8 2v4M16 2v4",
-  tasks: "M9 11l2.5 2.5L17 8 M5 5h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z",
-  people: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21c0-4 4-7 8-7s8 3 8 7",
-  clients: "M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2",
-  receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6M9 12h6M9 16h4",
-  wallet: "M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2 M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1h-4a2 2 0 0 0 0 4h4 M16 12h.01",
-  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18",
-  navigate: "M12 3l8 18-8-5-8 5z",
-  // Mileage — an odometer/gauge (distinct from Navigate's locator arrow).
-  mileage: "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M13.4 10.6L17 7 M4.5 16a8 8 0 1 1 15 0z",
-  // Workspace — a building/office tower (distinct from Clients' briefcase).
-  workspace: "M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16 M15 21V9h4a1 1 0 0 1 1 1v11 M4 21h17 M7.5 8h1M7.5 12h1M7.5 16h1M11 8h1M11 12h1M11 16h1",
-  // Pastimes — a jigsaw puzzle piece (cards/sudoku/crosswords); distinct glyph.
-  pastimes: "M10.5 4a1.5 1.5 0 1 1 3 0v1.5h2.5a1 1 0 0 1 1 1V10h1.5a1.5 1.5 0 1 1 0 3H17v3a1 1 0 0 1-1 1h-3v-1.5a1.5 1.5 0 1 0-3 0V17H7a1 1 0 0 1-1-1v-3H4.5a1.5 1.5 0 1 1 0-3H6V6.5a1 1 0 0 1 1-1h3.5z",
-  exit: "M9 4H4v16h5 M16 17l5-5-5-5 M21 12H9",
-} as const;
-
-function Glyph({ name }: { name: keyof typeof Glyphs }) {
+function Glyph({ name }: { name: NavigationIcon }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={Glyphs[name]} />
+      <path d={navigationGlyphs[name]} />
     </svg>
   );
 }
