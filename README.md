@@ -1,137 +1,155 @@
 # Khonsera
 
-Quietly luxe travel planning. Plan, confirm and execute trips with rail vs
-drive comparison, manual booking for every transport mode, Google Places
-search built in, calendar blocks, expenses and on-the-day navigation.
+Khonsera is a travel-day operating system. It brings the plan, appointments, tasks, bookings, tickets, leave-by times, routes, live disruption information and expenses into one continuous day.
 
-Named after **Khonsu** — the Egyptian moon god, lord of time and guardian of
-travellers — and **sera**, Italian for evening. The brand voice is warm,
-editorial, restrained.
+The product promise is simple:
+
+> Know what is next, when to leave, how to get there and what you need when you arrive.
+
+## Product shape
+
+The live product is organised around five core surfaces:
+
+- **Today** — the current travel day, projected from every plan covering today.
+- **Plan** — create, import and resolve a day or multi-day trip.
+- **Wallet** — tickets and travel documents, ordered by when they are needed and available offline.
+- **Navigate** — door-to-door navigation for the next movement.
+- **Tasks** — actions attached to the day rather than a separate general-purpose task manager.
+
+People/clients, expenses, mileage and settings support that travel-day loop. They are not separate product centres.
+
+See [`docs/product-roadmap.md`](docs/product-roadmap.md) for the current scope and sequencing.
+
+## What is implemented
+
+Khonsera is beyond its original scaffold phase. The repository currently includes:
+
+- authentication, workspaces and row-level security;
+- personal and work modes;
+- day and multi-day plans with ordered stops and transitions;
+- a time-resolution engine and leave-by derivation;
+- recurring plans and reminders;
+- Google Calendar import and Gmail booking ingestion;
+- Trainline email/PDF parsing and ticket materialisation;
+- rail and flight booking structures, accommodation and manual transport;
+- map rendering, stored polylines and navigation deep links;
+- live rail departure/disruption hooks, TfL status and weather;
+- offline ticket storage and barcode presentation;
+- expenses, mileage, contacts, customers and saved locations;
+- staff-only demo fixtures for end-to-end review.
+
+Not every external integration is production-complete. Missing providers must remain explicit and honest rather than silently falling back to fake data for real users.
 
 ## Stack
 
-- Next.js 15 (App Router) + React + TypeScript
-- Tailwind CSS
-- Supabase (Postgres + Auth + Storage), RLS from day one
-- Vercel for hosting
+- Next.js 15 App Router, React 19 and TypeScript
+- Tailwind CSS plus the current `cc-*` component vocabulary
+- Supabase Postgres, Auth and Storage with RLS
+- Vercel deployment
+- Vitest unit and Supabase integration tests
+- MapLibre/PMTiles and provider-backed route data
 
-## Architecture spine
+## Domain spine
 
-```
+The active model is centred on an itinerary/event and its ordered day:
+
+```text
 User
- └── Workspace (personal | organisation)
-      ├── Customers / CustomerSites / Contacts
-      ├── Locations + TravelProfile
-      ├── VisitPlan                 ← the top-level object
-      │    ├── PlanningRun
-      │    │    └── TravelOption
-      │    │         └── JourneyLeg (+ alternatives)
-      │    ├── CalendarEventLinks
-      │    ├── BookingIntent → TravelBooking
-      │    ├── ExpenseRecords (+ MileageExpense)
-      │    ├── VisitChecklistItems
-      │    └── SavedTrip → TripProgress
-      └── NotificationRules
+└── Workspace
+    ├── Travel profile, saved locations, people and clients
+    ├── Itinerary (a day or multi-day event)
+    │   ├── Intention / purpose
+    │   ├── Stops
+    │   ├── Transitions
+    │   ├── Booked transport and stays
+    │   ├── Tickets and documents
+    │   ├── Tasks, reminders and recurring rules
+    │   └── Expenses and mileage
+    └── Connected calendar, Gmail and provider integrations
 ```
 
-`VisitPlan → PlanningRun → TravelOption → JourneyLeg → SavedTrip` is the spine.
+`Itinerary → Stop → Transition` is the operational spine. Today is a projection of that plan, not a separate editable copy.
 
-## Integration strategy
+## Integration principles
 
-Every external dependency (calendar, routing, rail timetable, rail booking,
-notifications) is behind an interface in `src/lib/integrations/`. Each module
-returns `IntegrationResult<T>` in one of three modes:
+External providers are isolated behind actions and integration modules. Follow these rules:
 
-- `live` — real provider call (none yet)
-- `demo` — realistic mock data; only returned when **staff** has demo mode on
-- `unavailable` — honest "not connected" state for real users
+1. Real users receive live provider data or a clear unavailable state.
+2. Demo data is staff-only and server enforced.
+3. Imported source material retains provenance where possible.
+4. Provider failures must not corrupt the underlying plan.
+5. A travel day must remain usable offline where the required document was already materialised.
 
-This means real users always go through real flows with honest gaps, while
-staff can flip demo mode to walk the end-to-end product. The toggle is
-server-enforced via `profiles.is_staff`.
-
-Feature flags live in `src/lib/features.ts`. Flip to `true` as each integration
-lands.
+Environment variables are documented in [`.env.example`](.env.example).
 
 ## Local setup
 
 ```bash
-# Install deps
 npm install
-
-# Copy env template and fill in Supabase keys
 cp .env.example .env.local
-
-# (Optional) start Supabase locally
-npx supabase start
-npx supabase db reset      # applies migrations + seed
-
-# Run dev server
 npm run dev
 ```
 
-Make any account `is_staff` from SQL:
-
-```sql
-update profiles set is_staff = true where email = 'you@example.com';
-```
-
-## Tests
-
-Two tiers:
+For a local Supabase stack:
 
 ```bash
-# Unit tests — pure functions only, no DB. Fast.
-npm test
+npx supabase start
+npx supabase db reset
+npm run db:types
+```
 
-# Integration tests — require a running Supabase. Skipped automatically
-# when SUPABASE_TEST_URL isn't set.
-SUPABASE_TEST_URL=http://localhost:54321 \
-SUPABASE_TEST_ANON_KEY=$(npx supabase status -o env | grep ANON_KEY | cut -d= -f2-) \
-SUPABASE_TEST_SERVICE_ROLE_KEY=$(npx supabase status -o env | grep SERVICE_ROLE_KEY | cut -d= -f2-) \
+## Validation
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+Integration tests require a running Supabase instance and the `SUPABASE_TEST_*` environment variables:
+
+```bash
 npm run test:integration
 ```
 
-Integration tests cover RLS isolation (cross-workspace deny), state-machine
-correctness (illegal transitions rejected, direct status writes blocked,
-audit rows written), and live the `tests/integration/` directory. Helpers
-under `src/lib/testing/` provision real test users via the auth-trigger.
+Pull requests run the non-database checks in GitHub Actions. Vercel remains the deployment/build status source.
 
-## Build phases
+## Working agreements
 
-- **Phase 0** (this PR): bones — Next.js + Supabase + auth + RLS schema + nav + skeleton screens
-- **Phase 1**: schema (folded into Phase 0 — every entity exists with RLS)
-- **Phase 2**: app shell (done — all 10 screens routed with skeletons)
-- **Phase 3**: customers + locations + settings CRUD
-- **Phase 4**: visit planning end-to-end with stubbed routing/rail data
-- **Phase 5+**: swap stubs for real integrations one at a time
+- Branch from the repository default branch and use a focused pull request.
+- Protect the travel-day promise from feature sprawl.
+- Prefer shared `cc-*` primitives over one-off page markup.
+- Keep Today decisive: one prominent next action, then supporting context.
+- Preserve RLS and workspace scoping for every new table or query.
+- Add pure tests for planning, time and projection logic.
+- Do not commit secrets or service-role credentials.
+- Treat older design documents as historical unless they are marked current in the roadmap or design index.
 
-## Project layout
+## Repository layout
 
-```
+```text
 src/
   app/
-    (auth pages: login, signup, callback)
-    (app)/                  authed routes (sidebar nav)
-      dashboard/
-      visits/ new/ [id]/ [id]/travel-day/ [id]/booking/
-      itinerary/
-      customers/
-      locations/
-      expenses/
-      settings/
+    (app)/
+      today/             current-day projection
+      plan/              itinerary index and detail
+      wallet/            tickets and documents
+      navigate/          next-movement navigation
+      tasks/             day-linked actions
+      contacts/          personal people
+      customers/         work clients and sites
+      expenses/ mileage/ supporting records
+      settings/          profile and integrations
   components/
-    ui/                     shared primitives (Button, PageShell, ComingSoon)
+    plan/ today/ wallet/ shared product components
+    ui/                  shared primitives
   lib/
-    supabase/               server, browser, middleware
-    integrations/           calendar, routing, rail, booking, notifications
-    planning/               pure feasibility engine
-    auth.ts                 requireUser, requireUserContext
-    demo-mode.ts            staff-only demo toggle
-    features.ts             feature flag constants
-    types/                  domain types
+    actions/             server actions and data orchestration
+    planning/            pure planning/projection logic
+    integrations/        provider adapters
+    supabase/            browser/server clients
+    types/               domain and generated database types
 supabase/
-  migrations/0001_init.sql  full schema + RLS + auto-provisioning trigger
+  migrations/            schema, functions and RLS
   seed.sql
-  config.toml
 ```

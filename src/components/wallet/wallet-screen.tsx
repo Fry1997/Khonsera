@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Pass, PassPeek, ScanView } from "@/components/concierge";
 import type { TicketVM, BarcodeVM } from "@/components/concierge";
 import { ticketUseMoment } from "@/components/concierge";
+import { EmptyStateActions } from "@/components/ui/empty-state-actions";
 import { deleteBookedRun } from "@/lib/actions/plan-edit";
 
 // The Wallet (planner master brief §7) — document-centric: every booking across
@@ -44,15 +45,12 @@ export function WalletScreen({ tickets }: { tickets: TicketVM[] }) {
   if (visible.length === 0) {
     return (
       <div className="cc-wallet cc-wallet--lux">
-        <div className="cc-wallet-empty">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mk-ink.png" alt="" />
-          <p className="cc-wallet-empty-lead">Your tickets will live here.</p>
-          <p className="cc-wallet-empty-sub">
-            Every booking, grouped by day, the next one you need on top — and ready
-            to scan even without signal.
-          </p>
-        </div>
+        <EmptyStateActions
+          className="cc-wallet-empty"
+          title="Your tickets will live here"
+          description="Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
+          actions={[{ label: "Connect Gmail", href: "/api/auth/gmail/connect" }]}
+        />
       </div>
     );
   }
