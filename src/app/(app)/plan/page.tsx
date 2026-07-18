@@ -3,6 +3,7 @@ import { AppScreen } from "@/components/ui/page-shell";
 import { requireUserContext } from "@/lib/auth";
 import { JourneyListCard, type JourneyVM } from "@/components/concierge";
 import { PlanCreate } from "@/components/plan/plan-create";
+import { EmptyStateActions } from "@/components/ui/empty-state-actions";
 import { RemindersStrip } from "@/components/plan/reminders-strip";
 import { DeleteEventButton } from "@/components/plan/delete-event-button";
 import { RecurringManager } from "@/components/plan/recurring-manager";
@@ -37,8 +38,6 @@ export default async function PlanIndexPage() {
   const ctx = await requireUserContext();
   const supabase = await createClient();
 
-  // Lazy-generate any due recurring days before listing (idempotent; steady state
-  // is just a read). Then the new days show in the list below.
   await materializeRecurring();
 
   const { data: rows } = await supabase
@@ -49,8 +48,6 @@ export default async function PlanIndexPage() {
   const itins = (rows ?? []) as ItinRow[];
   const ids = itins.map((i) => i.id);
 
-  // Two roll-up queries (not N+1): stop counts, and which stops have an
-  // onward transition (so we can show "n to resolve").
   const counts = new Map<string, number>();
   const withLeg = new Map<string, Set<string>>();
   if (ids.length) {
@@ -74,10 +71,9 @@ export default async function PlanIndexPage() {
     dateEnd: i.date_end,
     status: i.status,
     anchorCount: counts.get(i.id) ?? 0,
-    openGapCount: 0, // refined in a later chunk; kept calm for now
+    openGapCount: 0,
   });
 
-  // Grouping by span vs today (mirrors the Wallet's day grouping).
   const today = ymd(new Date());
   const weekEnd = ymd(new Date(Date.now() + 7 * 86_400_000));
   const groups: Group[] = [
@@ -94,7 +90,7 @@ export default async function PlanIndexPage() {
     else groups[2].items.push(vm);
   }
   const liveGroups = groups.filter((g) => g.items.length);
-  archive.reverse(); // most-recent past first
+  archive.reverse();
 
   const empty = itins.length === 0;
   const [reminders, recurringRules, recurringOffers, checklist, { data: pickCustomers }, { data: pickSites }, { data: pickLocations }] = await Promise.all([
@@ -109,7 +105,6 @@ export default async function PlanIndexPage() {
 
   return (
     <AppScreen eyebrow="Plan" title="What are you planning?">
-
       <PlanCreate />
 
       <RecurringOffers offers={recurringOffers} />
@@ -126,14 +121,17 @@ export default async function PlanIndexPage() {
       {empty ? (
         <div className="cc-plan-empty">
           <OnboardingChecklist state={checklist} context="plan-empty" />
-          <p className="cc-plan-empty-lead">Nothing planned yet.</p>
-          <p className="cc-plan-empty-sub">
-            Add a day by hand — your trains, stays and meetings — or import the bookings
-            from your inbox, and Khonsera threads the rest.
-          </p>
-          <div style={{ marginTop: "var(--space-3)" }}>
+          <EmptyStateActions
+            title="Nothing planned yet"
+            description="Start with a day, a calendar event or a booking email. Khonsera will thread the journey around it."
+            image={false}
+            actions={[
+              { label: "Import calendar", href: "/api/auth/google/connect", variant: "secondary" },
+              { label: "Scan booking emails", href: "/api/auth/gmail/connect", variant: "secondary" },
+            ]}
+          >
             <PlanCreate label="Plan a day" />
-          </div>
+          </EmptyStateActions>
         </div>
       ) : (
         <>

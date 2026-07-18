@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { TaskRow } from "@/components/concierge";
 import type { TaskVM } from "@/components/concierge";
 import { createTask, setTaskDone } from "@/lib/actions/tasks";
+import { EmptyStateActions } from "@/components/ui/empty-state-actions";
 
 // Tasks — Design Round 2 secondary template (.cc-section / .cc-empty / .cc-add +
 // the .cc-task-row contract component) in a real CRUD loop.
@@ -50,12 +51,11 @@ export function TasksScreen({ initial }: { initial: TaskVM[] }) {
       </label>
 
       {open.length === 0 && done.length === 0 ? (
-        <div className="cc-empty">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mk-ink.png" alt="" />
-          <p className="cc-empty-title">Nothing on your list</p>
-          <p className="cc-empty-sub">Add a task and it lands on the right day.</p>
-        </div>
+        <EmptyStateActions
+          title="Nothing on your list"
+          description="Add a task and it lands on the right day."
+          image={false}
+        />
       ) : (
         <>
           <section className="cc-section">
