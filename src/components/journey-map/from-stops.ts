@@ -2,15 +2,22 @@ import type { Journey, Leg, LegMode, LatLng, Station } from "./types";
 import { decodePolyline } from "./utils/decode-polyline";
 
 // Shared wiring layer: build a JourneyMap `Journey` from DB stops + transitions.
-// Extracted from the legacy itinerary-editor so both the legacy page and the
-// canonical `/plan/[id]` spine render the same door-to-door map. Pure + testable.
+// The relational selects used by Plan and Today can legitimately omit individual
+// geocoder fields, so map input is intentionally tolerant and normalises missing
+// values at the boundary.
+type PartialGeo = {
+  name?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+type PartialHub = PartialGeo & { code?: string | null };
 
 export type StopForMap = {
   id: string;
   title: string | null;
-  location?: { name: string | null; latitude: number | null; longitude: number | null } | null;
-  customer_site?: { name: string | null; latitude: number | null; longitude: number | null } | null;
-  transport_hub?: { code: string | null; name: string | null; latitude: number | null; longitude: number | null } | null;
+  location?: PartialGeo | null;
+  customer_site?: PartialGeo | null;
+  transport_hub?: PartialHub | null;
 };
 
 export type TransitionForMap = {
@@ -44,7 +51,7 @@ function nameOf(s: StopForMap): string {
 }
 
 function haversineMi(a: LatLng, b: LatLng): number {
-  const R = 3958.8; // miles
+  const R = 3958.8;
   const dLat = ((b[0] - a[0]) * Math.PI) / 180;
   const dLng = ((b[1] - a[1]) * Math.PI) / 180;
   const la1 = (a[0] * Math.PI) / 180;
@@ -53,21 +60,9 @@ function haversineMi(a: LatLng, b: LatLng): number {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-// A stored route is only trustworthy if its endpoints actually sit at this
-// leg's two stops. A mis-keyed / stale cache (e.g. a Leicester→Birmingham
-// polyline cached under the wrong CRS pair) decodes to a line that wanders off
-// to the wrong place — the "phantom branch" that forks off the real route.
-// Reject anything whose ends don't match the leg, in either orientation, and
-// fall back to the straight line instead of drawing the bad geometry.
-const MAX_ENDPOINT_DRIFT_MI = 6; // generous vs rail-node snapping (<1mi), tight vs a wrong city (30mi+)
-
-// Even with correct endpoints, a cached route can wander to the wrong city in
-// the MIDDLE (e.g. a Leicester→Derby polyline routed via Birmingham — ~3× the
-// crow-flies). Endpoints alone won't catch that, so we also reject a track whose
-// traced length is disproportionate to the straight-line distance. Skipped for
-// short legs so genuinely windy walks aren't nuked.
-const DETOUR_MIN_MI = 4; // below this, any squiggle is fine
-const MAX_DETOUR_RATIO = 2.2; // traced / crow-flies above this = a detour bug
+const MAX_ENDPOINT_DRIFT_MI = 6;
+const DETOUR_MIN_MI = 4;
+const MAX_DETOUR_RATIO = 2.2;
 
 function tracedMiles(track: LatLng[]): number {
   let mi = 0;
@@ -133,11 +128,19 @@ export function buildJourneyFromStops(
     if (from.lat === 0 && from.lng === 0) continue;
     if (to.lat === 0 && to.lng === 0) continue;
 
-    const fromStation: Station = { name: nameOf(fromStop), code: fromStop.transport_hub?.code ?? undefined, lat: from.lat, lng: from.lng };
-    const toStation: Station = { name: nameOf(toStop), code: toStop.transport_hub?.code ?? undefined, lat: to.lat, lng: to.lng };
+    const fromStation: Station = {
+      name: nameOf(fromStop),
+      code: fromStop.transport_hub?.code ?? undefined,
+      lat: from.lat,
+      lng: from.lng,
+    };
+    const toStation: Station = {
+      name: nameOf(toStop),
+      code: toStop.transport_hub?.code ?? undefined,
+      lat: to.lat,
+      lng: to.lng,
+    };
 
-    // Default to the straight line; only trust a stored polyline whose ends
-    // actually connect this leg's stops (guards against the phantom branch).
     const straight: LatLng[] = [[from.lat, from.lng], [to.lat, to.lng]];
     let track: LatLng[] = straight;
     if (transition.overview_polyline) {
@@ -145,7 +148,6 @@ export function buildJourneyFromStops(
       const orient = polylineOrientation(decoded, from, to);
       if (orient) {
         const oriented = orient === "reverse" ? [...decoded].reverse() : decoded;
-        // Endpoints connect — accept only if it doesn't also detour wildly.
         if (acceptPolylineLength(oriented, from, to)) track = oriented;
       }
     }
@@ -166,13 +168,8 @@ export function buildJourneyFromStops(
 
   if (legs.length === 0) return null;
 
-  // Direction: a leg is "back" when it brings you CLOSER to where the day started
-  // (the base) than it began — i.e. you're heading home. This cleanly splits the
-  // outbound half from the return without needing an explicit turnaround marker, so
-  // the two can be coloured distinctly instead of overlapping as one line.
   const origin = legs[0].from;
-  const distToOrigin = (lat: number, lng: number) =>
-    haversineMi([lat, lng], [origin.lat, origin.lng]);
+  const distToOrigin = (lat: number, lng: number) => haversineMi([lat, lng], [origin.lat, origin.lng]);
   for (const leg of legs) {
     const startD = distToOrigin(leg.from.lat, leg.from.lng);
     const endD = distToOrigin(leg.to.lat, leg.to.lng);
