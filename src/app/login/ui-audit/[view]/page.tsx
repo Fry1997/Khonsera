@@ -1,5 +1,8 @@
 import { AppScreen } from "@/components/ui/page-shell";
-import { PlanSpine, type SpineNode } from "@/components/plan/plan-spine";
+import {
+  PlanSpine,
+  type SpineNode,
+} from "../../../../components/plan/plan-spine";
 import { TodaySpine } from "@/components/today/today-spine";
 import type { SpineAnchor } from "@/components/today/spine-model";
 import type { LegVM, TicketVM } from "@/components/concierge";
