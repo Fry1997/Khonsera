@@ -48,13 +48,9 @@ export function MobileAppbar({
   const overflowGroups = mobileOverflowNavigation(mode);
   return (
     <>
-      <header className="cc-appbar lg:hidden" data-scrolled="false">
+      <header className="cc-appbar" data-scrolled="false">
         <div className="cc-appbar-left">
-          <Link
-            href="/today"
-            className="cc-lockup"
-            aria-label="Khonsera"
-          >
+          <Link href="/today" className="cc-lockup" aria-label="Khonsera">
             <span className="cc-brand-dot" aria-hidden />
             <span className="wm">KHONSERA</span>
           </Link>
@@ -82,10 +78,7 @@ export function MobileAppbar({
       </header>
 
       {open ? (
-        <div
-          className="cc-overflow-layer lg:hidden"
-          onClick={() => setOpen(false)}
-        >
+        <div className="cc-overflow-layer" onClick={() => setOpen(false)}>
           <div className="cc-overflow-scrim" />
           <div
             id="mobile-overflow"
