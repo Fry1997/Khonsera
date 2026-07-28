@@ -57,6 +57,24 @@ the instrument layer owns node placement, while `PlanSpine` groups each stop
 and its related controls in `.cc-spine-entry`. This prevents populated cards
 from being placed into the legacy 42px marker column.
 
+The populated-state layout contract extends through every inner surface:
+`.cc-spine`, `.cc-spine-entry`, `.cc-node`, `.cc-node-content`, and the direct
+card/pass children all resolve to the available inline size with `min-width: 0`
+and consistent border-box sizing. Responsive acceptance must use the real
+Today/Plan spine and pass components with a multi-leg rail itinerary at 390px
+and 1440px; checking only the outer node or an empty-state harness is
+insufficient.
+
+On Today, each rail pass owns its departure and arrival milestones. Adjacent
+station anchors that merely repeat those endpoints are suppressed, while real
+changeovers remain as compact transfer rows. A pass docked in either spine uses
+the compact `cc-pass-*` presentation: route, departure/arrival times and live
+status stay visible; performance and secondary platform/gate/seat fields yield
+to the chronological scan. Plan shows inline **Add here** only after genuine
+commitment anchors, never inside a transport run. Today uses a single page
+header (date → purpose → origin), with the editable point-of-day note beginning
+the primary column.
+
 `PlanAdd` (`src/components/plan/plan-add.tsx`) offers bespoke per-type forms so
 each thing has only its natural fields (the "could my Dad use it?" bar):
 **Appointment** (what/where/window/who) · **Dinner** (restaurant + date/time +
