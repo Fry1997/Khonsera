@@ -79,6 +79,9 @@ Weights: `--fw-regular` 400 · `--fw-medium` 500 · `--fw-semibold` 600. Trackin
 · `--space-3` 12 · `--space-3-5` 14 · `--space-4` 16 · `--space-4-5` 18 · `--space-5` 20 · `--space-6` 24 · `--space-8`
 32 · `--space-12` 48. (Tailwind's numeric `gap-2`/`p-3`… already resolve to these px values.)
 
+`--today-column-max` 760 bounds the approved single-column Today composition on wide screens while
+allowing it to fill the mobile viewport.
+
 ## Radius scale
 
 Instrument tokens: `--radius-xs` 7 · `--radius-sm` 10 · `--radius-md` 14 ·

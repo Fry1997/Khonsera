@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Pass } from "@/components/concierge";
-import type { BoardingVM, TicketVM, TravelStatus } from "@/components/concierge";
+import type {
+  BoardingVM,
+  TicketVM,
+  TravelStatus,
+} from "@/components/concierge";
 
 // A Pass for one booked rail hop, enriched with live Darwin status. Each
 // station-to-station leg renders its OWN card; this wrapper fetches the live
@@ -19,7 +23,11 @@ type Live = {
   detail?: string;
   platform?: string | null;
   destination?: string | null; // the train's final destination — "the Corby train"
-  earlierSamePlatform?: { std: string; destination?: string; platform: string } | null;
+  earlierSamePlatform?: {
+    std: string;
+    destination?: string;
+    platform: string;
+  } | null;
 };
 
 export function LivePass({
@@ -28,6 +36,7 @@ export function LivePass({
   time,
   dest,
   docked = false,
+  today = false,
   onShow,
 }: {
   ticket: TicketVM;
@@ -35,6 +44,7 @@ export function LivePass({
   time?: string | null; // planned departure, London HH:MM (matches Darwin <std>)
   dest?: string | null; // hop destination CRS — disambiguates same-minute departures
   docked?: boolean;
+  today?: boolean;
   onShow?: (ticket: TicketVM) => void;
 }) {
   const [live, setLive] = useState<Live | null>(null);
@@ -68,7 +78,12 @@ export function LivePass({
     if (!leg0) return ticket;
     const leg = { ...leg0 };
     if (live.platform) leg.origin = { ...leg.origin, platform: live.platform };
-    if (live.status) leg.status = { status: live.status, label: live.label, detail: live.detail };
+    if (live.status)
+      leg.status = {
+        status: live.status,
+        label: live.label,
+        detail: live.detail,
+      };
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
   }, [ticket, live]);
 
@@ -89,5 +104,13 @@ export function LivePass({
     return { platform, toward, earlier };
   }, [ticket, live]);
 
-  return <Pass ticket={enriched} boarding={boarding} docked={docked} onShow={onShow} />;
+  return (
+    <Pass
+      ticket={enriched}
+      boarding={boarding}
+      docked={docked}
+      today={today}
+      onShow={onShow}
+    />
+  );
 }
