@@ -11,6 +11,7 @@ export interface SpinePass {
 
 export type StationKind = "rail_station" | "airport";
 export type AnchorRole = "departure" | "arrival" | "changeover" | "stop";
+export type TransitionProgressState = "planned" | "live" | "done" | "cancelled";
 
 export interface SpineAnchor {
   id: string;
@@ -21,10 +22,17 @@ export interface SpineAnchor {
   endIso: string | null;
   coord: { lat: number; lng: number } | null;
   plannedTravelMinutes: number | null;
-  /** Optional per-boundary margin used by the leave-by engine. */
+  /** Optional per-boundary preferred margin used by the leave-by engine. */
   bufferMinutes?: number | null;
+  /** A preceding fixed span (for example a shift) prevents departure before this. */
+  notBeforeIso?: string | null;
   /** Original transition mode before it is adapted for the routing UI. */
   travelMode?: string | null;
+  /** Transition into this anchor, used for persisted on-the-way / arrival state. */
+  inboundTransitionId?: string | null;
+  transitionState?: TransitionProgressState | null;
+  actualStartedAt?: string | null;
+  actualArrivedAt?: string | null;
   navMode: NavMode;
   station: { name: string; code: string | null; kind: StationKind } | null;
   role: AnchorRole;
