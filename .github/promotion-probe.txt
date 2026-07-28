@@ -1,1 +1,1 @@
-Trigger the temporary production-promotion and source-archive workflows.
+Retry the temporary source-archive workflow after moving the archive outside the checkout.
