@@ -1820,8 +1820,12 @@ button.cc-var {
     --spine-gutter: 34px;
   }
 
-  .khonsera-app .cc-btn {
+  .khonsera-app :is(.cc-btn, .cc-iconbtn) {
     min-height: var(--touch-target);
+  }
+
+  .khonsera-app .cc-iconbtn {
+    min-width: var(--touch-target);
   }
 
   .cc-screen {
