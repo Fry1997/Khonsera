@@ -16,6 +16,7 @@ import "./khonsera-edition-iii-sharing.css"; // Edition III sharing/comms/safety
 import "./khonsera-edition-iii-round13.css"; // Edition III Round 13 coherence + features skin
 import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance surface (.cc-nav*) — LAST
 import "./khonsera-instrument.css"; // Instrument Edition v8 — reviewed production direction, final authority
+import "./khonsera-today-direction.css"; // Jul 2026 app direction — unified shell + route-first Today surface
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical Instrument Edition type stack:
