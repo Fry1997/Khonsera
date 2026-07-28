@@ -21,6 +21,8 @@ export interface SpineAnchor {
   endIso: string | null;
   coord: { lat: number; lng: number } | null;
   plannedTravelMinutes: number | null;
+  /** Optional per-boundary margin used by the leave-by engine. */
+  bufferMinutes?: number | null;
   navMode: NavMode;
   station: { name: string; code: string | null; kind: StationKind } | null;
   role: AnchorRole;
