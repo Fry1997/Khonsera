@@ -4,19 +4,17 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateItinerary } from "@/lib/actions/itineraries";
 
-// Inline rename for the day/event title (deep review 2026-06-15). The plan title
-// was a static <h1>, so a Journey that arrived without a name stayed "untitled"
-// forever. Tap the title (or the "Name this day" prompt) → edit in place →
-// `updateItinerary`. `named` distinguishes a real title from the date fallback so
-// an unnamed day invites a name instead of freezing the fallback as the name.
+// Inline rename for the day/event title. `named` distinguishes a real stored
+// title from a useful day-purpose fallback. Older callers omitted it, which means
+// the fallback is not yet a stored name, so false is the safe default.
 export function PlanTitleEditor({
   itineraryId,
   title,
-  named,
+  named = false,
 }: {
   itineraryId: string;
-  title: string; // what to display (real title, or the date fallback)
-  named: boolean; // whether the Journey actually has a stored title
+  title: string;
+  named?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -31,7 +29,7 @@ export function PlanTitleEditor({
   function commit() {
     const next = value.trim();
     setEditing(false);
-    if ((named ? title : "") === next) return; // no change
+    if ((named ? title : "") === next) return;
     startTransition(async () => {
       await updateItinerary({ id: itineraryId, title: next || null });
       router.refresh();
@@ -68,7 +66,7 @@ export function PlanTitleEditor({
       }}
       title="Rename this day"
     >
-      <span>{named ? title : title}</span>
+      <span>{title}</span>
       <span className="cc-plan-title-edit" aria-hidden>Rename</span>
     </button>
   );
