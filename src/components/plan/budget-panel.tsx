@@ -11,10 +11,13 @@ const TYPES = [
 ] as const;
 const TYPE_LABEL: Record<string, string> = { ...Object.fromEntries(TYPES.map((t) => [t.v, t.label])), mileage: "Mileage" };
 
-// Budget panel (Phase 16) — a per-trip spend cap with live used-vs-remaining +
-// over-cap flag, the trip's expense lines, receipt capture, and quick-add.
-// Functional + on-token + `.cc-budget*` contract classes; Design skins later.
-export function BudgetPanel({ itineraryId, budget }: { itineraryId: string; budget: Budget }) {
+export function BudgetPanel({ itineraryId, budget, data }: { itineraryId: string; budget?: Budget; data?: Budget }) {
+  const resolvedBudget = budget ?? data;
+  if (!resolvedBudget) return null;
+  return <BudgetPanelBody itineraryId={itineraryId} budget={resolvedBudget} />;
+}
+
+function BudgetPanelBody({ itineraryId, budget }: { itineraryId: string; budget: Budget }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [capInput, setCapInput] = useState(budget.cap != null ? String(budget.cap) : "");
