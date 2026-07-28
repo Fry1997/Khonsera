@@ -71,6 +71,8 @@ export function LiveDay({
     return () => clearInterval(timer);
   }, []);
 
+  // Base bookends are routing context, not obligations. TodayPage now removes
+  // them before mapping; this guard also protects demo and older projections.
   const operationalAnchors = useMemo(() => {
     if (!anchors.length || !base) return anchors;
     const first = anchors[0];
@@ -95,10 +97,15 @@ export function LiveDay({
 
   const preliminary = computeDayState({ anchors: engineAnchors, nowMs: now });
   const next = preliminary.nextIndex != null ? operationalAnchors[preliminary.nextIndex] : null;
+  const isScheduledOutcome = next?.role === "arrival" || next?.role === "changeover";
   const progress = progressFor(next, optimisticProgress);
-  const isOnWay = progress === "live";
-  const isArrived = progress === "done";
-  const { fix } = useLivePosition(isOnWay);
+  const isOnWay = !isScheduledOutcome && progress === "live";
+  const isArrived = !isScheduledOutcome && progress === "done";
+
+  // A current fix improves the leave-by before the user sets off as well as the
+  // ETA afterwards. At the office this prevents the return route falling back to
+  // the saved home base.
+  const { fix } = useLivePosition(true);
   const origin = fix
     ? { lat: fix.lat, lng: fix.lng, name: "Your location" }
     : base
@@ -108,7 +115,7 @@ export function LiveDay({
 
   useEffect(() => {
     setRoute(null);
-    if (!origin || !next?.coord || isArrived) return;
+    if (!origin || !next?.coord || isArrived || isScheduledOutcome) return;
     let active = true;
     void fetchNavRoute({ origin, destination: { ...next.coord, name: next.title }, mode }).then((result) => {
       if (active && result.ok) setRoute(result.value);
@@ -116,10 +123,10 @@ export function LiveDay({
     return () => {
       active = false;
     };
-  }, [origin?.lat, origin?.lng, next?.id, next?.coord?.lat, next?.coord?.lng, next?.title, mode, isArrived]);
+  }, [origin?.lat, origin?.lng, next?.id, next?.coord?.lat, next?.coord?.lng, next?.title, mode, isArrived, isScheduledOutcome]);
 
   useEffect(() => {
-    if (!next?.coord || !next.inboundTransitionId || !fix || !isOnWay) return;
+    if (isScheduledOutcome || !next?.coord || !next.inboundTransitionId || !fix || !isOnWay) return;
     const distance = haversineMeters(fix.lat, fix.lng, next.coord.lat, next.coord.lng);
     const arrivalRadius = Math.max(45, fix.accuracy * 1.5);
     if (distance > arrivalRadius || arrivalCommit.current === next.inboundTransitionId) return;
@@ -135,7 +142,7 @@ export function LiveDay({
       }
       router.refresh();
     });
-  }, [fix, isOnWay, next?.id, next?.coord?.lat, next?.coord?.lng, next?.inboundTransitionId, router]);
+  }, [fix, isOnWay, isScheduledOutcome, next?.id, next?.coord?.lat, next?.coord?.lng, next?.inboundTransitionId, router]);
 
   useEffect(() => {
     arrivalCommit.current = null;
@@ -146,7 +153,7 @@ export function LiveDay({
   const state = computeDayState({
     anchors: engineAnchors,
     nowMs: now,
-    liveTravelSeconds: isOnWay ? route?.duration_s ?? null : null,
+    liveTravelSeconds: !isScheduledOutcome ? route?.duration_s ?? null : null,
   });
 
   if (!next) {
@@ -162,22 +169,32 @@ export function LiveDay({
   const feas = state.feasibility;
   const target = next.station?.name ?? next.title;
   const etaMs = route ? now + route.duration_s * 1000 : null;
-  const setOffClock = !isOnWay && !isArrived && feas && feas.band !== "cliff" ? HHMM(feas.leaveByMs) : null;
+  const setOffClock = !isOnWay && !isArrived && !isScheduledOutcome && feas && feas.band !== "cliff" ? HHMM(feas.leaveByMs) : null;
   const arrivedFigure = next.station && next.role === "departure" && next.arriveByIso
     ? londonClock(next.arriveByIso)
     : londonClock(next.actualArrivedAt) ?? HHMM(now);
-  const figure = isArrived ? arrivedFigure : isOnWay && etaMs != null ? HHMM(etaMs) : setOffClock;
+
+  const scheduledStartMs = next.arriveByIso ? Date.parse(next.arriveByIso) : null;
+  const changeHasArrived = next.role === "changeover" && scheduledStartMs != null && now >= scheduledStartMs;
+  const scheduledFigure = changeHasArrived ? londonClock(next.endIso) : londonClock(next.arriveByIso);
+  const figure = isScheduledOutcome
+    ? scheduledFigure
+    : isArrived
+      ? arrivedFigure
+      : isOnWay && etaMs != null
+        ? HHMM(etaMs)
+        : setOffClock;
   const parts = figure?.split(":") ?? null;
   const arriveByMs = next.arriveByIso ? Date.parse(next.arriveByIso) : null;
   const routeArrivalMs = arriveByMs != null && feas ? arriveByMs - feas.bufferMinutes * 60_000 : arriveByMs;
   const arrivalLabel = routeArrivalMs != null ? HHMM(routeArrivalMs) : null;
   const constrainedLabel =
-    !isOnWay && !isArrived && feas?.constrainedByPrevious && next.notBeforeIso
+    !isOnWay && !isArrived && !isScheduledOutcome && feas?.constrainedByPrevious && next.notBeforeIso
       ? `Your shift ends at ${londonClock(next.notBeforeIso)}`
       : null;
 
   async function startJourney() {
-    if (!next?.inboundTransitionId) return;
+    if (!next?.inboundTransitionId || isScheduledOutcome) return;
     const transitionId = next.inboundTransitionId;
     const anchorId = next.id;
     setProgressError(null);
@@ -191,19 +208,37 @@ export function LiveDay({
     router.refresh();
   }
 
-  const kicker = isArrived
-    ? next.station && next.role === "departure"
-      ? "Train at"
-      : "Arrived"
-    : isOnWay
-      ? "ETA"
-      : feas?.band === "cliff"
-        ? "Leave now"
-        : "Leave by";
-  const status = isArrived ? "Arrived" : isOnWay ? "On the way" : "Next move";
+  const kicker = isScheduledOutcome
+    ? changeHasArrived
+      ? "Next train"
+      : "Arrive"
+    : isArrived
+      ? next.station && next.role === "departure"
+        ? "Train at"
+        : "Arrived"
+      : isOnWay
+        ? "ETA"
+        : feas?.band === "cliff"
+          ? "Leave now"
+          : "Leave by";
+  const status = isScheduledOutcome
+    ? changeHasArrived
+      ? "Changing"
+      : "On board"
+    : isArrived
+      ? "Arrived"
+      : isOnWay
+        ? "On the way"
+        : "Next move";
+
+  const scheduledCopy = changeHasArrived
+    ? `${londonClock(next.endIso)} onward from ${target}`
+    : next.role === "changeover"
+      ? `${londonClock(next.arriveByIso)} arrival · ${Math.max(0, Math.round(((next.endIso ? Date.parse(next.endIso) : 0) - (next.arriveByIso ? Date.parse(next.arriveByIso) : 0)) / 60_000))} min to change`
+      : `Scheduled arrival at ${target}`;
 
   return (
-    <section className="cc-active-tile cc-setoff" data-urgency={isArrived ? "comfortable" : urgencyOf(feas)}>
+    <section className="cc-active-tile cc-setoff" data-urgency={isArrived || isScheduledOutcome ? "comfortable" : urgencyOf(feas)}>
       <span className="cc-at-status"><span className="cc-at-dot" />{status}</span>
 
       <div className="pg cc-setoff-sheet">
@@ -219,15 +254,17 @@ export function LiveDay({
           <div className="mono engr-deep cc-setoff-figure cc-setoff-figure--word">Now</div>
         )}
         <p className="cc-setoff-move">
-          {isArrived
-            ? next.station && next.role === "departure"
-              ? `${target} · you’re ready for the ${londonClock(next.arriveByIso)} service`
-              : `You’ve reached ${target}`
-            : isOnWay
-              ? `${route ? Math.max(1, Math.round(route.duration_s / 60)) : feas?.travelMinutes ?? "—"} min remaining`
-              : `${instruction(feas)} · ${feas ? `${feas.travelMinutes} min ${mode === "drive" ? "by car" : mode}` : "route pending"}`}
-          {!isOnWay && !isArrived && arrivalLabel ? ` · arrive by ${arrivalLabel}` : ""}
-          {!isOnWay && !isArrived && feas?.bufferMinutes ? ` · ${feas.bufferMinutes} min early` : ""}
+          {isScheduledOutcome
+            ? scheduledCopy
+            : isArrived
+              ? next.station && next.role === "departure"
+                ? `${target} · you’re ready for the ${londonClock(next.arriveByIso)} service`
+                : `You’ve reached ${target}`
+              : isOnWay
+                ? `${route ? Math.max(1, Math.round(route.duration_s / 60)) : feas?.travelMinutes ?? "—"} min remaining`
+                : `${instruction(feas)} · ${feas ? `${feas.travelMinutes} min ${mode === "drive" ? "by car" : mode}` : "route pending"}`}
+          {!isOnWay && !isArrived && !isScheduledOutcome && arrivalLabel ? ` · arrive by ${arrivalLabel}` : ""}
+          {!isOnWay && !isArrived && !isScheduledOutcome && feas?.bufferMinutes ? ` · ${feas.bufferMinutes} min early` : ""}
         </p>
         {constrainedLabel ? <p className="cc-setoff-move">{constrainedLabel}; the preferred {feas?.preferredBufferMinutes ?? 0}-minute margin will reduce to {feas?.bufferMinutes ?? 0} minutes.</p> : null}
       </div>
@@ -238,7 +275,7 @@ export function LiveDay({
         </p>
       ) : null}
 
-      {!isOnWay && !isArrived && next.inboundTransitionId ? (
+      {!isOnWay && !isArrived && !isScheduledOutcome && next.inboundTransitionId ? (
         <button
           type="button"
           className="cc-btn cc-btn-gold"
