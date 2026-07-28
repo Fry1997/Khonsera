@@ -1,0 +1,27 @@
+name: Codex source bundle
+
+on:
+  push:
+    branches:
+      - agent/professional-responsive-ui
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Upload source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: khonsera-source
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            .
+            !.git/**
+            !node_modules/**
