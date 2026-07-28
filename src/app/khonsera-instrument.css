@@ -2353,6 +2353,18 @@ button.cc-var {
     min-height: var(--touch-target);
   }
 
+  .khonsera-app .cc-mode-tag-btn,
+  .khonsera-app button.cc-anchor-title-edit {
+    min-height: var(--touch-target);
+  }
+
+  .khonsera-app .cc-node-remove {
+    width: var(--touch-target);
+    height: var(--touch-target);
+    top: 0;
+    right: 0;
+  }
+
   .cc-context-actions--planner,
   .cc-context-buttons {
     align-items: stretch;
