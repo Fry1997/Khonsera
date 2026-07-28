@@ -23,6 +23,7 @@ export interface EngineAnchor {
   endMs: number | null; // leave / end (defaults to startMs)
   plannedTravelMinutes: number | null; // planned travel INTO this anchor (fallback for leave-by)
   isStation?: boolean; // station boarding buffer vs a readiness buffer
+  bufferMinutes?: number | null; // user/booking-specific override for this boundary
 }
 
 export interface Feasibility {
@@ -31,6 +32,7 @@ export interface Feasibility {
   bufferLeftMin: number; // buffer remaining if you left now (erodes past leave-by)
   band: FeasBand;
   travelMinutes: number;
+  bufferMinutes: number;
   source: "live" | "planned"; // live route from your position, or the plan's estimate
 }
 
@@ -41,11 +43,16 @@ export interface DayState {
   gaps: Gap[];
 }
 
-// Station boarding readiness vs a light get-ready buffer.
-export const STATION_BUFFER_MIN = 8;
+// A rail departure should honour the user's expected platform-arrival margin.
+// Fifteen minutes is the product default and matches travel_profiles defaults;
+// individual boundaries can override it through EngineAnchor.bufferMinutes.
+export const STATION_BUFFER_MIN = 15;
 export const READINESS_BUFFER_MIN = 5;
 
 function bufferFor(a: EngineAnchor): number {
+  if (a.bufferMinutes != null && Number.isFinite(a.bufferMinutes)) {
+    return Math.max(0, Math.round(a.bufferMinutes));
+  }
   return a.isStation ? STATION_BUFFER_MIN : READINESS_BUFFER_MIN;
 }
 
@@ -118,7 +125,15 @@ export function computeDayState(input: { anchors: EngineAnchor[]; nowMs: number;
   return {
     phase: nowMs >= leaveByMs ? "in_transit" : "readiness",
     nextIndex,
-    feasibility: { leaveByMs, slackMin, bufferLeftMin, band, travelMinutes: travelMin, source: liveMin != null ? "live" : "planned" },
+    feasibility: {
+      leaveByMs,
+      slackMin,
+      bufferLeftMin,
+      band,
+      travelMinutes: travelMin,
+      bufferMinutes: buffer,
+      source: liveMin != null ? "live" : "planned",
+    },
     gaps,
   };
 }
