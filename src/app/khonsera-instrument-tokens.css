@@ -368,6 +368,7 @@ html:not([data-theme="dark"]) {
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
+  --today-column-max: 760px;
 
   /* ── Radius — the instrument's rounded rectangles.
      badge 7 · chip/button 10 · card/tile 14 · sheet/hero 20 · modal 24. ──── */

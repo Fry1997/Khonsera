@@ -9,13 +9,15 @@ Each entry: **Data** (what it shows) · **States** (what Design must draw). Mobi
 ---
 
 ### ActiveTile — the day-of focal point (Today's hero)
+
 **Data:** a status word + dot (urgency), the headline of what matters now, the next `AnchorCard`
 target (+ time), the next `LegCard` summary, and (pre-departure) a leave-by figure.
 **States:** `dormant` (calm/near-empty), `readiness` (leave-by countdown), `in-transit` (live leg),
 `arrived` (current anchor + what's next). Urgency overlay: `comfortable` · `urgent` · `breach`
-(breach dot pulses). Layout is fixed across states — only the dot + words change. *(See `today.md`.)*
+(breach dot pulses). Layout is fixed across states — only the dot + words change. _(See `today.md`.)_
 
 ### AnchorCard — a fixed point on the spine
+
 **Data:** type (`appointment | reservation | accommodation_check_in | accommodation_check_out |
 transport_arrival | flight | custom`), title, place, and the **three-variable model**:
 **arrive-by · duration · leave-by** — set any two, the third is **derived**.
@@ -24,6 +26,7 @@ transport_arrival | flight | custom`), title, place, and the **three-variable mo
 (computed, effortless, not directly editable). Fuzzy values **harden** as legs are chosen.
 
 ### LegCard — the travel between two anchors
+
 **Data:** mode / mode-mix with optional **first-mile/last-mile** sub-legs (walk→train→taxi); the
 **door-to-door total time** (the headline + the only rank key); cost; departure/arrival; structural
 pattern (`Direct | Drop-and-go | Hub-to-hub`); booking status.
@@ -31,32 +34,38 @@ pattern (`Direct | Drop-and-go | Hub-to-hub`); booking status.
 `chosen/booked` · `at-risk` (tight connection / downstream conflict).
 
 ### GapCard — unallocated time between anchors
+
 **Data:** type (`transport_gap | accommodation_gap | unplanned_time | care_gap`), the two endpoints,
 a binary-reveal prompt, and (for free time) a **bounded** "you have until 16:10 here".
 **States:** `open` (needs input) · `watching` · `resolved` · `dismissed`.
 
 ### IntentionCard — a soft goal, beside the spine (proposal, never auto-inserted)
+
 **Data:** description ("see the museum"), optional target, buffer, back-calculated leave-by.
 **States:** `soft` vs `promoted_to_hard`; `active` vs `toggled_off` (dimmed); reads **provisional/
 dismissable**, clearly different from committed anchors.
 
 ### ComparisonMatrix — the transport decision layer (opens on tapping a leg)
+
 **Data:** the **top 4 fastest viable** options ranked by **door-to-door total** (+ "show all"); each
 shows door-to-door time (rank key), mode-mix/sub-legs, cost, departure+arrival. **Speed ranks;
 exclusions filter** (an exclusion removes options, never down-ranks). **Train booking-pair:** outbound
-+ return as one unit, chevron between halves, a live **consequence band** ("this return → leave the
-museum by 16:10").
-**States:** `open` (a focused **sheet/overlay** on mobile, not a wide table) · one `selected`
-(hardens fuzzy values) · `empty` (no viable options).
+
+- return as one unit, chevron between halves, a live **consequence band** ("this return → leave the
+  museum by 16:10").
+  **States:** `open` (a focused **sheet/overlay** on mobile, not a wide table) · one `selected`
+  (hardens fuzzy values) · `empty` (no viable options).
 
 ### JourneyListCard — one Event in the Plan index `.cc-journey-card`
+
 **Data:** title, mode, **span** (single date, or range + "N days"), stop count, open-gap count,
 status. **States:** list · archive (dimmed) · empty. Now `.cc-*`-styled (the one list component that
 hadn't had an Edition II pass) and links into the **Event detail** (`/plan/[id]`), not legacy.
-**Distinct from `TicketCard`:** JourneyListCard summarises a *whole Event*; a TicketCard is *one
-booked document* within it. **DESIGN-PENDING** — queued for a round with the rest of §Plan surfaces.
+**Distinct from `TicketCard`:** JourneyListCard summarises a _whole Event_; a TicketCard is _one
+booked document_ within it. **DESIGN-PENDING** — queued for a round with the rest of §Plan surfaces.
 
 ### Plan surfaces — Code floor, DESIGN-PENDING (proposal "events-by-day")
+
 New compositions styled by `.cc-*` + tokens as a functional floor, **awaiting a Design round**:
 `.cc-plan-group`/`.cc-plan-list` (index day-groups, Wallet-mirrored) · `.cc-plan-new` + the new-Event
 `.cc-sheet` (start date + optional name) · `.cc-plan-empty` · `.cc-event-head`/`.cc-event-back` (the
@@ -71,6 +80,7 @@ A chosen leg/anchor resolves into one or more booked documents. These four are t
 members the Wallet (§7) and Today (§8) reuse — **no further new components for either surface.**
 
 ### TicketCard — a booked travel document
+
 **Data:** `kind` (`rail | air | stay | ground`); operator(s); reference; price; `source` (synced ·
 manual · forwarded · inbox · affiliate · wallet · ocr — governs trust + pre-fill + live refresh);
 per journey **place+time pair(s)** with platform/gate/terminal; **changes** (each connection's
@@ -83,18 +93,21 @@ stepped by a chevron with a live **consequence band** ("this return → leave th
 **full** (open). `data-kind` per mode. Plus the leg `StatusStrip` states below.
 
 ### StatusStrip — the live status line
+
 **Data:** `status` (`on_time · delayed · platform_change · gate_change · boarding · cancelled ·
 stale`), optional detail ("+18 min" · "Platform 4 → 1"), `offline` (stale marker — last-known shown
 at the barrier without signal). **States:** the seven statuses (each visually distinct; only
 `cancelled`/`delayed` earn warmth, never alarm-red throughout) · `offline`/stale.
 
 ### BarcodePresenter — the scannable code
+
 **Data:** `format` (`aztec` rail · `pdf417`/`qr` air · `qr` transit), payload value, optional
-passenger label. **The code *is* the ticket** — Design owns the **frame** (quiet zone preserved,
+passenger label. **The code _is_ the ticket** — Design owns the **frame** (quiet zone preserved,
 high contrast, **nothing overlaid on the code**), Code injects the symbology pixels at wire-up.
 **States:** `data-size` = inline (in a TicketCard) · scan (fullscreen). Per-format framing.
 
 ### ScanView — fullscreen presentation at the barrier
+
 **Data:** a one-line journey summary (for the guard), the barcode(s), a swipeable **stack for
 multiple passengers**. **THE function-over-finish exception (§6.3):** code large + centred,
 **brightness maxed**, minimal chrome — Design must **not** elevate it into something that won't
@@ -105,6 +118,7 @@ scan. **States:** single · multi-passenger (pager) · per-format.
 > at the barrier has failed.
 
 ### Pass — the first-class wallet rendering (Round 5b) — `concierge/pass.tsx`
+
 **Not a new contract member — a richer presentation of a booked document** (same `TicketVM`; reuses
 `StatusStrip` + `BarcodePresenter`). The materially-real issued ticket: operator band + kind seam,
 the big time-pair, a drawn connector, perforation + barcode stub. `Pass` (full, next-needed) +
@@ -112,25 +126,34 @@ the big time-pair, a drawn connector, perforation + barcode stub. `Pass` (full, 
 booked (`.cc-pass--docked`: tighter, barcode → a quiet "Ticket ready" line; a return is a second
 docked pass downstream, not a stack — the timeline carries order). The Wallet uses `Pass`; the
 compact `TicketCard` remains for non-stacked list contexts (e.g. Today's single promoted document).
+On the production Today spine, `today` adds the Screen One operational face
+(`.cc-pass--today`): departure + live status/platform lead, route identity stays prominent, and the
+stub reduces to departs/platform/arrives. It is still the same `TicketVM` and live status source.
 
 ### ModeSwitch — Work/Personal
+
 **Data:** `work | personal`. A **toggle, not a tab**; persisted; reachable from the shell.
 
 ### ContactChip — a person
+
 **Data:** name, channel (`phone | email | whatsapp`). **States:** bound (real contact) · unbound.
 
 ### TaskRow — a to-do
+
 **Data:** title, optional due, done. **States:** open · done (struck-through). Date-bearing tasks
 surface on that day.
 
 ### ExpenseRow — a spend line
+
 **Data:** amount + currency, category, date.
 
 ### NudgeCard — a proactive intervention (the raised voice)
+
 **Data:** an **intervention** message ("leave 10 minutes earlier"), optional action. Never a raw data
 widget. **States:** dismissible. **Earns prominence by being rare** — gold/accent reserved for it.
 
 ### ReadinessPrompt — pre-departure prep / back-calculation
+
 **Data:** leave-by, derived wake/prepare time, the routine steps. One orchestrated prompt, not
 scattered sums.
 
@@ -138,11 +161,12 @@ scattered sums.
 
 ## Deviation & care layer (Edition III P9–P13) — live on `/plan/[id]` + `/today`
 
-*The components that appear when the day deviates from plan or needs looking after. Round 7 brand-passed
+_The components that appear when the day deviates from plan or needs looking after. Round 7 brand-passed
 the live-spine set (✓ skinned); the recovery + nudge set is the **Round 8** request (🟡 to skin). Full
-brief, contract classes, states and preview steps live in `docs/design-handoff-edition-iii.md`.*
+brief, contract classes, states and preview steps live in `docs/design-handoff-edition-iii.md`._
 
 ### Live-spine set (P9–P10) — ✓ Round 7 skinned
+
 **Decision-clock** (`.cc-decision-clock` · `.label/.figure/.for`) — the day's single "set off by HH:MM".
 **Live-alert** (per-leg, rail + TfL) — live status + the engine **consequence** ("you'll miss the 09:40,
 act by 09:27"); minor=gold, severe=rust. **Fragility** (`.cc-fragility`) — "tight plan, one delay and it
@@ -150,6 +174,7 @@ breaks". **Day-ripple** (`.cc-day-ripple`) — the whole-day knock-on. **Today d
 (`.cc-today-disruption`, `cc-screen[data-disrupted]`) — the day's character shifting to disruption.
 
 ### RecoveryCard — the way out (P11) · 🟡 Round 8
+
 `plan/recovery-card.tsx`, `.cc-recovery` (+ `-head/-eyebrow/-note/-list/-opt/-label/-conseq/-return/-via`).
 **Data:** beneath a cancelled/severely-delayed booked train — each viable alternative + its consequence
 ("makes your 2pm, 12 min spare" / "reaches it 18 min late"); the booked-return impact (`-return`, rust);
@@ -157,6 +182,7 @@ an OTP detour note (`-via`, "via Coventry · 1 change"). **States:** per-option 
 (true reassures/sage, false stays quiet — never red); `data-return=at-risk`; the `· sample` honesty cue.
 
 ### PlanNudges / NudgeCard — contextual care (P12–P13) · 🟡 Round 8
+
 `plan/plan-nudges.tsx` wrapping the `NudgeCard` (above). Six rules render through **two states**:
 **open** (`NudgeCard`, gold-tint) — one calm proposal + action + "Not now" (weather→leave-earlier,
 running-late→fast-track, layover→lounge, parking→pre-book, gate-change→reroute); **accepted**
@@ -164,9 +190,10 @@ running-late→fast-track, layover→lounge, parking→pre-book, gate-change→r
 foresight (ahead-of-time, unhurried) vs reaction (moment-of, a touch more weight); once acted, it settles.
 
 ### Connections surface (ED-Flight / ED-Stay) — search / compare / book / manage · 🟡 Rounds 11–12
-*The "buy + service without leaving Khonsera" surface on `/plan/[id]`. Three SEPARATE flows (the old
-Flights|Stays toggle was retired) sharing the `.cc-conn*` shell from Round 9. Full briefs + contract
-classes in `docs/design-handoff-edition-iii.md` (Rounds 11, 12, + manage-booking).*
+
+_The "buy + service without leaving Khonsera" surface on `/plan/[id]`. Three SEPARATE flows (the old
+Flights|Stays toggle was retired) sharing the `.cc-conn_`shell from Round 9. Full briefs + contract
+classes in`docs/design-handoff-edition-iii.md` (Rounds 11, 12, + manage-booking).\*
 
 - **FlightFinder** 🟡 R11 — `plan/flight-finder.tsx`. Trip-type (`.cc-conn-triptype`) → search
   (`.cc-conn-field--airport` autocomplete incl. city/all-airports, return/pax/cabin) → compare
@@ -187,6 +214,7 @@ classes in `docs/design-handoff-edition-iii.md` (Rounds 11, 12, + manage-booking
 ---
 
 ### Ledger & teams (P15 mileage · P16 budget · P17 approvals) · 🟡 Ledger pack
+
 - **Mileage** (`/mileage`) — `DriveRecorder` (`.cc-mileage-rec`) + `MileageLedger` (`.cc-mileage*`):
   claimable-£ summary + CSV, trips with a Business|Personal toggle (`-trip[data-class]`), purpose-needed
   flag, manual add.
@@ -200,6 +228,7 @@ classes in `docs/design-handoff-edition-iii.md` (Rounds 11, 12, + manage-booking
 ---
 
 ## Cross-cutting rules
+
 - **Tokens only** (`design-tokens.md`); no raw hex/px in components.
 - **Calm by default;** gold/accent is punctuation — the single live "now" pulse or the one action.
 - **No emojis.** Copy is voiced as **Khonsera** (never a human name).

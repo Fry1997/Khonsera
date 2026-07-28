@@ -1,13 +1,13 @@
 # SCREEN SPEC — TODAY / LIVE
 
-*For Design. Destination: `screen-specs/today.md` inside `for-design.zip`.*
-*Output target: 4 states × 3 sizes = 12 artboards.*
+_For Design. Destination: `screen-specs/today.md` inside `for-design.zip`._
+_Output target: 4 states × 3 sizes = 12 artboards._
 
 ## Purpose
 
 The live, in-the-moment view. **Not a dashboard you configure** — it morphs automatically
 through states driven by time and live data (weather, delays, gate/platform changes,
-calendar). It answers one question: *what do I need to know or do right now?*
+calendar). It answers one question: _what do I need to know or do right now?_
 
 ## Mental model
 
@@ -62,7 +62,7 @@ At an anchor (the appointment, the hotel).
 Today is **one surface that transitions automatically**, not four screens the user navigates
 between. Design the **transitions**, not only the static frames: what fades, what slides,
 how the `ActiveTile` transforms from countdown → live leg → arrived. In keeping with Khonsu
-(the moon, time, dusk), the morph should feel like the surface is *turning* through the day;
+(the moon, time, dusk), the morph should feel like the surface is _turning_ through the day;
 a quiet time-of-day / horizon through-line is welcome.
 
 ## Live data → interventions, not widgets
@@ -84,6 +84,21 @@ Single focal column. `ActiveTile` is the hero — large, top. Supporting cards s
 priority order. At larger sizes, **resist** spreading into a multi-column dashboard: Today
 stays a single calm spine even with room, and the extra space becomes breathing room, not
 more widgets. This protects the “morphing surface, not dashboard” principle.
+
+### Approved Screen One composition (July 2026)
+
+The supplied Screen One reference is the current visual authority for the readiness/in-transit
+composition. The production screen keeps one bounded column in this order:
+
+1. Date, day purpose, base location, and compact local conditions.
+2. Warm `ActiveTile` with the single primary route action and three compact secondary actions.
+3. Six-hour conditions strip.
+4. `TodaySpine` with a persisted arrival-margin switch, open movement/change rows, and carded
+   commitments or operational passes.
+5. Tickets/Wallet exits and the contextual `Plan something` action.
+
+The prior map-led Today command is retired. Route detail still opens from `View best route`; the
+full interactive journey map remains on the canonical `/plan/[id]` surface.
 
 ## Restraint notes (brand-critical)
 

@@ -14,21 +14,21 @@ const appLayout = readFileSync(
   "utf8",
 );
 const directionCss = readFileSync(
-  new URL("../../app/khonsera-today-direction.css", import.meta.url),
+  new URL("../../app/khonsera-screen-one.css", import.meta.url),
   "utf8",
 );
 
-describe("the approved Today application direction", () => {
-  it("keeps the next move and route map inside one dominant command surface", () => {
+describe("the approved Screen One Today direction", () => {
+  it("keeps one dominant next-move surface ahead of weather and itinerary", () => {
     const command = todayPage.indexOf('className="cc-today-command"');
-    const map = todayPage.indexOf('className="cc-today-command-map"');
     const forecast = todayPage.indexOf('className="cc-day-forecast"');
     const itinerary = todayPage.indexOf('className="cc-day-primary"');
 
     expect(command).toBeGreaterThan(-1);
-    expect(map).toBeGreaterThan(command);
-    expect(forecast).toBeGreaterThan(map);
+    expect(forecast).toBeGreaterThan(command);
     expect(itinerary).toBeGreaterThan(forecast);
+    expect(todayPage).not.toContain('className="cc-today-command-map"');
+    expect(todayPage).not.toContain("<PlanMap");
   });
 
   it("retains the four approved next-move actions", () => {
@@ -44,9 +44,17 @@ describe("the approved Today application direction", () => {
     expect(appLayout).not.toContain("cc-app-desktop");
   });
 
-  it("styles the itinerary as one continuous object", () => {
+  it("keeps the screen controls wired to real product flows", () => {
+    expect(todayPage).toContain("<TodayBufferControl");
+    expect(todayPage).toContain("Tickets today");
+    expect(todayPage).toContain('label="Plan something"');
+  });
+
+  it("implements the compact orange timeline and operational pass", () => {
+    expect(directionCss).toContain("--kh-today-accent: var(--rail)");
+    expect(directionCss).toContain(".cc-today-buffer");
+    expect(directionCss).toContain(".cc-timeline-icon");
+    expect(directionCss).toContain(".cc-pass.cc-pass--today");
     expect(directionCss).toContain(".cc-today-direction .cc-spine {");
-    expect(directionCss).toContain("border-radius: 22px");
-    expect(directionCss).toContain(".cc-today-command-map");
   });
 });

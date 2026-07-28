@@ -34,13 +34,8 @@ import {
 import { foldStopsToLegTickets } from "@/lib/tickets/from-stops";
 import { TodayDemo } from "@/components/today/today-demo";
 import { isDemoModeActive } from "@/lib/demo-mode";
-import { PlanMap } from "@/components/plan/plan-map";
-import {
-  buildJourneyFromStops,
-  type StopForMap,
-  type TransitionForMap,
-} from "@/components/journey-map/from-stops";
 import { PlanAdd } from "@/components/plan/plan-add";
+import { TodayBufferControl } from "@/components/today/today-buffer-control";
 import type {
   PlacePickerLocation,
   PlacePickerCustomer,
@@ -166,6 +161,97 @@ function WeatherGlyph({ isDay }: { isDay: boolean }) {
   );
 }
 
+function WeatherHourGlyph({ code, label }: { code: number; label: string }) {
+  const hour = Number(label.slice(0, 2));
+  const isNight = Number.isFinite(hour) && (hour < 6 || hour >= 20);
+
+  if (code >= 51) {
+    return (
+      <svg
+        className="cc-weather-hour-glyph"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M7 17h10a4 4 0 0 0 .7-7.9A6 6 0 0 0 6.4 8.3 4.5 4.5 0 0 0 7 17Z" />
+        <path d="m8 20-1 2m5-2-1 2m5-2-1 2" />
+      </svg>
+    );
+  }
+
+  if (code >= 3) {
+    return (
+      <svg
+        className="cc-weather-hour-glyph"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M7 18h10a4 4 0 0 0 .7-7.9A6 6 0 0 0 6.4 9.3 4.5 4.5 0 0 0 7 18Z" />
+      </svg>
+    );
+  }
+
+  return isNight ? (
+    <svg
+      className="cc-weather-hour-glyph"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5Z" />
+    </svg>
+  ) : (
+    <svg
+      className="cc-weather-hour-glyph"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19m0-14-1.5 1.5m-11 11L5 19" />
+    </svg>
+  );
+}
+
+function TodayContextIcon({ name }: { name: "ticket" | "wallet" | "chevron" }) {
+  const path =
+    name === "ticket"
+      ? "M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm9-2v14"
+      : name === "wallet"
+        ? "M4 6h14a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2V6Zm0 0 11-3v3m5 5h-5a2 2 0 0 0 0 4h5"
+        : "m9 18 6-6-6-6";
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
 export default async function TodayPage({
   searchParams,
 }: {
@@ -186,23 +272,33 @@ export default async function TodayPage({
 
   const now = new Date();
   const today = ymd(now);
-  const { data: events } = await supabase
-    .from("itineraries")
-    .select("id, title, mode, date_start, date_end, status")
-    .lte("date_start", today)
-    .gte("date_end", today)
-    .in("status", ["draft", "planning", "planned", "in_progress"])
-    .order("date_start", { ascending: true });
-  const covering = events ?? [];
-
   const tomorrow = ymd(new Date(now.getTime() + 86_400_000));
-  const { data: tmrwRows } = await supabase
-    .from("itineraries")
-    .select("id")
-    .eq("date_start", tomorrow)
-    .in("status", ["draft", "planning", "planned", "in_progress"])
-    .order("date_start", { ascending: true })
-    .limit(1);
+  const [{ data: events }, { data: tmrwRows }, { data: travelProfile }] =
+    await Promise.all([
+      supabase
+        .from("itineraries")
+        .select("id, title, mode, date_start, date_end, status")
+        .lte("date_start", today)
+        .gte("date_end", today)
+        .in("status", ["draft", "planning", "planned", "in_progress"])
+        .order("date_start", { ascending: true }),
+      supabase
+        .from("itineraries")
+        .select("id")
+        .eq("date_start", tomorrow)
+        .in("status", ["draft", "planning", "planned", "in_progress"])
+        .order("date_start", { ascending: true })
+        .limit(1),
+      supabase
+        .from("travel_profiles")
+        .select("default_arrival_buffer_minutes")
+        .eq("user_id", ctx.userId)
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle(),
+    ]);
+  const covering = events ?? [];
+  const stationBufferMinutes =
+    travelProfile?.default_arrival_buffer_minutes ?? 15;
   const tomorrowReview =
     tmrwRows && tmrwRows.length
       ? await buildDayReview(tmrwRows[0].id as string)
@@ -213,10 +309,7 @@ export default async function TodayPage({
   const travelByToStop = new Map<string, InboundLeg>();
   let baseCoord: { lat: number; lng: number } | null = null;
   let baseLabel: string | null = null;
-  let destinationLabel: string | null = null;
   let tickets: TicketVM[] = [];
-  let mapStops: StopForMap[] = [];
-  let mapTransitions: TransitionForMap[] = [];
   const legCardByOriginId = new Map<
     string,
     {
@@ -260,8 +353,6 @@ export default async function TodayPage({
       if (st.type === "start" && !baseCoord) baseCoord = coordOf(st);
       if (st.type === "start" && !baseLabel)
         baseLabel = placeOf(st) ?? st.title ?? null;
-      if (st.type === "end")
-        destinationLabel = placeOf(st) ?? st.title ?? destinationLabel;
       // Base bookends remain part of routing, but they are context — never Today stops.
       if (
         st.type !== "start" &&
@@ -285,37 +376,6 @@ export default async function TodayPage({
         actualArrivedAt: tr.actual_arrived_at,
         notBeforeIso: from?.type === "shift" ? from.end_time : null,
       });
-    }
-
-    if (covering.length === 1) {
-      const geo = (g: Geo) =>
-        g
-          ? {
-              name: g.name ?? null,
-              latitude: g.latitude ?? null,
-              longitude: g.longitude ?? null,
-            }
-          : null;
-      mapStops = evStops.map((st) => ({
-        id: st.id,
-        title: st.title,
-        location: geo(st.location),
-        customer_site: geo(st.customer_site),
-        transport_hub: st.transport_hub
-          ? {
-              code: st.transport_hub.code ?? null,
-              name: st.transport_hub.name ?? null,
-              latitude: st.transport_hub.latitude ?? null,
-              longitude: st.transport_hub.longitude ?? null,
-            }
-          : null,
-      }));
-      mapTransitions = evTransitions.map((tr) => ({
-        from_stop_id: tr.from_stop_id,
-        mode: tr.mode ?? "walk",
-        overview_polyline: tr.overview_polyline ?? null,
-        computed_duration_minutes: tr.computed_duration_minutes ?? null,
-      }));
     }
 
     tickets = tickets.concat(jt);
@@ -439,7 +499,8 @@ export default async function TodayPage({
       coord: stationCoord ?? coordOf(s),
       plannedTravelMinutes: leg?.minutes ?? null,
       travelMode: leg?.mode ?? null,
-      bufferMinutes: s.type === "shift" ? 0 : undefined,
+      bufferMinutes:
+        s.type === "shift" ? 0 : station ? stationBufferMinutes : undefined,
       notBeforeIso: leg?.notBeforeIso ?? null,
       inboundTransitionId: leg?.id ?? null,
       transitionState: leg?.state ?? null,
@@ -483,6 +544,13 @@ export default async function TodayPage({
         ? `From ${baseLabel}`
         : undefined;
   const weather = await getLocalWeather();
+  const weatherLow =
+    weather && weather.hours.length > 0
+      ? weather.hours.reduce(
+          (lowest, hour) => Math.min(lowest, hour.tempC),
+          weather.tempC,
+        )
+      : weather?.tempC;
   const dateEyebrow = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     weekday: "short",
@@ -516,13 +584,6 @@ export default async function TodayPage({
       null;
   }
 
-  const todayJourney =
-    covering.length === 1
-      ? buildJourneyFromStops(mapStops, mapTransitions, {
-          id: covering[0].id,
-          eyebrow: `${dateEyebrow} · DOOR TO DOOR`,
-        })
-      : null;
   const toolsEvent = covering.length === 1 ? covering[0] : null;
   let toolPickers: {
     customers: PlacePickerCustomer[];
@@ -559,7 +620,7 @@ export default async function TodayPage({
       title={anchors.length ? dayPurpose : "Right now"}
       titleAs="h1"
       description={
-        anchors.length && (destinationLabel ?? baseLabel) ? (
+        anchors.length && baseLabel ? (
           <span className="cc-today-destination">
             <svg
               viewBox="0 0 24 24"
@@ -573,7 +634,7 @@ export default async function TodayPage({
               <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
               <circle cx="12" cy="10" r="2.5" />
             </svg>
-            To <strong>{destinationLabel ?? baseLabel}</strong>
+            From <strong>{baseLabel}</strong>
           </span>
         ) : undefined
       }
@@ -590,7 +651,9 @@ export default async function TodayPage({
             <span className="cc-weather-temp">{weather.tempC}&deg;</span>
             <span className="cc-weather-meta">
               <span className="cc-weather-headline">{weather.headline}</span>
-              <span className="cc-weather-place">{weather.place}</span>
+              <span className="cc-weather-place">
+                {weatherLow}&deg; / {weather.place}
+              </span>
             </span>
           </div>
         ) : null
@@ -604,11 +667,6 @@ export default async function TodayPage({
               <div className="cc-today-command-content">
                 <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
               </div>
-              {todayJourney ? (
-                <div className="cc-today-command-map">
-                  <PlanMap journey={todayJourney} />
-                </div>
-              ) : null}
             </section>
 
             <div className="cc-day-forecast" aria-label="Day conditions">
@@ -617,16 +675,19 @@ export default async function TodayPage({
                   className="cc-weather-hours"
                   aria-label="Today's forecast by the hour"
                 >
-                  {weather.hours.map((h) => (
+                  {weather.hours.slice(0, 6).map((h, index) => (
                     <div
                       key={h.label}
                       className="cc-weather-hour"
                       title={h.headline}
                     >
-                      <span className="cc-weather-hour-time">{h.label}</span>
+                      <span className="cc-weather-hour-time">
+                        {index === 0 ? "Now" : h.label}
+                      </span>
                       <span className="cc-weather-hour-temp">
                         {h.tempC}&deg;
                       </span>
+                      <WeatherHourGlyph code={h.code} label={h.label} />
                       <span className="cc-weather-hour-cond">{h.headline}</span>
                     </div>
                   ))}
@@ -643,6 +704,9 @@ export default async function TodayPage({
               <TodaySpine
                 anchors={spineAnchors}
                 nextId={nextSpine?.id ?? null}
+                toolbar={
+                  <TodayBufferControl initialMinutes={stationBufferMinutes} />
+                }
               />
             </section>
 
@@ -657,46 +721,56 @@ export default async function TodayPage({
                 </div>
               ) : null}
               {tickets.length > 0 ? (
-                <div className="cc-context-actions">
-                  <span className="cc-context-label">Tickets today</span>
-                  <Link
-                    href={"/wallet" as Route}
-                    className="cc-btn cc-btn-ghost"
-                  >
-                    Open wallet
-                  </Link>
-                </div>
+                <Link
+                  href={"/wallet" as Route}
+                  className="cc-today-context-row cc-today-context-row--ticket"
+                >
+                  <span className="cc-today-context-icon">
+                    <TodayContextIcon name="ticket" />
+                  </span>
+                  <span className="cc-today-context-copy">
+                    <strong>Tickets today</strong>
+                    <span>
+                      You have {tickets.length} active ticket
+                      {tickets.length === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                  <span className="cc-today-context-chevron">
+                    <TodayContextIcon name="chevron" />
+                  </span>
+                </Link>
               ) : null}
+              <Link
+                href={"/wallet" as Route}
+                className="cc-today-context-row cc-today-context-row--wallet"
+              >
+                <span className="cc-today-context-icon">
+                  <TodayContextIcon name="wallet" />
+                </span>
+                <span className="cc-today-context-copy">
+                  <strong>Wallet</strong>
+                </span>
+                <span className="cc-today-context-chevron">
+                  <TodayContextIcon name="chevron" />
+                </span>
+              </Link>
               {showNextDocument && nextTicket ? (
                 <TodayDocument ticket={nextTicket} />
               ) : null}
               {toolsEvent && toolPickers ? (
-                <div className="cc-context-actions cc-context-actions--planner">
-                  <div className="cc-context-copy">
-                    <span className="cc-context-label">Plan this day</span>
-                    <span className="cc-context-detail">
-                      Add a stop here or open the full planner.
-                    </span>
-                  </div>
-                  <div className="cc-context-buttons">
-                    <Link
-                      href={`/plan/${toolsEvent.id}` as Route}
-                      className="cc-btn cc-btn-ghost"
-                    >
-                      Open planner
-                    </Link>
-                    <PlanAdd
-                      variant="primary"
-                      journeyId={toolsEvent.id}
-                      journeyDate={toolsEvent.date_start as string}
-                      customers={toolPickers.customers}
-                      customerSites={toolPickers.customerSites}
-                      locations={toolPickers.locations}
-                    />
-                  </div>
+                <div className="cc-today-plan-action">
+                  <PlanAdd
+                    variant="primary"
+                    label="Plan something"
+                    journeyId={toolsEvent.id}
+                    journeyDate={toolsEvent.date_start as string}
+                    customers={toolPickers.customers}
+                    customerSites={toolPickers.customerSites}
+                    locations={toolPickers.locations}
+                  />
                 </div>
               ) : (
-                <PlanCreate />
+                <PlanCreate className="cc-today-plan-button" />
               )}
             </aside>
           </>

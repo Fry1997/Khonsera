@@ -15,7 +15,7 @@
  * Bump VERSION to roll the caches (old ones are deleted on activate).
  */
 
-const VERSION = "khonsera-v1";
+const VERSION = "khonsera-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 
@@ -38,7 +38,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k)));
+      await Promise.all(
+        keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k)),
+      );
       await self.clients.claim();
     })(),
   );

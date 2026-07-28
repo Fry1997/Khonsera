@@ -18,24 +18,30 @@ if a utility is wanted), never a one-off hardcode. Tokens never fork. (Legacy in
 migrated to tokens incrementally per-component, not in a big sweep — see the manifest's migration
 status.)
 
-### Current visual authority — Instrument Edition v8 (2026-07-28)
+### Current visual authority — Instrument Edition v8 + Today Screen One (2026-07-28)
 
 The approved source is **Khonsera Design System 9**, implemented in
 `src/app/khonsera-instrument-tokens.css` and the final application layer
 `src/app/khonsera-instrument.css`. These load after the historical edition CSS and therefore define
-the effective UI. Keep the existing data/action contracts; evolve presentation through this layer.
+the effective UI. **The uploaded Screen One reference is the newer, route-specific authority for
+`/today`**, implemented last in `src/app/khonsera-screen-one.css`. Keep the existing data/action
+contracts; evolve presentation through these final layers.
 
 - Neutral stone ground, flat white cards, cool high-contrast ink, hairline structure and quiet
   single-direction elevation.
-- Signal green is the interaction accent. Rail orange is line identity only.
+- Signal green remains the general interaction accent. On `/today`, Screen One intentionally uses
+  rail orange for the brand dot, live markers and single primary actions; the selectors are scoped
+  to the Today composition and must not recolour other product surfaces.
 - Satoshi carries display/UI/body; JetBrains Mono carries time, codes, eyebrows and technical
   status. No serif or literary italic.
 - Identity is the uppercase Satoshi wordmark plus one signal-green dot. The moon/pictorial emblem,
   paper grain, letterpress and deboss effects are retired from app chrome.
 - Mobile is one calm chronological column with 44px minimum targets and persistent app/tab bars.
-  Desktop uses the 248px rail, a bounded primary day column, and a sticky context/tool column.
-- `/today` orders conditions → live day/spine → map/documents/tools on mobile and becomes a
-  primary-plus-context command desk at 1360px. `/plan/[id]` uses the same primary/context split.
+  `/today` remains one bounded 760px column at every width; other desktop application surfaces use
+  the Instrument shell rules.
+- `/today` orders compact context → next move → six-hour conditions → itinerary → wallet/planning
+  exits. The former route map is retired from Today: `View best route` opens route detail and the
+  interactive journey map remains on `/plan/[id]`.
 - Historical spine selectors are not safe on the instrument surfaces:
   `TodaySpine` must not regain `.cc-spine-v7`, whose legacy 42px grid column collapses populated
   cards. Instrument node placement is guarded by `.khonsera-app .cc-spine .cc-node`; Plan groups a
@@ -52,12 +58,20 @@ the effective UI. Keep the existing data/action contracts; evolve presentation t
   arrival milestones; do not repeat adjacent station anchors that describe the same points. Keep
   genuine changeovers as compact transfer rows. Docked rail passes use the compact semantic
   `cc-pass-*` structure, preserving route, times and status while hiding secondary fields.
+  Today passes additionally use the `today`/`.cc-pass--today` operational face.
 - Inline **Add here** affordances belong after real commitment anchors, not between the departure,
   changeover and arrival records of a transport run. Today has one page header only: date eyebrow,
   day purpose, and origin; do not reintroduce a second title block inside the primary column.
 - Mobile `/plan/[id]` keeps the route map and bookings visible, but groups budget, sharing,
   constraints and intake behind **Day tools**. On desktop that body is always visible. `/today`
-  offers a focused add/open-planner handoff rather than duplicating the full intake toolkit.
+  offers one contextual `Plan something` action rather than duplicating the full intake toolkit.
+- The Screen One “Keep N-min margin” switch persists
+  `travel_profiles.default_arrival_buffer_minutes` through the existing `updateTravelProfile`
+  action. It changes Today station leave-by calculations; it is not a decorative toggle.
+- `src/app/__design/today/page.tsx` is the sample-data responsive harness for Screen One. It renders
+  the real `LiveDay`, active `TodaySpine` alias and `LivePass`, disables only the end-bookend lookup,
+  and returns 404 when `VERCEL_ENV=production`. Use its preview deployment for the required 390px /
+  1440px overflow check without exposing a user itinerary.
 - The uploaded source has a duplicated light selector that accidentally repeats night accent values;
   the imported `khonsera-instrument-tokens.css` removes that duplicate and keeps the earlier
   canonical light signal-green tokens.

@@ -56,7 +56,7 @@ function compactDuration(minutes: number): string {
 function NextActionIcon({
   name,
 }: {
-  name: "arrow" | "share" | "reroute" | "ticket";
+  name: "arrow" | "share" | "reroute" | "ticket" | "walk" | "flag" | "clock";
 }) {
   const path = {
     arrow: "M5 12h14m-5-5 5 5-5 5",
@@ -66,6 +66,9 @@ function NextActionIcon({
       "M16 3h5v5M4 20l6.5-6.5a4 4 0 0 1 5.7 0L21 18M21 3l-6.5 6.5M4 4l5 5",
     ticket:
       "M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm9-2v14",
+    walk: "M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM8.5 10l2.2-2.2 2.8 1.7 2.4 2.5M10.7 7.8 9.5 13l-3.2 3.1M12.2 12.2l2.2 3.2.8 4.1M9.5 13l2.7 2.5-2.1 4",
+    flag: "M5 21V4m0 1h10l-1.5 3L15 11H5",
+    clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v5l3 2",
   }[name];
 
   return (
@@ -383,10 +386,15 @@ export function LiveDay({
         isArrived || isScheduledOutcome ? "comfortable" : urgencyOf(feas)
       }
     >
-      <span className="cc-at-status">
-        <span className="cc-at-dot" />
-        {status}
-      </span>
+      <div className="cc-next-move-head">
+        <span className="cc-at-status">
+          <span className="cc-at-dot" />
+          {status}
+        </span>
+        <span className="cc-next-priority">
+          {isPreparing ? "Priority" : "Live"}
+        </span>
+      </div>
 
       <div className="pg cc-setoff-sheet">
         <div className="cc-setoff-eyb">
@@ -437,11 +445,20 @@ export function LiveDay({
         {isPreparing ? (
           <div className="cc-next-facts">
             <span>
+              <NextActionIcon name="walk" />
               {feas.travelMinutes} min {mode === "drive" ? "by car" : mode}
             </span>
-            {arrivalLabel ? <span>Arrive by {arrivalLabel}</span> : null}
+            {arrivalLabel ? (
+              <span>
+                <NextActionIcon name="flag" />
+                Arrive by {arrivalLabel}
+              </span>
+            ) : null}
             {feas.bufferMinutes > 0 ? (
-              <span>{feas.bufferMinutes} min early</span>
+              <span>
+                <NextActionIcon name="clock" />
+                {feas.bufferMinutes} min early
+              </span>
             ) : null}
           </div>
         ) : null}
@@ -473,7 +490,7 @@ export function LiveDay({
           className="cc-next-action cc-next-action--primary"
           onClick={() => router.push("/navigate")}
         >
-          <span>View best route</span>
+          <span className="cc-next-action-label">View best route</span>
           <NextActionIcon name="arrow" />
         </button>
         <button
@@ -482,7 +499,7 @@ export function LiveDay({
           onClick={() => void shareTrip()}
         >
           <NextActionIcon name="share" />
-          <span>Share trip</span>
+          <span className="cc-next-action-label">Share trip</span>
         </button>
         <button
           type="button"
@@ -494,7 +511,7 @@ export function LiveDay({
           }}
         >
           <NextActionIcon name="reroute" />
-          <span>Re-route</span>
+          <span className="cc-next-action-label">Re-route</span>
         </button>
         <button
           type="button"
@@ -502,7 +519,7 @@ export function LiveDay({
           onClick={() => router.push("/wallet")}
         >
           <NextActionIcon name="ticket" />
-          <span>Tickets</span>
+          <span className="cc-next-action-label">Tickets</span>
         </button>
       </div>
 
