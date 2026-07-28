@@ -20,29 +20,54 @@ describe("pickNextIndex", () => {
 });
 
 describe("computeDayState — leave-by + bands", () => {
-  it("back-calculates leave-by from arrive-by − travel − station buffer", () => {
-    // next = Luton 10:00, planned 16 min + 8 buffer → leave by 09:36.
+  it("back-calculates leave-by from arrive-by − travel − the default 15-minute rail buffer", () => {
+    // next = Luton 10:00, planned 16 min + 15 buffer → leave by 09:29.
     const s = computeDayState({ anchors, nowMs: T("09:00") });
     expect(s.nextIndex).toBe(0);
     expect(s.feasibility?.source).toBe("planned");
-    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T09:36:00.000Z");
-    expect(s.feasibility?.slackMin).toBe(36);
+    expect(s.feasibility?.bufferMinutes).toBe(15);
+    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T09:29:00.000Z");
+    expect(s.feasibility?.slackMin).toBe(29);
     expect(s.feasibility?.band).toBe("comfortable");
     expect(s.phase).toBe("readiness");
   });
 
+  it("calculates the real Wellingborough office-day leave-by", () => {
+    const officeDay: EngineAnchor[] = [
+      {
+        id: "wellingborough-departure",
+        startMs: T("07:25"),
+        endMs: T("07:25"),
+        plannedTravelMinutes: 47,
+        isStation: true,
+      },
+    ];
+
+    const s = computeDayState({ anchors: officeDay, nowMs: T("05:30") });
+    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T06:23:00.000Z");
+  });
+
+  it("honours a user-specific buffer on an individual boundary", () => {
+    const custom: EngineAnchor[] = [
+      { id: "train", startMs: T("10:00"), endMs: T("10:00"), plannedTravelMinutes: 20, isStation: true, bufferMinutes: 10 },
+    ];
+    const s = computeDayState({ anchors: custom, nowMs: T("09:00") });
+    expect(s.feasibility?.bufferMinutes).toBe(10);
+    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T09:30:00.000Z");
+  });
+
   it("prefers the live route time over the plan when given", () => {
-    // 6-min live walk overrides the 16-min plan → leave by 09:46.
+    // 6-min live walk overrides the 16-min plan → leave by 09:39.
     const s = computeDayState({ anchors, nowMs: T("09:00"), liveTravelSeconds: 6 * 60 });
     expect(s.feasibility?.source).toBe("live");
-    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T09:46:00.000Z");
+    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T09:39:00.000Z");
   });
 
   it("walks through the bands as the window closes", () => {
-    // leave-by 09:36. heads_up inside 20 min, leave_now at/after it, cliff once buffer gone.
+    // leave-by 09:29. heads_up inside 20 min, leave_now at/after it, cliff once buffer gone.
     expect(computeDayState({ anchors, nowMs: T("09:20") }).feasibility?.band).toBe("heads_up");
-    expect(computeDayState({ anchors, nowMs: T("09:36") }).feasibility?.band).toBe("leave_now");
-    // buffer (8) erodes after leave-by; gone by 09:44 → cliff.
+    expect(computeDayState({ anchors, nowMs: T("09:29") }).feasibility?.band).toBe("leave_now");
+    // buffer (15) erodes after leave-by; gone by 09:44 → cliff.
     expect(computeDayState({ anchors, nowMs: T("09:45") }).feasibility?.band).toBe("cliff");
   });
 
