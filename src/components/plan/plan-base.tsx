@@ -12,35 +12,33 @@ import {
 } from "@/components/place-picker";
 import { Sheet } from "@/components/ui/sheet";
 
-// The day's BASE — home/office it departs from and returns to (plan elevation
-// 2026-06-15). Without it the door-to-door spine has no origin, so this is the
-// affordance that replaces the retired Brief's base card. Shows the current base,
-// or invites one when unset; picking writes both bookend stops via setPlanBase.
+// Base is header context and a routing endpoint, never a visible plan stop. The
+// optional aliases keep the compact Plan page compatible while richer callers
+// can still provide the picker collections.
 export function PlanBase({
   itineraryId,
   baseLabel,
-  customers,
-  customerSites,
-  locations,
+  label,
+  customers = [],
+  customerSites = [],
+  locations = [],
 }: {
   itineraryId: string;
-  baseLabel: string | null;
-  customers: PlacePickerCustomer[];
-  customerSites: PlacePickerCustomerSite[];
-  locations: PlacePickerLocation[];
+  baseLabel?: string | null;
+  label?: string | null;
+  customers?: PlacePickerCustomer[];
+  customerSites?: PlacePickerCustomerSite[];
+  locations?: PlacePickerLocation[];
 }) {
+  const resolvedBaseLabel = baseLabel ?? label ?? null;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<PlaceSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Optimistic base — shown the instant you confirm, so the sheet closes and the
-  // card reads "From <place>" immediately while the (slow, external) door-to-door
-  // routing finishes behind. Cleared once the refreshed server data arrives (the
-  // baseLabel prop changes), so the real value seamlessly takes over — no flash.
   const [optimistic, setOptimistic] = useState<string | null>(null);
-  useEffect(() => { setOptimistic(null); }, [baseLabel]);
-  const shownBase = optimistic ?? baseLabel;
+  useEffect(() => { setOptimistic(null); }, [resolvedBaseLabel]);
+  const shownBase = optimistic ?? resolvedBaseLabel;
 
   function save() {
     if (!place?.label) {
@@ -53,14 +51,13 @@ export function PlanBase({
       setError("Pick a home, office or saved place as your base.");
       return;
     }
-    const label = place.label;
+    const nextLabel = place.label;
     setError(null);
-    // Close + show the base NOW; the routing/solve runs in the background.
     setOpen(false);
     setPlace(null);
-    setOptimistic(label);
+    setOptimistic(nextLabel);
     startTransition(async () => {
-      const res = await setPlanBase({ itineraryId, locationId, customerSiteId, label });
+      const res = await setPlanBase({ itineraryId, locationId, customerSiteId, label: nextLabel });
       if (!res.ok) {
         setOptimistic(null);
         setError(res.error ?? "Couldn't set the base.");
@@ -85,27 +82,27 @@ export function PlanBase({
 
       {open ? (
         <Sheet titleId="plan-base-sheet-title" descriptionId="plan-base-sheet-description" onClose={() => setOpen(false)}>
-            <header className="cc-sheet-head">
-              <span className="cc-eyebrow">The day&rsquo;s base</span>
-              <h3 id="plan-base-sheet-title" className="cc-sheet-title" tabIndex={-1}>Where do you start &amp; end?</h3>
-            </header>
-            <p id="plan-base-sheet-description" className="cc-sheet-note">Home or the office — Khonsera threads the door-to-door from here, and back.</p>
-            <div className="cc-time-field">
-              <span className="cc-var-label">Base</span>
-              <PlacePicker
-                customers={customers}
-                customerSites={customerSites}
-                locations={locations}
-                value={place}
-                onChange={setPlace}
-                placeholder="Search home/office, or type an address"
-              />
-            </div>
-            {error ? <p className="cc-sheet-error">{error}</p> : null}
-            <div className="cc-sheet-actions">
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
-              <button type="button" className="cc-btn cc-btn-gold" onClick={save}>Set base</button>
-            </div>
+          <header className="cc-sheet-head">
+            <span className="cc-eyebrow">The day&rsquo;s base</span>
+            <h3 id="plan-base-sheet-title" className="cc-sheet-title" tabIndex={-1}>Where do you start &amp; end?</h3>
+          </header>
+          <p id="plan-base-sheet-description" className="cc-sheet-note">Home or the office — Khonsera threads the door-to-door from here, and back.</p>
+          <div className="cc-time-field">
+            <span className="cc-var-label">Base</span>
+            <PlacePicker
+              customers={customers}
+              customerSites={customerSites}
+              locations={locations}
+              value={place}
+              onChange={setPlace}
+              placeholder="Search home/office, or type an address"
+            />
+          </div>
+          {error ? <p className="cc-sheet-error">{error}</p> : null}
+          <div className="cc-sheet-actions">
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn-gold" onClick={save}>Set base</button>
+          </div>
         </Sheet>
       ) : null}
     </>
