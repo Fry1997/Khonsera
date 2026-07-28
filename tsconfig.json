@@ -17,6 +17,10 @@
     "paths": {
       "@/components/plan/flight-finder": ["./src/components/plan/flight-finder-compat.tsx"],
       "@/components/plan/stay-finder": ["./src/components/plan/stay-finder-compat.tsx"],
+      "@/components/plan/plan-spine": ["./src/components/plan/plan-spine-with-bookends.tsx"],
+      "@/components/plan/plan-map": ["./src/components/plan/plan-map-safe.tsx"],
+      "@/components/today/today-spine": ["./src/components/today/today-spine-fixed.tsx"],
+      "@/components/today/live-day": ["./src/components/today/live-day-with-bookends.tsx"],
       "@/*": ["./src/*"]
     }
   },
