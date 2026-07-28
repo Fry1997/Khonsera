@@ -32,6 +32,31 @@ function iso(value: number | null): string | null {
   return value == null ? null : new Date(value).toISOString();
 }
 
+function normalisePlace(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/\b(station|railway|airport)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function previousPassEndsAt(
+  previous: SpineAnchor | null,
+  anchor: SpineAnchor,
+): boolean {
+  const destination = previous?.pass?.ticket.legs[0]?.destination;
+  if (!destination || !anchor.station) return false;
+
+  const destinationCode = destination.code?.trim().toUpperCase();
+  const stationCode = anchor.station.code?.trim().toUpperCase();
+  if (destinationCode && stationCode && destinationCode === stationCode) {
+    return true;
+  }
+
+  return (
+    normalisePlace(destination.place) === normalisePlace(anchor.station.name)
+  );
+}
+
 function movementTimes(anchor: SpineAnchor, previous: SpineAnchor | null): TimedLeg {
   const minutes = anchor.plannedTravelMinutes;
   const targetMs = ms(anchor.arriveByIso);
@@ -113,8 +138,11 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
 
   return (
     <section>
-      <div className="cc-eyebrow" style={{ marginBottom: "var(--space-3)" }}>Your day</div>
-      <div className="cc-spine cc-spine-v7">
+      <div className="cc-spine-heading">
+        <span className="cc-eyebrow">Your itinerary</span>
+        <span>{anchors.length} timed point{anchors.length === 1 ? "" : "s"}</span>
+      </div>
+      <div className="cc-spine">
         <div className="cc-spine-rail" />
         {past.length ? <Toggle label={`${past.length} earlier`} open={showPast} onClick={() => setShowPast((value) => !value)} /> : null}
         {showPast
@@ -124,7 +152,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
           : null}
         <div className="cc-node">
           <div className="cc-node-dot"><span className="cc-dot-now" /></div>
-          <span className="cc-eyebrow" style={{ alignSelf: "center", color: "var(--gold-2)" }}>
+          <span className="cc-now-row">
             Now · {londonClock(new Date(now).toISOString())}
           </span>
         </div>
@@ -179,16 +207,21 @@ function Entry({
   const movement = movementTimes(anchor, previous);
   const isAppointment = anchor.type === "appointment" || anchor.type === "reservation" || anchor.type === "shift";
   const showMovement = anchor.plannedTravelMinutes != null && !!navigateHref(anchor) && state !== "past";
+  const passOwnsStation = !!anchor.pass && anchor.role !== "changeover";
+  const arrivalCoveredByPass =
+    anchor.role === "arrival" && previousPassEndsAt(previous, anchor);
+  const showAnchor = !passOwnsStation && !arrivalCoveredByPass;
+
   return (
     <>
       {showMovement ? <MovementCard anchor={anchor} movement={movement} active={state === "next"} /> : null}
-      {anchor.role === "changeover" ? (
+      {showAnchor && anchor.role === "changeover" ? (
         <ChangeCard anchor={anchor} state={state} />
-      ) : isAppointment ? (
+      ) : showAnchor && isAppointment ? (
         <AppointmentCard anchor={anchor} state={state} />
-      ) : (
+      ) : showAnchor ? (
         <AnchorCard anchor={anchor} state={state} />
-      )}
+      ) : null}
       {anchor.pass ? <PassCard pass={anchor.pass} state={state} onShowTicket={onShowTicket} /> : null}
     </>
   );
@@ -253,12 +286,12 @@ function AnchorCard({ anchor, state }: { anchor: SpineAnchor; state: State }) {
   return (
     <div className="cc-node" data-state={state}>
       <div className="cc-node-dot"><span className="cc-med-anchor" /></div>
-      <div className="pg" style={{ padding: "var(--space-3) var(--space-4)", opacity: state === "past" ? 0.6 : 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <div className="cc-station-card" data-past={state === "past" || undefined}>
+        <div className="cc-station-card-head">
           <span className="cc-eyebrow">{eyebrow}</span>
-          <span className="mono">{londonClock(anchor.arriveByIso)}</span>
+          <span className="mono cc-station-time">{londonClock(anchor.arriveByIso)}</span>
         </div>
-        <strong style={{ display: "block", marginTop: 6 }}>{anchor.title}</strong>
+        <strong className="cc-station-title">{anchor.title}</strong>
       </div>
     </div>
   );
@@ -271,12 +304,15 @@ function ChangeCard({ anchor, state }: { anchor: SpineAnchor; state: State }) {
   return (
     <div className="cc-node" data-state={state}>
       <div className="cc-node-dot"><span className="cc-med-change" /></div>
-      <div className="pg" style={{ padding: "var(--space-3) var(--space-4)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <strong>Change at {anchor.station?.name ?? anchor.title}</strong>
+      <div className="cc-transfer" data-past={state === "past" || undefined}>
+        <div className="cc-transfer-head">
+          <span>
+            <span className="cc-eyebrow">Change</span>
+            <strong>{anchor.station?.name ?? anchor.title}</strong>
+          </span>
           {minutes != null ? <span className="mono engr">{minutes}m</span> : null}
         </div>
-        <p style={{ margin: "8px 0 0", color: "var(--ink-dim)" }}>
+        <p className="cc-transfer-time">
           {londonClock(anchor.arriveByIso)} arrival · {londonClock(anchor.endIso)} onward
         </p>
       </div>
@@ -294,7 +330,7 @@ function PassCard({
   onShowTicket: (ticket: TicketVM) => void;
 }) {
   return (
-    <div className="cc-node" data-state={state} style={{ opacity: state === "past" ? 0.6 : 1 }}>
+    <div className="cc-node" data-state={state} data-past={state === "past" || undefined}>
       <div className="cc-node-dot"><span className="cc-med-pass" /></div>
       <LivePass ticket={pass.ticket} crs={pass.crs} time={pass.time} dest={pass.dest} docked onShow={onShowTicket} />
     </div>

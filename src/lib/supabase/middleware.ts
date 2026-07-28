@@ -15,13 +15,20 @@ const PUBLIC_PATHS = [
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const path = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some(
+    (publicPath) =>
+      path === publicPath || path.startsWith(`${publicPath}/`),
+  );
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
+    if (isPublic) return response;
+
     // Surface a clear message in the response body instead of crashing the
-    // middleware. Production: set NEXT_PUBLIC_SUPABASE_URL +
-    // NEXT_PUBLIC_SUPABASE_ANON_KEY in the Vercel project settings.
+    // middleware. Explicitly public routes remain available, while protected
+    // application routes fail closed until the deployment is configured.
     return new NextResponse(
       "Supabase env vars missing on this deployment (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).",
       { status: 500 },
@@ -50,11 +57,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some(
-    (p) => path === p || path.startsWith(`${p}/`),
-  );
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

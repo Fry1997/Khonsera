@@ -1,37 +1,31 @@
 # Itinerary Pages — Design & Technical Reference
 
-Last updated: 2026-06-27
+Last updated: 2026-07-28
 
 ---
 
 ## `/plan/[id]` — the full-day planner composition (current canonical surface)
 
-> The "Two-Page Model" below is legacy context. `/plan/[id]` is now the single
-> canonical itinerary surface AND intake (see CLAUDE.md). As of 2026-06-27 its
-> presentation matches the approved full-day planner design
-> (`docs/design-system/handoff-planner-full-day/planner-full-day.html`), reusing
-> the sections already built for `/today`.
+> The "Two-Page Model" below is legacy context. `/plan/[id]` is the single
+> canonical itinerary surface and intake. As of 2026-07-28 its presentation
+> follows Instrument Edition v8 from Khonsera Design System 9.
 
-Composition order (top to bottom) in `src/app/(app)/plan/[id]/page.tsx`:
+Responsive composition in `src/app/(app)/plan/[id]/page.tsx`:
 
-1. **TopBar** (`.cc-plan-topbar`) — the `← Plan` back button. A detail page keeps
-   the back affordance (founder ruling). **No** global work/personal toggle
-   (retired); work is a per-item tag flipped per-anchor in the spine
-   (`setStopMode` via `AnchorCard.onFlipMode`).
+1. **Primary day column** (`.cc-plan-primary`) — the operational sequence. On
+   mobile it is the first column; at 1360px it becomes a bounded 780px working
+   column.
 2. **DayHeader** (`.cc-day-header`, shared with `/today`) — mono date eyebrow →
    the day's PURPOSE as the H1 (the inline `PlanTitleEditor`, lifted to
    `.cc-day-purpose` weight; unnamed days show the derived primary-appointment
    title but the editor still writes the JOURNEY title) → `From {base}` origin
    (editable `PlanBase`) → "THE POINT OF THE DAY" note (editable `PlanIntention`,
-   rendered as the upright Satoshi-light `.cc-standfirst` — **NO serif, NO
-   italic**; legacy serif/italic overridden in `khonsera-edition-iii-live.css`).
-3. **SetOffHero** (`.cc-setoff` sheet, shared with `/today`'s live hero) — the
-   solved leave-by as the giant debossed mono figure. Static here (from the
-   decision-clock `leaveByIso`), reactive on `/today`.
-4. **RouteMap** (`.cc-today-map` → `PlanMap`) — the door-to-door JourneyMap.
-5. **The measured spine** — `PlanSpine` (the **editable** canonical spine), which
+   rendered as upright Satoshi light — no serif or literary italic).
+3. **Decision clock** (`.cc-decision-clock`) — the solved leave-by in a crisp
+   white instrument card. It uses a mono tabular figure with no deboss.
+4. **The measured spine** — `PlanSpine` (the **editable** canonical spine), which
    already renders the refined cards: `AnchorCard` (three-variable editor),
-   `LegCard` — restyled to the design's WalkCard (the `.cc-walk*` paper): a mode
+   `LegCard` — restyled to the design's WalkCard: a mode
    chip · a DOOR-TO-DOOR eyebrow over the `{mins} min` headline · a charcoal
    **Navigate** pill (deep-links `/navigate?dlat=&dlng=&dname=` to the leg's
    destination, from `LegVM.navHref`) · a dashed `{depart} → {arrive}` window with
@@ -40,12 +34,52 @@ Composition order (top to bottom) in `src/app/(app)/plan/[id]/page.tsx`:
    →** button (still opens the compare sheet via `onCompare`), inline
    `LivePass` rail tickets, `GapCard`, accommodation, notes, recovery, TfL, live
    alerts. Editing is fully preserved — the recomposition is page-level only.
-6. **TripTools** (`.cc-plan-tools`) — BOOKINGS · BUDGET · SHARING · PREP ·
-   CONSTRAINTS, plus a **BUILD THE DAY** group (`.cc-build-day`, shared with
-   `/today`) folding in the add/import/finder toolkit: `PlanImport` (Scan email),
-   `PlanAdd` (Add a fact), `PlanCalendarImport` (From calendar), `FlightFinder`,
-   `StayFinder`. On an empty day the BUILD THE DAY group renders standalone so a
-   blank plan is still fillable.
+5. **Primary support** — the editable intention lives in the day header;
+   contextual nudges and readiness remain with the day because they change how
+   the sequence runs.
+6. **Context column** (`.cc-plan-context`) — the real route map, bookings,
+   budget, sharing, constraints and the full add/import/finder toolkit. It
+   follows the primary column on mobile, where secondary controls are grouped
+   behind the **Day tools** disclosure instead of forming an unbounded page.
+   At 1360px it becomes a sticky, independently scrollable operations column;
+   the disclosure opens into a visible desktop tool stack.
+
+The equivalent `/today` composition is conditions → live day/spine →
+map/documents/plan handoff on mobile. Detailed imports and booking finders live
+in `/plan/[id]`, keeping Today focused on the next live decision. At 1360px it
+becomes a two-column command desk: the day stays primary while forecast and
+contextual tools occupy the right column. Mobile touch targets are at least
+44px and both layouts keep the same action contracts.
+
+The instrument spine is deliberately isolated from the historical
+`.cc-spine-v7` two-column rail contract. `TodaySpine` renders only `.cc-spine`;
+the instrument layer owns node placement, while `PlanSpine` groups each stop
+and its related controls in `.cc-spine-entry`. This prevents populated cards
+from being placed into the legacy 42px marker column.
+
+Runtime imports are redirected in `tsconfig.json`: Today resolves to
+`today-spine-fixed.tsx` (the bookend-aware implementation), while Plan resolves
+to `plan-spine-with-bookends.tsx`, which wraps the relative core
+`plan-spine.tsx`. Layout changes must reach those active paths; editing only a
+similarly named inactive implementation will not affect the deployed page.
+
+The populated-state layout contract extends through every inner surface:
+`.cc-spine`, `.cc-spine-entry`, `.cc-node`, `.cc-node-content`, and the direct
+card/pass children all resolve to the available inline size with `min-width: 0`
+and consistent border-box sizing. Responsive acceptance must use the real
+Today/Plan spine and pass components with a multi-leg rail itinerary at 390px
+and 1440px; checking only the outer node or an empty-state harness is
+insufficient.
+
+On Today, each rail pass owns its departure and arrival milestones. Adjacent
+station anchors that merely repeat those endpoints are suppressed, while real
+changeovers remain as compact transfer rows. A pass docked in either spine uses
+the compact `cc-pass-*` presentation: route, departure/arrival times and live
+status stay visible; performance and secondary platform/gate/seat fields yield
+to the chronological scan. Plan shows inline **Add here** only after genuine
+commitment anchors, never inside a transport run. Today uses a single page
+header (date → purpose → origin), with the editable point-of-day note beginning
+the primary column.
 
 `PlanAdd` (`src/components/plan/plan-add.tsx`) offers bespoke per-type forms so
 each thing has only its natural fields (the "could my Dad use it?" bar):
@@ -58,7 +92,9 @@ metadata; Transport lands as a first-class run via `addBookingRun`. "Who" reuses
 `src/components/plan/contact-picker.tsx` (debounced `searchContacts` + inline
 `createContactQuick`).
 
-Gold is `var(--gold)`/`var(--gold-2)` punctuation only; all colour is token-based.
+Signal green resolves through the compatibility names
+`var(--gold)`/`var(--gold-2)`; all colour is token-based. Rail orange is reserved
+for route and line identity.
 
 ---
 
@@ -66,8 +102,8 @@ Gold is `var(--gold)`/`var(--gold-2)` punctuation only; all colour is token-base
 
 Khonsera's itinerary system is split into two pages that share a single rendering pipeline:
 
-1. **Brief** (`/itineraries/new`) — where the user *builds* a day
-2. **Planning** (`/itineraries/[id]`) — where the user *refines and executes* that day
+1. **Brief** (`/itineraries/new`) — where the user _builds_ a day
+2. **Planning** (`/itineraries/[id]`) — where the user _refines and executes_ that day
 
 They are not "create" and "edit". They are "intent" and "reality". The brief captures what the executive wants to happen. Planning turns that into a workable schedule with real travel times, feasibility checks, and a map.
 
@@ -84,6 +120,7 @@ Both pages render through the same shared `<Timeline>` component (`src/component
 ### What it is
 
 A single-scroll form where the user declares:
+
 - Where they're starting from (home/office)
 - What trains/flights they've booked (or imports them from Gmail)
 - What appointments, meals, or events they have
@@ -136,6 +173,7 @@ Day summary (travel time, cost)
 ### How it submits
 
 `createItineraryFromBrief` (in `src/lib/actions/itineraries.ts`):
+
 1. Creates the itinerary row
 2. Inserts all stops chronologically (home first, be-home-by last)
 3. Creates transitions between all adjacent stop pairs
@@ -154,6 +192,7 @@ Day summary (travel time, cost)
 ### What it is
 
 A two-column layout:
+
 - **Left:** the timeline (same shared `<Timeline>` component) with inline editing
 - **Right:** a map + day digest sidebar
 
@@ -225,27 +264,27 @@ A polymorphic renderer that accepts `TimelineEntry[]` and renders each entry usi
 
 ### Entry kinds
 
-| Kind | Renders | Components used |
-|------|---------|----------------|
-| `home` | Leave-by time hint | Inline JSX |
-| `transport` | Ticket cards for a booked journey | `TrainTicketCard` |
-| `anchor` | Stop card (expanded/summary) + maximize panel | `AnchorCard` |
-| `hotel` | Hotel constraint card | Inline JSX |
-| `stopover` | Drop-in stop between anchors | `StopoverCard` |
-| `gap-transition` | Mode picker between user stops | `TransitionRow` |
-| `gap-mode` | Walk/drive/taxi picker (station connections) | `GapModePicker` |
-| `context-gap` | "You're in X for Y" prompt | Inline JSX |
-| `free-time` | "Z free before your train" hint | Inline JSX |
-| `day-break` | Day header when date changes | Inline JSX |
-| `home-return` | "~17:07 Home" arrival line | Inline JSX |
-| `add-stop` | Button to insert a stop | Inline JSX |
-| `inline-adds` | Planning's add affordances | Inline JSX |
+| Kind             | Renders                                       | Components used   |
+| ---------------- | --------------------------------------------- | ----------------- |
+| `home`           | Leave-by time hint                            | Inline JSX        |
+| `transport`      | Ticket cards for a booked journey             | `TrainTicketCard` |
+| `anchor`         | Stop card (expanded/summary) + maximize panel | `AnchorCard`      |
+| `hotel`          | Hotel constraint card                         | Inline JSX        |
+| `stopover`       | Drop-in stop between anchors                  | `StopoverCard`    |
+| `gap-transition` | Mode picker between user stops                | `TransitionRow`   |
+| `gap-mode`       | Walk/drive/taxi picker (station connections)  | `GapModePicker`   |
+| `context-gap`    | "You're in X for Y" prompt                    | Inline JSX        |
+| `free-time`      | "Z free before your train" hint               | Inline JSX        |
+| `day-break`      | Day header when date changes                  | Inline JSX        |
+| `home-return`    | "~17:07 Home" arrival line                    | Inline JSX        |
+| `add-stop`       | Button to insert a stop                       | Inline JSX        |
+| `inline-adds`    | Planning's add affordances                    | Inline JSX        |
 
 ### Builder functions
 
-| Function | File | Input | Output |
-|----------|------|-------|--------|
-| `buildBriefTimeline` | `build-brief-timeline.ts` | Client state (anchors, bookings, gap modes, callbacks) | `TimelineEntry[]` |
+| Function                | File                         | Input                                                   | Output            |
+| ----------------------- | ---------------------------- | ------------------------------------------------------- | ----------------- |
+| `buildBriefTimeline`    | `build-brief-timeline.ts`    | Client state (anchors, bookings, gap modes, callbacks)  | `TimelineEntry[]` |
 | `buildPlanningTimeline` | `build-planning-timeline.ts` | DB data (stops, transitions, route previews, callbacks) | `TimelineEntry[]` |
 
 Callbacks are closed over by the builder — the Timeline component receives entries with handlers already wired up.
@@ -256,6 +295,7 @@ Callbacks are closed over by the builder — the Timeline component receives ent
 
 **Entry point:** "Scan for tickets" button on the brief page  
 **Files:**
+
 - `src/lib/actions/gmail.ts` — scan action, search query, email fetching
 - `src/lib/gmail/parsers.ts` — email body/PDF parsing
 - `src/lib/gmail/types.ts` — `ParsedBooking` type
@@ -270,6 +310,7 @@ Callbacks are closed over by the builder — the Timeline component receives ent
 ### Search strategy (three paths)
 
 The Gmail search query uses three progressively broader paths:
+
 1. `from:trainline OR from:lner...` — known senders
 2. Subject keywords + provider in body — catches forwarded emails
 3. Provider name anywhere — broadest fallback
@@ -293,6 +334,7 @@ Email → Marketing filter (skip by subject keywords)
 ### Trainline-specific parsing
 
 Two emails per booking:
+
 - **eticket email** (richer): station codes, ticket refs, PDF attachments with times/barcode
 - **booking confirmation**: departure times in subject
 
@@ -301,6 +343,7 @@ PDF parsing uses `unpdf` (pure JS — no native modules that crash Vercel). Barc
 ### Caching
 
 Every scanned email is persisted in `gmail_scanned_emails` with:
+
 - Sender, subject, parsed data, `parse_failed` flag
 - Already-scanned messages are NOT re-fetched (saves API calls)
 - EXCEPT `parse_failed=true` — these ARE retried so parser improvements take effect
@@ -311,15 +354,19 @@ Every scanned email is persisted in `gmail_scanned_emails` with:
 ## Design Principles (cross-cutting)
 
 ### One Toolkit, Two Views
+
 Both pages share the same edit capabilities via the shared Timeline. Planning adds map/feasibility on top but never withholds a feature the brief offers.
 
 ### Bookings Are Facts, Stops Are Events
+
 Transport bookings create departure/arrival stops. Accommodation bookings are constraints (check-in-from, check-out-by), not fixed journey points.
 
 ### No Emojis
+
 The app never uses emojis anywhere.
 
 ### Terminology
+
 - **Anchor** — a user-placed stop with a fixed time (appointment, meal, event, hotel check-in)
 - **Stopover** — a lightweight drop-in between two anchors (no fixed time, just duration)
 - **Transition** — travel between two stops (mode + optional booking)
@@ -331,37 +378,37 @@ The app never uses emojis anywhere.
 
 ## File Map
 
-| Area | File | Role |
-|------|------|------|
-| Brief page | `src/app/(app)/itineraries/new/page.tsx` | Server component, data loading |
-| Brief page | `src/app/(app)/itineraries/new/new-itinerary-form.tsx` | Client form, state, Timeline wiring |
-| Planning page | `src/app/(app)/itineraries/[id]/page.tsx` | Server component, data loading |
-| Planning page | `src/app/(app)/itineraries/[id]/itinerary-editor.tsx` | Client editor, state, Timeline wiring |
-| Shared renderer | `src/components/itinerary/timeline.tsx` | The unified Timeline component |
-| Brief builder | `src/components/itinerary/build-brief-timeline.ts` | Brief state → TimelineEntry[] |
-| Planning builder | `src/components/itinerary/build-planning-timeline.ts` | DB data → TimelineEntry[] |
-| Types | `src/components/itinerary/types.ts` | Domain types + TimelineEntry union |
-| Helpers | `src/components/itinerary/helpers.ts` | Constants, factories, formatting |
-| Anchor card | `src/components/itinerary/anchor-card.tsx` | Expandable stop card |
-| Stopover card | `src/components/itinerary/stopover-card.tsx` | Lightweight drop-in card |
-| Transition row | `src/components/itinerary/transition-row.tsx` | Mode picker between stops |
-| Gap picker | `src/components/gap-mode-picker.tsx` | Walk/drive/taxi station connection |
-| Ticket card | `src/components/train-ticket-card.tsx` | Train ticket rendering |
-| Spine | `src/components/itinerary/journey-spine.tsx` | Brief right-column preview |
-| Transport booking | `src/components/itinerary/transport-booking-card.tsx` | Booking form card |
-| Accommodation | `src/components/itinerary/accommodation-booking-card.tsx` | Hotel booking form |
-| DB converters | `src/components/itinerary/from-db.ts` | Stop rows → Anchor/Stopover shapes |
-| Gmail scan | `src/lib/actions/gmail.ts` | Search + fetch + cache |
-| Gmail parsers | `src/lib/gmail/parsers.ts` | Email → ParsedBooking |
-| Server actions | `src/lib/actions/itineraries.ts` | createItineraryFromBrief, solver |
-| Feasibility | `src/lib/feasibility/check.ts` | Leg feasibility computation |
-| Hub search | `src/lib/actions/travel-profile.ts` | Station/airport autocomplete |
-| Journey map | `src/components/journey-map/` | MapLibre-based interactive map |
-| Journey map entry | `src/components/journey-map/index.tsx` | Public exports |
-| Journey map core | `src/components/journey-map/journey-map.tsx` | Main component (use client, MapLibre) |
-| Map themes | `src/components/journey-map/themes/` | dusk, midnight, sahara theme objects |
-| Map style builder | `src/components/journey-map/map-style/build-map-style.ts` | Theme to MapLibre style JSON (Protomaps tiles) |
-| Map overlay | `src/components/journey-map/overlay/` | SVG journey-overlay, leg-path, station-marker |
-| Map hooks | `src/components/journey-map/hooks/use-map-projection.ts` | project(lngLat) from MapLibre camera |
-| Map utils | `src/components/journey-map/utils/` | decode-polyline, compute-bounds |
-| Route map (legacy) | `src/components/route-map.tsx` | Google Static Maps fallback |
+| Area               | File                                                      | Role                                           |
+| ------------------ | --------------------------------------------------------- | ---------------------------------------------- |
+| Brief page         | `src/app/(app)/itineraries/new/page.tsx`                  | Server component, data loading                 |
+| Brief page         | `src/app/(app)/itineraries/new/new-itinerary-form.tsx`    | Client form, state, Timeline wiring            |
+| Planning page      | `src/app/(app)/itineraries/[id]/page.tsx`                 | Server component, data loading                 |
+| Planning page      | `src/app/(app)/itineraries/[id]/itinerary-editor.tsx`     | Client editor, state, Timeline wiring          |
+| Shared renderer    | `src/components/itinerary/timeline.tsx`                   | The unified Timeline component                 |
+| Brief builder      | `src/components/itinerary/build-brief-timeline.ts`        | Brief state → TimelineEntry[]                  |
+| Planning builder   | `src/components/itinerary/build-planning-timeline.ts`     | DB data → TimelineEntry[]                      |
+| Types              | `src/components/itinerary/types.ts`                       | Domain types + TimelineEntry union             |
+| Helpers            | `src/components/itinerary/helpers.ts`                     | Constants, factories, formatting               |
+| Anchor card        | `src/components/itinerary/anchor-card.tsx`                | Expandable stop card                           |
+| Stopover card      | `src/components/itinerary/stopover-card.tsx`              | Lightweight drop-in card                       |
+| Transition row     | `src/components/itinerary/transition-row.tsx`             | Mode picker between stops                      |
+| Gap picker         | `src/components/gap-mode-picker.tsx`                      | Walk/drive/taxi station connection             |
+| Ticket card        | `src/components/train-ticket-card.tsx`                    | Train ticket rendering                         |
+| Spine              | `src/components/itinerary/journey-spine.tsx`              | Brief right-column preview                     |
+| Transport booking  | `src/components/itinerary/transport-booking-card.tsx`     | Booking form card                              |
+| Accommodation      | `src/components/itinerary/accommodation-booking-card.tsx` | Hotel booking form                             |
+| DB converters      | `src/components/itinerary/from-db.ts`                     | Stop rows → Anchor/Stopover shapes             |
+| Gmail scan         | `src/lib/actions/gmail.ts`                                | Search + fetch + cache                         |
+| Gmail parsers      | `src/lib/gmail/parsers.ts`                                | Email → ParsedBooking                          |
+| Server actions     | `src/lib/actions/itineraries.ts`                          | createItineraryFromBrief, solver               |
+| Feasibility        | `src/lib/feasibility/check.ts`                            | Leg feasibility computation                    |
+| Hub search         | `src/lib/actions/travel-profile.ts`                       | Station/airport autocomplete                   |
+| Journey map        | `src/components/journey-map/`                             | MapLibre-based interactive map                 |
+| Journey map entry  | `src/components/journey-map/index.tsx`                    | Public exports                                 |
+| Journey map core   | `src/components/journey-map/journey-map.tsx`              | Main component (use client, MapLibre)          |
+| Map themes         | `src/components/journey-map/themes/`                      | dusk, midnight, sahara theme objects           |
+| Map style builder  | `src/components/journey-map/map-style/build-map-style.ts` | Theme to MapLibre style JSON (Protomaps tiles) |
+| Map overlay        | `src/components/journey-map/overlay/`                     | SVG journey-overlay, leg-path, station-marker  |
+| Map hooks          | `src/components/journey-map/hooks/use-map-projection.ts`  | project(lngLat) from MapLibre camera           |
+| Map utils          | `src/components/journey-map/utils/`                       | decode-polyline, compute-bounds                |
+| Route map (legacy) | `src/components/route-map.tsx`                            | Google Static Maps fallback                    |
