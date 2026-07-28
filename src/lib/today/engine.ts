@@ -19,20 +19,24 @@ export type FeasBand = "comfortable" | "heads_up" | "leave_now" | "cliff";
 // onto this; the engine stays free of UI types.
 export interface EngineAnchor {
   id: string;
-  startMs: number | null; // arrive-by
+  startMs: number | null; // arrive-by / start
   endMs: number | null; // leave / end (defaults to startMs)
   plannedTravelMinutes: number | null; // planned travel INTO this anchor (fallback for leave-by)
   isStation?: boolean; // station boarding buffer vs a readiness buffer
-  bufferMinutes?: number | null; // user/booking-specific override for this boundary
+  bufferMinutes?: number | null; // user/booking-specific preferred margin for this boundary
+  notBeforeMs?: number | null; // a preceding fixed span may prohibit leaving before this time
+  isBlockingSpan?: boolean; // a shift/fixed span that remains current until its end
 }
 
 export interface Feasibility {
   leaveByMs: number;
   slackMin: number; // minutes until you must leave (negative = overdue)
-  bufferLeftMin: number; // buffer remaining if you left now (erodes past leave-by)
+  bufferLeftMin: number; // real margin remaining if you left now
   band: FeasBand;
   travelMinutes: number;
-  bufferMinutes: number;
+  bufferMinutes: number; // real margin at the constrained leave time
+  preferredBufferMinutes: number;
+  constrainedByPrevious: boolean;
   source: "live" | "planned"; // live route from your position, or the plan's estimate
 }
 
@@ -66,16 +70,26 @@ function endOf(a: EngineAnchor): number | null {
 // (Proper arrival-by-dwell / the skip fork supersede this heuristic later.)
 export const LATE_GRACE_MIN = 60;
 
-// The next obligation: the earliest fixed point not yet behind us. Conservative
-// by design — position-based skip/arrival reconciliation is a separate, careful
-// concern (the forks); here we keep an obligation as next until well past its
-// time (you may still be heading there, late), never silently dropping it.
+// The next obligation: the earliest fixed point not yet behind us. A blocking
+// fixed span (for example a 09:00–17:00 shift) is current context, not somewhere
+// the traveller still needs to get to once it has started. While that span is
+// active, the engine advances to the first obligation after it; the following
+// boundary carries notBeforeMs so its leave-by can never move the shift earlier.
 export function pickNextIndex(anchors: EngineAnchor[], nowMs: number): number | null {
-  // Prefer the earliest obligation still ahead of you by time.
   for (let i = 0; i < anchors.length; i++) {
-    const end = endOf(anchors[i]);
+    const anchor = anchors[i];
+    const start = anchor.startMs;
+    const end = endOf(anchor);
+    const activeBlockingSpan =
+      anchor.isBlockingSpan === true &&
+      start != null &&
+      end != null &&
+      start <= nowMs &&
+      nowMs < end;
+    if (activeBlockingSpan) continue;
     if (end != null && end >= nowMs) return i;
   }
+
   // Nothing ahead — but you may be running late to the most recent one (within
   // the grace), so keep it in front rather than calling the day done.
   const grace = LATE_GRACE_MIN * 60_000;
@@ -86,10 +100,10 @@ export function pickNextIndex(anchors: EngineAnchor[], nowMs: number): number | 
   return null;
 }
 
-export function bandFor(slackMin: number, bufferLeftMin: number): FeasBand {
-  if (bufferLeftMin <= 0) return "cliff";
+export function bandFor(slackMin: number, bufferLeftMin: number, preferredBufferMinutes = 0): FeasBand {
+  if (bufferLeftMin < 0) return "cliff";
   if (slackMin <= 0) return "leave_now";
-  if (slackMin <= 20) return "heads_up";
+  if (bufferLeftMin < preferredBufferMinutes || slackMin <= 20) return "heads_up";
   return "comfortable";
 }
 
@@ -116,11 +130,17 @@ export function computeDayState(input: { anchors: EngineAnchor[]; nowMs: number;
     return { phase: "readiness", nextIndex, feasibility: null, gaps };
   }
 
-  const buffer = bufferFor(next);
-  const leaveByMs = arriveByMs - (travelMin + buffer) * 60_000;
+  const preferredBuffer = bufferFor(next);
+  const preferredLeaveByMs = arriveByMs - (travelMin + preferredBuffer) * 60_000;
+  const notBeforeMs = next.notBeforeMs ?? Number.NEGATIVE_INFINITY;
+  const leaveByMs = Math.max(preferredLeaveByMs, notBeforeMs);
+  const constrainedByPrevious = leaveByMs > preferredLeaveByMs;
+
   const slackMin = Math.round((leaveByMs - nowMs) / 60_000);
-  const bufferLeftMin = slackMin + buffer;
-  const band = bandFor(slackMin, bufferLeftMin);
+  const bufferLeftMin = Math.floor((arriveByMs - nowMs) / 60_000) - travelMin;
+  const bufferAtLeave = Math.floor((arriveByMs - leaveByMs) / 60_000) - travelMin;
+  const realBuffer = Math.max(0, bufferAtLeave);
+  const band = bandFor(slackMin, bufferLeftMin, preferredBuffer);
 
   return {
     phase: nowMs >= leaveByMs ? "in_transit" : "readiness",
@@ -131,7 +151,9 @@ export function computeDayState(input: { anchors: EngineAnchor[]; nowMs: number;
       bufferLeftMin,
       band,
       travelMinutes: travelMin,
-      bufferMinutes: buffer,
+      bufferMinutes: realBuffer,
+      preferredBufferMinutes: preferredBuffer,
+      constrainedByPrevious,
       source: liveMin != null ? "live" : "planned",
     },
     gaps,
