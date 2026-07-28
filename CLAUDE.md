@@ -40,6 +40,17 @@ the effective UI. Keep the existing data/action contracts; evolve presentation t
   `TodaySpine` must not regain `.cc-spine-v7`, whose legacy 42px grid column collapses populated
   cards. Instrument node placement is guarded by `.khonsera-app .cc-spine .cc-node`; Plan groups a
   stop and its related controls in `.cc-spine-entry`.
+- A responsive check is not valid unless it renders a **populated, multi-leg itinerary** through the
+  real `TodaySpine`, `PlanSpine` and `LivePass` components. Verify both the outer node and its inner
+  card/pass content at 390px and 1440px, with zero horizontal overflow. The empty/simplified harness
+  previously missed inner pass clipping even when the node itself reported a healthy width.
+- The live-day spine is a decision surface, not a database dump. A rail pass owns its departure and
+  arrival milestones; do not repeat adjacent station anchors that describe the same points. Keep
+  genuine changeovers as compact transfer rows. Docked rail passes use the compact semantic
+  `cc-pass-*` structure, preserving route, times and status while hiding secondary fields.
+- Inline **Add here** affordances belong after real commitment anchors, not between the departure,
+  changeover and arrival records of a transport run. Today has one page header only: date eyebrow,
+  day purpose, and origin; do not reintroduce a second title block inside the primary column.
 - Mobile `/plan/[id]` keeps the route map and bookings visible, but groups budget, sharing,
   constraints and intake behind **Day tools**. On desktop that body is always visible. `/today`
   offers a focused add/open-planner handoff rather than duplicating the full intake toolkit.
