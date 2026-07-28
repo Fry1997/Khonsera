@@ -3,15 +3,21 @@
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setDayIntention } from "@/lib/actions/plan-edit";
+import type { IntentionVM } from "@/components/concierge";
 
-// The day's INTENTION — "what's this day for" (plan elevation 2026-06-15). Makes
-// the core Intention entity real (the IntentionCard read it but nothing wrote it).
-// An inline, optional line: a quiet invite when empty, the stated purpose when set,
-// tap to edit. Writes via setDayIntention (clears when blanked).
-export function PlanIntention({ itineraryId, initial }: { itineraryId: string; initial: string | null }) {
+export function PlanIntention({
+  itineraryId,
+  initial,
+  intentions,
+}: {
+  itineraryId: string;
+  initial?: string | null;
+  intentions?: IntentionVM[];
+}) {
+  const resolvedInitial = initial ?? intentions?.find((x) => x.state !== "toggled_off")?.description ?? null;
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(initial ?? "");
+  const [value, setValue] = useState(resolvedInitial ?? "");
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -19,10 +25,14 @@ export function PlanIntention({ itineraryId, initial }: { itineraryId: string; i
     if (editing) inputRef.current?.focus();
   }, [editing]);
 
+  useEffect(() => {
+    if (!editing) setValue(resolvedInitial ?? "");
+  }, [resolvedInitial, editing]);
+
   function commit() {
     const next = value.trim();
     setEditing(false);
-    if ((initial ?? "") === next) return;
+    if ((resolvedInitial ?? "") === next) return;
     startTransition(async () => {
       await setDayIntention({ itineraryId, description: next });
       router.refresh();
@@ -40,7 +50,10 @@ export function PlanIntention({ itineraryId, initial }: { itineraryId: string; i
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") commit();
-          if (e.key === "Escape") { setValue(initial ?? ""); setEditing(false); }
+          if (e.key === "Escape") {
+            setValue(resolvedInitial ?? "");
+            setEditing(false);
+          }
         }}
         disabled={pending}
         aria-label="The day's intention"
@@ -49,9 +62,12 @@ export function PlanIntention({ itineraryId, initial }: { itineraryId: string; i
   }
 
   return (
-    <button type="button" className="cc-plan-intention" data-set={initial ? "" : undefined} onClick={() => setEditing(true)}>
-      {initial ? (
-        <><span className="cc-plan-intention-eyebrow">The point of the day</span><span className="cc-plan-intention-text">{initial}</span></>
+    <button type="button" className="cc-plan-intention" data-set={resolvedInitial ? "" : undefined} onClick={() => setEditing(true)}>
+      {resolvedInitial ? (
+        <>
+          <span className="cc-plan-intention-eyebrow">The point of the day</span>
+          <span className="cc-plan-intention-text">{resolvedInitial}</span>
+        </>
       ) : (
         <span className="cc-plan-intention-add">+ What&rsquo;s this day for?</span>
       )}
