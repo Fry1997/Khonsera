@@ -71,9 +71,6 @@ export function LiveDay({
     return () => clearInterval(timer);
   }, []);
 
-  // Defensive compatibility for older projections: the saved base is context,
-  // never an obligation. TodayPage now removes it before mapping, but this keeps
-  // the live engine safe when a legacy/demo projection still includes it.
   const operationalAnchors = useMemo(() => {
     if (!anchors.length || !base) return anchors;
     const first = anchors[0];
@@ -180,13 +177,12 @@ export function LiveDay({
       : null;
 
   async function startJourney() {
-    if (!next.inboundTransitionId) return;
+    if (!next?.inboundTransitionId) return;
+    const transitionId = next.inboundTransitionId;
+    const anchorId = next.id;
     setProgressError(null);
-    setOptimisticProgress({ anchorId: next.id, state: "live" });
-    const result = await setLiveTransitionProgress({
-      transitionId: next.inboundTransitionId,
-      state: "live",
-    });
+    setOptimisticProgress({ anchorId, state: "live" });
+    const result = await setLiveTransitionProgress({ transitionId, state: "live" });
     if (!result.ok) {
       setOptimisticProgress(null);
       setProgressError(result.error);
