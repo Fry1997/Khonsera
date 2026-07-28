@@ -40,6 +40,10 @@ the effective UI. Keep the existing data/action contracts; evolve presentation t
   `TodaySpine` must not regain `.cc-spine-v7`, whose legacy 42px grid column collapses populated
   cards. Instrument node placement is guarded by `.khonsera-app .cc-spine .cc-node`; Plan groups a
   stop and its related controls in `.cc-spine-entry`.
+- Check `tsconfig.json` before editing a named component: production currently aliases
+  `@/components/today/today-spine` to `today-spine-fixed.tsx` and
+  `@/components/plan/plan-spine` to the bookend wrapper. A visual fix applied only to the similarly
+  named inactive source will typecheck and build without changing the application.
 - A responsive check is not valid unless it renders a **populated, multi-leg itinerary** through the
   real `TodaySpine`, `PlanSpine` and `LivePass` components. Verify both the outer node and its inner
   card/pass content at 390px and 1440px, with zero horizontal overflow. The empty/simplified harness
