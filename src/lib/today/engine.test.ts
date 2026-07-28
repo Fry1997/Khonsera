@@ -17,6 +17,14 @@ describe("pickNextIndex", () => {
     expect(pickNextIndex(anchors, T("13:00"))).toBe(2); // review (12:30) still in front within the late grace
     expect(pickNextIndex(anchors, T("14:00"))).toBe(null); // past the grace → whole day behind us
   });
+
+  it("skips an active fixed shift and advances to the first move after it", () => {
+    const officeDay: EngineAnchor[] = [
+      { id: "shift", startMs: T("09:00"), endMs: T("17:00"), plannedTravelMinutes: 9, isBlockingSpan: true },
+      { id: "return-train", startMs: T("17:22"), endMs: T("17:22"), plannedTravelMinutes: 9, isStation: true, notBeforeMs: T("17:00") },
+    ];
+    expect(pickNextIndex(officeDay, T("12:00"))).toBe(1);
+  });
 });
 
 describe("computeDayState — leave-by + bands", () => {
@@ -56,6 +64,27 @@ describe("computeDayState — leave-by + bands", () => {
     expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T09:30:00.000Z");
   });
 
+  it("never pulls a fixed shift earlier to satisfy a preferred rail buffer", () => {
+    const officeDay: EngineAnchor[] = [
+      { id: "shift", startMs: T("09:00"), endMs: T("17:00"), plannedTravelMinutes: 9, isBlockingSpan: true },
+      {
+        id: "return-train",
+        startMs: T("17:22"),
+        endMs: T("17:22"),
+        plannedTravelMinutes: 9,
+        isStation: true,
+        bufferMinutes: 15,
+        notBeforeMs: T("17:00"),
+      },
+    ];
+    const s = computeDayState({ anchors: officeDay, nowMs: T("12:00") });
+    expect(s.nextIndex).toBe(1);
+    expect(new Date(s.feasibility!.leaveByMs).toISOString()).toBe("2026-06-11T17:00:00.000Z");
+    expect(s.feasibility?.constrainedByPrevious).toBe(true);
+    expect(s.feasibility?.preferredBufferMinutes).toBe(15);
+    expect(s.feasibility?.bufferMinutes).toBe(13);
+  });
+
   it("prefers the live route time over the plan when given", () => {
     // 6-min live walk overrides the 16-min plan → leave by 09:39.
     const s = computeDayState({ anchors, nowMs: T("09:00"), liveTravelSeconds: 6 * 60 });
@@ -64,10 +93,9 @@ describe("computeDayState — leave-by + bands", () => {
   });
 
   it("walks through the bands as the window closes", () => {
-    // leave-by 09:29. heads_up inside 20 min, leave_now at/after it, cliff once buffer gone.
+    // leave-by 09:29. heads_up inside 20 min, leave_now at/after it, cliff once no margin remains.
     expect(computeDayState({ anchors, nowMs: T("09:20") }).feasibility?.band).toBe("heads_up");
     expect(computeDayState({ anchors, nowMs: T("09:29") }).feasibility?.band).toBe("leave_now");
-    // buffer (15) erodes after leave-by; gone by 09:44 → cliff.
     expect(computeDayState({ anchors, nowMs: T("09:45") }).feasibility?.band).toBe("cliff");
   });
 
