@@ -117,7 +117,7 @@ export async function loadBookendLegs(itineraryId: string): Promise<BookendLegs>
   const trailing = last && end && trailingTransition ? buildLeg(trailingTransition, last, end) : null;
 
   const endArrival = trailing?.arrival ?? end?.start_time ?? null;
-  const endContext = end && trailingTransition && trailing
+  const endContext: SpineAnchor | null = end && trailingTransition && trailing
     ? {
         id: end.id,
         type: "custom",
