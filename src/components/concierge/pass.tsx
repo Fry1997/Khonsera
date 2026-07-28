@@ -72,7 +72,11 @@ function codeFor(stop: { code?: string; place?: string }): string {
 // One cell of the boarding-pass stub grid (DEPART · ARRIVE · PLATFORM · SEAT).
 function StubCell({ label, value, badge }: { label: string; value: string; badge?: boolean }) {
   return (
-    <span style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}>
+    <span
+      className="cc-pass-stub-cell"
+      data-label={label}
+      style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}
+    >
       <span className="eyb" style={{ fontSize: 8.5, letterSpacing: "0.18em", color: "var(--ink-faint)" }}>{label}</span>
       {badge && value ? (
         <span
@@ -111,12 +115,12 @@ export function Pass({
   if (isStay) {
     return (
       <div className={docked ? "cc-pass cc-pass--docked" : "cc-pass"} data-kind="stay" style={PASS_SHELL}>
-        <div style={BAND}>
+        <div className="cc-pass-band" style={BAND}>
           <span style={BAND_ICO}><span className="engr-ico-d" style={ICO_FLEX}><PassIco kind="stay" /></span></span>
           <span className="eyb engr-d" style={BAND_KIND}>{KIND_LABEL.stay}</span>
           <span style={BAND_OP}>{ticket.operator}</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "16px 18px" }}>
+        <div className="cc-pass-stub" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "16px 18px" }}>
           <StubCell label="CHECK IN" value={formatClock(ticket.checkIn)} />
           <StubCell label="CHECK OUT" value={formatClock(ticket.checkOut)} />
           {ticket.roomType ? <StubCell label="ROOM" value={ticket.roomType} /> : null}
@@ -135,25 +139,25 @@ export function Pass({
   return (
     <div className={docked ? "cc-pass cc-pass--docked" : "cc-pass"} data-kind={ticket.kind} style={PASS_SHELL}>
       {/* charcoal operator band */}
-      <div style={BAND}>
+      <div className="cc-pass-band" style={BAND}>
         <span style={BAND_ICO}><span className="engr-ico-d" style={ICO_FLEX}><PassIco kind={ticket.kind} /></span></span>
         <span className="eyb engr-d" style={BAND_KIND}>{KIND_LABEL[ticket.kind]}</span>
         <span style={BAND_OP}>{ticket.operator}</span>
       </div>
 
       {/* big station-code pair */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "18px 18px 14px" }}>
+      <div className="cc-pass-route" style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "18px 18px 14px" }}>
         <span style={{ minWidth: 0 }}>
-          <span className="engr" style={CODE}>{fromCode}</span>
-          <span style={CODE_NAME}>{leg?.origin.place ?? ""}</span>
+          <span className="engr cc-pass-code" style={CODE}>{fromCode}</span>
+          <span className="cc-pass-place" style={CODE_NAME}>{leg?.origin.place ?? ""}</span>
         </span>
         <span style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, paddingTop: 12 }}>
           <span className="engr-ico" style={{ color: "var(--ink-faint)", ...ICO_FLEX }}><ArrowRight /></span>
           <span className="mono" style={{ fontSize: 9.5, color: "var(--ink-faint)", letterSpacing: "0.06em" }}>{durationLabel(ticket)}</span>
         </span>
         <span style={{ minWidth: 0, textAlign: "right" }}>
-          <span className="engr" style={CODE}>{toCode}</span>
-          <span style={CODE_NAME}>{leg?.destination.place ?? ""}</span>
+          <span className="engr cc-pass-code" style={CODE}>{toCode}</span>
+          <span className="cc-pass-place" style={CODE_NAME}>{leg?.destination.place ?? ""}</span>
         </span>
       </div>
 
@@ -178,22 +182,22 @@ export function Pass({
         </div>
       ) : null}
 
-      <div className="perf" style={{ margin: "2px 0" }} />
+      <div className="cc-pass-perf perf" style={{ margin: "2px 0" }} />
 
       {/* boarding-pass stub grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, padding: "13px 18px 6px" }}>
+      <div className="cc-pass-stub" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, padding: "13px 18px 6px" }}>
         <StubCell label="DEPART" value={formatClock(leg?.origin.time)} />
         <StubCell label="ARRIVE" value={formatClock(leg?.destination.time)} />
         <StubCell label={platLabel} value={platVal} badge />
         <StubCell label="SEAT" value={seatVal} badge />
       </div>
 
-      {leg?.status ? <div style={{ padding: "4px 18px 0" }}><StatusStrip status={leg.status} /></div> : null}
+      {leg?.status ? <div className="cc-pass-status" style={{ padding: "4px 18px 0" }}><StatusStrip status={leg.status} /></div> : null}
       {ticket.consequence ? <p className="cc-pass-consequence" style={{ padding: "6px 18px 0" }}>{ticket.consequence}</p> : null}
 
       {/* show ticket — the code lives behind it / in ScanView (brief §6.3) */}
       {leg?.barcodes?.length ? (
-        <div style={{ padding: "12px 16px 16px" }}>
+        <div className="cc-pass-ready" style={{ padding: "12px 16px 16px" }}>
           <button onClick={() => onShow?.(ticket)} className="engr-d" style={SHOW_BTN}>
             <span className="engr-ico-d" style={ICO_FLEX}><ScanIco /></span>
             <span>Show {ticket.kind === "air" ? "pass" : "ticket"}{ticket.reference ? ` · ${ticket.reference}` : ""}</span>
