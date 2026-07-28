@@ -18,7 +18,7 @@ function clock(iso: string): string {
 }
 
 export function PlanCalendarImport({ itineraryId, journeyId }: { itineraryId?: string; journeyId?: string }) {
-  const id = itineraryId ?? journeyId;
+  const id = itineraryId ?? journeyId ?? "";
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
