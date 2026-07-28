@@ -39,21 +39,35 @@ function movementTimes(anchor: SpineAnchor, previous: SpineAnchor | null): Timed
 
   const durationMs = minutes * 60_000;
   const bufferMinutes = anchor.bufferMinutes ?? (anchor.station ? STATION_BUFFER_MIN : READINESS_BUFFER_MIN);
-  const latestArrivalMs = targetMs - bufferMinutes * 60_000;
+  const preferredArrivalMs = targetMs - bufferMinutes * 60_000;
+  const preferredDepartureMs = preferredArrivalMs - durationMs;
   const previousEndMs = previous ? ms(previous.endIso ?? previous.arriveByIso) : null;
+  const explicitNotBeforeMs = ms(anchor.notBeforeIso);
+  const notBeforeMs = explicitNotBeforeMs ?? (previous?.type === "shift" ? previousEndMs : null);
 
   if (anchor.station) {
-    const arriveMs = latestArrivalMs;
-    return { departIso: iso(arriveMs - durationMs), arriveIso: iso(arriveMs), spareMinutes: bufferMinutes };
+    // A fixed span wins over a comfort margin. For a 17:00 shift end, 9-minute
+    // walk and 17:22 train, show the honest 17:00–17:09 leg with 13 minutes spare,
+    // never a fictional 16:58 departure from work.
+    const departMs = notBeforeMs == null ? preferredDepartureMs : Math.max(preferredDepartureMs, notBeforeMs);
+    const arriveMs = departMs + durationMs;
+    const spare = Math.round((targetMs - arriveMs) / 60_000);
+    return { departIso: iso(departMs), arriveIso: iso(arriveMs), spareMinutes: spare };
   }
 
   if (previousEndMs != null) {
     const arriveMs = previousEndMs + durationMs;
-    const spare = Math.max(0, Math.round((targetMs - arriveMs) / 60_000));
+    const spare = Math.round((targetMs - arriveMs) / 60_000);
     return { departIso: iso(previousEndMs), arriveIso: iso(arriveMs), spareMinutes: spare };
   }
 
-  return { departIso: iso(latestArrivalMs - durationMs), arriveIso: iso(latestArrivalMs), spareMinutes: bufferMinutes };
+  const departMs = notBeforeMs == null ? preferredDepartureMs : Math.max(preferredDepartureMs, notBeforeMs);
+  const arriveMs = departMs + durationMs;
+  return {
+    departIso: iso(departMs),
+    arriveIso: iso(arriveMs),
+    spareMinutes: Math.round((targetMs - arriveMs) / 60_000),
+  };
 }
 
 export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnchor[]; nextId?: string | null; nowOverride?: number | null }) {
@@ -77,6 +91,8 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
       plannedTravelMinutes: anchor.plannedTravelMinutes,
       isStation: !!anchor.station,
       bufferMinutes: anchor.bufferMinutes,
+      notBeforeMs: ms(anchor.notBeforeIso),
+      isBlockingSpan: anchor.type === "shift",
     }));
     const index = pickNextIndex(engineAnchors, now);
     return index == null ? nextId ?? null : anchors[index]?.id ?? nextId ?? null;
@@ -101,22 +117,46 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
       <div className="cc-spine cc-spine-v7">
         <div className="cc-spine-rail" />
         {past.length ? <Toggle label={`${past.length} earlier`} open={showPast} onClick={() => setShowPast((value) => !value)} /> : null}
-        {showPast ? past.map((anchor, index) => <Entry key={anchor.id} anchor={anchor} previous={index ? past[index - 1] : null} state="past" onShowTicket={openTicket} />) : null}
+        {showPast
+          ? past.map((anchor, index) => (
+              <Entry key={anchor.id} anchor={anchor} previous={index ? past[index - 1] : null} state="past" onShowTicket={openTicket} />
+            ))
+          : null}
         <div className="cc-node">
           <div className="cc-node-dot"><span className="cc-dot-now" /></div>
-          <span className="cc-eyebrow" style={{ alignSelf: "center", color: "var(--gold-2)" }}>Now · {londonClock(new Date(now).toISOString())}</span>
+          <span className="cc-eyebrow" style={{ alignSelf: "center", color: "var(--gold-2)" }}>
+            Now · {londonClock(new Date(now).toISOString())}
+          </span>
         </div>
         {currentAndNear.map((anchor, index) => {
           const absoluteIndex = nextIndex + index;
-          return <Entry key={anchor.id} anchor={anchor} previous={absoluteIndex > 0 ? anchors[absoluteIndex - 1] : null} state={index === 0 ? "next" : "future"} onShowTicket={openTicket} />;
+          return (
+            <Entry
+              key={anchor.id}
+              anchor={anchor}
+              previous={absoluteIndex > 0 ? anchors[absoluteIndex - 1] : null}
+              state={index === 0 ? "next" : "future"}
+              onShowTicket={openTicket}
+            />
+          );
         })}
         {later.length ? (
           <>
             <Toggle label={`${later.length} later`} open={showLater} onClick={() => setShowLater((value) => !value)} />
-            {showLater ? later.map((anchor, index) => {
-              const absoluteIndex = anchors.length - later.length + index;
-              return <Entry key={anchor.id} anchor={anchor} previous={absoluteIndex > 0 ? anchors[absoluteIndex - 1] : null} state="future" onShowTicket={openTicket} />;
-            }) : null}
+            {showLater
+              ? later.map((anchor, index) => {
+                  const absoluteIndex = anchors.length - later.length + index;
+                  return (
+                    <Entry
+                      key={anchor.id}
+                      anchor={anchor}
+                      previous={absoluteIndex > 0 ? anchors[absoluteIndex - 1] : null}
+                      state="future"
+                      onShowTicket={openTicket}
+                    />
+                  );
+                })
+              : null}
           </>
         ) : null}
       </div>
@@ -125,14 +165,30 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
   );
 }
 
-function Entry({ anchor, previous, state, onShowTicket }: { anchor: SpineAnchor; previous: SpineAnchor | null; state: State; onShowTicket: (ticket: TicketVM) => void }) {
+function Entry({
+  anchor,
+  previous,
+  state,
+  onShowTicket,
+}: {
+  anchor: SpineAnchor;
+  previous: SpineAnchor | null;
+  state: State;
+  onShowTicket: (ticket: TicketVM) => void;
+}) {
   const movement = movementTimes(anchor, previous);
   const isAppointment = anchor.type === "appointment" || anchor.type === "reservation" || anchor.type === "shift";
   const showMovement = anchor.plannedTravelMinutes != null && !!navigateHref(anchor) && state !== "past";
   return (
     <>
       {showMovement ? <MovementCard anchor={anchor} movement={movement} active={state === "next"} /> : null}
-      {anchor.role === "changeover" ? <ChangeCard anchor={anchor} state={state} /> : isAppointment ? <AppointmentCard anchor={anchor} state={state} /> : <AnchorCard anchor={anchor} state={state} />}
+      {anchor.role === "changeover" ? (
+        <ChangeCard anchor={anchor} state={state} />
+      ) : isAppointment ? (
+        <AppointmentCard anchor={anchor} state={state} />
+      ) : (
+        <AnchorCard anchor={anchor} state={state} />
+      )}
       {anchor.pass ? <PassCard pass={anchor.pass} state={state} onShowTicket={onShowTicket} /> : null}
     </>
   );
@@ -141,7 +197,6 @@ function Entry({ anchor, previous, state, onShowTicket }: { anchor: SpineAnchor;
 function MovementCard({ anchor, movement, active }: { anchor: SpineAnchor; movement: TimedLeg; active: boolean }) {
   const mode = anchor.navMode === "drive" ? "Drive" : anchor.navMode === "cycle" ? "Cycle" : "Walk";
   const destination = anchor.station ? anchor.title : anchor.place ?? anchor.title;
-  const selfNavigated = ["walk", "drive", "cycle", "bike", "bicycle", "car"].includes(anchor.travelMode ?? "");
   return (
     <div className="cc-node" data-state={active ? "next" : "future"}>
       <div className="cc-node-dot"><span className="cc-med-leg" /></div>
@@ -149,7 +204,6 @@ function MovementCard({ anchor, movement, active }: { anchor: SpineAnchor; movem
         <div className="cc-walk-head">
           <span className="cc-walk-mode">{mode}</span>
           <span className="cc-walk-mins mono engr">{anchor.plannedTravelMinutes} min</span>
-          {!selfNavigated && active && navigateHref(anchor) ? <span className="cc-walk-nav">Tracked automatically</span> : null}
         </div>
         {movement.departIso && movement.arriveIso ? (
           <div className="cc-walk-window">
@@ -160,7 +214,11 @@ function MovementCard({ anchor, movement, active }: { anchor: SpineAnchor; movem
         ) : null}
         <div className="cc-walk-dest">
           <span>→ {destination}</span>
-          {movement.spareMinutes != null && movement.spareMinutes > 0 ? <span className="cc-walk-spare">{movement.spareMinutes} min spare</span> : null}
+          {movement.spareMinutes != null && movement.spareMinutes > 0 ? (
+            <span className="cc-walk-spare">{movement.spareMinutes} min spare</span>
+          ) : movement.spareMinutes != null && movement.spareMinutes < 0 ? (
+            <span className="cc-walk-spare">{Math.abs(movement.spareMinutes)} min late</span>
+          ) : null}
         </div>
         <div className="cc-walk-foot"><span className="sb">Planned</span></div>
       </div>
@@ -177,8 +235,12 @@ function AppointmentCard({ anchor, state }: { anchor: SpineAnchor; state: State 
         <h3 className="cc-appt-title">{anchor.title}</h3>
         {anchor.place && anchor.place !== anchor.title ? <p className="cc-appt-sub">{anchor.place}</p> : null}
         <div className="cc-appt-times">
-          {anchor.arriveByIso ? <span className="cc-appt-time"><span className="cc-eyebrow">Starts</span><span className="mono engr cc-appt-clock">{londonClock(anchor.arriveByIso)}</span></span> : null}
-          {anchor.endIso ? <span className="cc-appt-time"><span className="cc-eyebrow">Ends</span><span className="mono engr cc-appt-clock">{londonClock(anchor.endIso)}</span></span> : null}
+          {anchor.arriveByIso ? (
+            <span className="cc-appt-time"><span className="cc-eyebrow">Starts</span><span className="mono engr cc-appt-clock">{londonClock(anchor.arriveByIso)}</span></span>
+          ) : null}
+          {anchor.endIso ? (
+            <span className="cc-appt-time"><span className="cc-eyebrow">Ends</span><span className="mono engr cc-appt-clock">{londonClock(anchor.endIso)}</span></span>
+          ) : null}
         </div>
       </div>
     </div>
@@ -214,13 +276,23 @@ function ChangeCard({ anchor, state }: { anchor: SpineAnchor; state: State }) {
           <strong>Change at {anchor.station?.name ?? anchor.title}</strong>
           {minutes != null ? <span className="mono engr">{minutes}m</span> : null}
         </div>
-        <p style={{ margin: "8px 0 0", color: "var(--ink-dim)" }}>{londonClock(anchor.arriveByIso)} arrival · {londonClock(anchor.endIso)} onward</p>
+        <p style={{ margin: "8px 0 0", color: "var(--ink-dim)" }}>
+          {londonClock(anchor.arriveByIso)} arrival · {londonClock(anchor.endIso)} onward
+        </p>
       </div>
     </div>
   );
 }
 
-function PassCard({ pass, state, onShowTicket }: { pass: NonNullable<SpineAnchor["pass"]>; state: State; onShowTicket: (ticket: TicketVM) => void }) {
+function PassCard({
+  pass,
+  state,
+  onShowTicket,
+}: {
+  pass: NonNullable<SpineAnchor["pass"]>;
+  state: State;
+  onShowTicket: (ticket: TicketVM) => void;
+}) {
   return (
     <div className="cc-node" data-state={state} style={{ opacity: state === "past" ? 0.6 : 1 }}>
       <div className="cc-node-dot"><span className="cc-med-pass" /></div>
