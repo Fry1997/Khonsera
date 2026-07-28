@@ -136,6 +136,36 @@ function isToday(iso: string | null, today: string): boolean {
   );
 }
 
+function WeatherGlyph({ isDay }: { isDay: boolean }) {
+  return isDay ? (
+    <svg
+      className="cc-weather-glyph"
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <circle cx="24" cy="24" r="7" />
+      <path d="M24 4v6M24 38v6M4 24h6M38 24h6M9.9 9.9l4.2 4.2M33.9 33.9l4.2 4.2M38.1 9.9l-4.2 4.2M14.1 33.9l-4.2 4.2" />
+    </svg>
+  ) : (
+    <svg
+      className="cc-weather-glyph"
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M37 31.5A16 16 0 0 1 16.5 11 16 16 0 1 0 37 31.5Z" />
+    </svg>
+  );
+}
+
 export default async function TodayPage({
   searchParams,
 }: {
@@ -183,6 +213,7 @@ export default async function TodayPage({
   const travelByToStop = new Map<string, InboundLeg>();
   let baseCoord: { lat: number; lng: number } | null = null;
   let baseLabel: string | null = null;
+  let destinationLabel: string | null = null;
   let tickets: TicketVM[] = [];
   let mapStops: StopForMap[] = [];
   let mapTransitions: TransitionForMap[] = [];
@@ -229,6 +260,8 @@ export default async function TodayPage({
       if (st.type === "start" && !baseCoord) baseCoord = coordOf(st);
       if (st.type === "start" && !baseLabel)
         baseLabel = placeOf(st) ?? st.title ?? null;
+      if (st.type === "end")
+        destinationLabel = placeOf(st) ?? st.title ?? destinationLabel;
       // Base bookends remain part of routing, but they are context — never Today stops.
       if (
         st.type !== "start" &&
@@ -526,13 +559,26 @@ export default async function TodayPage({
       title={anchors.length ? dayPurpose : "Right now"}
       titleAs="h1"
       description={
-        anchors.length && baseLabel ? (
-          <>
-            From <strong>{baseLabel}</strong>
-          </>
+        anchors.length && (destinationLabel ?? baseLabel) ? (
+          <span className="cc-today-destination">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            To <strong>{destinationLabel ?? baseLabel}</strong>
+          </span>
         ) : undefined
       }
       headerClassName="cc-today-head"
+      className="cc-today-direction"
       data-disrupted={disruptions.length ? "true" : undefined}
       actions={
         weather ? (
@@ -540,6 +586,7 @@ export default async function TodayPage({
             className="cc-weather"
             data-day={weather.isDay ? "true" : "false"}
           >
+            <WeatherGlyph isDay={weather.isDay} />
             <span className="cc-weather-temp">{weather.tempC}&deg;</span>
             <span className="cc-weather-meta">
               <span className="cc-weather-headline">{weather.headline}</span>
@@ -551,44 +598,48 @@ export default async function TodayPage({
     >
       <OfflineTicketSync tickets={tickets} />
       <div className="cc-day-dashboard">
-        <div className="cc-day-forecast" aria-label="Day conditions">
-          {weather && weather.hours.length > 0 ? (
-            <div
-              className="cc-weather-hours"
-              aria-label="Today's forecast by the hour"
-            >
-              {weather.hours.map((h) => (
-                <div
-                  key={h.label}
-                  className="cc-weather-hour"
-                  title={h.headline}
-                >
-                  <span className="cc-weather-hour-time">{h.label}</span>
-                  <span className="cc-weather-hour-temp">{h.tempC}&deg;</span>
-                  <span className="cc-weather-hour-cond">{h.headline}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <TodayDisruption items={disruptions} />
-          {inLondon ? <TflLineStatus /> : null}
-        </div>
-
         {anchors.length ? (
           <>
+            <section className="cc-today-command" aria-label="Your next move">
+              <div className="cc-today-command-content">
+                <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
+              </div>
+              {todayJourney ? (
+                <div className="cc-today-command-map">
+                  <PlanMap journey={todayJourney} />
+                </div>
+              ) : null}
+            </section>
+
+            <div className="cc-day-forecast" aria-label="Day conditions">
+              {weather && weather.hours.length > 0 ? (
+                <div
+                  className="cc-weather-hours"
+                  aria-label="Today's forecast by the hour"
+                >
+                  {weather.hours.map((h) => (
+                    <div
+                      key={h.label}
+                      className="cc-weather-hour"
+                      title={h.headline}
+                    >
+                      <span className="cc-weather-hour-time">{h.label}</span>
+                      <span className="cc-weather-hour-temp">
+                        {h.tempC}&deg;
+                      </span>
+                      <span className="cc-weather-hour-cond">{h.headline}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <TodayDisruption items={disruptions} />
+              {inLondon ? <TflLineStatus /> : null}
+            </div>
+
             <section
               className="cc-day-primary"
               aria-label={`Live itinerary for ${dayPurpose}`}
             >
-              {dayNote ? (
-                <div className="cc-day-point cc-day-point--today">
-                  <span className="cc-day-point-eyebrow">
-                    The point of the day
-                  </span>
-                  <p className="cc-standfirst">{dayNote}</p>
-                </div>
-              ) : null}
-              <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
               <TodaySpine
                 anchors={spineAnchors}
                 nextId={nextSpine?.id ?? null}
@@ -599,6 +650,12 @@ export default async function TodayPage({
               className="cc-day-context"
               aria-label="Day tools and documents"
             >
+              {dayNote ? (
+                <div className="cc-context-actions cc-context-actions--note">
+                  <span className="cc-context-label">Today</span>
+                  <span className="cc-context-detail">{dayNote}</span>
+                </div>
+              ) : null}
               {tickets.length > 0 ? (
                 <div className="cc-context-actions">
                   <span className="cc-context-label">Tickets today</span>
@@ -610,7 +667,6 @@ export default async function TodayPage({
                   </Link>
                 </div>
               ) : null}
-              {todayJourney ? <PlanMap journey={todayJourney} /> : null}
               {showNextDocument && nextTicket ? (
                 <TodayDocument ticket={nextTicket} />
               ) : null}
