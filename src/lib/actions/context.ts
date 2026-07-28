@@ -14,9 +14,6 @@ import {
   type ParkingInput,
   type GateChangeInput,
 } from "@/lib/context/engine";
-// DragonPass is the single airport-experience partner (D52, short-term): fast-track
-// + lounge. Collinson (Priority Pass + SmartDelay) is the long-term strategic target,
-// kept dormant in the tree until that enterprise relationship is realistic.
 import { bookFastTrack, bookLounge } from "@/lib/integrations/dragonpass";
 import { parkingOutlook, reserveParking } from "@/lib/integrations/parkopedia";
 import { flightDepartureStatus } from "@/lib/integrations/aerodatabox";
@@ -24,13 +21,6 @@ import { createNote } from "@/lib/actions/notes";
 
 const hhmm = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(iso));
 
-// Context-engine action layer (Phase 12). Computes the live nudge set for a day
-// (weather + buffer signals → engine), filters out anything the traveller has
-// already accepted/dismissed, and persists a verdict — applying the accepted
-// action through its provider seam. Nudges themselves are NEVER stored; only the
-// verdict is (table 0036), so the set is always current.
-
-// A nudge with its persisted state attached, for the surface.
 export type NudgeVM = Nudge & { verdict?: "accepted" | "dismissed"; actionResult?: unknown };
 
 type LegFact = {
@@ -38,7 +28,6 @@ type LegFact = {
   mode: string;
   toLabel: string;
   departIso: string | null;
-  // Destination coords for the weather corridor sample (one point, day one).
   lat: number | null;
   lng: number | null;
   isFirstLeaveHome: boolean;
@@ -46,15 +35,9 @@ type LegFact = {
 type FlightFact = { flightStopId: string; airport: string; flightDepartIso: string; arriveAirportIso: string };
 type LoungeFact = { flightStopId: string; airport: string; dwellMin: number; boardingIso: string };
 type ParkingFact = { legId: string; site: string; arriveIso: string; departIso: string; untilIso: string };
-// A flight to check for a live gate change. The baseline gate (last known, from
-// metadata) is diffed against AeroDataBox's current gate; a difference fires the
-// reroute rule.
 type GateFlightFact = { flightStopId: string; airport: string; flightNumber: string; baselineGate: string; walkMin: number; boardingIso: string; dateIso: string };
 
-// Compute + merge. The page passes the day's leg/flight facts (it already has the
-// stops loaded); we fetch weather only for the leave-home leg (one call), enrich
-// parking with a Parkopedia outlook, run the engine, then drop verdicted nudges.
-export async function loadNudges(args: {
+type LoadNudgesArgs = {
   itineraryId: string;
   nowIso: string;
   legs: LegFact[];
@@ -62,15 +45,22 @@ export async function loadNudges(args: {
   lounges?: LoungeFact[];
   parkings?: ParkingFact[];
   gateFlights?: GateFlightFact[];
-}): Promise<NudgeVM[]> {
+};
+
+// The current action accepts structured context. The second overload keeps the
+// older Plan page call working while that surface is incrementally moved onto
+// the structured facts: it simply produces no speculative provider nudges.
+export function loadNudges(args: LoadNudgesArgs): Promise<NudgeVM[]>;
+export function loadNudges(itineraryId: string, legacyNodes: unknown[]): Promise<NudgeVM[]>;
+export async function loadNudges(argsOrId: LoadNudgesArgs | string, _legacyNodes?: unknown[]): Promise<NudgeVM[]> {
+  const args: LoadNudgesArgs =
+    typeof argsOrId === "string"
+      ? { itineraryId: argsOrId, nowIso: new Date().toISOString(), legs: [], flights: [] }
+      : argsOrId;
   const supabase = await createClient();
 
-  // NOTE (2026-06-15): weather is NO LONGER fetched here. It was a live Open-Meteo
-  // call (up to 5s) on EVERY plan render, blocking the cards — to power a
-  // leave-earlier nudge that almost never fired and the user never saw. Weather now
-  // lives where it's visible and day-of relevant: the Today page (getLocalWeather).
-  // The other care rules below are buffer-derived (instant) or mock-gated, so the
-  // plan render no longer waits on any live weather call.
+  // Weather is intentionally absent here. It is fetched on Today, where it is
+  // visible and day-of relevant, rather than blocking every Plan render.
   const weatherLegs: WeatherLegInput[] = [];
 
   const flightBuffers: FlightBufferInput[] = args.flights.map((f) => ({
@@ -87,29 +77,45 @@ export async function loadNudges(args: {
     boardingIso: l.boardingIso,
   }));
 
-  // Parking outlook (Parkopedia, mock until keyed) → predicted occupancy per site.
   const parkings: ParkingInput[] = await Promise.all(
     (args.parkings ?? []).map(async (p) => {
       const outlook = await parkingOutlook({ site: p.site, arriveIso: p.arriveIso });
-      return { legId: p.legId, site: p.site, predictedOccupancyPct: outlook.predictedOccupancyPct, departIso: p.departIso, untilIso: p.untilIso, sample: outlook.sample };
+      return {
+        legId: p.legId,
+        site: p.site,
+        predictedOccupancyPct: outlook.predictedOccupancyPct,
+        departIso: p.departIso,
+        untilIso: p.untilIso,
+        sample: outlook.sample,
+      };
     }),
   );
 
-  // Gate change (AeroDataBox, mock until keyed): fetch the current gate, fire only
-  // when it actually differs from the gate the plan last knew.
   const gateChanges: GateChangeInput[] = (
     await Promise.all(
       (args.gateFlights ?? []).map(async (g): Promise<GateChangeInput | null> => {
         const status = await flightDepartureStatus({ flightNumber: g.flightNumber, dateIso: g.dateIso });
-        if (!status?.gate || status.gate === g.baselineGate) return null;
-        // A mock gate can't honestly signal a real change — don't fire a false alarm.
-        if (status.sample) return null;
-        return { flightStopId: g.flightStopId, airport: g.airport, fromGate: g.baselineGate, toGate: status.gate, walkMin: g.walkMin, boardingIso: g.boardingIso };
+        if (!status?.gate || status.gate === g.baselineGate || status.sample) return null;
+        return {
+          flightStopId: g.flightStopId,
+          airport: g.airport,
+          fromGate: g.baselineGate,
+          toGate: status.gate,
+          walkMin: g.walkMin,
+          boardingIso: g.boardingIso,
+        };
       }),
     )
   ).filter((g): g is GateChangeInput => g !== null);
 
-  const nudges = evaluateContext({ nowIso: args.nowIso, weatherLegs, flightBuffers, lounges, parkings, gateChanges });
+  const nudges = evaluateContext({
+    nowIso: args.nowIso,
+    weatherLegs,
+    flightBuffers,
+    lounges,
+    parkings,
+    gateChanges,
+  });
   if (!nudges.length) return [];
 
   const { data: states } = await supabase
@@ -118,12 +124,15 @@ export async function loadNudges(args: {
     .eq("itinerary_id", args.itineraryId);
   const byKey = new Map((states ?? []).map((s) => [s.nudge_key as string, s]));
 
-  // Dismissed → gone (never pester). Accepted → keep, in its done state. Open → show.
   return nudges
     .map((n): NudgeVM | null => {
       const st = byKey.get(n.key);
       if (st?.verdict === "dismissed") return null;
-      return { ...n, verdict: st?.verdict as NudgeVM["verdict"], actionResult: st?.action ?? undefined };
+      return {
+        ...n,
+        verdict: st?.verdict as NudgeVM["verdict"],
+        actionResult: st?.action ?? undefined,
+      };
     })
     .filter((n): n is NudgeVM => n !== null);
 }
@@ -132,7 +141,6 @@ const setSchema = z.object({
   itineraryId: z.string().uuid(),
   nudgeKey: z.string().min(1),
   verdict: z.enum(["accepted", "dismissed"]),
-  // The engine's proposed action, echoed back so accept can apply it.
   action: z.any().optional(),
 });
 
@@ -142,12 +150,10 @@ export async function setNudgeVerdict(input: z.input<typeof setSchema>): Promise
   const { itineraryId, nudgeKey, verdict } = parsed.data;
   const action = parsed.data.action as NudgeAction | undefined;
   const supabase = await createClient();
-  await requireUserContext(); // RLS enforces ownership; this just ensures auth.
+  await requireUserContext();
 
   let actionResult: unknown = null;
 
-  // Accept → apply through the seam. A prep note records the decision (the durable
-  // artifact on the spine); a fast-track accept mints the voucher via DragonPass.
   if (verdict === "accepted" && action) {
     if (action.kind === "leave-earlier") {
       await createNote({
@@ -157,8 +163,6 @@ export async function setNudgeVerdict(input: z.input<typeof setSchema>): Promise
         body: `Khonsera: ${action.reason}.`,
       });
     } else if (action.kind === "expedite-security") {
-      // The flight's departure is encoded in the key (expedite:<stopId>); look it
-      // up so the voucher window is real.
       const stopId = nudgeKey.split(":")[1];
       const { data: stop } = await supabase.from("stops").select("start_time").eq("id", stopId).maybeSingle();
       const voucher = await bookFastTrack({
@@ -194,7 +198,6 @@ export async function setNudgeVerdict(input: z.input<typeof setSchema>): Promise
         body: `Khonsera: space held at ${action.site}. Ref ${reservation.reference}.${reservation.sample ? " (sample)" : ""}`,
       });
     } else if (action.kind === "gate-reroute") {
-      // Informational (no booking) — acknowledge by noting the new gate + walk.
       const stopId = nudgeKey.split(":")[1];
       await createNote({
         itineraryId,
