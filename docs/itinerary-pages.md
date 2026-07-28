@@ -57,6 +57,12 @@ the instrument layer owns node placement, while `PlanSpine` groups each stop
 and its related controls in `.cc-spine-entry`. This prevents populated cards
 from being placed into the legacy 42px marker column.
 
+Runtime imports are redirected in `tsconfig.json`: Today resolves to
+`today-spine-fixed.tsx` (the bookend-aware implementation), while Plan resolves
+to `plan-spine-with-bookends.tsx`, which wraps the relative core
+`plan-spine.tsx`. Layout changes must reach those active paths; editing only a
+similarly named inactive implementation will not affect the deployed page.
+
 The populated-state layout contract extends through every inner surface:
 `.cc-spine`, `.cc-spine-entry`, `.cc-node`, `.cc-node-content`, and the direct
 card/pass children all resolve to the available inline size with `min-width: 0`
