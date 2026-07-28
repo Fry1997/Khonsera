@@ -4,14 +4,14 @@ on:
   pull_request:
     branches:
       - claude/khonsera-build-brief-An4oz
-    types: [synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
 jobs:
   promote:
-    if: github.head_ref == 'agent/travel-day-leave-by-mvp'
+    if: startsWith(github.head_ref, 'promotion/')
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN_PRIMARY: ${{ secrets.VERCEL_TOKEN }}
