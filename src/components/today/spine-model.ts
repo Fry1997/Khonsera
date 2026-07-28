@@ -2,19 +2,12 @@ import type { AnchorType, TicketVM } from "@/components/concierge";
 import type { NavMode } from "@/lib/nav/types";
 import type { Route } from "next";
 
-// A booked rail/air pass that BOARDS at this anchor — folded server-side and
-// dropped inline on the spine at the leg's departure / changeover node, so the
-// ticket sits with the journey it belongs to (not in a separate block above).
 export interface SpinePass {
   ticket: TicketVM;
   crs: string | null;
-  time: string | null; // planned departure, London HH:MM (matches Darwin <std>)
-  dest: string | null; // hop destination CRS — disambiguates same-minute departures
+  time: string | null;
+  dest: string | null;
 }
-
-// Shared serialisable shape the Today spine + next-move card render from. Built
-// server-side in today/page.tsx (one place that reads the DB), consumed by the
-// client pieces — keeps coordinate/travel data flowing without re-querying.
 
 export type StationKind = "rail_station" | "airport";
 export type AnchorRole = "departure" | "arrival" | "changeover" | "stop";
@@ -27,44 +20,25 @@ export interface SpineAnchor {
   arriveByIso: string | null;
   endIso: string | null;
   coord: { lat: number; lng: number } | null;
-  // Travel time of the plan's leg INTO this anchor — the offline fallback when
-  // live routing isn't reachable. Minutes.
   plannedTravelMinutes: number | null;
-  // Nav mode for door-to-door routing to this anchor (from the leg's mode).
   navMode: NavMode;
-  // Present when this stop is a transport hub — you walk to the STATION, not the
-  // town. Its coordinate is the nav target and `title` is the station label.
   station: { name: string; code: string | null; kind: StationKind } | null;
   role: AnchorRole;
-  // Per-item work/personal classification (the parent Event's tag). Shown as a
-  // quiet ModeTag on appointment/reservation cards — never a lens or a toggle.
   mode?: "work" | "personal" | null;
-  // The booked rail/air pass that BOARDS here (present on departure/changeover
-  // stops of a booked run). Rendered as an inline pass node right after the
-  // anchor — the journey's ticket, on the spine, where you board it.
   pass?: SpinePass | null;
 }
 
-// You don't walk to "Harpenden" — you walk to Harpenden Station. Append the
-// right noun unless the hub name already carries one (St Pancras International,
-// Luton Airport Parkway, …).
 export function stationLabel(name: string, kind: StationKind): string {
-  if (/\b(station|airport|international|terminal|parkway|airfield|interchange)\b/i.test(name)) {
-    return name;
-  }
+  if (/\b(station|airport|international|terminal|parkway|airfield|interchange)\b/i.test(name)) return name;
   return `${name} ${kind === "airport" ? "Airport" : "Station"}`;
 }
 
 export function roleLabel(role: AnchorRole, station: SpineAnchor["station"]): string {
   switch (role) {
-    case "departure":
-      return "Departure";
-    case "arrival":
-      return "Arrival";
-    case "changeover":
-      return "Change";
-    default:
-      return station ? (station.kind === "airport" ? "Airport" : "Station") : "Stop";
+    case "departure": return "Departure";
+    case "arrival": return "Arrival";
+    case "changeover": return "Change";
+    default: return station ? (station.kind === "airport" ? "Airport" : "Station") : "Stop";
   }
 }
 
@@ -75,9 +49,6 @@ export function roleOf(rawType: string): AnchorRole {
   return "stop";
 }
 
-// Map a plan transition mode onto a door-nav costing. Transit modes (train,
-// tube, bus) fall back to walking the door-to-door hop — the routing layer
-// only does walk/cycle/drive until the transit adapter lands.
 export function navModeForTransition(mode: string | null | undefined): NavMode {
   switch (mode) {
     case "drive":
@@ -93,9 +64,11 @@ export function navModeForTransition(mode: string | null | undefined): NavMode {
   }
 }
 
-// The "take me there" deep link into /navigate, pre-filling the destination.
-export function navigateHref(a: { coord: { lat: number; lng: number } | null; title: string }): Route | null {
-  if (!a.coord) return null;
+// Arrivals and changeovers are outcomes of the booked transit leg already rendered
+// by LivePass. They are not independent door-to-door walking destinations. Returning
+// null here prevents Today from inventing duplicate walk cards over rail journeys.
+export function navigateHref(a: { coord: { lat: number; lng: number } | null; title: string; role?: AnchorRole }): Route | null {
+  if (!a.coord || a.role === "arrival" || a.role === "changeover") return null;
   const params = new URLSearchParams({
     dlat: String(a.coord.lat),
     dlng: String(a.coord.lng),
