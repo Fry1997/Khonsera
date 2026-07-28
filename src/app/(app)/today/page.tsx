@@ -444,10 +444,10 @@ export default async function TodayPage({
   const showNextDocument =
     !!nextTicket && !nextTicketInline && nextTicket.kind === "stay";
   const sub =
-    covering.length === 1
-      ? (covering[0].title ?? undefined)
-      : covering.length > 1
-        ? `${covering.length} plans today`
+    covering.length > 1
+      ? `${covering.length} plans today`
+      : baseLabel
+        ? `From ${baseLabel}`
         : undefined;
   const weather = await getLocalWeather();
   const dateEyebrow = new Intl.DateTimeFormat("en-GB", {
@@ -522,9 +522,16 @@ export default async function TodayPage({
   }
   return (
     <AppScreen
-      eyebrow="Today"
-      title="Right now"
-      titleAs={anchors.length ? "p" : "h1"}
+      eyebrow={anchors.length ? dateEyebrow : "Today"}
+      title={anchors.length ? dayPurpose : "Right now"}
+      titleAs="h1"
+      description={
+        anchors.length && baseLabel ? (
+          <>
+            From <strong>{baseLabel}</strong>
+          </>
+        ) : undefined
+      }
       headerClassName="cc-today-head"
       data-disrupted={disruptions.length ? "true" : undefined}
       actions={
@@ -569,27 +576,18 @@ export default async function TodayPage({
 
         {anchors.length ? (
           <>
-            <section className="cc-day-primary" aria-labelledby="today-purpose">
-              <header className="cc-day-header">
-                <span className="cc-day-header-eyebrow">{dateEyebrow}</span>
-                <h1 id="today-purpose" className="cc-day-purpose">
-                  {dayPurpose}
-                </h1>
-                {baseLabel ? (
-                  <p className="cc-day-origin">
-                    From <strong>{baseLabel}</strong>
-                  </p>
-                ) : null}
-                {dayNote ? (
-                  <div className="cc-day-point">
-                    <span className="cc-day-point-eyebrow">
-                      The point of the day
-                    </span>
-                    <p className="cc-standfirst">{dayNote}</p>
-                  </div>
-                ) : null}
-              </header>
-
+            <section
+              className="cc-day-primary"
+              aria-label={`Live itinerary for ${dayPurpose}`}
+            >
+              {dayNote ? (
+                <div className="cc-day-point cc-day-point--today">
+                  <span className="cc-day-point-eyebrow">
+                    The point of the day
+                  </span>
+                  <p className="cc-standfirst">{dayNote}</p>
+                </div>
+              ) : null}
               <LiveDay anchors={spineAnchors} sub={sub} base={baseCoord} />
               <TodaySpine
                 anchors={spineAnchors}
