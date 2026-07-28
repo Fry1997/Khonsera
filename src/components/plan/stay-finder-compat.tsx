@@ -15,7 +15,8 @@ type CompactProps = {
 };
 
 export function StayFinder(props: FullProps | CompactProps) {
-  const itineraryId = "itineraryId" in props ? props.itineraryId : props.journeyId;
+  const itineraryId = props.itineraryId ?? props.journeyId;
   const defaultDate = props.defaultDate ?? new Date().toISOString().slice(0, 10);
+  if (!itineraryId) return null;
   return <CoreStayFinder itineraryId={itineraryId} defaultDate={defaultDate} />;
 }
