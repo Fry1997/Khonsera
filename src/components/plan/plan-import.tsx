@@ -5,22 +5,21 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { GmailImportPanel } from "@/app/(app)/itineraries/[id]/gmail-import-panel";
 
-// Bring a booking in from email, on the new Plan flow (the user's "I can't bring
-// it in" gap). Reuses the working Gmail import panel (the path that imported the
-// real Trainline data), scoped to this Event; on import the spine re-folds it into
-// a docked Pass and the Wallet picks it up. The panel is legacy-styled —
-// DESIGN-PENDING for an Edition II pass.
 export function PlanImport({
   itineraryId,
-  lastStopId,
-  lastStopLabel,
+  journeyId,
+  lastStopId = null,
+  lastStopLabel = "your last stop",
 }: {
-  itineraryId: string;
-  lastStopId: string | null;
-  lastStopLabel: string;
+  itineraryId?: string;
+  journeyId?: string;
+  lastStopId?: string | null;
+  lastStopLabel?: string;
 }) {
+  const id = itineraryId ?? journeyId;
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  if (!id) return null;
 
   if (!open) {
     return (
@@ -32,12 +31,12 @@ export function PlanImport({
 
   return (
     <GmailImportPanel
-      itineraryId={itineraryId}
+      itineraryId={id}
       lastStopId={lastStopId}
       lastStopLabel={lastStopLabel}
       onClose={() => setOpen(false)}
       onImported={() => {
-        router.push(`/plan/${itineraryId}` as Route);
+        router.push(`/plan/${id}` as Route);
         router.refresh();
       }}
       standaloneRuns
