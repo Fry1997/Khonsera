@@ -7,6 +7,13 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./src/lib/dictionary/data/**"],
   },
+  // Vercel restored an obsolete TodaySpine module from a previous build even
+  // after cloning a newer commit. Compile production modules fresh so a READY
+  // deployment cannot serve UI from another revision.
+  webpack(config) {
+    config.cache = false;
+    return config;
+  },
 };
 
 export default nextConfig;
