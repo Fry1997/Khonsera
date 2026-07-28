@@ -1,1 +1,1 @@
-Retry the temporary source-archive workflow after moving the archive outside the checkout.
+Trigger the temporary production source staging workflow.
