@@ -219,3 +219,98 @@ export type TicketLegVM = {
   barcodes?: BarcodeVM[]; // one per passenger
   status?: StatusVM;
 };
+
+export type TicketVM = {
+  id: string;
+  kind: DocumentKind;
+  operator: string; // "LNER" · "easyJet" · "Premier Inn"
+  operatorSecondary?: string; // second operator on a mixed-operator journey
+  reference?: string; // 8-char collection / booking ref
+  price?: number; // minor units
+  currency?: string;
+  source: DocumentSource;
+  itineraryId?: string; // owning plan/day when the document is associated with one
+  legs: TicketLegVM[]; // 1 = single · 2 = booking-pair (outbound + return)
+  consequence?: string; // the live band: "this return → leave the museum by 16:10"
+  // stay
+  address?: string;
+  checkIn?: string; // ISO
+  checkOut?: string; // ISO
+  roomType?: string;
+  nights?: number;
+  contact?: string;
+};
+
+// The Wallet orders within a date by *time-needed* — the moment the document is
+// used, not booked (§7.1): rail = departure · air = boarding · stay = check-in.
+export function ticketUseMoment(t: TicketVM): string | undefined {
+  if (t.kind === "stay") return t.checkIn;
+  const first = t.legs[0];
+  if (!first) return undefined;
+  if (t.kind === "air") return first.boardingTime ?? first.origin.time;
+  return first.origin.time; // rail / ground = departure / pickup
+}
+
+export const STATUS_LABEL: Record<TravelStatus, string> = {
+  on_time: "On time",
+  delayed: "Delayed",
+  platform_change: "Platform change",
+  gate_change: "Gate change",
+  boarding: "Boarding",
+  cancelled: "Cancelled",
+  stale: "Last known",
+};
+
+export type ContactVM = {
+  id: string;
+  name: string;
+  channel?: "phone" | "email" | "whatsapp";
+  detail?: string;
+};
+
+export type TaskVM = {
+  id: string;
+  title: string;
+  due?: string;
+  done: boolean;
+};
+
+export type ExpenseVM = {
+  id: string;
+  amount: number; // minor units
+  currency: string;
+  category?: string;
+  date?: string;
+};
+
+export const GBP = "GBP";
+
+export function formatMoney(minor: number, currency = GBP): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+  }).format(minor / 100);
+}
+
+// The app's display timezone. Times are stored as UTC ISO; without an explicit
+// zone the runtime (UTC on the server) renders an hour early in BST — the bug
+// where a 09:19 arrival showed as 08:19. Fixed to Europe/London (the workspace
+// default); thread a per-workspace tz here when multi-tz lands.
+export const DISPLAY_TZ = "Europe/London";
+
+export function formatClock(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: DISPLAY_TZ,
+  }).format(d);
+}
+
+export function formatDelta(minutes: number): string {
+  if (minutes === 0) return "on time";
+  const abs = Math.abs(minutes);
+  return minutes < 0 ? `${abs}m early` : `${abs}m late`;
+}
