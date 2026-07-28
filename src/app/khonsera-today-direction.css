@@ -1,0 +1,1048 @@
+/* Khonsera application direction · July 2026
+ *
+ * The approved Today mock is the application specification. This layer makes
+ * the existing product behave as that app: one unified chrome, one decisive
+ * next-move surface, one integrated map, and one continuous itinerary object.
+ */
+
+:root {
+  --kh-app-max: 1180px;
+  --kh-app-gutter: clamp(16px, 3.25vw, 30px);
+  --kh-emerald: var(--gold);
+  --kh-emerald-strong: var(--gold-2);
+  --kh-emerald-soft: var(--sage-soft);
+  --kh-canvas: #f8f9f8;
+  --kh-map-wash: color-mix(in srgb, var(--sage-soft) 55%, var(--card));
+  --kh-panel-shadow: 0 1px 2px rgba(24, 26, 31, 0.04),
+    0 12px 30px -18px rgba(24, 26, 31, 0.19);
+  --kh-float-shadow: 0 2px 5px rgba(24, 26, 31, 0.04),
+    0 12px 24px -15px rgba(24, 26, 31, 0.2);
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background: var(--kh-canvas);
+}
+
+.khonsera-app--unified {
+  min-height: 100dvh;
+  background: radial-gradient(circle at 52% -8%, var(--card), transparent 34rem),
+    var(--kh-canvas);
+}
+
+.khonsera-app--unified .cc-app-main {
+  width: min(100%, calc(var(--kh-app-max) + (var(--kh-app-gutter) * 2)));
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: 22px var(--kh-app-gutter)
+    calc(var(--tabbar-height) + 92px + env(safe-area-inset-bottom));
+}
+
+/* Unified application chrome ------------------------------------------------ */
+
+.khonsera-app--unified .cc-appbar {
+  width: min(100%, calc(var(--kh-app-max) + (var(--kh-app-gutter) * 2)));
+  min-height: 72px;
+  margin-inline: auto;
+  padding: calc(16px + env(safe-area-inset-top)) var(--kh-app-gutter) 10px;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.khonsera-app--unified .cc-lockup {
+  gap: 17px;
+}
+
+.khonsera-app--unified .cc-brand-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--kh-emerald-strong);
+  box-shadow: none;
+}
+
+.khonsera-app--unified .cc-appbar .cc-lockup .wm {
+  display: block;
+  padding-left: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: var(--fw-regular);
+  letter-spacing: 0.38em;
+}
+
+.khonsera-app--unified .cc-appbar-right {
+  gap: 14px;
+}
+
+.khonsera-app--unified .cc-appbar .cc-iconbtn {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  min-height: 58px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  box-shadow: var(--kh-float-shadow);
+}
+
+.khonsera-app--unified .cc-appbar .cc-iconbtn:hover {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow:
+    0 2px 6px rgba(24, 26, 31, 0.05),
+    0 18px 30px -17px rgba(24, 26, 31, 0.24);
+}
+
+.khonsera-app--unified .cc-appbar-icon,
+.khonsera-app--unified .cc-appbar-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.khonsera-app--unified .cc-tabbar-wrap {
+  border-top-color: var(--rule);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: 0 -10px 34px -28px rgba(24, 26, 31, 0.28);
+}
+
+.khonsera-app--unified .cc-tabbar {
+  width: min(100%, 862px);
+  max-width: 862px;
+}
+
+.khonsera-app--unified .cc-tab {
+  border-radius: 0;
+  color: var(--ink-faint);
+}
+
+.khonsera-app--unified .cc-tab[data-active="true"],
+.khonsera-app--unified .cc-tab[data-active="true"] .cc-tab-ico {
+  color: var(--kh-emerald-strong);
+}
+
+.khonsera-app--unified .cc-tab[data-active="true"] .cc-tab-dot {
+  display: none;
+}
+
+/* Today header -------------------------------------------------------------- */
+
+.cc-today-direction {
+  gap: 24px;
+}
+
+.cc-today-direction .cc-today-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 280px);
+  align-items: end;
+  gap: 32px;
+}
+
+.cc-today-direction .cc-today-head .cc-screen-copy {
+  min-width: 0;
+}
+
+.cc-today-direction .cc-today-head .cc-eyebrow {
+  color: var(--ink-dim);
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.cc-today-direction .cc-today-head .cc-screen-title {
+  margin-top: 8px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: clamp(50px, 7vw, 74px);
+  font-weight: var(--fw-medium);
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+}
+
+.cc-today-direction .cc-screen-description {
+  margin-top: 22px;
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+.cc-today-destination {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cc-today-destination svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.cc-today-destination strong {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.cc-today-direction .cc-screen-actions {
+  width: 100%;
+}
+
+.cc-today-direction .cc-weather {
+  width: 100%;
+  min-width: 0;
+  min-height: 142px;
+  display: grid;
+  grid-template-columns: 58px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 24px 26px;
+  border: 1px solid var(--rule);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--kh-panel-shadow);
+}
+
+.cc-today-direction .cc-weather-glyph {
+  width: 54px;
+  height: 54px;
+  color: var(--amber);
+}
+
+.cc-today-direction .cc-weather[data-day="false"] .cc-weather-glyph {
+  color: var(--slate);
+}
+
+.cc-today-direction .cc-weather-temp {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 45px;
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.cc-today-direction .cc-weather-meta {
+  gap: 5px;
+}
+
+.cc-today-direction .cc-weather-headline {
+  color: var(--ink-2);
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+}
+
+.cc-today-direction .cc-weather-place {
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Today composition --------------------------------------------------------- */
+
+.cc-today-direction .cc-day-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.cc-today-command {
+  min-height: 418px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 22px;
+  background: var(--kh-map-wash);
+  box-shadow: var(--kh-panel-shadow);
+}
+
+.cc-today-command-content {
+  min-height: 418px;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--card) 0%,
+    var(--card) 48%,
+    color-mix(in srgb, var(--card) 86%, transparent) 58%,
+    transparent 74%
+  );
+}
+
+.cc-today-command-map {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 0 42%;
+  min-width: 0;
+}
+
+.cc-today-command-map .cc-route-map {
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--kh-map-wash);
+  box-shadow: none;
+}
+
+.cc-today-command-map .cc-route-map > div {
+  height: 100% !important;
+  min-height: 100% !important;
+  border-radius: 0 !important;
+}
+
+.cc-today-command .cc-active-tile {
+  width: 64%;
+  min-height: 418px;
+  position: relative;
+  z-index: 3;
+  gap: 14px;
+  padding: 31px 30px 26px;
+  overflow: visible;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  text-shadow: none;
+  pointer-events: auto;
+}
+
+.cc-today-command:not(:has(.cc-today-command-map)) .cc-active-tile {
+  width: 100%;
+}
+
+.cc-today-command .cc-active-tile::after,
+.cc-today-command .cc-active-tile .pg::after {
+  content: none !important;
+}
+
+.cc-today-command .cc-at-status {
+  gap: 10px;
+  color: var(--kh-emerald-strong);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.cc-today-command .cc-at-dot {
+  width: 9px;
+  height: 9px;
+}
+
+.cc-today-command .cc-setoff-sheet {
+  display: grid;
+  gap: 12px;
+  text-shadow: none;
+}
+
+.cc-today-command .cc-setoff-eyb {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.cc-today-command .cc-setoff-kicker {
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+.cc-today-command .cc-setoff-for {
+  overflow: hidden;
+  color: var(--ink-dim);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-setoff-core {
+  display: flex;
+  align-items: center;
+  gap: 42px;
+}
+
+.cc-today-command .cc-setoff-figure {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: clamp(62px, 8vw, 92px);
+  font-weight: var(--fw-regular);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  text-shadow: none;
+}
+
+.cc-today-command .cc-setoff-colon {
+  color: var(--ink);
+}
+
+.cc-leave-ring {
+  width: 104px;
+  height: 104px;
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+.cc-leave-ring svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.cc-leave-ring circle {
+  fill: none;
+  stroke-width: 5;
+}
+
+.cc-leave-ring-track {
+  stroke: var(--rule-2);
+}
+
+.cc-leave-ring-progress {
+  stroke: var(--kh-emerald-strong);
+  stroke-linecap: round;
+  stroke-dasharray: 244;
+}
+
+.cc-leave-ring > span {
+  position: relative;
+  z-index: 1;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.cc-leave-ring strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+}
+
+.cc-next-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cc-next-facts > span {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  backdrop-filter: blur(10px);
+}
+
+.cc-next-facts > span::before {
+  width: 6px;
+  height: 6px;
+  content: "";
+  margin-right: 9px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  color: var(--kh-emerald-strong);
+}
+
+.cc-today-command .cc-setoff-move {
+  max-width: 54ch;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cc-next-actions {
+  display: grid;
+  grid-template-columns: 1.55fr repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: auto;
+}
+
+.cc-next-action {
+  min-width: 0;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--ink-2);
+  box-shadow: 0 4px 12px -8px rgba(24, 26, 31, 0.32);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cc-next-action svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.cc-next-action:hover {
+  background: var(--card);
+  transform: translateY(-1px);
+}
+
+.cc-next-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.cc-next-action--primary {
+  justify-content: space-between;
+  border-color: transparent;
+  background: var(--kh-emerald-strong);
+  color: #ffffff;
+  box-shadow: 0 10px 20px -12px color-mix(in srgb, var(--kh-emerald) 70%, transparent);
+}
+
+.cc-next-action--primary:hover {
+  background: var(--char);
+}
+
+/* Weather strip ------------------------------------------------------------ */
+
+.cc-today-direction .cc-day-forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cc-today-direction .cc-weather-hours {
+  min-height: 98px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(116px, 1fr));
+  grid-auto-flow: row;
+  gap: 0;
+  padding: 16px 12px;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--kh-panel-shadow);
+}
+
+.cc-today-direction .cc-weather-hour {
+  min-width: 116px;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: 6px;
+  padding: 0 20px;
+  border-left: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cc-today-direction .cc-weather-hour:first-child {
+  border-left: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cc-today-direction .cc-weather-hour-time {
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+.cc-today-direction .cc-weather-hour:first-child .cc-weather-hour-time {
+  color: var(--kh-emerald-strong);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cc-today-direction .cc-weather-hour-temp {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 23px;
+  font-weight: var(--fw-medium);
+}
+
+.cc-today-direction .cc-weather-hour-cond {
+  color: var(--ink-dim);
+  font-size: 10px;
+}
+
+/* One continuous itinerary ------------------------------------------------- */
+
+.cc-today-direction .cc-day-primary {
+  gap: 0;
+}
+
+.cc-today-direction .cc-spine-heading {
+  margin: 10px 0 15px;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.cc-today-direction .cc-spine-heading .cc-eyebrow {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: var(--fw-semibold);
+}
+
+.cc-today-direction .cc-spine {
+  width: 100%;
+  position: relative;
+  gap: 0;
+  padding: 0 0 0 74px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--kh-panel-shadow);
+}
+
+.cc-today-direction .cc-spine-rail {
+  width: 1px;
+  top: 18px;
+  bottom: 18px;
+  left: 26px;
+  background: var(--rule-2);
+}
+
+.cc-today-direction .cc-spine > .cc-node:has(.cc-now-row) {
+  display: none;
+}
+
+.cc-today-direction .cc-spine .cc-node {
+  min-height: 106px;
+  display: block;
+  padding: 20px 24px 20px 10px;
+  border-top: 1px solid var(--rule);
+  background: transparent;
+}
+
+.cc-today-direction .cc-spine > .cc-node:first-of-type,
+.cc-today-direction .cc-spine-rail + .cc-node {
+  border-top: 0;
+}
+
+.cc-today-direction .cc-spine .cc-node-dot {
+  width: 48px;
+  height: 48px;
+  top: 22px;
+  left: -48px;
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  box-shadow: var(--kh-float-shadow);
+  color: var(--ink);
+  transform: translateX(-50%);
+}
+
+.cc-today-direction .cc-spine .cc-node[data-state="next"] .cc-node-dot {
+  border-color: var(--kh-emerald-strong);
+  background: var(--kh-emerald-strong);
+  color: #ffffff;
+}
+
+.cc-today-direction .cc-spine .cc-node-dot > span {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.cc-today-direction .cc-spine .cc-node[data-state="next"] .cc-node-dot > span {
+  border-color: #ffffff;
+  background: transparent;
+}
+
+.cc-today-direction
+  .cc-spine
+  :is(
+    .cc-walk,
+    .cc-appt,
+    .cc-anchor-card,
+    .cc-station-card,
+    .cc-transfer,
+    .cc-pass
+  ) {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.cc-today-direction
+  .cc-spine
+  :is(
+    .cc-walk,
+    .cc-appt,
+    .cc-anchor-card,
+    .cc-station-card,
+    .cc-transfer,
+    .cc-pass
+  )::after {
+  content: none !important;
+}
+
+.cc-today-direction .cc-walk {
+  min-height: 86px;
+  justify-content: center;
+}
+
+.cc-today-direction .cc-walk-head {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.cc-today-direction .cc-walk-mode {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: var(--fw-semibold);
+}
+
+.cc-today-direction .cc-walk-mins {
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 15px;
+  text-shadow: none;
+}
+
+.cc-today-direction .cc-walk-window {
+  max-width: 360px;
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.cc-today-direction .cc-walk-dest {
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.cc-today-direction .cc-walk-spare {
+  margin-left: 8px;
+  background: var(--kh-emerald-soft);
+  color: var(--kh-emerald-strong);
+}
+
+.cc-today-direction .cc-walk-foot {
+  display: none;
+}
+
+.cc-today-direction .cc-appt-title,
+.cc-today-direction .cc-station-title {
+  font-size: 18px;
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-band {
+  padding: 0 0 12px !important;
+  background: transparent !important;
+  color: var(--kh-emerald-strong) !important;
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-band * {
+  color: inherit !important;
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-route {
+  padding: 8px 10px 18px !important;
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-code {
+  color: var(--ink) !important;
+  font-family: var(--display);
+  font-size: 34px !important;
+  font-weight: var(--fw-regular) !important;
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-place {
+  color: var(--ink-dim) !important;
+  font-size: 12px !important;
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-stub {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  padding: 14px 10px 4px !important;
+  border-top: 1px solid var(--rule);
+}
+
+.cc-today-direction .cc-pass--docked .cc-pass-status,
+.cc-today-direction .cc-pass--docked .cc-pass-consequence,
+.cc-today-direction .cc-pass--docked .cc-pass-ready {
+  padding-right: 10px !important;
+  padding-left: 10px !important;
+}
+
+.cc-today-direction .cc-transfer {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  color: var(--rail-2);
+}
+
+.cc-today-direction .cc-transfer-head {
+  width: 100%;
+}
+
+.cc-today-direction .cc-spine-toggle {
+  min-height: 44px;
+  margin: 10px 24px 10px 10px;
+  border: 1px solid var(--rule);
+  background: var(--card);
+  box-shadow: none;
+}
+
+/* Contextual exits --------------------------------------------------------- */
+
+.cc-today-direction .cc-day-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cc-today-direction .cc-context-actions {
+  min-height: 70px;
+  padding: 15px 20px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--kh-panel-shadow);
+}
+
+.cc-today-direction .cc-context-actions--note {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.cc-today-direction .cc-context-actions--planner {
+  grid-column: 1 / -1;
+}
+
+/* Responsive translation -------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .cc-today-command .cc-active-tile {
+    width: 68%;
+  }
+
+  .cc-next-actions {
+    grid-template-columns: 1.45fr repeat(3, minmax(88px, 1fr));
+  }
+
+  .cc-next-action {
+    padding-inline: 11px;
+  }
+
+  .cc-next-action:not(.cc-next-action--primary) svg {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .khonsera-app--unified .cc-app-main {
+    padding-top: 10px;
+  }
+
+  .khonsera-app--unified .cc-appbar {
+    position: sticky;
+    padding-bottom: 8px;
+    background: color-mix(in srgb, var(--kh-canvas) 92%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .khonsera-app--unified .cc-appbar .cc-iconbtn {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    min-height: 46px;
+  }
+
+  .cc-today-direction .cc-today-head {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .cc-today-direction .cc-today-head .cc-screen-title {
+    font-size: clamp(46px, 14vw, 62px);
+  }
+
+  .cc-today-direction .cc-weather {
+    min-height: 112px;
+    grid-template-columns: 48px auto minmax(0, 1fr);
+    padding: 20px;
+  }
+
+  .cc-today-direction .cc-weather-glyph {
+    width: 46px;
+    height: 46px;
+  }
+
+  .cc-today-direction .cc-weather-temp {
+    font-size: 38px;
+  }
+
+  .cc-today-command {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cc-today-command-content {
+    min-height: auto;
+    background: var(--card);
+  }
+
+  .cc-today-command-map {
+    height: 220px;
+    position: relative;
+    inset: auto;
+    order: 2;
+  }
+
+  .cc-today-command .cc-active-tile {
+    width: 100%;
+    min-height: 0;
+    padding: 24px 20px 20px;
+  }
+
+  .cc-setoff-core {
+    gap: 22px;
+  }
+
+  .cc-today-command .cc-setoff-figure {
+    font-size: clamp(58px, 20vw, 82px);
+  }
+
+  .cc-leave-ring {
+    width: 92px;
+    height: 92px;
+  }
+
+  .cc-next-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cc-next-action:not(.cc-next-action--primary) svg {
+    display: block;
+  }
+
+  .cc-today-direction .cc-weather-hours {
+    grid-template-columns: none;
+    grid-auto-columns: minmax(100px, 1fr);
+    grid-auto-flow: column;
+  }
+
+  .cc-today-direction .cc-weather-hour {
+    min-width: 100px;
+    padding-inline: 15px;
+  }
+
+  .cc-today-direction .cc-spine {
+    padding-left: 62px;
+  }
+
+  .cc-today-direction .cc-spine-rail {
+    left: 23px;
+  }
+
+  .cc-today-direction .cc-spine .cc-node {
+    padding-right: 16px;
+  }
+
+  .cc-today-direction .cc-spine .cc-node-dot {
+    width: 42px;
+    height: 42px;
+    left: -39px;
+  }
+
+  .cc-today-direction .cc-day-context {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-today-direction .cc-context-actions--planner {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .khonsera-app--unified .cc-appbar .cc-lockup .wm {
+    font-size: 13px;
+    letter-spacing: 0.27em;
+  }
+
+  .khonsera-app--unified .cc-appbar-right {
+    gap: 8px;
+  }
+
+  .cc-today-direction .cc-screen-description {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+
+  .cc-setoff-core {
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .cc-today-command .cc-setoff-figure {
+    font-size: clamp(52px, 19vw, 70px);
+  }
+
+  .cc-leave-ring {
+    width: 82px;
+    height: 82px;
+  }
+
+  .cc-next-facts {
+    gap: 7px;
+  }
+
+  .cc-next-facts > span {
+    min-height: 36px;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .cc-next-action {
+    min-height: 48px;
+    font-size: 12px;
+  }
+
+  .cc-today-direction .cc-pass--docked .cc-pass-code {
+    font-size: 28px !important;
+  }
+
+  .cc-today-direction .cc-pass--docked .cc-pass-stub {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-next-action {
+    transition: none;
+  }
+}
