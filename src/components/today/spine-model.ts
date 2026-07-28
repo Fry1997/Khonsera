@@ -38,6 +38,8 @@ export interface SpineAnchor {
   role: AnchorRole;
   mode?: "work" | "personal" | null;
   pass?: SpinePass | null;
+  /** Routing context such as the home bookend: render its movement, never a stop card. */
+  contextOnly?: boolean;
 }
 
 export function stationLabel(name: string, kind: StationKind): string {
