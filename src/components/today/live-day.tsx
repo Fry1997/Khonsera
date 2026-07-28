@@ -5,11 +5,9 @@ import type { SpineAnchor } from "./spine-model";
 import { londonClock } from "./spine-model";
 import { computeDayState, type EngineAnchor, type Feasibility } from "@/lib/today/engine";
 import { fetchNavRoute } from "@/lib/actions/nav";
-import { requestHeadingPermission } from "@/components/nav/use-heading";
-import { FullLeg } from "./next-leg-map";
 import { useLivePosition } from "./use-live-position";
-import { buildNavCommitments } from "@/lib/nav/day-commitments";
 import type { NavMode, NavRoute } from "@/lib/nav/types";
+import { haversineMeters } from "@/lib/geo";
 
 const HHMM = (ms: number) => londonClock(new Date(ms).toISOString());
 
@@ -38,7 +36,7 @@ function instruction(feas: Feasibility | null): string {
 export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: string; base?: { lat: number; lng: number } | null }) {
   const [now, setNow] = useState(() => Date.now());
   const [route, setRoute] = useState<NavRoute | null>(null);
-  const [navOpen, setNavOpen] = useState(false);
+  const [onWayToId, setOnWayToId] = useState<string | null>(null);
   const { fix } = useLivePosition(true);
 
   useEffect(() => {
@@ -46,10 +44,6 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
     return () => clearInterval(timer);
   }, []);
 
-  // A plan's start/base stop is context, not an obligation. It used to become the
-  // first destination and produced instructions to leave home for home. Remove only
-  // the leading stop that resolves to the saved base; a genuine later return-home
-  // stop remains in the day.
   const operationalAnchors = useMemo(() => {
     if (!anchors.length || !base) return anchors;
     const first = anchors[0];
@@ -65,6 +59,7 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
         endMs: anchor.endIso ? Date.parse(anchor.endIso) : null,
         plannedTravelMinutes: anchor.plannedTravelMinutes,
         isStation: !!anchor.station,
+        bufferMinutes: anchor.bufferMinutes,
       })),
     [operationalAnchors],
   );
@@ -86,6 +81,12 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
     };
   }, [origin?.lat, origin?.lng, next?.id, next?.coord?.lat, next?.coord?.lng, next?.title, mode]);
 
+  useEffect(() => {
+    if (!next?.coord || !fix || onWayToId !== next.id) return;
+    const distance = haversineMeters(fix.lat, fix.lng, next.coord.lat, next.coord.lng);
+    if (distance <= Math.max(45, fix.accuracy * 1.5)) setOnWayToId(null);
+  }, [fix, next?.id, next?.coord?.lat, next?.coord?.lng, onWayToId]);
+
   const state = computeDayState({
     anchors: engineAnchors,
     nowMs: now,
@@ -103,33 +104,38 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
   }
 
   const feas = state.feasibility;
-  const setOffClock = feas && feas.band !== "cliff" ? HHMM(feas.leaveByMs) : null;
-  const parts = setOffClock?.split(":") ?? null;
   const target = next.station?.name ?? next.title;
+  const isOnWay = onWayToId === next.id;
+  const etaMs = route ? now + route.duration_s * 1000 : null;
+  const setOffClock = !isOnWay && feas && feas.band !== "cliff" ? HHMM(feas.leaveByMs) : null;
+  const figure = isOnWay && etaMs != null ? HHMM(etaMs) : setOffClock;
+  const parts = figure?.split(":") ?? null;
   const arriveByMs = next.arriveByIso ? Date.parse(next.arriveByIso) : null;
   const stationReadyMs = arriveByMs != null && feas ? arriveByMs - feas.bufferMinutes * 60_000 : arriveByMs;
   const arrivalLabel = stationReadyMs != null ? HHMM(stationReadyMs) : null;
 
   return (
     <section className="cc-active-tile cc-setoff" data-urgency={urgencyOf(feas)}>
-      <span className="cc-at-status"><span className="cc-at-dot" />Next move</span>
+      <span className="cc-at-status"><span className="cc-at-dot" />{isOnWay ? "On the way" : "Next move"}</span>
 
       <div className="pg cc-setoff-sheet">
         <div className="cc-setoff-eyb">
-          <span className="cc-setoff-kicker">{feas?.band === "cliff" ? "Leave now" : "Leave by"}</span>
+          <span className="cc-setoff-kicker">{isOnWay ? "ETA" : feas?.band === "cliff" ? "Leave now" : "Leave by"}</span>
           <span className="cc-setoff-for">for {target}</span>
         </div>
         {parts ? (
-          <div className="mono engr-deep cc-setoff-figure" aria-label={`Leave by ${setOffClock}`}>
+          <div className="mono engr-deep cc-setoff-figure" aria-label={`${isOnWay ? "ETA" : "Leave by"} ${figure}`}>
             <span>{parts[0]}</span><span className="cc-setoff-colon">:</span><span>{parts[1]}</span>
           </div>
         ) : (
           <div className="mono engr-deep cc-setoff-figure cc-setoff-figure--word">Now</div>
         )}
         <p className="cc-setoff-move">
-          {instruction(feas)} · {feas ? `${feas.travelMinutes} min ${mode === "drive" ? "by car" : mode}` : "route pending"}
-          {arrivalLabel ? ` · arrive by ${arrivalLabel}` : ""}
-          {feas?.bufferMinutes ? ` · ${feas.bufferMinutes} min early` : ""}
+          {isOnWay
+            ? `${route ? Math.max(1, Math.round(route.duration_s / 60)) : feas?.travelMinutes ?? "—"} min remaining`
+            : `${instruction(feas)} · ${feas ? `${feas.travelMinutes} min ${mode === "drive" ? "by car" : mode}` : "route pending"}`}
+          {!isOnWay && arrivalLabel ? ` · arrive by ${arrivalLabel}` : ""}
+          {!isOnWay && feas?.bufferMinutes ? ` · ${feas.bufferMinutes} min early` : ""}
         </p>
       </div>
 
@@ -137,30 +143,15 @@ export function LiveDay({ anchors, sub, base }: { anchors: SpineAnchor[]; sub?: 
         <p style={{ margin: 0, fontSize: "var(--fs-label)", color: "var(--ink-dim)" }}>Your ticket is ready on the journey below.</p>
       ) : null}
 
-      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
-        {origin && next.coord ? (
-          <button
-            type="button"
-            className="cc-btn cc-btn-gold"
-            disabled={!route}
-            onClick={() => {
-              void requestHeadingPermission();
-              setNavOpen(true);
-            }}
-          >
-            {route ? "Navigate" : "Finding route…"}
-          </button>
-        ) : null}
-      </div>
-
-      {navOpen && route ? (
-        <FullLeg
-          route={route}
-          preview={false}
-          commitments={buildNavCommitments(operationalAnchors, next.id)}
-          scheduledRemainingMin={Math.round(route.duration_s / 60)}
-          onClose={() => setNavOpen(false)}
-        />
+      {!isOnWay ? (
+        <button
+          type="button"
+          className="cc-btn cc-btn-gold"
+          disabled={!route}
+          onClick={() => setOnWayToId(next.id)}
+        >
+          {route ? "I’m on my way" : "Finding route…"}
+        </button>
       ) : null}
     </section>
   );
