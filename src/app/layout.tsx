@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Spectral } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "./khonsera-edition-ii.css"; // ← Edition II brand update (must load AFTER globals.css)
 import "./khonsera-edition-ii-screens.css"; // Round 1 screen components (.cc-*) — additive, after the brand layer
@@ -15,34 +15,29 @@ import "./khonsera-edition-iii-connections.css"; // Edition III connections/book
 import "./khonsera-edition-iii-sharing.css"; // Edition III sharing/comms/safety (P18)
 import "./khonsera-edition-iii-round13.css"; // Edition III Round 13 coherence + features skin
 import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance surface (.cc-nav*) — LAST
+import "./khonsera-instrument.css"; // Instrument Edition v8 — reviewed production direction, final authority
 import { PwaRegister } from "@/components/pwa-register";
 
-// Canonical Khonsera type stack, per the Visual Identity brand book
-// (Edition II · MMXXVI) — SANS-LED:
+// Canonical Instrument Edition type stack:
 //
-//   • Satoshi         — wordmark, display, headlines, UI *and* body.
-//                       Loaded from Fontshare via the <link> below.
+//   • Satoshi         — wordmark, display, headlines, UI and body.
 //   • JetBrains Mono  — codes, times, eyebrows (the travel-document signature)
-//   • Spectral        — rare editorial italic accent only (replaces Cormorant)
 //
-// Inter is retired: Satoshi now carries body too. The --font-sans variable is
-// left bound to Satoshi via khonsera-edition-ii.css, so --sans resolves to
-// Satoshi even where globals.css references var(--font-sans).
+// The editorial serif and pictorial mark are retired. Emphasis comes from
+// weight, tracking, and the mono transit layer.
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-const serif = Spectral({
-  subsets: ["latin"],
-  style: ["italic", "normal"],
-  weight: ["400", "500", "600"],
-  variable: "--font-serif",
-});
 
 export const metadata: Metadata = {
-  title: "Khonsera — travel days, considered.",
+  title: "Khonsera — travel days that run on time.",
   description:
-    "A quiet concierge for the slow blue hour. Plan the in-between hours of your travel — the train that might not be running, the taxi at dusk, the careful arithmetic of getting there.",
+    "The operational layer for travel days: commitments, live timing, protected buffers, fallbacks, and next-best actions in one accountable plan.",
   manifest: "/manifest.webmanifest",
   applicationName: "Khonsera",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Khonsera" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Khonsera",
+  },
   other: {
     // Android/Chrome PWA standalone hint (the apple-* meta above covers iOS).
     "mobile-web-app-capable": "yes",
@@ -60,7 +55,7 @@ export const viewport: Viewport = {
   // env(safe-area-inset-*) becomes non-zero — the appbar/tabbar then inset
   // themselves to clear the status bar + home-indicator (see the shell layout).
   viewportFit: "cover",
-  themeColor: "#f5f1e8", // Edition II screen paper
+  themeColor: "#f7f7f4",
 };
 
 export default function RootLayout({
@@ -69,18 +64,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      data-theme="light"
-      className={`${mono.variable} ${serif.variable}`}
-    >
+    <html lang="en" data-theme="light" className={mono.variable}>
       <head>
-        {/* Satoshi — the brand face, carrying wordmark, headlines, UI and
-            body in Edition II. Self-served via Fontshare. */}
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900,300i,400i,500i,700i,900i&display=swap"
-        />
         {/* No-FOUC theme init — applies the persisted palette before paint. */}
         <script
           dangerouslySetInnerHTML={{

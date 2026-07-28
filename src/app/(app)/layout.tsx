@@ -38,12 +38,9 @@ export default async function AppLayout({
       .toUpperCase() || ctx.email[0]!.toUpperCase();
 
   return (
-    <div
-      className="khonsera-app"
-      style={{ minHeight: "100vh", background: "var(--paper)" }}
-    >
-      {/* Mobile / tablet — sticky top bar + FIXED bottom tab bar. */}
-      <div className="lg:hidden">
+    <div className="khonsera-app">
+      {/* Mobile / tablet — sticky command bar and safe-area-aware navigation. */}
+      <div className="cc-app-mobile lg:hidden">
         <MobileAppbar
           email={ctx.email}
           firstName={firstName}
@@ -51,34 +48,14 @@ export default async function AppLayout({
           isStaff={ctx.isStaff}
           mode={ctx.activeMode}
         />
-        <main
-          className="paper-tex"
-          style={{
-            // Bottom padding clears the FIXED tab bar (~96px) PLUS the
-            // home-indicator inset so the last items are never hidden behind it.
-            padding: "16px 16px calc(96px + env(safe-area-inset-bottom))",
-            minHeight: "100vh",
-          }}
-        >
-          {children}
-        </main>
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 20,
-            paddingBottom: "env(safe-area-inset-bottom)",
-            background: "var(--card)",
-          }}
-        >
+        <main className="cc-mobile-main">{children}</main>
+        <div className="cc-tabbar-wrap">
           <MobileTabbar mode={ctx.activeMode} />
         </div>
       </div>
 
-      {/* Desktop — the rail shell (Design Round 2 .cc-shell). */}
-      <div className="hidden lg:block" style={{ height: "100vh" }}>
+      {/* Desktop — navigation rail and a full-width responsive work surface. */}
+      <div className="cc-app-desktop hidden lg:block">
         <div className="cc-shell">
           <AppSidebar
             email={ctx.email}
@@ -88,7 +65,7 @@ export default async function AppLayout({
             mode={ctx.activeMode}
           />
           <div className="cc-shell-main">
-            <div className="cc-shell-canvas" style={{ overflowY: "auto" }}>
+            <div className="cc-shell-canvas">
               <main className="cc-shell-col">{children}</main>
             </div>
           </div>

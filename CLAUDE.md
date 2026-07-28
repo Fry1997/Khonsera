@@ -7,6 +7,7 @@
 Khonsera runs a **Design↔Code Handoff Protocol** (`docs/design-code-handoff-protocol.md`): Claude
 Design and Claude Code share no memory, so two artifacts are the lingua franca, re-grounded at the
 start of every session:
+
 1. **`docs/design-tokens.md`** — the canonical `theme` (mirror of the CSS custom properties in
    `src/app/globals.css`, proxied by `tailwind.config.ts`).
 2. **`docs/component-contract.md`** — the §3 component/screen inventory mapped to real files.
@@ -16,6 +17,28 @@ start of every session:
 if a utility is wanted), never a one-off hardcode. Tokens never fork. (Legacy inline-px styles are
 migrated to tokens incrementally per-component, not in a big sweep — see the manifest's migration
 status.)
+
+### Current visual authority — Instrument Edition v8 (2026-07-28)
+
+The approved source is **Khonsera Design System 9**, implemented in
+`src/app/khonsera-instrument-tokens.css` and the final application layer
+`src/app/khonsera-instrument.css`. These load after the historical edition CSS and therefore define
+the effective UI. Keep the existing data/action contracts; evolve presentation through this layer.
+
+- Neutral stone ground, flat white cards, cool high-contrast ink, hairline structure and quiet
+  single-direction elevation.
+- Signal green is the interaction accent. Rail orange is line identity only.
+- Satoshi carries display/UI/body; JetBrains Mono carries time, codes, eyebrows and technical
+  status. No serif or literary italic.
+- Identity is the uppercase Satoshi wordmark plus one signal-green dot. The moon/pictorial emblem,
+  paper grain, letterpress and deboss effects are retired from app chrome.
+- Mobile is one calm chronological column with 44px minimum targets and persistent app/tab bars.
+  Desktop uses the 248px rail, a bounded primary day column, and a sticky context/tool column.
+- `/today` orders conditions → live day/spine → map/documents/tools on mobile and becomes a
+  primary-plus-context command desk at 1180px. `/plan/[id]` uses the same primary/context split.
+- The uploaded source has a duplicated light selector that accidentally repeats night accent values;
+  the imported `khonsera-instrument-tokens.css` removes that duplicate and keeps the earlier
+  canonical light signal-green tokens.
 
 ## Foundation Rebuild — Standing Orders & Build Spine (current programme)
 
@@ -27,10 +50,10 @@ the triage in `docs/foundation-rebuild-triage.md`. Honour these every turn:
   in `DECISIONS.md`, don't interrogate. Pause only for: the triage checkpoint, a genuine spec
   contradiction, or a data-loss/irreversible action.
 - **Coherence is part of done** (deep review 2026-06-15, `docs/deep-review-2026-06-15.md`). A phase
-  is NOT done when the capability works end-to-end — it's done when the capability sits *coherently*
+  is NOT done when the capability works end-to-end — it's done when the capability sits _coherently_
   in the surface. Definition-of-done for any phase that adds UI: (a) if it adds a sidebar row, it
   gets a DISTINCT glyph and lands in the right nav group (Day / Money & travel / Account); (b) if it
-  adds a panel to `/plan/[id]`, decide where it belongs in the hierarchy — primary *day* spine vs.
+  adds a panel to `/plan/[id]`, decide where it belongs in the hierarchy — primary _day_ spine vs.
   the collapsed **Trip tools** region — never just append; (c) anything user-named is renameable
   (no "untitled" dead-ends). Velocity must not re-accrue coherence debt.
 - **Tokens only, never raw values** (the iron rule above). The `theme` is the single source of truth.
@@ -53,7 +76,7 @@ MapLibre + self-hosted Protomaps (keep) · Valhalla (routing) + OpenTripPlanner 
 is going **true-native** (Swift iOS + Kotlin Android, plus web desktop). The **flagship** map / offline
 / turn-by-turn experience is built **native with Mapbox** — its native SDKs do offline region+route
 downloads and first-class navigation, and the **Standard style** gives realtime lighting/shadows/AO
-(the "clay" look) for free; high free tier. Mapbox offline is a *native* capability — on **web (GL JS)**
+(the "clay" look) for free; high free tier. Mapbox offline is a _native_ capability — on **web (GL JS)**
 it's unsupported + against ToS to cache tiles — so **web stays MapLibre + self-hosted Protomaps**
 (free, self-hostable, offline-capable via the `khnav://` IDB cache). **Do NOT build the flagship map
 twice:** no deck.gl / Three.js / clay-3D engine on web. MapLibre's flat-shaded `fill-extrusion` can't
@@ -71,6 +94,7 @@ do soft shadows/AO/rounded edges — the web clay attempts (abstract SVG, extrud
 `src/components/concierge/`.
 
 **Build-order spine (handover §18) — build by dependency, not release phase:**
+
 1. Foundation: identity + Mode + privacy boundary + persistence.
 2. Core surface + model: timeline; Journey/Anchor/Intention/Gap/Leg/ResourceState.
 3. Capture: manual entry + email sync (extend the Trainline parser).
@@ -85,6 +109,7 @@ do soft shadows/AO/rounded edges — the web clay attempts (abstract SVG, extrud
 
 Three pure, unit-tested engines drive the day-of intelligence; each is fed by a server reader in
 `plan/[id]/page.tsx` and degrades silently when its signal is absent:
+
 - **Live spine** (`src/lib/live/engine.ts`, P9–P10): `decisionClock`, `delayConsequence`, `cascade`,
   `fragility`. Sourced from **Darwin** (rail; gated `DARWIN_LDBWS_TOKEN`/`_KEY`) + **TfL** (gated
   `TFL_APP_KEY`).
@@ -112,6 +137,7 @@ catalogued in `docs/env-switches.md`. Check Tier 1 there FIRST whenever somethin
 un-premium but the code is clearly there" (it caught the raster-vs-vector basemap and the 40s geocode).**
 
 ## Connections / booking (Edition III P14) — `src/lib/connections/` + `integrations/duffel.ts`
+
 The reusable supplier pattern: one **Offer → Quote → Booking** vocabulary every connector speaks, so the
 surface searches/compares/books the same way and a mock swaps for a real adapter with no caller change.
 **Duffel Flights is LIVE against test mode** (the framework's proof) — search→compare→book in
@@ -126,6 +152,7 @@ After making changes to any itinerary page, the Gmail import pipeline, or the sh
 ## Known Bugs (as of 2026-05-26)
 
 ### Planning page after brief submit
+
 - All previously listed bugs FIXED (see git history)
 - ~~Batch transition insert crashed on unique constraint~~ FIXED: `.insert()` → `.upsert()` with onConflict
 - ~~Changeover stops (Leicester) had no transport_hub_id~~ FIXED: Gmail import now resolves changeover station names via resolveHubByName
@@ -143,7 +170,9 @@ After making changes to any itinerary page, the Gmail import pipeline, or the sh
 - Vercel project: `prj_Dwmmyzk75AT0sJDchcJ52rU9ZTLz`, team `team_zK6YQHcoKN5rkpkCfohV4nXg`
 
 ### Offline / PWA — day-of resilience (the Aztec must survive no-signal)
+
 The barrier is the test: off the train, no signal, you still need your Aztec. Two halves:
+
 - **Shell** — a hand-rolled service worker (`public/sw.js`, registered by
   `src/components/pwa-register.tsx` in the root layout) + `public/manifest.webmanifest` (installable,
   `start_url:/today`). Strategy is conservative (it ships to a real phone): `/_next/static` cache-first
@@ -163,10 +192,12 @@ The barrier is the test: off the train, no signal, you still need your Aztec. Tw
   for full precache: Serwist (`@serwist/next`) reading the build manifest.
 
 ### Point-to-point navigation (`/navigate`) — see `docs/navigation.md`
+
 Build spine §6, fully open-source and self-hostable: **Valhalla** routing (`VALHALLA_URL`,
 default FOSSGIS) + MapLibre/OSM render. **Geocoding is Google Places Text Search** (fast, complete;
 the public komoot Photon was ~20s + patchy — D54), with **Photon** (`PHOTON_URL`) kept as the no-key
 fallback. Mileage tracker (P15) reuses this geocoder + Valhalla.
+
 - Provider-agnostic core in `src/lib/nav/` (types/valhalla/shape/guidance/tiles — pure,
   unit-tested). Server actions in `src/lib/actions/nav.ts`. UI in `src/components/nav/`.
 - **Valhalla shapes are polyline precision 6**, not 5 — `nav/shape.ts` takes a precision arg;
@@ -175,8 +206,8 @@ fallback. Mileage tracker (P15) reuses this geocoder + Valhalla.
   voice, off-route 25/50/80m walk/cycle/drive sustained 8s → auto re-route when online).
 - **Offline routes**: `src/lib/offline/nav-cache.ts` (IndexedDB `khonsera-nav`, separate DB from
   the ticket cache so versions never conflict) stores route JSON + corridor tiles (z13/z15 ribbon
-  + z16 at maneuvers, capped 400, refcounted per route). NavMap serves tiles via a custom
-  `khnav://` MapLibre protocol — IDB first, network fallback. The SW stays out of tile caching.
+  - z16 at maneuvers, capped 400, refcounted per route). NavMap serves tiles via a custom
+    `khnav://` MapLibre protocol — IDB first, network fallback. The SW stays out of tile caching.
 - Deep-link a destination: `/navigate?dlat=&dlng=&dname=` (the "take me there" seam).
 - Public instances are fair-use — **self-host both before real traffic** (env vars only).
 - Transit legs (TfL → OTP) are NOT built yet; the adapter seam beside `valhalla.ts` is ready.
@@ -190,6 +221,7 @@ fallback. Mileage tracker (P15) reuses this geocoder + Valhalla.
   inline (not a silent blank) and force-resizes on load. See `docs/navigation.md`.
 
 ### BENCHED (2026-06-14): Tell Khonsera + Ask Khonsera — free-text is parked
+
 **Decision (founder, Edition III direction):** the deterministic free-text parser misclassifies
 events too often to ship. **Capture is now email-import + manual entry only.** Both the free-text
 **capture** ("Tell Khonsera") and the read-only NL **query** layer ("Ask Khonsera") are **removed
@@ -207,7 +239,9 @@ that dormant engine — keep for reference, but it is not a live path. Email rea
 structured hotel/train/flight **cards**; there is no free-text "tell" or "ask".
 
 ### Tell Khonsera capture substrate (migrations 0027/0028)
+
 Foundation for the natural-language capture feature. See `docs/tell-khonsera-substrate.md`.
+
 - Facts (`stops`/`transitions`/`travel_bookings`) carry `confidence`, `source`,
   `commitment_state` (raw→done lifecycle — NOT the same as `stops.commitment`, which is
   solver hardness). Defaults preserve all existing behaviour.
@@ -218,6 +252,7 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
 - 0028 enabled RLS on four previously-exposed tables (gmail_scanned_emails + 3 rail tables).
 
 ### Tell Khonsera parser engine (deterministic, no AI) — see `docs/tell-khonsera-parser.md`
+
 - Dictionary in `src/lib/dictionary/`: bundled YAML (`data/layer_1/3/4`) fused by
   `load.ts` with the TS mapping registry; `getDictionary()` is the cached singleton.
   Layer 2 gazetteer = the existing `transport_hubs` table (no YAML). Layer 5 = code.
@@ -234,6 +269,7 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
 - The gap engine is NOT built yet — that's the next programme stage.
 
 ### Tell Khonsera capture UI (`/capture`) — see build programme §3
+
 - `src/app/(app)/capture/page.tsx` (server: loads picker data + builds serialisable slot
   schemas from `getDictionary()`) → `src/components/capture/capture-screen.tsx` (client).
   `/capture/drafts` lists saved `pending_review`/`corrected` drafts to resume (`?draft=<id>`).
@@ -251,6 +287,7 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
 - `[Add it →]` is always reachable (fixed action bar); adds all non-dismissed facts.
 
 ### Tell Khonsera smart capture (badges + autosuggest + proximity) — see `docs/tell-khonsera-capture.md`
+
 - Entity slots (place/person/station) render as **badges**: gold when bound to a real entity
   (value object carries `hub_id`/`location_id`/`customer_site_id`/`contact_id`), grey when
   `ambiguous` (opens a proximity-ranked candidate chooser) or `unknown` verbatim.
@@ -277,6 +314,7 @@ Foundation for the natural-language capture feature. See `docs/tell-khonsera-sub
 ## Design Principles
 
 ### One surface — the plan IS the intake (2026-06-15, founder direction)
+
 The separate **Brief intake form (`/itineraries/new`) is RETIRED** — it "didn't land right": a new
 day was meant to open straight into the plan, not a standalone form. Every "Plan a day" entry point
 (Today, Plan index, sidebar foot, mobile topbar, welcome fork) now routes through **`PlanCreate`**
@@ -288,11 +326,13 @@ Toolkit, Two Views": there is now ONE editing surface, so a tool can't be withhe
 page — there is no other page. Add capability to the plan.)
 
 ### Bookings Are Facts, Stops Are Events
+
 - **Transport bookings** (train tickets) create timeline events (departure + arrival stops)
 - **Accommodation bookings** are constraints (check-in-from, check-out-by), NOT fixed journey points. The user places hotel visit stops on the timeline as needed.
 - One way to add booked transport (`PlanAdd` → `addBookingRun`). One way to add accommodation.
 
 ### No Emojis
+
 The app does not use emojis anywhere. Ever. This has been explicitly stated by the user multiple times.
 
 ## Gmail Booking Import — HARD-WON FIXES
@@ -300,7 +340,9 @@ The app does not use emojis anywhere. Ever. This has been explicitly stated by t
 These fixes were debugged over many hours. Do NOT revert them.
 
 ### Search Query (buildSearchQuery in `src/lib/actions/gmail.ts`)
+
 The Gmail search query MUST use three paths:
+
 1. `from:trainline OR from:lner...` — direct from known senders
 2. Subject keywords + provider in body — catches forwarded emails
 3. Provider name anywhere in email — broadest fallback
@@ -308,10 +350,12 @@ The Gmail search query MUST use three paths:
 Subject keywords MUST include: `eticket`, `etickets`, `tickets` (plural), `trip` — in addition to `confirmation`, `booking`, `ticket`, `e-ticket`, etc. Trainline sends emails with subject "Your etickets to Derby" — "etickets" as one word does NOT match "ticket" or "e-ticket".
 
 **DO NOT** revert to a narrow query like `(from:sender) AND (subject:keyword)`. This was tried and fails for:
+
 - Forwarded emails (sender is the forwarder, not Trainline)
 - Trainline eticket emails (subject says "etickets" not "ticket")
 
 ### Parser (`src/lib/gmail/parsers.ts`)
+
 - **Marketing filter**: Skip emails with `unsubscribe|newsletter|win |competition|offer|savings|discount|% off|promo` in the SUBJECT (not body). Trainline's email footer has "unsubscribe" in the body — checking the body would kill real bookings.
 - **Forwarded email detection**: When no SENDER_CONFIG matches, check the email BODY for known provider names ("trainline", "easyjet", etc.) AND booking-like content (HH:MM times, "booking ref", "e-ticket", etc.). This catches forwarded confirmation emails.
 - **HTML-only emails**: iPhone forwards often have only `text/html` and no `text/plain` MIME part. When there's no plain text, strip HTML tags to produce text for regex parsing. Without this, the parser receives empty text and fails silently.
@@ -327,6 +371,7 @@ Subject keywords MUST include: `eticket`, `etickets`, `tickets` (plural), `trip`
 - **Barcode decoding**: `zxing-wasm/reader` with `{formats: ["Aztec"]}` — pass plain `{data, width, height}` object, NOT `ImageData` constructor (unavailable in Node.js)
 
 ### Scan Cache (`gmail_scanned_emails` table)
+
 - Every scanned email is persisted with sender, subject, parsed data, and parse_failed flag
 - Already-scanned messages are NOT re-fetched (saves Gmail API calls)
 - EXCEPT parse_failed=true messages — these ARE retried on subsequent scans so parser improvements take effect
@@ -335,7 +380,9 @@ Subject keywords MUST include: `eticket`, `etickets`, `tickets` (plural), `trip`
 ## Transport Hub Search (`src/lib/actions/travel-profile.ts`)
 
 ### Station Search Ranking
+
 The search MUST prioritize prefix matches over substring matches:
+
 1. Exact code match first (e.g. "WLB" → Wellingborough)
 2. Name prefix match (e.g. "Wel" → Wellingborough)
 3. Substring fallback ONLY when prefix returns < 3 results AND query is >= 3 chars
@@ -343,6 +390,7 @@ The search MUST prioritize prefix matches over substring matches:
 Without this, typing "wel" returns "Abbey Well" above "Wellingborough".
 
 ### Debounce
+
 The TransportHubPicker debounce is 350ms (not 200ms). The 11k+ hub table with ilike queries needs the extra pause to avoid hammering the server.
 
 ## Canonical surface (Edition III P0, 2026-06-14)
@@ -356,8 +404,8 @@ depth per **`docs/edition-iii-entity-catalogue.md`**.
 the travel-day need so completely the **operator's own app becomes redundant** — never open the Virgin
 app for the flight or the Hilton app for the stay. Operate everything; refer only the purchase;
 reproduce legitimately-held credentials (the barcode rule), and be honest about what's locked. An
-entity is **not "handled" until it meets its catalogue depth** — capture *flowing* ≠ the entity
-*serviced* (the P2 accommodation card is a thin placeholder; ED1 deepens it next).
+entity is **not "handled" until it meets its catalogue depth** — capture _flowing_ ≠ the entity
+_serviced_ (the P2 accommodation card is a thin placeholder; ED1 deepens it next).
 
 - **`/plan/[id]` is the single canonical itinerary surface AND the intake** (threaded spine +
   door-to-door JourneyMap + home-as-base + the full add/import toolkit). A new day is created blank
@@ -373,6 +421,7 @@ entity is **not "handled" until it meets its catalogue depth** — capture *flow
 - Home (`start`/`end` stops) renders as a **base** card via `isBase` on `SpineNode`, never an anchor.
 
 ### One unified day — no Mode toggle (Edition III P1, D1)
+
 - **There is no work/personal toggle.** The day is one blended view. `ModeSwitchControl` is retired
   from the shell; `switchMode`/`getActiveMode`/`mode-switch-control.tsx` are **dormant** — do not
   re-mount them. Do **not** add `.eq("mode", activeMode)` view-filters; that was the lens we removed.
@@ -387,6 +436,7 @@ entity is **not "handled" until it meets its catalogue depth** — capture *flow
 ## Brief Page Structure (`/itineraries/new`)
 
 ### Layout (top to bottom)
+
 1. Base location card (home/office, with address)
 2. Trip dates (start/end — defaults booking dates)
 3. Bookings bar: `+ Transport`, `+ Accommodation`, `Import from Gmail`
@@ -401,6 +451,7 @@ entity is **not "handled" until it meets its catalogue depth** — capture *flow
 12. Spine preview (right column)
 
 ### Transport Booking Card
+
 - Starts compact (mode picker only)
 - Expands on mode selection: date, from/to station hub pickers, depart/arrive times, changeovers, service number, booking ref, seat, price
 - "Done" button confirms → condenses to reservation chip
@@ -408,47 +459,59 @@ entity is **not "handled" until it meets its catalogue depth** — capture *flow
 - Changeover support: "+ Add changeover" for train/flight/tube
 
 ### Accommodation Booking Card
+
 - Check-in from / Check-out by (constraint language, not "check-in date")
 - Includes time fields (defaults 15:00 / 11:00)
 - Hotel picker, provider, ref, price, room
 
 ### Booking Card Lifecycle
+
 Cards only condense when the user clicks "Done" (sets `confirmed: true`). Picking a station or filling a field does NOT auto-collapse. The user explicitly confirms. "Edit" on a chip re-expands the card.
 
 ## Server Action: createItineraryFromBrief (`src/lib/actions/itineraries.ts`)
 
 ### Stop Ordering
+
 All stops (home, anchors, transport booking departure/arrival/changeover, accommodation, be-home-by) are sorted chronologically by `start_time` before being inserted. Home stays first, be-home-by stays last.
 
 ### Transitions
+
 After all stops are inserted, transitions are created for ALL adjacent stop pairs (not just user-specified anchor pairs). Transport booking legs (departure → changeover → arrival) get `is_locked = true`.
 
 ### Hub Coordinates
+
 Transport booking stops store `transport_hub_id`. The `transport_hubs` table has `latitude`/`longitude` columns (migration 0019). The `pickPoint()` function in `src/lib/actions/transitions.ts` checks transport_hub coordinates alongside location and customer_site coordinates.
 
 ### Solver
+
 `resolveItineraryTimes()` is called at the end of `createItineraryFromBrief()`. The solver propagates times from anchored stops through transitions, computing departure times for unfixed stops.
 
 ## UK Rail Network (OSM-seeded)
 
 ### How it works
+
 The entire UK rail network (~643k edges) is stored in `rail_network_edges` (migration 0025). Seeded once from the user's browser via `/settings/rail-network` (Overpass blocks Vercel IPs, so the browser makes the Overpass calls). Admin-only page (requires `is_admin = true` on profiles).
 
 ### Routing: Dijkstra, not BFS
+
 `routeRailPath()` in `src/lib/actions/rail-network.ts` uses Dijkstra with haversine edge weights. BFS (node-count shortest) was tried and failed — it preferred routes with fewer nodes even when geographically longer (e.g., via Beeston instead of direct to Derby at Trent Junction).
 
 ### Endpoint handling
+
 Rail polylines end at the nearest rail node to the station, NOT at the station entrance coordinates. Snapping to entrance coordinates caused visible zigzags at close zoom because entrances are offset from the track.
 
 ### Caching
+
 Two-tier: `rail_route_cache` (L1, by CRS code pair) → `routeRailPath` BFS (L2, from `rail_network_edges`). Results cached after first computation.
 
 ### Pipe characters in polylines
+
 Google's encoded polyline format can produce `|` characters. Google Static Maps uses `|` as a path parameter delimiter. The `buildStaticMapUrl` function in `src/lib/google/maps.ts` uses `encodeURIComponent` on the polyline and manually appends path params (NOT `URLSearchParams`, which double-encodes `%7C`).
 
 ## Admin Role
 
 `is_admin` boolean on `profiles` table (migration 0026). Separate from `is_staff`:
+
 - **Staff**: demo mode, palette picker, feature testing
 - **Admin**: system tools (rail network seeding, data management)
 
@@ -457,48 +520,53 @@ Google's encoded polyline format can produce `|` characters. Google Static Maps 
 ## JourneyMap (MapLibre)
 
 ### Architecture
+
 `src/components/journey-map/` — interactive map replacing Google Static Maps (RouteMap).
+
 - **MapLibre GL JS** with OSM raster tiles (basemap, desaturated + warm-tinted)
 - **GeoJSON layers** for journey lines (rail solid gold + glow, walk dashed, road solid hairline)
 - **maplibregl.Marker** for station markers (bullseye origin, gold disc destination, ringed intermediate)
 - Zero SVG — everything renders in MapLibre's WebGL/HTML pipeline, zero lag on pan/zoom
 
 ### Themes
+
 Three themes: `dusk` (warm cream, default), `midnight` (dark), `sahara` (daylight ochre). Theme drives basemap raster paint (saturation, brightness) and overlay colours. Theme files in `src/components/journey-map/themes/`.
 
 ### Tile source
+
 Currently OSM raster tiles (always available, no API key). Upgrade path: Protomaps or MapTiler vector tiles for full brand control (custom layer colours, hidden POIs). Requires an API key.
 
 ### Next steps
+
 - Calling points: parse intermediate stops from Trainline PDFs, render as small waypoint markers on the rail leg
 - Planning-page transport booking: polyline + duration should work when adding transport during planning (not just from brief)
 - Day-of mode: live position dot, adaptive zoom — component API supports it, just needs wiring
 
 ## Key File Map
 
-| File | Purpose |
-|------|---------|
-| `src/app/(app)/itineraries/new/new-itinerary-form.tsx` | Brief page form (all state + render) |
-| `src/app/(app)/itineraries/new/page.tsx` | Brief page server component (data loading) |
-| `src/app/(app)/itineraries/[id]/itinerary-editor.tsx` | Planning page |
-| `src/components/itinerary/transport-booking-card.tsx` | Transport booking card component + types |
-| `src/components/itinerary/accommodation-booking-card.tsx` | Accommodation booking card + types |
-| `src/components/itinerary/transition-row.tsx` | Travel mode picker between stops |
-| `src/components/itinerary/journey-spine.tsx` | Spine preview (chronological timeline) |
-| `src/components/itinerary/types.ts` | Shared types (Anchor, BriefTransition, etc.) |
-| `src/components/itinerary/helpers.ts` | Empty factories, sort, timing helpers |
-| `src/components/transport-hub-picker.tsx` | Station/airport autocomplete |
-| `src/lib/actions/itineraries.ts` | createItineraryFromBrief + solver |
-| `src/lib/actions/gmail.ts` | Gmail scan + import |
-| `src/lib/gmail/parsers.ts` | Email HTML parsers (Trainline, airlines, hotels) |
-| `src/lib/gmail/types.ts` | ParsedBooking types |
-| `src/lib/actions/transitions.ts` | Route previews, pickPoint, transition CRUD |
-| `src/lib/actions/travel-profile.ts` | Hub search (searchTransportHubs) |
-| `src/lib/itinerary/solver.ts` | Time propagation solver |
-| `src/lib/osm/rail-routes.ts` | getRailPolyline: cache check → BFS route → cache result |
-| `src/lib/actions/rail-network.ts` | seedRailEdges, routeRailPath (Dijkstra), clearRailNetwork |
-| `src/components/journey-map/journey-map.tsx` | JourneyMap component (MapLibre + GeoJSON layers) |
-| `src/components/journey-map/map-style/build-map-style.ts` | Theme → MapLibre style JSON |
-| `src/components/journey-map/themes/` | dusk, midnight, sahara theme definitions |
-| `src/app/(app)/settings/rail-network/` | Admin page for seeding UK rail network |
-| `scripts/backfill-rail-polylines.mjs` | CLI alternative for seeding (requires terminal) |
+| File                                                      | Purpose                                                   |
+| --------------------------------------------------------- | --------------------------------------------------------- |
+| `src/app/(app)/itineraries/new/new-itinerary-form.tsx`    | Brief page form (all state + render)                      |
+| `src/app/(app)/itineraries/new/page.tsx`                  | Brief page server component (data loading)                |
+| `src/app/(app)/itineraries/[id]/itinerary-editor.tsx`     | Planning page                                             |
+| `src/components/itinerary/transport-booking-card.tsx`     | Transport booking card component + types                  |
+| `src/components/itinerary/accommodation-booking-card.tsx` | Accommodation booking card + types                        |
+| `src/components/itinerary/transition-row.tsx`             | Travel mode picker between stops                          |
+| `src/components/itinerary/journey-spine.tsx`              | Spine preview (chronological timeline)                    |
+| `src/components/itinerary/types.ts`                       | Shared types (Anchor, BriefTransition, etc.)              |
+| `src/components/itinerary/helpers.ts`                     | Empty factories, sort, timing helpers                     |
+| `src/components/transport-hub-picker.tsx`                 | Station/airport autocomplete                              |
+| `src/lib/actions/itineraries.ts`                          | createItineraryFromBrief + solver                         |
+| `src/lib/actions/gmail.ts`                                | Gmail scan + import                                       |
+| `src/lib/gmail/parsers.ts`                                | Email HTML parsers (Trainline, airlines, hotels)          |
+| `src/lib/gmail/types.ts`                                  | ParsedBooking types                                       |
+| `src/lib/actions/transitions.ts`                          | Route previews, pickPoint, transition CRUD                |
+| `src/lib/actions/travel-profile.ts`                       | Hub search (searchTransportHubs)                          |
+| `src/lib/itinerary/solver.ts`                             | Time propagation solver                                   |
+| `src/lib/osm/rail-routes.ts`                              | getRailPolyline: cache check → BFS route → cache result   |
+| `src/lib/actions/rail-network.ts`                         | seedRailEdges, routeRailPath (Dijkstra), clearRailNetwork |
+| `src/components/journey-map/journey-map.tsx`              | JourneyMap component (MapLibre + GeoJSON layers)          |
+| `src/components/journey-map/map-style/build-map-style.ts` | Theme → MapLibre style JSON                               |
+| `src/components/journey-map/themes/`                      | dusk, midnight, sahara theme definitions                  |
+| `src/app/(app)/settings/rail-network/`                    | Admin page for seeding UK rail network                    |
+| `scripts/backfill-rail-polylines.mjs`                     | CLI alternative for seeding (requires terminal)           |

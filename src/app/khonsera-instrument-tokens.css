@@ -1,0 +1,1353 @@
+/* Khonsera Instrument Edition v8 — reviewed design-system source. */
+
+/* ============================================================================
+ * Khonsera · Colour tokens — INSTRUMENT EDITION (v8 source of truth)
+ * Two themes: Instrument (light, default) · Night Instrument (dark).
+ *
+ * The identity: A TRAVEL INSTRUMENT THAT CARRIES PRINTED DOCUMENTS.
+ * The app's chrome is a precise, modern, neutral instrument — clean stone
+ * ground, flat white surfaces, layered single-direction elevation, hairline
+ * structure, high-contrast ink. The PAPER lives only in the documents the
+ * instrument carries (passes, tickets, stubs, printed previews) — warm cream
+ * artifacts against neutral chrome. Letterpress, deboss and paper grain are
+ * fully retired from the chrome.
+ *
+ * Composition rule — ~62% surface · 24% ink · 10% structure · 4% accent.
+ * Ink is deep cool near-black (#15171C). Brass (#A56A30) is the one confident
+ * accent — punctuation, active states, the leave-by moment — never a fill
+ * field. Rail orange (#D95327) is LINE IDENTITY: mode chips, route seams,
+ * line identifiers — signage, not decoration.
+ * Reference token NAMES only; never a raw #hex in product code.
+ * ========================================================================== */
+
+:root,
+[data-theme="light"] {
+  /* ── Grounds — neutral stone desk + flat white surfaces ───────────────── */
+  --paper: #f7f7f4; /* the ground everything sits on */
+  --paper-2: #efefec;
+  --sand: #f4f4f2; /* the lighter panel the spine sits on */
+  --sand-2: #ececea;
+  --card: #ffffff; /* the workhorse surface — flat white */
+  --card-2: #f5f5f3; /* recessed plate — readout fills, wells */
+
+  /* ── Material aliases (v7 names preserved) ────────────────────────────── */
+  --ground: var(--paper);
+  --screen: var(--sand);
+  --widget: var(--card);
+  --widget-2: #f6f6f5;
+  --well: #f2f2f0;
+  --char: #0e2e27; /* deep signal green — the instrument's dark block */
+  --char-2: #14382f;
+
+  /* ── Text — deep cool ink, high contrast ──────────────────────────────── */
+  --ink: #15171c;
+  --ink-2: #2e333c;
+  --ink-dim: #6b7079;
+  --ink-faint: #a2a6ae;
+
+  /* ── Dividers — fine neutral hairlines ────────────────────────────────── */
+  --rule: #e8e8e4;
+  --rule-2: #dcdcd7;
+  --line: rgba(26, 29, 35, 0.07);
+  --line-soft: rgba(26, 29, 35, 0.042);
+
+  /* ── Brass — the one confident accent. Punctuation, never a wash. ─────── */
+  --gold-100: #dcebe2;
+  --gold-200: #a8cbb8;
+  --gold: #178a58; /* 400 — signal green (brass retired) */
+  --gold-2: #146e48; /* 600 — green-on-light text */
+  --gold-800: #0e2e27;
+  --gold-ink: #12563a;
+  --gold-soft: #e2efe8;
+  --gold-tint: rgba(23, 138, 88, 0.08);
+  --gold-soft-alpha: rgba(23, 138, 88, 0.2);
+
+  /* ── Rail orange — LINE IDENTITY (signage: mode chips, seams, line ids) ── */
+  --rail: #d95327;
+  --rail-2: #c04a20;
+  --rail-soft: #f9e4d8;
+
+  /* ── Rare salts — one per composition ─────────────────────────────────── */
+  --terra: #b85a3c;
+  --terra-2: #9c4a2c;
+  --terra-deep: #7c3820;
+  --terra-soft: #f1ddd2;
+  --plum: #6a4a58;
+  --plum-soft: #efe4e9;
+
+  /* ── Cool foil — places, passage, info ────────────────────────────────── */
+  --slate: #4d5a6b;
+  --slate-2: #3a4553;
+  --slate-soft: #e3e8ee;
+
+  /* ── Status families — modern muted, dot + sentence-case wording ──────── */
+  --sage: #178a58;
+  --sage-2: #e0f2e8;
+  --sage-soft: #e2f4ea; /* on track / fits */
+  --live: #00b57e; /* mint — live-signal dots only, never text */
+  --amber: #a9762a;
+  --amber-2: #f1e6cf;
+  --amber-soft: #f2e8d2; /* tight / caution */
+  --rust: #b34a34;
+  --rust-2: #f2ddd4;
+  --rust-soft: #f3ddd3; /* late / infeasible */
+
+  /* ── Elevation — soft single-direction, layered. No deboss anywhere. ───── */
+  --hi: rgba(255, 255, 255, 0.95);
+  --sh-1: rgba(24, 26, 31, 0.09);
+  --sh-2: rgba(24, 26, 31, 0.15);
+  --sh-3: rgba(24, 26, 31, 0.28);
+  --ink-soft: rgba(26, 29, 35, 0.05);
+
+  --shadow-sm: 0 1px 2px rgba(24, 26, 31, 0.06); /* @kind shadow */
+  --shadow:
+    0 2px 6px -2px rgba(24, 26, 31, 0.08),
+    0 16px 32px -16px rgba(24, 26, 31, 0.18); /* @kind shadow */
+  --shadow-lg:
+    0 8px 16px -8px rgba(24, 26, 31, 0.12),
+    0 32px 64px -28px rgba(24, 26, 31, 0.28); /* @kind shadow */
+
+  /* resting card — hairline ring, tight contact, quiet falloff */
+  --lift-sm:
+    0 0 0 1px rgba(24, 26, 31, 0.045), 0 1px 1px rgba(24, 26, 31, 0.03),
+    0 3px 6px -2px rgba(24, 26, 31, 0.05); /* @kind shadow */
+  /* raised card — ring → contact → mid falloff → wide soft ambient */
+  --lift:
+    0 0 0 1px rgba(24, 26, 31, 0.04), 0 1px 2px rgba(24, 26, 31, 0.04),
+    0 8px 16px -8px rgba(24, 26, 31, 0.09),
+    0 24px 40px -24px rgba(24, 26, 31, 0.15); /* @kind shadow */
+  /* recess is FLAT now — an inset hairline, never a pressed-in shadow */
+  --sink: inset 0 0 0 1px rgba(26, 29, 35, 0.07); /* @kind shadow */
+  /* charcoal block — light catch on the top edge, deep soft drop */
+  --lift-char:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 2px rgba(15, 17, 22, 0.3),
+    0 10px 20px -10px rgba(15, 17, 22, 0.42); /* @kind shadow */
+  --edge: 0 0 0 0 transparent; /* @kind shadow */ /* retired paper cliff — kept for compat */
+  --raise-chip:
+    0 1px 2px rgba(24, 26, 31, 0.06), 0 0 0 1px rgba(24, 26, 31, 0.05); /* @kind shadow */
+  --raise-chip-d: 0 1px 3px rgba(0, 0, 0, 0.28); /* @kind shadow */
+
+  --elevation-card: var(--lift-sm);
+  --elevation-raised: var(--lift);
+
+  /* ── Semantic aliases ─────────────────────────────────────────────────── */
+  --success: var(--sage);
+  --success-soft: var(--sage-soft);
+  --warning: var(--amber);
+  --warning-soft: var(--amber-soft);
+  --danger: var(--rust);
+  --danger-soft: var(--rust-soft);
+  --disruption: var(--rust);
+  --info: var(--slate);
+  --info-soft: var(--slate-soft);
+
+  /* ── Paper grain — retired from chrome. Documents carry their own warmth
+   * (cream fills), not a texture. ─────────────────────────────────────── */
+  --fibre: none; /* @kind other */
+
+  /* ── Document stock — the artifacts the instrument carries: neutral, geometry-only DNA ── */
+  --doc: #ffffff; /* pass / stub / printed-preview — instrument white */
+  --doc-2: #f7f7f5;
+  --doc-line: rgba(28, 31, 38, 0.08);
+
+  color-scheme: light;
+}
+
+/* ── Night Instrument — charcoal ground, luminous readouts, brass accent.
+ * For Live / overnight. Same grammar, inverted. ─────────────────────────── */
+[data-theme="dark"] {
+  /* Deep signal-green instrument at night — green-black surfaces, cool ink. */
+  --paper: #0c1f1a;
+  --paper-2: #081713;
+  --sand: #102a23;
+  --sand-2: #16382f;
+  --card: #123329;
+  --card-2: #0e2a22;
+  --ground: var(--paper);
+  --screen: var(--sand);
+  --widget: var(--card);
+  --widget-2: #16382f;
+  --well: var(--card-2);
+  --char: #0a201b;
+  --char-2: #0f2a23;
+  --ink: #eef5f1;
+  --ink-2: #cfe0d8;
+  --ink-dim: #93a79d;
+  --ink-faint: #66796f;
+  --rule: #24382f;
+  --rule-2: #32483d;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-soft: rgba(255, 255, 255, 0.04);
+  --gold-100: #1d3a2c;
+  --gold-200: #2f5c44;
+  --gold: #4fc48f;
+  --gold-2: #63cf9e;
+  --gold-800: #bfe8d4;
+  --gold-ink: #9adcbc;
+  --gold-soft: #16281f;
+  --gold-tint: rgba(79, 196, 143, 0.12);
+  --gold-soft-alpha: rgba(79, 196, 143, 0.2);
+  --rail: #e06238;
+  --rail-2: #d95327;
+  --rail-soft: #33201a;
+  --terra: #d2724f;
+  --terra-2: #bd5a3a;
+  --terra-deep: #9c4a2c;
+  --terra-soft: #2f1c16;
+  --plum: #8a5a6e;
+  --plum-soft: #2e2029;
+  --slate: #8b9bb0;
+  --slate-2: #6f7e92;
+  --slate-soft: #242b35;
+  --sage: #58c896;
+  --sage-2: #1d2f26;
+  --sage-soft: #1d2f26;
+  --live: #2fd39a;
+  --amber: #cf9f54;
+  --amber-2: #2f2613;
+  --amber-soft: #2f2613;
+  --rust: #d2674e;
+  --rust-2: #2f1c16;
+  --rust-soft: #2f1c16;
+  --hi: rgba(255, 255, 255, 0.1);
+  --sh-1: rgba(0, 0, 0, 0.4);
+  --sh-2: rgba(0, 0, 0, 0.5);
+  --sh-3: rgba(0, 0, 0, 0.65);
+  --ink-soft: rgba(241, 236, 226, 0.07);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5); /* @kind shadow */
+  --shadow:
+    0 2px 6px -2px rgba(0, 0, 0, 0.5), 0 16px 32px -16px rgba(0, 0, 0, 0.6); /* @kind shadow */
+  --shadow-lg:
+    0 8px 16px -8px rgba(0, 0, 0, 0.55), 0 32px 64px -28px rgba(0, 0, 0, 0.7); /* @kind shadow */
+  --lift-sm:
+    0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.3),
+    0 3px 6px -2px rgba(0, 0, 0, 0.35); /* @kind shadow */
+  --lift:
+    0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.35),
+    0 8px 16px -8px rgba(0, 0, 0, 0.5), 0 24px 40px -24px rgba(0, 0, 0, 0.65); /* @kind shadow */
+  --sink: inset 0 0 0 1px rgba(255, 255, 255, 0.07); /* @kind shadow */
+  --lift-char:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 10px 20px -10px rgba(0, 0, 0, 0.6); /* @kind shadow */
+  --edge: 0 0 0 0 transparent; /* @kind shadow */
+  --raise-chip:
+    0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05); /* @kind shadow */
+  --raise-chip-d: 0 1px 3px rgba(0, 0, 0, 0.55); /* @kind shadow */
+  --elevation-card: var(--lift-sm);
+  --elevation-raised: var(--lift);
+  --fibre: none; /* @kind other */
+  --doc: #20242b;
+  --doc-2: #1c1f25;
+  --doc-line: rgba(255, 255, 255, 0.09);
+  color-scheme: dark;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v8 CANON — signal-green instrument. Single source of truth, appended
+   last so it wins over any historical values above. The desktop kit's
+   local token layers were removed in favour of this block.
+   ════════════════════════════════════════════════════════════════════ */
+[data-theme="light"],
+html:not([data-theme="dark"]) {
+  /* grounds */
+  --paper: #f7f7f4;
+  --paper-2: #efefec;
+  --ground: #f7f7f4;
+  --sand: #fafaf8;
+  --sand-2: #f2f2ef;
+  --screen: #fafaf8;
+  --card: #ffffff;
+  --card-2: #f6f6f4;
+  --widget: #ffffff;
+  --widget-2: #f7f7f5;
+  --well: #f1f1ef;
+  /* instrument dark */
+  --char: #0e2e27;
+  --char-2: #14382f;
+  /* ink */
+  --ink: #15171c;
+  --ink-2: #2e333c;
+  --ink-dim: #565b64;
+  --ink-faint: #9499a1;
+  /* hairlines */
+  --rule: #ebebe9;
+  --rule-2: #dededa;
+  --line: rgba(26, 29, 35, 0.07);
+  --line-soft: rgba(26, 29, 35, 0.042);
+  --ink-soft: rgba(26, 29, 35, 0.05);
+  /* accent — signal green (legacy --gold-* references resolve here) */
+  --gold-100: #dcebe2;
+  --gold-200: #a8cbb8;
+  --gold: #178a58;
+  --gold-2: #146e48;
+  --gold-800: #0e2e27;
+  --gold-ink: #12563a;
+  --gold-soft: #e2efe8;
+  --gold-tint: rgba(23, 138, 88, 0.08);
+  --gold-soft-alpha: rgba(23, 138, 88, 0.2);
+  /* live signal — dots only, never text */
+  --live: #00b57e;
+  /* semantics */
+  --sage: #178a58;
+  --sage-2: #e0f2e8;
+  --sage-soft: #e2f4ea;
+  --amber: #a9762a;
+  --amber-2: #f1e6cf;
+  --amber-soft: #f2e8d2;
+  --rust: #b34a34;
+  --rust-2: #f2ddd4;
+  --rust-soft: #f3ddd3;
+  --plum: #6a4a58;
+  --plum-soft: #efe4e9;
+  --slate: #4d5a6b;
+  --slate-2: #3a4553;
+  --slate-soft: #e3e8ee;
+  --success: var(--sage);
+  --success-soft: var(--sage-soft);
+  --warning: var(--amber);
+  --warning-soft: var(--amber-soft);
+  --danger: var(--rust);
+  --danger-soft: var(--rust-soft);
+  --disruption: var(--rust);
+  --info: var(--slate);
+  --info-soft: var(--slate-soft);
+  /* line identity — the only place the rail orange survives */
+  --terra: #b85a3c;
+  --terra-2: #9c4a2c;
+  --terra-deep: #7c3820;
+  --terra-soft: #f1ddd2;
+  /* elevation */
+  --edge: 0 0 0 0 transparent; /* @kind shadow */
+  --lift-sm:
+    0 0 0 1px rgba(24, 26, 31, 0.045), 0 1px 1px rgba(24, 26, 31, 0.03),
+    0 3px 6px -2px rgba(24, 26, 31, 0.05);
+  --lift:
+    0 0 0 1px rgba(24, 26, 31, 0.04), 0 1px 2px rgba(24, 26, 31, 0.04),
+    0 8px 16px -8px rgba(24, 26, 31, 0.09),
+    0 24px 40px -24px rgba(24, 26, 31, 0.15);
+  --shadow-sm: 0 1px 2px rgba(24, 26, 31, 0.06);
+  --shadow:
+    0 2px 6px -2px rgba(24, 26, 31, 0.08),
+    0 16px 32px -16px rgba(24, 26, 31, 0.18);
+  --shadow-lg:
+    0 8px 16px -8px rgba(24, 26, 31, 0.12),
+    0 32px 64px -28px rgba(24, 26, 31, 0.28);
+  --lift-char:
+    0 8px 22px -10px rgba(10, 40, 32, 0.45),
+    0 2px 6px -3px rgba(10, 40, 32, 0.3);
+  --sink: inset 0 0 0 1px rgba(28, 31, 38, 0.07); /* @kind shadow */
+  --raise-chip:
+    0 1px 2px rgba(24, 26, 31, 0.06), 0 0 0 1px rgba(24, 26, 31, 0.05);
+  --raise-chip-d: 0 1px 3px rgba(0, 0, 0, 0.28);
+  --elevation-card: var(--lift-sm);
+  --elevation-raised: var(--lift);
+  --fibre: none; /* @kind other */
+}
+
+/* ============================================================================
+ * Khonsera · Spacing · Radius · Motion tokens — INSTRUMENT EDITION (v8)
+ * 4px spacing base, generous even padding, grouping by whitespace.
+ * Soft consistent radii (card 14 / tile 10 / chip 7 / hero 20). Pills stay
+ * fully round. Motion is composed but alive: spring easing on arrivals,
+ * standard easing on everything else. Respect prefers-reduced-motion.
+ * ========================================================================== */
+
+:root {
+  /* ── Spacing — 4px base ───────────────────────────────────────────────── */
+  --space-0: 0;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-4-5: 18px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ── Radius — the instrument's rounded rectangles.
+     badge 7 · chip/button 10 · card/tile 14 · sheet/hero 20 · modal 24. ──── */
+  --radius-xs: 7px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* ── Motion — composed, with a spring for arrivals ────────────────────── */
+  --dur-fast: 90ms; /* @kind other */
+  --dur-base: 170ms; /* @kind other */
+  --dur-slow: 240ms; /* @kind other */
+  --ease-standard: cubic-bezier(0.32, 0.94, 0.36, 1); /* @kind other */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* @kind other */ /* entrance */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* @kind other */ /* exit */
+  --ease-spring: cubic-bezier(
+    0.34,
+    1.28,
+    0.5,
+    1
+  ); /* @kind other */ /* sheets, arrivals */
+  --ease-expressive: var(--ease-spring); /* @kind other */ /* legacy alias */
+}
+
+/* ============================================================================
+ * Khonsera · Type tokens + the one type set
+ * Satoshi (display + UI + body, incl. its own italic) ·
+ * JetBrains Mono (codes, times, eyebrows, labels). Sans + mono only.
+ * No serif. The voice is operational, not editorial — emphasis comes from
+ * weight, tracking and the mono technical layer, never a literary italic.
+ * The type CLASSES (.h0…tiny, .eyebrow, .wordmark, lockup) live here too so a
+ * specimen reads the same in a brief, the reference, and the app.
+ * ========================================================================== */
+
+:root {
+  /* ── Families ─────────────────────────────────────────────────────────── */
+  --display: "Satoshi", -apple-system, system-ui, sans-serif; /* @kind font */
+  --sans: "Satoshi", -apple-system, system-ui, sans-serif; /* @kind font */
+  --mono: "JetBrains Mono", ui-monospace, monospace; /* @kind font */
+
+  /* Role aliases */
+  --font-display: var(--display); /* @kind font */ /* headlines + wordmark */
+  --font-ui: var(--sans); /* @kind font */ /* body + UI */
+  --font-lead: var(
+    --sans
+  ); /* @kind font */ /* lead / standfirst — Satoshi light */
+  --font-technical: var(--mono); /* @kind font */ /* codes, times, eyebrows */
+
+  /* ── Type scale — size / line-height / letter-spacing ─────────────────── */
+  --fs-display: 56px;
+  --lh-display: 1.02; /* @kind other */
+  --ls-display: -0.035em; /* @kind other */
+  --fs-h1: 40px;
+  --lh-h1: 1.05; /* @kind other */
+  --ls-h1: -0.03em; /* @kind other */
+  --fs-h2: 28px;
+  --lh-h2: 1.1; /* @kind other */
+  --ls-h2: -0.025em; /* @kind other */
+  --fs-h3: 15px;
+  --lh-h3: 1.3; /* @kind other */
+  --ls-h3: -0.005em; /* @kind other */
+  --fs-body: 14px;
+  --lh-body: 1.5; /* @kind other */
+  --fs-label: 12px;
+  --lh-label: 1.45; /* @kind other */
+  --fs-micro: 10.5px;
+  --lh-micro: 1.4; /* @kind other */
+
+  /* Weights — Satoshi: 300 light · 400 regular · 500 medium · 600 semibold */
+  --fw-light: 300; /* @kind other */
+  --fw-regular: 400; /* @kind other */
+  --fw-medium: 500; /* @kind other */
+  --fw-semibold: 600; /* @kind other */
+
+  /* Tracking */
+  --ls-uc: 0.12em; /* @kind other */
+  --ls-eyebrow: 0.22em; /* @kind other */
+}
+
+/* ── Headlines — Satoshi 500, tight optical tracking ─────────────────────── */
+.h0 {
+  font-family: var(--display);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  color: var(--ink);
+  margin: 0;
+}
+.h1 {
+  font-family: var(--display);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
+  color: var(--ink);
+  margin: 0;
+}
+.h2 {
+  font-family: var(--display);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  letter-spacing: var(--ls-h2);
+  color: var(--ink);
+  margin: 0;
+}
+.h3 {
+  font-family: var(--display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
+  color: var(--ink);
+  margin: 0;
+}
+
+.display {
+  font-family: var(--display);
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.02em;
+}
+.display-i {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: var(--fw-medium);
+}
+
+/* ── Body / UI — Satoshi ─────────────────────────────────────────────────── */
+.body {
+  font-family: var(--sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+}
+.small {
+  font-family: var(--sans);
+  font-size: var(--fs-label);
+  color: var(--ink-dim);
+  line-height: var(--lh-label);
+}
+.tiny {
+  font-family: var(--sans);
+  font-size: var(--fs-micro);
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+.dim {
+  color: var(--ink-dim);
+}
+
+/* ── Lead / standfirst — Satoshi light, the framing line above a view ────── */
+/* The serif/editorial italic layer is fully retired — the voice is sans + mono.
+ * .lead / .standfirst are the only framing styles; never italic. */
+.lead {
+  font-family: var(--sans);
+  font-weight: var(--fw-light);
+  font-size: 18px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  margin: 0;
+}
+.standfirst {
+  font-family: var(--sans);
+  font-weight: var(--fw-light);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 58ch;
+  text-wrap: pretty;
+}
+.standfirst em {
+  color: var(--gold-2);
+  font-weight: var(--fw-medium);
+  font-style: normal;
+}
+
+/* ── Mono — codes, times, locators (tabular) ─────────────────────────────── */
+.mono {
+  font-family: var(--mono);
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Eyebrow — the label voice: sentence-case sans, light, quiet. UPPERCASE
+ * mono survives ONLY as .uc — the deliberate transit accent (codes, locators). */
+.eyebrow {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.005em;
+  text-transform: none;
+  color: var(--ink-dim);
+}
+.uc {
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-uc);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Hairline-flanked label — the section-divider treatment (sentence-case) */
+.flank {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.005em;
+  color: var(--ink-dim);
+}
+.flank::before,
+.flank::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+  min-width: 16px;
+}
+.flank.left::before {
+  display: none;
+}
+.flank.right::after {
+  display: none;
+}
+
+/* ── Wordmark — Satoshi 300 LIGHT, UPPERCASE, +0.26em, monocolour ink.
+ * Clean — no letterpress. NEVER gold-splits. ─────────────────────────── */
+.wordmark {
+  font-family: var(--display);
+  font-weight: var(--fw-light);
+  font-size: 56px;
+  line-height: 0.98;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding-left: 0.26em;
+}
+.wordmark.sm {
+  font-size: 22px;
+  letter-spacing: 0.2em;
+}
+.wordmark.md {
+  font-size: 34px;
+  letter-spacing: 0.12em;
+}
+.wordmark.lg {
+  font-size: 88px;
+  letter-spacing: 0.06em;
+}
+
+/* ── Brand lockup — a single signal-green dot + the clean wordmark. ────── */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-lockup .bl-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: none;
+  background: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(15, 90, 58, 0.35);
+}
+.brand-lockup .bl-wm {
+  font-family: var(--display);
+  font-weight: var(--fw-light);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding-left: 0.22em;
+}
+
+/* Luxe ornamental rule — hairline + gold dot, between editorial sections */
+.luxe-rule {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--gold);
+}
+.luxe-rule::before,
+.luxe-rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rule-2), transparent);
+}
+.luxe-rule .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ============================================================================
+ * Khonsera · Base — INSTRUMENT EDITION (v8)
+ * The page is a neutral stone ground; surfaces are flat white; ink is clean
+ * and high-contrast. No letterpress, no paper grain — the warmth lives in
+ * the brass accent and the printed documents the instrument carries.
+ * ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+p {
+  margin: 0;
+}
+
+/* Quiet luxuries — shared by every consumer */
+::selection {
+  background: rgba(23, 138, 88, 0.2);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(26, 29, 35, 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(26, 29, 35, 0.16);
+  border: 3.5px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 29, 35, 0.28);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Visible focus — brass ring, consistent everywhere */
+:focus-visible {
+  outline: 2px solid var(--gold-200);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Paper texture — RETIRED from chrome. Kept as a no-op so legacy markup
+ * renders clean; documents carry warmth via --doc fills, not grain. */
+.paper-tex {
+  background-image: none;
+}
+
+/* ============================================================================
+ * Khonsera · Primitives — INSTRUMENT EDITION (v8)
+ * ONE of each base surface — the de-duped vocabulary. Flat white surfaces,
+ * hairline structure, layered single-direction elevation, sentence-case
+ * labels, mono reserved for transit numerals & codes. No letterpress, no
+ * deboss, no grain. The React components emit exactly these class names.
+ * ========================================================================== */
+
+/* ── CARD — the one workhorse surface (flat white, layered lift) ─────────── */
+.card {
+  position: relative;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--lift-sm);
+}
+.card-soft {
+  position: relative;
+  background: var(--card-2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sink);
+}
+/* hero card — one per screen, the deeper lift */
+.card-hero {
+  position: relative;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--lift);
+}
+/* ink card — the charcoal instrument block (Live, premium passes) */
+.card-ink {
+  position: relative;
+  background: linear-gradient(180deg, var(--char-2), var(--char));
+  color: #eef5f1;
+  border-radius: var(--radius-md);
+  box-shadow: var(--lift-char);
+}
+.hr,
+.divider {
+  height: 1px;
+  background: var(--rule);
+  border: 0;
+  margin: 0;
+}
+
+/* ── PLATE — the recessed readout (facts ledgers, time pills, platform squares) */
+.plate {
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* ── BUTTON — one family. Sentence-case Satoshi 600. ────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-family: var(--sans);
+  font-weight: var(--fw-semibold);
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  border: none;
+  cursor: pointer;
+  transition:
+    background var(--dur-base),
+    transform var(--dur-fast),
+    box-shadow var(--dur-base);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.btn-lg {
+  padding: 13px 20px;
+  font-size: 14px;
+}
+.btn-full {
+  width: 100%;
+}
+
+/* lead action — the charcoal instrument block: gradient body, light catch on
+   the top edge. Brass is NEVER a button fill — it survives as punctuation. */
+.btn-ink,
+.btn-gold {
+  background: linear-gradient(180deg, var(--char-2), var(--char));
+  color: #eef5f1;
+  box-shadow: var(--lift-char);
+}
+.btn-ink:hover:not(:disabled),
+.btn-gold:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--ink-soft);
+}
+.btn-terra {
+  background: var(--terra);
+  color: #fff8ef;
+} /* rare salt — celebratory only */
+.btn-terra:hover:not(:disabled) {
+  background: var(--terra-2);
+  transform: translateY(-1px);
+}
+.btn-destructive {
+  background: transparent;
+  color: var(--rust);
+  box-shadow: inset 0 0 0 1px var(--rust-2);
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.btn-destructive:hover:not(:disabled) {
+  background: var(--rust-2);
+}
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--gold-2);
+  padding: 4px 0;
+  cursor: pointer;
+  font-weight: var(--fw-semibold);
+}
+.btn-text:hover {
+  color: var(--gold-ink);
+}
+
+/* ghost chip action — the quiet secondary (Switch place, Change plan) */
+.ghost2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: var(--fw-semibold);
+  color: var(--ink-2);
+  transition:
+    background var(--dur-base),
+    color var(--dur-base);
+}
+.ghost2:hover {
+  background: var(--char);
+  color: #eef5f1;
+}
+/* inline text action */
+.glink {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: var(--fw-semibold);
+  color: var(--gold-2);
+}
+.glink:hover {
+  color: var(--gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── FIELD — one input. Flat, hairline, brass focus. ────────────────────── */
+.field {
+  width: 100%;
+  padding: 11px 13px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition:
+    border-color var(--dur-base),
+    box-shadow var(--dur-base);
+}
+.field:focus {
+  border-color: var(--gold-200);
+  box-shadow: 0 0 0 3px var(--gold-tint);
+}
+.field::placeholder {
+  color: var(--ink-faint);
+}
+
+/* ── PILL — quiet flat tint; sentence-case ──────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3.5px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  background: var(--card-2);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.pill .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.pill-gold {
+  background: var(--gold-tint);
+  color: var(--gold-2);
+}
+.pill-sage {
+  background: var(--sage-soft);
+  color: var(--sage);
+}
+.pill-amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.pill-rust {
+  background: var(--rust-soft);
+  color: var(--rust);
+}
+.pill-slate {
+  background: var(--slate-soft);
+  color: var(--slate-2);
+}
+.pill-soft {
+  background: var(--ink-soft);
+  color: var(--ink-2);
+}
+.pill-ink {
+  background: var(--char);
+  color: #eef5f1;
+}
+.pill-anchor {
+  background: var(--char);
+  color: #eef5f1;
+  padding: 4px 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+}
+
+/* ── STAT — the status lexicon: dot + sentence-case wording ─────────────── */
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.stat::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: none;
+}
+.stat.ok,
+.stat-ok {
+  color: var(--sage);
+}
+.stat.warn,
+.stat-warn {
+  color: var(--amber);
+}
+.stat.bad,
+.stat-bad {
+  color: var(--rust);
+}
+.stat .statq {
+  color: var(--ink-dim);
+  font-weight: var(--fw-medium);
+}
+
+/* ── LINECHIP — line identity (signage): small mono service chips ───────── */
+.linechip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 27px;
+  height: 17px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff6ee;
+  vertical-align: 2px;
+  margin-right: 7px;
+  background: linear-gradient(180deg, var(--slate), var(--slate-2));
+}
+.linechip.rail,
+.linechip.emr {
+  background: linear-gradient(180deg, var(--rail), var(--rail-2));
+}
+.linechip.tl {
+  background: linear-gradient(180deg, #4d5a6b, #3a4553);
+}
+.linechip.gold {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+}
+
+/* ── CHIP — neutral inline tag ───────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: var(--radius-xs);
+  background: var(--ink-soft);
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+.chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── TAG — readiness / feasibility. Sentence-case, flat tint. ───────────── */
+.tag-ok {
+  color: var(--sage);
+  background: var(--sage-soft);
+}
+.tag-tight {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+.tag-no {
+  color: var(--rust);
+  background: var(--rust-soft);
+}
+.tag-gold {
+  color: var(--gold-2);
+  background: var(--gold-soft);
+}
+.tag-ok,
+.tag-tight,
+.tag-no,
+.tag-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.tag-ok.solid {
+  background: var(--sage);
+  color: #f6f7ef;
+}
+.tag-tight.solid {
+  background: var(--amber);
+  color: #fdf8e9;
+}
+.tag-no.solid {
+  background: var(--rust);
+  color: #fdeae6;
+}
+
+/* ── STATUS PILL (.sb) — lifecycle, sentence-case with a dot ────────────── */
+.sb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.sb::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: none;
+}
+.sb-draft {
+  background: transparent;
+  color: var(--ink-dim);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+}
+.sb-draft::before {
+  background: var(--ink-faint);
+}
+.sb-planning {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.sb-planned {
+  background: var(--sage-soft);
+  color: var(--sage);
+}
+.sb-progress {
+  background: var(--char);
+  color: #eef5f1;
+}
+.sb-done {
+  background: transparent;
+  color: var(--ink-faint);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.sb-booked {
+  background: var(--sage-soft);
+  color: var(--sage);
+}
+.sb-cancelled {
+  background: var(--rust-soft);
+  color: var(--rust);
+}
+
+/* ── ICON BUTTON — rounded-square action chip ───────────────────────────── */
+.icon-button {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--card-2);
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition:
+    background var(--dur-base),
+    color var(--dur-base);
+}
+.icon-button:hover {
+  background: var(--char);
+  color: #eef5f1;
+}
+.icon-button.gold {
+  background: var(--gold-tint);
+  color: var(--gold-2);
+  box-shadow: none;
+}
+.icon-button.ink {
+  background: var(--char);
+  color: #eef5f1;
+  box-shadow: var(--lift-char);
+}
+
+/* ── SEGMENTED CONTROL — sentence-case ──────────────────────────────────── */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.segmented .seg {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.005em;
+  color: var(--ink-dim);
+  padding: 7px 15px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.segmented .seg[data-active="true"] {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(24, 26, 31, 0.04);
+}
+
+/* Filter / mode pills (standalone) */
+.filter-pill,
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  border: none;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-2);
+  transition: all var(--dur-base);
+  cursor: pointer;
+}
+.filter-pill:hover,
+.mode-pill:hover {
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  color: var(--ink);
+}
+.filter-pill[data-active="true"],
+.mode-pill[data-active="true"] {
+  background: var(--char);
+  color: #eef5f1;
+  box-shadow: none;
+}
+
+/* ── DOCUMENT — the printed artifact the instrument carries ─────────────── */
+/* Use for passes, stubs, keepsake tickets, printed previews. The ONLY warm
+   surface in the chrome-neutral system. Perforations are hairline dashes. */
+.doc {
+  position: relative;
+  background: linear-gradient(180deg, var(--doc), var(--doc-2));
+  border-radius: 12px;
+  box-shadow: var(--lift-sm);
+}
+.doc-perf {
+  border-top: 2px dashed var(--rule-2);
+  margin: 0 10px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * LEGACY PAPER MATERIAL — retired, kept as safe no-ops so v7 markup renders
+ * clean in the v8 instrument. No grain, no letterpress, no carved glyphs.
+ * ════════════════════════════════════════════════════════════════════════ */
+.pg,
+.pg-d {
+  position: relative;
+}
+.pg::after,
+.pg-d::after,
+.card::after,
+.card-soft::after,
+.card-hero::after,
+.card-ink::after {
+  content: none;
+}
+.pg,
+.card,
+.card-soft,
+.card-hero,
+.pg-d,
+.card-ink {
+  text-shadow: none;
+}
+.engr,
+.engr-d,
+.engr-deep {
+  text-shadow: none;
+}
+.engr-d {
+  color: #eef5f1;
+}
+.engr-ico,
+.engr-ico-d {
+  filter: none;
+}
+.btn,
+.btn-ink,
+.btn-gold,
+.btn-terra {
+  text-shadow: none;
+}
+.btn svg,
+.btn-ink svg,
+.btn-gold svg,
+.btn-terra svg,
+.icon-button svg,
+.icon-button.ink svg,
+.field-icon svg {
+  filter: none;
+}
+.field,
+.field::placeholder {
+  text-shadow: none;
+}
+
+/* a recessed read-out panel — flat well */
+.well {
+  background: var(--well);
+  box-shadow: var(--sink);
+  border-radius: var(--radius-sm);
+}
