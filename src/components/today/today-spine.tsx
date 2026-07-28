@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import type { SpineAnchor } from "./spine-model";
 import { londonClock, navigateHref, roleLabel } from "./spine-model";
 import { pickNextIndex, READINESS_BUFFER_MIN, STATION_BUFFER_MIN, type EngineAnchor } from "@/lib/today/engine";
@@ -11,6 +10,7 @@ import type { BarcodeVM, TicketVM } from "@/components/concierge";
 
 const TYPE_LABEL: Record<SpineAnchor["type"], string> = {
   appointment: "Appointment",
+  shift: "Shift",
   reservation: "Reservation",
   accommodation_check_in: "Check-in",
   accommodation_check_out: "Check-out",
@@ -20,12 +20,7 @@ const TYPE_LABEL: Record<SpineAnchor["type"], string> = {
 };
 
 type State = "past" | "next" | "future";
-
-type TimedLeg = {
-  departIso: string | null;
-  arriveIso: string | null;
-  spareMinutes: number | null;
-};
+type TimedLeg = { departIso: string | null; arriveIso: string | null; spareMinutes: number | null };
 
 function ms(iso: string | null | undefined): number | null {
   if (!iso) return null;
@@ -37,14 +32,6 @@ function iso(value: number | null): string | null {
   return value == null ? null : new Date(value).toISOString();
 }
 
-/**
- * Turn a stored duration into an honest chronological movement.
- *
- * A station anchor's timestamp is the train departure, so the walking leg must
- * finish before the user's boarding buffer. For ordinary commitments we prefer
- * to set off as soon as the preceding fixed point finishes; this shows the real
- * journey (08:21–08:30), not a misleading latest-safe window (08:51–09:00).
- */
 function movementTimes(anchor: SpineAnchor, previous: SpineAnchor | null): TimedLeg {
   const minutes = anchor.plannedTravelMinutes;
   const targetMs = ms(anchor.arriveByIso);
@@ -57,28 +44,16 @@ function movementTimes(anchor: SpineAnchor, previous: SpineAnchor | null): Timed
 
   if (anchor.station) {
     const arriveMs = latestArrivalMs;
-    return {
-      departIso: iso(arriveMs - durationMs),
-      arriveIso: iso(arriveMs),
-      spareMinutes: bufferMinutes,
-    };
+    return { departIso: iso(arriveMs - durationMs), arriveIso: iso(arriveMs), spareMinutes: bufferMinutes };
   }
 
   if (previousEndMs != null) {
     const arriveMs = previousEndMs + durationMs;
     const spare = Math.max(0, Math.round((targetMs - arriveMs) / 60_000));
-    return {
-      departIso: iso(previousEndMs),
-      arriveIso: iso(arriveMs),
-      spareMinutes: spare,
-    };
+    return { departIso: iso(previousEndMs), arriveIso: iso(arriveMs), spareMinutes: spare };
   }
 
-  return {
-    departIso: iso(latestArrivalMs - durationMs),
-    arriveIso: iso(latestArrivalMs),
-    spareMinutes: bufferMinutes,
-  };
+  return { departIso: iso(latestArrivalMs - durationMs), arriveIso: iso(latestArrivalMs), spareMinutes: bufferMinutes };
 }
 
 export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnchor[]; nextId?: string | null; nowOverride?: number | null }) {
@@ -125,32 +100,16 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
       <div className="cc-eyebrow" style={{ marginBottom: "var(--space-3)" }}>Your day</div>
       <div className="cc-spine cc-spine-v7">
         <div className="cc-spine-rail" />
-
-        {past.length ? (
-          <Toggle label={`${past.length} earlier`} open={showPast} onClick={() => setShowPast((value) => !value)} />
-        ) : null}
-        {showPast ? past.map((anchor, index) => (
-          <Entry key={anchor.id} anchor={anchor} previous={index ? past[index - 1] : null} state="past" onShowTicket={openTicket} />
-        )) : null}
-
+        {past.length ? <Toggle label={`${past.length} earlier`} open={showPast} onClick={() => setShowPast((value) => !value)} /> : null}
+        {showPast ? past.map((anchor, index) => <Entry key={anchor.id} anchor={anchor} previous={index ? past[index - 1] : null} state="past" onShowTicket={openTicket} />) : null}
         <div className="cc-node">
           <div className="cc-node-dot"><span className="cc-dot-now" /></div>
           <span className="cc-eyebrow" style={{ alignSelf: "center", color: "var(--gold-2)" }}>Now · {londonClock(new Date(now).toISOString())}</span>
         </div>
-
         {currentAndNear.map((anchor, index) => {
           const absoluteIndex = nextIndex + index;
-          return (
-            <Entry
-              key={anchor.id}
-              anchor={anchor}
-              previous={absoluteIndex > 0 ? anchors[absoluteIndex - 1] : null}
-              state={index === 0 ? "next" : "future"}
-              onShowTicket={openTicket}
-            />
-          );
+          return <Entry key={anchor.id} anchor={anchor} previous={absoluteIndex > 0 ? anchors[absoluteIndex - 1] : null} state={index === 0 ? "next" : "future"} onShowTicket={openTicket} />;
         })}
-
         {later.length ? (
           <>
             <Toggle label={`${later.length} later`} open={showLater} onClick={() => setShowLater((value) => !value)} />
@@ -168,9 +127,8 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
 
 function Entry({ anchor, previous, state, onShowTicket }: { anchor: SpineAnchor; previous: SpineAnchor | null; state: State; onShowTicket: (ticket: TicketVM) => void }) {
   const movement = movementTimes(anchor, previous);
-  const isAppointment = anchor.type === "appointment" || anchor.type === "reservation";
+  const isAppointment = anchor.type === "appointment" || anchor.type === "reservation" || anchor.type === "shift";
   const showMovement = anchor.plannedTravelMinutes != null && !!navigateHref(anchor) && state !== "past";
-
   return (
     <>
       {showMovement ? <MovementCard anchor={anchor} movement={movement} active={state === "next"} /> : null}
@@ -181,9 +139,9 @@ function Entry({ anchor, previous, state, onShowTicket }: { anchor: SpineAnchor;
 }
 
 function MovementCard({ anchor, movement, active }: { anchor: SpineAnchor; movement: TimedLeg; active: boolean }) {
-  const href = navigateHref(anchor)!;
   const mode = anchor.navMode === "drive" ? "Drive" : anchor.navMode === "cycle" ? "Cycle" : "Walk";
   const destination = anchor.station ? anchor.title : anchor.place ?? anchor.title;
+  const selfNavigated = ["walk", "drive", "cycle", "bike", "bicycle", "car"].includes(anchor.travelMode ?? "");
   return (
     <div className="cc-node" data-state={active ? "next" : "future"}>
       <div className="cc-node-dot"><span className="cc-med-leg" /></div>
@@ -191,7 +149,7 @@ function MovementCard({ anchor, movement, active }: { anchor: SpineAnchor; movem
         <div className="cc-walk-head">
           <span className="cc-walk-mode">{mode}</span>
           <span className="cc-walk-mins mono engr">{anchor.plannedTravelMinutes} min</span>
-          {active ? <Link href={href} className="cc-btn cc-btn-gold cc-walk-nav">Navigate</Link> : null}
+          {!selfNavigated && active && navigateHref(anchor) ? <span className="cc-walk-nav">Tracked automatically</span> : null}
         </div>
         {movement.departIso && movement.arriveIso ? (
           <div className="cc-walk-window">
@@ -230,7 +188,6 @@ function AppointmentCard({ anchor, state }: { anchor: SpineAnchor; state: State 
 function AnchorCard({ anchor, state }: { anchor: SpineAnchor; state: State }) {
   const station = anchor.station;
   const eyebrow = station ? roleLabel(anchor.role, station) : TYPE_LABEL[anchor.type];
-  const href = navigateHref(anchor);
   return (
     <div className="cc-node" data-state={state}>
       <div className="cc-node-dot"><span className="cc-med-anchor" /></div>
@@ -240,7 +197,6 @@ function AnchorCard({ anchor, state }: { anchor: SpineAnchor; state: State }) {
           <span className="mono">{londonClock(anchor.arriveByIso)}</span>
         </div>
         <strong style={{ display: "block", marginTop: 6 }}>{anchor.title}</strong>
-        {state === "next" && href && anchor.plannedTravelMinutes == null ? <Link href={href} className="cc-btn cc-btn-gold" style={{ display: "inline-flex", marginTop: 10 }}>Navigate</Link> : null}
       </div>
     </div>
   );
@@ -268,16 +224,11 @@ function PassCard({ pass, state, onShowTicket }: { pass: NonNullable<SpineAnchor
   return (
     <div className="cc-node" data-state={state} style={{ opacity: state === "past" ? 0.6 : 1 }}>
       <div className="cc-node-dot"><span className="cc-med-pass" /></div>
-      <div className="cc-pass-inline"><LivePass ticket={pass.ticket} crs={pass.crs} time={pass.time} dest={pass.dest} onShow={onShowTicket} /></div>
+      <LivePass ticket={pass.ticket} crs={pass.crs} time={pass.time} dest={pass.dest} docked onShow={onShowTicket} />
     </div>
   );
 }
 
 function Toggle({ label, open, onClick }: { label: string; open: boolean; onClick: () => void }) {
-  return (
-    <div className="cc-node">
-      <div className="cc-node-dot"><span className="cc-med-leg" /></div>
-      <button type="button" onClick={onClick} aria-expanded={open} className="cc-btn cc-btn-ghost">{open ? "Hide" : "Show"} {label}</button>
-    </div>
-  );
+  return <button type="button" className="cc-spine-toggle" onClick={onClick}>{open ? "Hide" : "Show"} {label}</button>;
 }
