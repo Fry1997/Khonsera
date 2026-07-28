@@ -803,7 +803,6 @@ export default async function PlanDetailPage({
     primaryAnchor?.title?.trim() ||
     primaryAnchor?.location?.name?.trim() ||
     title;
-  const dayNote = intentions[0]?.description?.trim() || null;
   const startStop = stops.find((s) => s.type === "start");
   const baseLabel =
     startStop?.location?.name ??
@@ -879,16 +878,15 @@ export default async function PlanDetailPage({
         <section className="cc-plan-primary" aria-label="Day plan">
           <header className="cc-day-header">
             <span className="cc-day-header-eyebrow">{dateEyebrow}</span>
-            <PlanTitleEditor itineraryId={id} title={dayPurpose} />
+            <h1 className="cc-day-purpose-edit">
+              <PlanTitleEditor
+                itineraryId={id}
+                title={dayPurpose}
+                named={named}
+              />
+            </h1>
             <PlanBase itineraryId={id} label={baseLabel} />
-            {dayNote ? (
-              <div className="cc-day-point">
-                <span className="cc-day-point-eyebrow">
-                  The point of the day
-                </span>
-                <p className="cc-standfirst">{dayNote}</p>
-              </div>
-            ) : null}
+            <PlanIntention itineraryId={id} intentions={intentions} />
           </header>
           {leaveByIso ? (
             <div className="cc-decision-clock">
@@ -907,35 +905,50 @@ export default async function PlanDetailPage({
             customerSites={pickSites ?? []}
             locations={(pickLocations ?? []) as PlacePickerLocation[]}
           />
-          <PlanIntention itineraryId={id} intentions={intentions} />
           <PlanNudges itineraryId={id} nudges={nudgeRows} />
           <ReadinessPanel itineraryId={id} items={readiness} />
         </section>
         <aside className="cc-plan-context" aria-label="Plan map and trip tools">
           {journeyMap ? <PlanMap journey={journeyMap} /> : null}
           <ManageBookings itineraryId={id} bookings={bookedConnections} />
-          <BudgetPanel itineraryId={id} data={budget} />
-          <ShareControl itineraryId={id} shares={locationShares} />
-          <PlanConstraints data={constraints} />
-          <section className="cc-plan-tools" aria-label="Add to plan">
-            <PlanAdd
-              journeyId={id}
-              journeyDate={dateStart}
-              customers={pickCustomers ?? []}
-              customerSites={pickSites ?? []}
-              locations={(pickLocations ?? []) as PlacePickerLocation[]}
+          <section className="cc-plan-context-bundle">
+            <input
+              id={`day-tools-${id}`}
+              className="cc-plan-context-toggle"
+              type="checkbox"
             />
-            <PlanImport journeyId={id} />
-            <PlanCalendarImport journeyId={id} />
-            <FlightFinder
-              journeyId={id}
-              passenger={{
-                givenName: "",
-                familyName: "",
-                email: ctx.email ?? "",
-              }}
-            />
-            <StayFinder journeyId={id} />
+            <label htmlFor={`day-tools-${id}`}>
+              <span>
+                <strong>Day tools</strong>
+                <small>Budget, sharing, constraints and additions</small>
+              </span>
+              <span aria-hidden>+</span>
+            </label>
+            <div className="cc-plan-context-body">
+              <BudgetPanel itineraryId={id} data={budget} />
+              <ShareControl itineraryId={id} shares={locationShares} />
+              <PlanConstraints data={constraints} />
+              <section className="cc-plan-tools" aria-label="Add to plan">
+                <PlanAdd
+                  journeyId={id}
+                  journeyDate={dateStart}
+                  customers={pickCustomers ?? []}
+                  customerSites={pickSites ?? []}
+                  locations={(pickLocations ?? []) as PlacePickerLocation[]}
+                />
+                <PlanImport journeyId={id} />
+                <PlanCalendarImport journeyId={id} />
+                <FlightFinder
+                  journeyId={id}
+                  passenger={{
+                    givenName: "",
+                    familyName: "",
+                    email: ctx.email ?? "",
+                  }}
+                />
+                <StayFinder journeyId={id} />
+              </section>
+            </div>
           </section>
         </aside>
       </div>

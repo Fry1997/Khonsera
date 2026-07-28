@@ -35,7 +35,14 @@ the effective UI. Keep the existing data/action contracts; evolve presentation t
 - Mobile is one calm chronological column with 44px minimum targets and persistent app/tab bars.
   Desktop uses the 248px rail, a bounded primary day column, and a sticky context/tool column.
 - `/today` orders conditions → live day/spine → map/documents/tools on mobile and becomes a
-  primary-plus-context command desk at 1180px. `/plan/[id]` uses the same primary/context split.
+  primary-plus-context command desk at 1360px. `/plan/[id]` uses the same primary/context split.
+- Historical spine selectors are not safe on the instrument surfaces:
+  `TodaySpine` must not regain `.cc-spine-v7`, whose legacy 42px grid column collapses populated
+  cards. Instrument node placement is guarded by `.khonsera-app .cc-spine .cc-node`; Plan groups a
+  stop and its related controls in `.cc-spine-entry`.
+- Mobile `/plan/[id]` keeps the route map and bookings visible, but groups budget, sharing,
+  constraints and intake behind **Day tools**. On desktop that body is always visible. `/today`
+  offers a focused add/open-planner handoff rather than duplicating the full intake toolkit.
 - The uploaded source has a duplicated light selector that accidentally repeats night accent values;
   the imported `khonsera-instrument-tokens.css` removes that duplicate and keeps the earlier
   canonical light signal-green tokens.

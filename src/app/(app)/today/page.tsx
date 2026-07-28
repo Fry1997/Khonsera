@@ -41,10 +41,6 @@ import {
   type TransitionForMap,
 } from "@/components/journey-map/from-stops";
 import { PlanAdd } from "@/components/plan/plan-add";
-import { PlanImport } from "@/components/plan/plan-import";
-import { PlanCalendarImport } from "@/components/plan/plan-calendar-import";
-import { FlightFinder } from "@/components/plan/flight-finder";
-import { StayFinder } from "@/components/plan/stay-finder";
 import type {
   PlacePickerLocation,
   PlacePickerCustomer,
@@ -470,8 +466,8 @@ export default async function TodayPage({
     allStops.find(isEventStop) ??
     null;
   const dayPurpose =
-    primaryAnchor?.title?.trim() ||
     (covering.length === 1 ? covering[0].title?.trim() : null) ||
+    primaryAnchor?.title?.trim() ||
     "Your day";
 
   let dayNote: string | null = null;
@@ -524,15 +520,6 @@ export default async function TodayPage({
       locations: (ploc ?? []) as PlacePickerLocation[],
     };
   }
-  const [pgiven = "", pfamily = ""] = String(ctx.fullName ?? "")
-    .trim()
-    .split(/\s+/);
-  const toolPassenger = {
-    givenName: pgiven,
-    familyName: pfamily,
-    email: ctx.email ?? "",
-  };
-
   return (
     <AppScreen
       eyebrow="Today"
@@ -630,21 +617,29 @@ export default async function TodayPage({
                 <TodayDocument ticket={nextTicket} />
               ) : null}
               {toolsEvent && toolPickers ? (
-                <div className="cc-trip-tools">
-                  <PlanAdd
-                    journeyId={toolsEvent.id}
-                    journeyDate={toolsEvent.date_start as string}
-                    customers={toolPickers.customers}
-                    customerSites={toolPickers.customerSites}
-                    locations={toolPickers.locations}
-                  />
-                  <PlanImport journeyId={toolsEvent.id} />
-                  <PlanCalendarImport journeyId={toolsEvent.id} />
-                  <FlightFinder
-                    journeyId={toolsEvent.id}
-                    passenger={toolPassenger}
-                  />
-                  <StayFinder journeyId={toolsEvent.id} />
+                <div className="cc-context-actions cc-context-actions--planner">
+                  <div className="cc-context-copy">
+                    <span className="cc-context-label">Plan this day</span>
+                    <span className="cc-context-detail">
+                      Add a stop here or open the full planner.
+                    </span>
+                  </div>
+                  <div className="cc-context-buttons">
+                    <Link
+                      href={`/plan/${toolsEvent.id}` as Route}
+                      className="cc-btn cc-btn-ghost"
+                    >
+                      Open planner
+                    </Link>
+                    <PlanAdd
+                      variant="primary"
+                      journeyId={toolsEvent.id}
+                      journeyDate={toolsEvent.date_start as string}
+                      customers={toolPickers.customers}
+                      customerSites={toolPickers.customerSites}
+                      locations={toolPickers.locations}
+                    />
+                  </div>
                 </div>
               ) : (
                 <PlanCreate />

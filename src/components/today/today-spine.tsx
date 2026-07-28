@@ -114,7 +114,7 @@ export function TodaySpine({ anchors, nextId, nowOverride }: { anchors: SpineAnc
   return (
     <section>
       <div className="cc-eyebrow" style={{ marginBottom: "var(--space-3)" }}>Your day</div>
-      <div className="cc-spine cc-spine-v7">
+      <div className="cc-spine">
         <div className="cc-spine-rail" />
         {past.length ? <Toggle label={`${past.length} earlier`} open={showPast} onClick={() => setShowPast((value) => !value)} /> : null}
         {showPast

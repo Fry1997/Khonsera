@@ -53,7 +53,6 @@ export function MobileAppbar({
           <Link
             href="/today"
             className="cc-lockup"
-            data-compact="true"
             aria-label="Khonsera"
           >
             <span className="cc-brand-dot" aria-hidden />
@@ -71,6 +70,8 @@ export function MobileAppbar({
             className="cc-iconbtn"
             data-variant="ghost"
             aria-label="Menu"
+            aria-controls="mobile-overflow"
+            aria-expanded={open}
             onClick={() => setOpen(true)}
           >
             <span className="cc-appbar-icon">
@@ -86,7 +87,14 @@ export function MobileAppbar({
           onClick={() => setOpen(false)}
         >
           <div className="cc-overflow-scrim" />
-          <div className="cc-overflow" onClick={(e) => e.stopPropagation()}>
+          <div
+            id="mobile-overflow"
+            className="cc-overflow"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation and account"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="cc-overflow-grip" />
             <div className="cc-overflow-id">
               <span className="cc-overflow-avatar">{initials}</span>

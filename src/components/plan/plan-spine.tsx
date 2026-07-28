@@ -142,7 +142,7 @@ export function PlanSpine({
       <div className="cc-spine" data-resolving={resolving ? "" : undefined}>
         <span className="cc-spine-rail" />
         {nodes.map((n) => (
-          <div key={n.key}>
+          <div key={n.key} className="cc-spine-entry">
             {n.dayStart ? <div className="cc-day-divider">{n.dayStart}</div> : null}
             <div className="cc-node">
               <div className="cc-node-dot">

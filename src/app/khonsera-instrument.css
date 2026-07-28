@@ -277,11 +277,17 @@ a {
   gap: var(--space-1);
   position: relative;
   border-radius: var(--radius-sm);
-  color: var(--ink-faint);
+  color: var(--ink-dim);
   text-decoration: none;
   transition:
     color var(--dur-base) var(--ease-standard),
     background var(--dur-base) var(--ease-standard);
+}
+
+.cc-tab-ico,
+.cc-tab-ico svg {
+  width: 22px;
+  height: 22px;
 }
 
 .cc-tab[data-active="true"] {
@@ -316,12 +322,14 @@ a {
 }
 
 .cc-appbar {
+  height: auto;
   min-height: calc(var(--appbar-height) + env(safe-area-inset-top));
+  box-sizing: border-box;
   position: sticky;
   z-index: 45;
   top: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   padding: calc(var(--space-3) + env(safe-area-inset-top))
@@ -347,6 +355,7 @@ a {
 }
 
 .cc-appbar .cc-lockup .wm {
+  display: block;
   font-size: 13px;
 }
 
@@ -606,7 +615,9 @@ a {
 
 .cc-shell-col {
   width: min(100%, var(--layout-content-max));
+  max-width: none;
   min-height: 100%;
+  box-sizing: border-box;
   margin-inline: auto;
   padding: var(--desktop-gutter) clamp(var(--space-6), 3vw, var(--space-12))
     calc(var(--space-12) + var(--space-6));
@@ -720,6 +731,109 @@ a {
   line-height: 1.02;
   letter-spacing: -0.03em;
   text-wrap: balance;
+}
+
+.cc-day-purpose-edit {
+  width: 100%;
+  margin: 0;
+}
+
+.khonsera-app .cc-day-header .cc-plan-title,
+.khonsera-app .cc-day-header .cc-plan-title-input {
+  width: 100%;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: clamp(31px, 4.4vw, 42px);
+  font-style: normal;
+  font-weight: var(--fw-medium);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.khonsera-app .cc-day-header .cc-plan-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.khonsera-app
+  .cc-day-header
+  .cc-plan-title[data-unnamed]
+  > span:first-child {
+  color: var(--ink);
+  font-family: inherit;
+  font-style: normal;
+}
+
+.khonsera-app .cc-day-header .cc-plan-title-input {
+  padding: 0 0 var(--space-1);
+  border: 0;
+  border-bottom: 2px solid var(--gold);
+  border-radius: 0;
+  background: transparent;
+  outline: 0;
+}
+
+.khonsera-app .cc-day-header .cc-plan-title-edit {
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.khonsera-app .cc-day-header .cc-plan-intention {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-2) 0 var(--space-2) var(--space-3);
+  border: 0;
+  border-left: 2px solid var(--gold);
+  background: transparent;
+  text-align: left;
+}
+
+.khonsera-app .cc-day-header .cc-plan-intention-eyebrow,
+.khonsera-app .cc-day-header .cc-plan-intention-add {
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.khonsera-app .cc-day-header .cc-plan-intention-text {
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: var(--fw-regular);
+  line-height: 1.5;
+}
+
+.khonsera-app .cc-day-header .cc-plan-intention-input {
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-left: 2px solid var(--gold);
+  border-bottom: 1px solid var(--rule-2);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  outline: 0;
 }
 
 .cc-day-origin {
@@ -1024,6 +1138,13 @@ a {
   padding-left: var(--spine-gutter);
 }
 
+.cc-spine-entry {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .cc-spine-rail {
   width: 1px;
   position: absolute;
@@ -1054,6 +1175,24 @@ a {
   left: calc(var(--spine-gutter) * -1);
   display: grid;
   place-items: center;
+}
+
+/* The app still loads retired Edition II/III styles for untouched screens.
+   Keep the instrument spine isolated from their two-column rail contract. */
+.khonsera-app .cc-spine .cc-node {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+  padding-bottom: 0;
+}
+
+.khonsera-app .cc-spine .cc-node-dot {
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  top: var(--space-4);
+  left: calc(var(--spine-gutter) * -1);
+  margin-top: 0;
 }
 
 .cc-node-dot > :is(.cc-dot-anchor, .cc-med-anchor, .cc-dot-now) {
@@ -1429,6 +1568,26 @@ button.cc-var {
   font-weight: var(--fw-semibold);
 }
 
+.khonsera-app .cc-spine-add {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 1;
+}
+
 .cc-day-context > *,
 .cc-day-forecast > * {
   min-width: 0;
@@ -1450,6 +1609,32 @@ button.cc-var {
   border-radius: var(--radius-md);
   background: var(--card);
   box-shadow: var(--lift-sm);
+}
+
+.cc-context-actions--planner {
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.cc-context-copy {
+  min-width: 180px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cc-context-detail {
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cc-context-buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .cc-context-label {
@@ -1565,6 +1750,80 @@ button.cc-var {
   gap: var(--space-3);
   padding-top: var(--space-4);
   border-top: 1px solid var(--rule);
+}
+
+.cc-plan-context-bundle {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  box-shadow: var(--lift-sm);
+}
+
+.cc-plan-context-toggle {
+  width: 0;
+  height: 0;
+  position: absolute;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.cc-plan-context-bundle > label {
+  min-height: var(--touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  list-style: none;
+  cursor: pointer;
+}
+
+.cc-plan-context-toggle:focus-visible + label {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.cc-plan-context-bundle > label > span:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cc-plan-context-bundle > label strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+
+.cc-plan-context-bundle > label small {
+  overflow: hidden;
+  color: var(--ink-dim);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-plan-context-bundle > label > span:last-child {
+  color: var(--gold-2);
+  font-family: var(--mono);
+  font-size: 18px;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+
+.cc-plan-context-toggle:checked + label > span:last-child {
+  transform: rotate(45deg);
+}
+
+.cc-plan-context-toggle:not(:checked) ~ .cc-plan-context-body {
+  display: none;
+}
+
+.cc-plan-context-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .cc-intention-card,
@@ -1731,7 +1990,7 @@ button.cc-var {
   }
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 1360px) {
   .cc-day-dashboard {
     display: grid;
     grid-template-columns:
@@ -1799,9 +2058,25 @@ button.cc-var {
     border-left: 1px solid var(--rule);
     scrollbar-width: thin;
   }
+
+  .cc-plan-context-bundle {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .cc-plan-context-bundle > label {
+    display: none;
+  }
+
+  .cc-plan-context-toggle:not(:checked) ~ .cc-plan-context-body,
+  .cc-plan-context-body {
+    display: flex;
+    padding: 0;
+  }
 }
 
-@media (min-width: 1480px) {
+@media (min-width: 1600px) {
   .cc-day-dashboard {
     grid-template-columns:
       minmax(0, 800px)
@@ -1854,13 +2129,17 @@ button.cc-var {
     font-size: 32px;
   }
 
+  .khonsera-app .cc-day-header .cc-plan-title {
+    min-height: var(--touch-target);
+  }
+
   .cc-active-tile {
     padding: var(--space-4);
     border-radius: var(--radius-md);
   }
 
   .cc-active-tile.cc-setoff {
-    border-width: 3px;
+    border-width: 2px;
   }
 
   .cc-setoff-figure {
@@ -1896,6 +2175,26 @@ button.cc-var {
   .cc-plan-context {
     padding-top: var(--space-2);
     border-top: 1px solid var(--rule);
+  }
+
+  .cc-spine-toggle {
+    width: 100%;
+    min-height: var(--touch-target);
+  }
+
+  .khonsera-app .cc-spine-add {
+    min-height: var(--touch-target);
+  }
+
+  .cc-context-actions--planner,
+  .cc-context-buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cc-context-buttons > :is(.cc-btn, button) {
+    width: 100%;
+    justify-content: center;
   }
 
   .cc-route-map {

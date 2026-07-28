@@ -13,7 +13,7 @@ Last updated: 2026-07-28
 Responsive composition in `src/app/(app)/plan/[id]/page.tsx`:
 
 1. **Primary day column** (`.cc-plan-primary`) — the operational sequence. On
-   mobile it is the first column; at 1180px it becomes a bounded 780px working
+   mobile it is the first column; at 1360px it becomes a bounded 780px working
    column.
 2. **DayHeader** (`.cc-day-header`, shared with `/today`) — mono date eyebrow →
    the day's PURPOSE as the H1 (the inline `PlanTitleEditor`, lifted to
@@ -34,18 +34,28 @@ Responsive composition in `src/app/(app)/plan/[id]/page.tsx`:
    →** button (still opens the compare sheet via `onCompare`), inline
    `LivePass` rail tickets, `GapCard`, accommodation, notes, recovery, TfL, live
    alerts. Editing is fully preserved — the recomposition is page-level only.
-5. **Primary support** — intention, contextual nudges and readiness remain with
-   the day because they change how the sequence runs.
+5. **Primary support** — the editable intention lives in the day header;
+   contextual nudges and readiness remain with the day because they change how
+   the sequence runs.
 6. **Context column** (`.cc-plan-context`) — the real route map, bookings,
    budget, sharing, constraints and the full add/import/finder toolkit. It
-   follows the primary column on mobile. On desktop it becomes a sticky,
-   independently scrollable operations column separated by one hairline.
+   follows the primary column on mobile, where secondary controls are grouped
+   behind the **Day tools** disclosure instead of forming an unbounded page.
+   At 1360px it becomes a sticky, independently scrollable operations column;
+   the disclosure opens into a visible desktop tool stack.
 
 The equivalent `/today` composition is conditions → live day/spine →
-map/documents/tools on mobile. At 1180px it becomes a two-column command desk:
-the day stays primary while forecast and contextual tools occupy the right
-column. Mobile touch targets are at least 44px and both layouts keep the same
-content and action contracts.
+map/documents/plan handoff on mobile. Detailed imports and booking finders live
+in `/plan/[id]`, keeping Today focused on the next live decision. At 1360px it
+becomes a two-column command desk: the day stays primary while forecast and
+contextual tools occupy the right column. Mobile touch targets are at least
+44px and both layouts keep the same action contracts.
+
+The instrument spine is deliberately isolated from the historical
+`.cc-spine-v7` two-column rail contract. `TodaySpine` renders only `.cc-spine`;
+the instrument layer owns node placement, while `PlanSpine` groups each stop
+and its related controls in `.cc-spine-entry`. This prevents populated cards
+from being placed into the legacy 42px marker column.
 
 `PlanAdd` (`src/components/plan/plan-add.tsx`) offers bespoke per-type forms so
 each thing has only its natural fields (the "could my Dad use it?" bar):
