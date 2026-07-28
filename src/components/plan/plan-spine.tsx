@@ -197,10 +197,15 @@ export function PlanSpine({
                 ) : null}
               </div>
             </div>
-            {/* Inline "+ Add here" in the gap after this item — opens the add
-                sheet seeded with the surrounding time (add IN context). Shown
-                wherever there's an onward leg (i.e. a real gap to fill). */}
-            {n.after ? (
+            {/* Inline insertion belongs after real commitments, where adding
+                something in context is meaningful. Transport/pass/base nodes
+                stay visually continuous; the global Day tools add remains. */}
+            {n.after &&
+            n.anchor &&
+            !n.isBase &&
+            !n.pass &&
+            n.anchor.type !== "transport_arrival" &&
+            n.anchor.type !== "flight" ? (
               <div className="cc-node">
                 <div className="cc-node-dot" aria-hidden />
                 <div>
