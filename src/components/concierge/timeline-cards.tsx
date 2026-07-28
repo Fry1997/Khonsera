@@ -122,7 +122,7 @@ export function AnchorCard({ anchor, onSelect, onEditVariable, onRename, onFlipM
 export function IntentionCard({ intention, onToggle, onPromote }: { intention: IntentionVM; onToggle?: (id: string) => void; onPromote?: (id: string) => void }) {
   const active = intention.state !== "toggled_off";
   return (
-    <article className="cc-intention-card" data-active={active ? "true" : "false">
+    <article className="cc-intention-card" data-active={active ? "true" : "false"}>
       <div className="cc-intention-label"><span>Intention</span><span>{intention.flexibility === "promoted_to_hard" ? "promoted" : "soft"}</span></div>
       <p className="cc-intention-desc">{intention.description}</p>
       {intention.target || intention.leaveBy ? <p className="cc-intention-meta">{intention.target ?? ""}{intention.leaveBy ? `  ·  leave by ${formatClock(intention.leaveBy)}` : ""}</p> : null}
