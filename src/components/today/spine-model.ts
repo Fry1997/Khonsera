@@ -23,6 +23,8 @@ export interface SpineAnchor {
   plannedTravelMinutes: number | null;
   /** Optional per-boundary margin used by the leave-by engine. */
   bufferMinutes?: number | null;
+  /** Original transition mode before it is adapted for the routing UI. */
+  travelMode?: string | null;
   navMode: NavMode;
   station: { name: string; code: string | null; kind: StationKind } | null;
   role: AnchorRole;
@@ -66,9 +68,6 @@ export function navModeForTransition(mode: string | null | undefined): NavMode {
   }
 }
 
-// Arrivals and changeovers are outcomes of the booked transit leg already rendered
-// by LivePass. They are not independent door-to-door walking destinations. Returning
-// null here prevents Today from inventing duplicate walk cards over rail journeys.
 export function navigateHref(a: { coord: { lat: number; lng: number } | null; title: string; role?: AnchorRole }): Route | null {
   if (!a.coord || a.role === "arrival" || a.role === "changeover") return null;
   const params = new URLSearchParams({
