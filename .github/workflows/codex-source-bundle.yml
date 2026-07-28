@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/professional-responsive-ui
+  pull_request:
+    branches:
+      - claude/khonsera-build-brief-An4oz
 
 permissions:
   contents: read
