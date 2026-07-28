@@ -1,0 +1,26 @@
+name: Promote validated Khonsera hotfix
+
+on:
+  push:
+    branches:
+      - claude/khonsera-build-brief-An4oz
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN_PRIMARY: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TOKEN_FALLBACK: ${{ secrets.VERCEL_ACCESS_TOKEN }}
+    steps:
+      - name: Promote validated preview to production
+        shell: bash
+        run: |
+          token="${VERCEL_TOKEN_PRIMARY:-$VERCEL_TOKEN_FALLBACK}"
+          if [ -z "$token" ]; then
+            echo "No Vercel token is configured in repository secrets."
+            exit 1
+          fi
+          npx --yes vercel@latest promote https://journies-9bufc4wj3-connor-frys-projects.vercel.app --yes --token "$token" --timeout 5m
