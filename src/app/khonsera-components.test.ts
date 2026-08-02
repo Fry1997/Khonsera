@@ -17,6 +17,10 @@ const secondarySurfaces = readFileSync(
   join(root, "src/app/khonsera-secondary-surfaces.css"),
   "utf8",
 );
+const layoutPass = readFileSync(
+  join(root, "src/app/khonsera-layout.css"),
+  "utf8",
+);
 const todayPage = readFileSync(
   join(root, "src/app/(app)/today/page.tsx"),
   "utf8",
@@ -32,11 +36,15 @@ describe("app-wide Khonsera component system", () => {
     const componentIndex = layout.indexOf('"./khonsera-components.css"');
     const primaryFlowIndex = layout.indexOf('"./khonsera-primary-flows.css"');
     const secondaryIndex = layout.indexOf('"./khonsera-secondary-surfaces.css"');
+    const demoIndex = layout.indexOf('"./khonsera-demo.css"');
+    const layoutIndex = layout.indexOf('"./khonsera-layout.css"');
 
     expect(foundationIndex).toBeGreaterThan(-1);
     expect(componentIndex).toBeGreaterThan(foundationIndex);
     expect(primaryFlowIndex).toBeGreaterThan(componentIndex);
     expect(secondaryIndex).toBeGreaterThan(primaryFlowIndex);
+    expect(demoIndex).toBeGreaterThan(secondaryIndex);
+    expect(layoutIndex).toBeGreaterThan(demoIndex);
   });
 
   it("keeps palette and component appearance in central app layers", () => {
@@ -102,5 +110,33 @@ describe("app-wide Khonsera component system", () => {
     ]) {
       expect(secondarySurfaces).toContain(selector);
     }
+  });
+
+  it("applies one spacing and placement grid across the application", () => {
+    for (const token of [
+      "--kh-layout-gutter:",
+      "--kh-layout-main:",
+      "--kh-layout-side:",
+      "--kh-layout-column-gap:",
+      "--kh-layout-section-gap:",
+    ]) {
+      expect(layoutPass).toContain(token);
+    }
+
+    for (const selector of [
+      ".cc-app-main",
+      ".cc-mobile-main",
+      ".cc-today-direction, .cc-plan-detail",
+      ".cc-day-dashboard, .cc-plan-grid",
+      ".cc-node",
+      ".cc-wallet",
+      ".cc-demo-banner",
+    ]) {
+      expect(layoutPass).toContain(selector);
+    }
+
+    expect(layoutPass).toContain("@media (max-width: 359px)");
+    expect(layoutPass).toContain("@media (min-width: 768px) and (max-width: 1099px)");
+    expect(layoutPass).toContain("@media (min-width: 1100px)");
   });
 });
