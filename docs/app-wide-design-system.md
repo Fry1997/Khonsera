@@ -1,6 +1,6 @@
 # Khonsera app-wide design system
 
-Status: **Pass 4 — secondary travel surfaces**
+Status: **Pass 5 — spacing, alignment and placement**
 
 This document defines how the approved visual reference becomes the language of the whole application. It replaces the previous pattern of treating individual routes as separate visual editions.
 
@@ -23,14 +23,16 @@ The visual language is:
 
 **Routes own composition. The design system owns appearance.**
 
-A route may decide that Today uses a continuous itinerary while Wallet uses a document library. It may not invent its own colour palette, typography scale, button treatment, status language, card geometry or navigation pattern.
+A route may decide that Today uses a continuous itinerary while Wallet uses a document library. It may not invent its own colour palette, typography scale, button treatment, status language, card geometry, navigation pattern or page-spacing system.
 
 The shared authority is layered deliberately:
 
-1. `src/app/khonsera-system.css` — colour, type, spacing, shell, controls, surfaces and semantic status.
+1. `src/app/khonsera-system.css` — colour, type, spacing tokens, shell, controls, surfaces and semantic status.
 2. `src/app/khonsera-components.css` — navigation items, itinerary nodes, commitment cards, movement cards, transfers, passes, tickets and sheets.
 3. `src/app/khonsera-primary-flows.css` — the shared planning-to-operation composition used by Today and Plan.
 4. `src/app/khonsera-secondary-surfaces.css` — Plan index, Wallet and the common list, ledger, task, contact and empty-state language.
+5. `src/app/khonsera-demo.css` — the visible staff-demo boundary without a second component system.
+6. `src/app/khonsera-layout.css` — final page gutters, column edges, vertical rhythm, card alignment and responsive placement.
 
 These layers load after the historical route styles. Older files remain temporarily for structural compatibility while their visual authority is retired during the rollout.
 
@@ -127,13 +129,30 @@ The application no longer falls back to an older card language after leaving Tod
 - **Contacts** use the same asymmetric geometry, green identity block and orange communication cue.
 - **Empty states** are direct and actionable. Decorative brand imagery is removed from the working UI.
 
+## Spacing, alignment and placement
+
+The app now uses one page grid rather than route-by-route nudges.
+
+- Mobile uses a consistent 16px working gutter, reduced to 14px only at the 320px minimum.
+- Tablet uses 24px gutters and retains a single primary reading flow before splitting supporting context.
+- Desktop uses a 744px operational column, a 336px context column and a 24px shared gutter.
+- Today, Plan and the staff demo share the same outer edges and column boundaries.
+- Page headers, first content blocks and supporting action rows align to those same edges.
+- The itinerary spine uses a fixed marker column and consistent card offset, removing uneven left edges between movement, appointment, station and ticket blocks.
+- Card internals use shared 8px, 12px, 16px and 24px intervals rather than unrelated local values.
+- Wallet, settings, lists and empty states use the same page rhythm and no longer sit arbitrarily inside the shell.
+- Safe-area padding and bottom-navigation clearance are handled by the shared frame rather than individual routes.
+
+This pass deliberately changes placement only. It does not alter colour, typography, status meaning, data behaviour or the demo/live boundary.
+
 ## Migration sequence
 
 1. **Foundation** — shared tokens, shell, typography, controls, surfaces and status language. Complete in Pass 1.
 2. **Common components** — navigation, cards, sheets, itinerary primitives, tickets and passes. Established in Pass 2.
 3. **Primary flows** — Today and Plan share one planning-to-operation hierarchy. Established in Pass 3.
 4. **Secondary surfaces** — Plan index, Wallet, tasks, ledgers, contacts and empty states use the shared language. Established in Pass 4.
-5. **Coherence audit** — remove route-level appearance rules and test all supported widths.
+5. **Spacing and placement** — one page grid, vertical rhythm, card alignment and responsive edge contract. Established in Pass 5.
+6. **Coherence audit** — remove redundant route-level appearance rules and visually verify populated states at every supported width.
 
 ## Responsive contract
 
@@ -156,4 +175,5 @@ For every migrated route:
 - Is every interactive target at least 44px?
 - Is orange reserved for movement or attention?
 - Is information density controlled by hierarchy rather than empty space?
-- Does route CSS contain composition rather than a new visual system?
+- Do page edges, card edges and header edges align to the shared grid?
+- Does route CSS contain composition rather than a new visual or spacing system?
