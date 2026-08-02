@@ -17,7 +17,11 @@ export default async function SettingsPage({
   const ctx = await requireUserContext();
   const sp = await searchParams;
   const supabase = await createClient();
-  const { data: meProfile } = await supabase.from("profiles").select("home_currency").eq("id", ctx.userId).maybeSingle();
+  const { data: meProfile } = await supabase
+    .from("profiles")
+    .select("home_currency")
+    .eq("id", ctx.userId)
+    .maybeSingle();
 
   const [
     { data: profile },
@@ -52,6 +56,7 @@ export default async function SettingsPage({
       .select("id, provider_account_email, last_scan_at")
       .eq("user_id", ctx.userId)
       .eq("workspace_id", ctx.workspaceId)
+      .eq("provider", "google")
       .eq("status", "active")
       .maybeSingle(),
   ]);
@@ -70,14 +75,22 @@ export default async function SettingsPage({
           .from("transport_hubs")
           .select("id, name, code")
           .in("id", hubIds)
-      : { data: [] as Array<{ id: string; name: string; code: string | null }> };
+      : {
+          data: [] as Array<{
+            id: string;
+            name: string;
+            code: string | null;
+          }>,
+        };
   const labelFor = (id: string | null | undefined) => {
     if (!id) return null;
     const h = hubRows?.find((r) => r.id === id);
     if (!h) return null;
     return { id: h.id, label: h.code ? `${h.name} (${h.code})` : h.name };
   };
-  const defaultRailHub = labelFor(profile?.default_rail_origin_transport_hub_id);
+  const defaultRailHub = labelFor(
+    profile?.default_rail_origin_transport_hub_id,
+  );
   const defaultFlightHub = labelFor(
     profile?.default_flight_origin_transport_hub_id,
   );
@@ -115,8 +128,9 @@ export default async function SettingsPage({
           {ctx.isStaff ? (
             <div className="mt-3">
               <p className="small mb-2">
-                Demo mode swaps integration stubs for realistic mock data and shows a sample day-of
-                preview on Today (with a time-travel scrubber).
+                Switch Today between your real itinerary and an isolated staff
+                scenario. The demo uses the same production components and live
+                services, but never reads from or writes to your plan.
               </p>
               <DemoModeIndicator />
             </div>
@@ -125,39 +139,45 @@ export default async function SettingsPage({
 
         <div id="calendar" className="scroll-mt-24">
           <CalendarSection
-          connection={
-            calendarConn
-              ? {
-                  id: calendarConn.id,
-                  provider_account_email: calendarConn.provider_account_email,
-                }
-              : null
-          }
-        />
+            connection={
+              calendarConn
+                ? {
+                    id: calendarConn.id,
+                    provider_account_email:
+                      calendarConn.provider_account_email,
+                  }
+                : null
+            }
+          />
         </div>
 
         <div id="gmail" className="scroll-mt-24">
           <GmailSection
-          connection={
-            gmailConn
-              ? {
-                  id: gmailConn.id,
-                  provider_account_email: gmailConn.provider_account_email,
-                  last_scan_at: gmailConn.last_scan_at,
-                }
-              : null
-          }
-        />
+            connection={
+              gmailConn
+                ? {
+                    id: gmailConn.id,
+                    provider_account_email: gmailConn.provider_account_email,
+                    last_scan_at: gmailConn.last_scan_at,
+                  }
+                : null
+            }
+          />
         </div>
 
         <div className="j-card p-5 md:col-span-2">
           <h2 className="h3 mb-4">International</h2>
           <div className="cc-settings-group">
-            <HomeCurrency current={(meProfile?.home_currency as string) ?? "GBP"} />
+            <HomeCurrency
+              current={(meProfile?.home_currency as string) ?? "GBP"}
+            />
           </div>
         </div>
 
-        <div id="travel-profile" className="j-card p-5 md:col-span-2 scroll-mt-24">
+        <div
+          id="travel-profile"
+          className="j-card p-5 md:col-span-2 scroll-mt-24"
+        >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="h3">Travel preferences</h2>
             <Link href="/locations" className="small underline">
@@ -170,18 +190,19 @@ export default async function SettingsPage({
                 profile?.default_drive_origin_location_id ?? null,
               default_rail_origin_location_id:
                 profile?.default_rail_origin_location_id ?? null,
-              default_return_location_id: profile?.default_return_location_id ?? null,
+              default_return_location_id:
+                profile?.default_return_location_id ?? null,
               default_rail_origin_transport_hub_id:
                 profile?.default_rail_origin_transport_hub_id ?? null,
               default_flight_origin_transport_hub_id:
                 profile?.default_flight_origin_transport_hub_id ?? null,
-              preferred_mode: (profile?.preferred_mode ?? "no_preference") as
+              preferred_mode: (profile?.preferred_mode ??
+                "no_preference") as
                 | "walk"
                 | "drive"
                 | "taxi"
                 | "no_preference"
                 | "rail"
-                | "drive"
                 | "compare"
                 | "mixed",
               default_arrival_buffer_minutes:
@@ -195,7 +216,8 @@ export default async function SettingsPage({
               mileage_rate: Number(profile?.mileage_rate ?? 0.45),
               walking_threshold_minutes:
                 profile?.walking_threshold_minutes ?? 15,
-              max_taxi_fare_pence: profile?.max_taxi_fare_pence ?? 1500,
+              max_taxi_fare_pence:
+                profile?.max_taxi_fare_pence ?? 1500,
               luggage_default: (profile?.luggage_default ?? "none") as
                 | "none"
                 | "light"
@@ -218,7 +240,10 @@ export default async function SettingsPage({
               Visible to staff only · TODO open to all users
             </span>
           </div>
-          <p className="small mb-4" style={{ color: "var(--ink-dim)" }}>
+          <p
+            className="small mb-4"
+            style={{ color: "var(--ink-dim)" }}
+          >
             The three sanctioned Khonsera palettes from the brand book.
             Selection persists in this browser; the rest of the workspace
             isn&rsquo;t affected.
