@@ -1,0 +1,532 @@
+/*
+ * Khonsera app-wide system · Pass 1
+ *
+ * This is the final shared visual authority for application chrome.
+ * Route files may control composition, but they must not introduce a separate
+ * palette, type scale, control language, surface treatment or navigation skin.
+ */
+
+:root,
+[data-theme="light"] {
+  /* Brand and semantic colour */
+  --kh-ground: #f5f1e9;
+  --kh-ground-raised: #f9f6f0;
+  --kh-surface: #fffdf9;
+  --kh-surface-subtle: #f6f1e8;
+  --kh-surface-inset: #efe9de;
+  --kh-ink: #0d2927;
+  --kh-ink-2: #263c38;
+  --kh-ink-muted: #68736e;
+  --kh-ink-faint: #9aa19d;
+  --kh-green: #0b4a42;
+  --kh-green-strong: #073a34;
+  --kh-green-soft: #e4eee9;
+  --kh-orange: #d3541f;
+  --kh-orange-strong: #b94418;
+  --kh-orange-soft: #f7e3d6;
+  --kh-border: #e5ddd0;
+  --kh-border-strong: #d6cbbb;
+  --kh-success: #146b50;
+  --kh-success-soft: #e3efe8;
+  --kh-warning: #9b681e;
+  --kh-warning-soft: #f4e8cf;
+  --kh-danger: #a74631;
+  --kh-danger-soft: #f4ded7;
+  --kh-info: #345c78;
+  --kh-info-soft: #e4ebf0;
+
+  /* Shared geometry */
+  --kh-radius-xs: 6px;
+  --kh-radius-sm: 10px;
+  --kh-radius-md: 14px;
+  --kh-radius-lg: 18px;
+  --kh-radius-xl: 24px;
+  --kh-radius-pill: 999px;
+  --kh-control-height: 44px;
+  --kh-page-mobile: 16px;
+  --kh-page-tablet: 24px;
+  --kh-page-desktop: 36px;
+  --kh-content-max: 1440px;
+  --kh-reading-max: 760px;
+
+  /* Restrained, warm elevation */
+  --kh-shadow-rest:
+    0 1px 2px rgba(39, 31, 20, 0.035),
+    0 8px 24px -20px rgba(39, 31, 20, 0.18);
+  --kh-shadow-raised:
+    0 2px 5px -2px rgba(39, 31, 20, 0.09),
+    0 22px 42px -30px rgba(39, 31, 20, 0.28);
+  --kh-shadow-overlay:
+    0 12px 32px -18px rgba(20, 18, 13, 0.28),
+    0 32px 72px -36px rgba(20, 18, 13, 0.36);
+
+  /* Compatibility aliases. Existing components inherit the new system. */
+  --paper: var(--kh-ground);
+  --paper-2: var(--kh-ground-raised);
+  --ground: var(--kh-ground);
+  --screen: var(--kh-ground-raised);
+  --sand: var(--kh-ground-raised);
+  --sand-2: var(--kh-surface-inset);
+  --card: var(--kh-surface);
+  --card-2: var(--kh-surface-subtle);
+  --widget: var(--kh-surface);
+  --widget-2: var(--kh-surface-subtle);
+  --well: var(--kh-surface-inset);
+  --ink: var(--kh-ink);
+  --ink-2: var(--kh-ink-2);
+  --ink-dim: var(--kh-ink-muted);
+  --ink-faint: var(--kh-ink-faint);
+  --char: var(--kh-green-strong);
+  --char-2: var(--kh-green);
+  --gold: var(--kh-green);
+  --gold-2: var(--kh-green-strong);
+  --gold-800: var(--kh-green-strong);
+  --gold-ink: var(--kh-green-strong);
+  --gold-100: var(--kh-green-soft);
+  --gold-200: #a9c9bd;
+  --gold-soft: var(--kh-green-soft);
+  --gold-tint: rgba(11, 74, 66, 0.075);
+  --gold-soft-alpha: rgba(11, 74, 66, 0.18);
+  --rail: var(--kh-orange);
+  --rail-2: var(--kh-orange-strong);
+  --rail-soft: var(--kh-orange-soft);
+  --rule: var(--kh-border);
+  --rule-2: var(--kh-border-strong);
+  --line: rgba(67, 54, 35, 0.09);
+  --line-soft: rgba(67, 54, 35, 0.055);
+  --sage: var(--kh-success);
+  --sage-soft: var(--kh-success-soft);
+  --amber: var(--kh-warning);
+  --amber-soft: var(--kh-warning-soft);
+  --rust: var(--kh-danger);
+  --rust-soft: var(--kh-danger-soft);
+  --slate: var(--kh-info);
+  --slate-soft: var(--kh-info-soft);
+  --success: var(--kh-success);
+  --success-soft: var(--kh-success-soft);
+  --warning: var(--kh-warning);
+  --warning-soft: var(--kh-warning-soft);
+  --danger: var(--kh-danger);
+  --danger-soft: var(--kh-danger-soft);
+  --info: var(--kh-info);
+  --info-soft: var(--kh-info-soft);
+  --radius-xs: var(--kh-radius-xs);
+  --radius-sm: var(--kh-radius-sm);
+  --radius-md: var(--kh-radius-md);
+  --radius-lg: var(--kh-radius-lg);
+  --radius-xl: var(--kh-radius-xl);
+  --radius-pill: var(--kh-radius-pill);
+  --touch-target: var(--kh-control-height);
+  --lift-sm: var(--kh-shadow-rest);
+  --lift: var(--kh-shadow-raised);
+  --shadow-sm: var(--kh-shadow-rest);
+  --shadow: var(--kh-shadow-raised);
+  --shadow-lg: var(--kh-shadow-overlay);
+  --elevation-card: var(--kh-shadow-rest);
+  --elevation-raised: var(--kh-shadow-raised);
+  --sink: inset 0 0 0 1px rgba(67, 54, 35, 0.09);
+  --doc: var(--kh-surface);
+  --doc-2: var(--kh-surface-subtle);
+  --doc-line: var(--kh-border);
+
+  color-scheme: light;
+}
+
+/* Keep the night mode coherent rather than allowing an unrelated second brand. */
+[data-theme="dark"] {
+  --kh-ground: #0b211e;
+  --kh-ground-raised: #102a26;
+  --kh-surface: #15342f;
+  --kh-surface-subtle: #193b35;
+  --kh-surface-inset: #0e2924;
+  --kh-ink: #f1f3ed;
+  --kh-ink-2: #d5dfd9;
+  --kh-ink-muted: #9cadA5;
+  --kh-ink-faint: #6f837a;
+  --kh-green: #68c4a5;
+  --kh-green-strong: #8bd5bb;
+  --kh-green-soft: #1b4438;
+  --kh-orange: #e8753f;
+  --kh-orange-strong: #f08b59;
+  --kh-orange-soft: #45291f;
+  --kh-border: #29463f;
+  --kh-border-strong: #385950;
+  --kh-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --kh-shadow-raised: 0 14px 30px -22px rgba(0, 0, 0, 0.75);
+  --kh-shadow-overlay: 0 30px 70px -30px rgba(0, 0, 0, 0.9);
+}
+
+html,
+body,
+.khonsera-app,
+.khonsera-app--unified {
+  background: var(--kh-ground);
+  color: var(--kh-ink);
+}
+
+body {
+  min-width: 320px;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--kh-orange-soft);
+  color: var(--kh-ink);
+}
+
+/* --------------------------------------------------------------------------
+ * Shared page hierarchy
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-screen, .cc-screen-content) {
+  gap: clamp(18px, 3vw, 30px);
+}
+
+.khonsera-app :is(.cc-screen-head, .cc-today-head) {
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.khonsera-app :is(.cc-eyebrow, .cc-day-header-eyebrow, .cc-anchor-type,
+  .cc-var-label, .cc-base-eyebrow) {
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.khonsera-app :is(.cc-screen-title, .cc-day-purpose, .cc-plan-title,
+  .cc-plan-title-input) {
+  color: var(--kh-ink);
+  font-family: var(--display);
+  font-weight: 560;
+  letter-spacing: -0.042em;
+}
+
+.khonsera-app .cc-screen-title {
+  font-size: clamp(34px, 7vw, 60px);
+  line-height: 0.98;
+}
+
+.khonsera-app :is(.cc-screen-description, .cc-coming-soon-copy) {
+  color: var(--kh-ink-muted);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+ * One application shell
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-appbar {
+  min-height: calc(66px + env(safe-area-inset-top));
+  border-bottom: 1px solid color-mix(in srgb, var(--kh-border) 82%, transparent);
+  background: color-mix(in srgb, var(--kh-ground) 91%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(20px) saturate(1.05);
+  -webkit-backdrop-filter: blur(20px) saturate(1.05);
+}
+
+.khonsera-app .cc-lockup {
+  color: var(--kh-ink);
+}
+
+.khonsera-app .cc-lockup .wm {
+  font-weight: 650;
+  letter-spacing: 0.24em;
+}
+
+.khonsera-app .cc-brand-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--kh-orange);
+  box-shadow: none;
+}
+
+.khonsera-app .cc-shell {
+  background: var(--kh-ground);
+}
+
+.khonsera-app .cc-rail {
+  border-right: 1px solid var(--kh-border);
+  background: color-mix(in srgb, var(--kh-surface) 56%, var(--kh-ground));
+}
+
+.khonsera-app .cc-rail-item {
+  min-height: var(--kh-control-height);
+  border-radius: var(--kh-radius-sm);
+  color: var(--kh-ink-muted);
+}
+
+.khonsera-app .cc-rail-item:hover {
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink);
+}
+
+.khonsera-app .cc-rail-item[data-active="true"] {
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-rail-item[data-active="true"]::before {
+  width: 3px;
+  top: 8px;
+  bottom: 8px;
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-rail-item[data-active="true"] .ic {
+  color: var(--kh-green);
+}
+
+.khonsera-app .cc-tabbar-wrap {
+  border-top: 1px solid var(--kh-border);
+  background: color-mix(in srgb, var(--kh-surface) 94%, transparent);
+  box-shadow: 0 -14px 32px -28px rgba(39, 31, 20, 0.45);
+  backdrop-filter: blur(22px) saturate(1.05);
+  -webkit-backdrop-filter: blur(22px) saturate(1.05);
+}
+
+.khonsera-app .cc-tab {
+  color: var(--kh-ink-muted);
+  border-radius: 0;
+}
+
+.khonsera-app .cc-tab[data-active="true"] {
+  background: var(--kh-green-strong);
+  color: #ffffff;
+}
+
+.khonsera-app .cc-tab[data-active="true"] :is(.cc-tab-ico, .cc-tab-label) {
+  color: #ffffff;
+}
+
+.khonsera-app .cc-tab-dot {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Shared controls
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-btn {
+  min-height: var(--kh-control-height);
+  border-radius: var(--kh-radius-sm);
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.khonsera-app :is(.cc-btn-gold, .cc-btn-ink) {
+  background: var(--kh-green-strong);
+  color: #ffffff;
+  box-shadow: 0 10px 22px -16px rgba(7, 58, 52, 0.8);
+}
+
+.khonsera-app :is(.cc-btn-gold, .cc-btn-ink):hover:not(:disabled) {
+  background: var(--kh-green);
+}
+
+.khonsera-app .cc-btn-ghost {
+  border: 1px solid var(--kh-border);
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app :is(.cc-btn-quiet, .cc-btn-text) {
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app :is(.cc-btn-quiet, .cc-btn-text):hover:not(:disabled) {
+  background: var(--kh-green-soft);
+}
+
+.khonsera-app .cc-iconbtn {
+  width: var(--kh-control-height);
+  height: var(--kh-control-height);
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-radius-pill);
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-iconbtn:hover {
+  background: var(--kh-green-strong);
+  color: #ffffff;
+}
+
+.khonsera-app :is(.cc-field, .cc-sheet input, .cc-sheet textarea,
+  .cc-sheet select) {
+  min-height: var(--kh-control-height);
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-radius-sm);
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+}
+
+.khonsera-app :is(.cc-field, .cc-sheet input, .cc-sheet textarea,
+  .cc-sheet select):focus {
+  border-color: var(--kh-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kh-green) 14%, transparent);
+}
+
+.khonsera-app :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--kh-orange);
+  outline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------------
+ * Shared surfaces and overlays
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-coming-soon, .cc-plan-empty, .cc-journey-card,
+  .cc-ticket-card, .cc-pass, .cc-weather, .cc-active-tile, .cc-sheet,
+  .cc-plan-group, .cc-wallet-card, .cc-task-card, .cc-expense-card) {
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-radius-lg);
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-sheet {
+  box-shadow: var(--kh-shadow-overlay);
+}
+
+.khonsera-app .cc-overflow-scrim {
+  background: rgba(13, 41, 39, 0.34);
+  backdrop-filter: blur(2px);
+}
+
+.khonsera-app .cc-overflow {
+  border: 1px solid var(--kh-border);
+  border-bottom: 0;
+  border-radius: var(--kh-radius-xl) var(--kh-radius-xl) 0 0;
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-overlay);
+}
+
+.khonsera-app :is(.cc-chip, .cc-pill, .cc-tag, .cc-next-facts > span) {
+  border: 1px solid color-mix(in srgb, var(--kh-border) 72%, transparent);
+  border-radius: var(--kh-radius-sm);
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink-2);
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Shared status language
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-status-strip, .cc-status, [data-status]) {
+  font-weight: 700;
+}
+
+.khonsera-app :is([data-status="on_time"], [data-status="ready"],
+  [data-status="confirmed"], [data-status="complete"]) {
+  color: var(--kh-success);
+}
+
+.khonsera-app :is([data-status="delayed"], [data-status="tight"],
+  [data-status="warning"]) {
+  color: var(--kh-warning);
+}
+
+.khonsera-app :is([data-status="cancelled"], [data-status="failed"],
+  [data-status="at_risk"]) {
+  color: var(--kh-danger);
+}
+
+.khonsera-app :is([data-status="platform_change"], [data-status="gate_change"],
+  [data-status="boarding"], [data-status="live"]) {
+  color: var(--kh-orange-strong);
+}
+
+/* --------------------------------------------------------------------------
+ * Transport and document family
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-spine, .cc-timeline) {
+  --spine-line: var(--kh-border-strong);
+  color: var(--kh-ink);
+}
+
+.khonsera-app :is(.cc-node, .cc-mode-node, .cc-timeline-node) {
+  border-color: var(--kh-border-strong);
+  background: var(--kh-surface);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app :is(.cc-node[data-kind="change"], .cc-mode-node[data-kind="change"],
+  .cc-timeline-node[data-kind="change"]) {
+  border-color: var(--kh-orange);
+  background: var(--kh-orange);
+  color: #ffffff;
+}
+
+.khonsera-app :is(.cc-pass, .cc-ticket-card) {
+  --document-accent: var(--kh-green);
+  overflow: hidden;
+}
+
+.khonsera-app :is(.cc-pass, .cc-ticket-card)[data-kind="rail"] {
+  --document-accent: var(--kh-orange);
+}
+
+.khonsera-app :is(.cc-pass-status, .cc-status-strip) {
+  border-radius: var(--kh-radius-pill);
+}
+
+/* --------------------------------------------------------------------------
+ * Responsive rules shared by every route
+ * ----------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .khonsera-app .cc-mobile-main {
+    padding-right: max(var(--kh-page-mobile), env(safe-area-inset-right));
+    padding-left: max(var(--kh-page-mobile), env(safe-area-inset-left));
+  }
+
+  .khonsera-app :is(.cc-screen-head, .cc-today-head) {
+    align-items: flex-start;
+  }
+
+  .khonsera-app .cc-screen-title {
+    font-size: clamp(36px, 12vw, 50px);
+  }
+
+  .khonsera-app .cc-overflow {
+    max-height: 88dvh;
+  }
+}
+
+@media (min-width: 768px) {
+  .khonsera-app .cc-mobile-main {
+    padding-right: var(--kh-page-tablet);
+    padding-left: var(--kh-page-tablet);
+  }
+}
+
+@media (min-width: 1100px) {
+  .khonsera-app .cc-shell-col {
+    width: min(100%, var(--kh-content-max));
+    padding-right: var(--kh-page-desktop);
+    padding-left: var(--kh-page-desktop);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .khonsera-app *,
+  .khonsera-app *::before,
+  .khonsera-app *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

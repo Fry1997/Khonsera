@@ -1,0 +1,1340 @@
+/*
+ * Khonsera app-wide system · Pass 2
+ * Shared component language for navigation, itinerary, transport, documents
+ * and sheets. This file is deliberately route-agnostic: Today, Plan, Wallet,
+ * Bookings and supporting screens compose the same visual primitives.
+ */
+
+:root {
+  --kh-component-pad: clamp(16px, 2.2vw, 22px);
+  --kh-component-gap: clamp(12px, 1.8vw, 18px);
+  --kh-component-radius: 18px 18px 18px 7px;
+  --kh-component-radius-compact: 13px 13px 13px 5px;
+  --kh-technical-track: 0.075em;
+  --kh-rail-width: 2px;
+}
+
+/* --------------------------------------------------------------------------
+ * Navigation components
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-tabbar {
+  gap: 4px;
+  padding: 6px max(6px, env(safe-area-inset-left)) 7px;
+}
+
+.khonsera-app .cc-tab {
+  min-height: 56px;
+  margin: 0;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 13px 13px 6px 13px;
+  background: transparent;
+  color: var(--kh-ink-muted);
+  isolation: isolate;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.khonsera-app .cc-tab::before {
+  content: "";
+  width: 18px;
+  height: 2px;
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateX(-50%);
+}
+
+.khonsera-app .cc-tab:hover {
+  border-color: color-mix(in srgb, var(--kh-border) 72%, transparent);
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink);
+}
+
+.khonsera-app .cc-tab[data-active="true"] {
+  border-color: var(--kh-green-strong);
+  background: var(--kh-green-strong);
+  color: #fff;
+  box-shadow: 0 12px 24px -18px rgba(7, 58, 52, 0.92);
+}
+
+.khonsera-app .cc-tab[data-active="true"]::before {
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-tab[data-active="true"] .cc-tab-ico {
+  transform: translateY(-1px);
+}
+
+.khonsera-app .cc-tab-label {
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: 0.015em;
+}
+
+.khonsera-app .cc-rail-group-label {
+  color: var(--kh-ink-faint);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-rail-item {
+  border: 1px solid transparent;
+  border-radius: 12px 12px 5px 12px;
+}
+
+.khonsera-app .cc-rail-item:hover {
+  border-color: color-mix(in srgb, var(--kh-border) 76%, transparent);
+}
+
+.khonsera-app .cc-rail-item[data-active="true"] {
+  border-color: var(--kh-border);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-rail-item[data-active="true"]::before {
+  top: 7px;
+  bottom: 7px;
+  border-radius: 0 3px 3px 0;
+  background: var(--kh-orange);
+}
+
+/* --------------------------------------------------------------------------
+ * Shared itinerary spine
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-spine-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--kh-border);
+  color: var(--kh-ink-muted);
+  font-size: 12px;
+}
+
+.khonsera-app .cc-spine-toolbar {
+  margin-bottom: 14px;
+}
+
+.khonsera-app .cc-spine {
+  --spine-line: var(--kh-border-strong);
+  position: relative;
+  min-width: 0;
+}
+
+.khonsera-app .cc-spine-rail {
+  width: var(--kh-rail-width);
+  background:
+    linear-gradient(
+      to bottom,
+      var(--kh-orange) 0 54px,
+      var(--kh-border-strong) 54px calc(100% - 36px),
+      color-mix(in srgb, var(--kh-border-strong) 35%, transparent) 100%
+    ) !important;
+  box-shadow: none !important;
+}
+
+.khonsera-app .cc-spine-entry,
+.khonsera-app .cc-node {
+  min-width: 0;
+}
+
+.khonsera-app .cc-node {
+  align-items: stretch;
+}
+
+.khonsera-app .cc-node > :last-child,
+.khonsera-app .cc-node-anchor {
+  min-width: 0;
+  width: 100%;
+}
+
+.khonsera-app .cc-node-dot {
+  position: relative;
+  z-index: 2;
+}
+
+.khonsera-app .cc-timeline-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--kh-border-strong);
+  border-radius: 10px 10px 10px 3px;
+  background: var(--kh-surface);
+  color: var(--kh-green-strong);
+  box-shadow: 0 3px 12px -9px rgba(39, 31, 20, 0.55);
+}
+
+.khonsera-app .cc-timeline-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+
+.khonsera-app .cc-timeline-icon[data-kind="change"] {
+  border-color: var(--kh-orange);
+  background: var(--kh-orange);
+  color: #fff;
+}
+
+.khonsera-app .cc-node[data-state="next"] .cc-timeline-icon {
+  border-color: var(--kh-green-strong);
+  background: var(--kh-green-strong);
+  color: #fff;
+}
+
+.khonsera-app :is(.cc-dot-anchor, .cc-dot-leg, .cc-dot-gap, .cc-dot-now) {
+  box-sizing: border-box;
+  border: 2px solid var(--kh-surface);
+  box-shadow: 0 0 0 1px var(--kh-border-strong);
+}
+
+.khonsera-app .cc-dot-anchor {
+  background: var(--kh-green);
+}
+
+.khonsera-app .cc-dot-leg {
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-dot-gap {
+  background: var(--kh-warning);
+}
+
+.khonsera-app .cc-dot-now {
+  background: var(--kh-orange);
+  box-shadow:
+    0 0 0 2px var(--kh-surface),
+    0 0 0 4px color-mix(in srgb, var(--kh-orange) 28%, transparent);
+}
+
+.khonsera-app .cc-now-row {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 30%, var(--kh-border));
+  border-radius: 9px 9px 9px 3px;
+  background: var(--kh-orange-soft);
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: var(--kh-technical-track);
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-spine-toggle {
+  min-height: 36px;
+  margin-block: 8px;
+  padding: 7px 11px;
+  border: 1px dashed var(--kh-border-strong);
+  border-radius: 10px 10px 10px 4px;
+  background: color-mix(in srgb, var(--kh-surface) 72%, transparent);
+  color: var(--kh-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.khonsera-app .cc-spine-toggle:hover {
+  border-style: solid;
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+}
+
+.khonsera-app .cc-day-divider {
+  margin-block: 22px 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--kh-border-strong);
+  border-bottom: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+ * Commitment, movement and gap cards
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(
+  .cc-anchor-card,
+  .cc-leg-card,
+  .cc-gap-card,
+  .cc-intention-card,
+  .cc-walk,
+  .cc-appt,
+  .cc-station-card,
+  .cc-transfer,
+  .cc-base-node
+) {
+  box-sizing: border-box;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-component-radius);
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app :is(
+  .cc-anchor-card,
+  .cc-leg-card,
+  .cc-walk,
+  .cc-appt,
+  .cc-station-card
+)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--kh-green);
+}
+
+.khonsera-app :is(.cc-leg-card, .cc-walk)::before {
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-anchor-card {
+  padding: var(--kh-component-pad);
+}
+
+.khonsera-app .cc-anchor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.khonsera-app .cc-anchor-type {
+  color: var(--kh-orange-strong);
+}
+
+.khonsera-app .cc-mode-tag {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid var(--kh-border);
+  border-radius: 8px 8px 8px 3px;
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.khonsera-app .cc-mode-tag[data-mode="work"] {
+  border-color: color-mix(in srgb, var(--kh-green) 25%, var(--kh-border));
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app .cc-anchor-title {
+  margin: 0;
+  color: var(--kh-ink);
+  font-family: var(--display);
+  font-size: clamp(21px, 4.8vw, 28px);
+  font-weight: 620;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.khonsera-app .cc-anchor-title-edit {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.khonsera-app .cc-anchor-title-edit-pen {
+  color: var(--kh-green-strong);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.khonsera-app .cc-anchor-place {
+  margin: 7px 0 0;
+  color: var(--kh-ink-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.khonsera-app .cc-vars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-var {
+  min-width: 0;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--kh-border) 82%, transparent);
+  border-radius: 11px 11px 11px 4px;
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink);
+  text-align: left;
+}
+
+button.cc-var {
+  cursor: pointer;
+}
+
+button.cc-var:hover {
+  border-color: color-mix(in srgb, var(--kh-green) 34%, var(--kh-border));
+  background: var(--kh-green-soft);
+}
+
+.khonsera-app .cc-var-label {
+  color: var(--kh-ink-muted);
+  font-size: 8.5px;
+  letter-spacing: 0.11em;
+}
+
+.khonsera-app .cc-var-value {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 720;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-var-bound {
+  color: var(--kh-ink-faint);
+  font-size: 10px;
+}
+
+.khonsera-app .cc-leg-card {
+  padding: 17px 18px 16px;
+}
+
+.khonsera-app .cc-leg-head,
+.khonsera-app .cc-walk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--kh-ink-muted);
+  font-size: 11px;
+}
+
+.khonsera-app .cc-leg-mode,
+.khonsera-app .cc-walk-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 780;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-leg-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--kh-ink);
+}
+
+.khonsera-app .cc-leg-route strong {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 620;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-leg-route strong:last-child {
+  text-align: right;
+}
+
+.khonsera-app :is(.cc-leg-time, .cc-walk-window) {
+  margin: 11px 0 0;
+  color: var(--kh-ink-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.khonsera-app :is(.cc-leg-buffer, .cc-walk-spare) {
+  color: var(--kh-success);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.khonsera-app .cc-leg-risk {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--kh-danger);
+  background: var(--kh-danger-soft);
+  color: var(--kh-danger);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.khonsera-app .cc-leg-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-gap-card {
+  padding: 14px 16px;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--kh-orange) 38%, var(--kh-border));
+  background: color-mix(in srgb, var(--kh-orange-soft) 56%, var(--kh-surface));
+  box-shadow: none;
+}
+
+.khonsera-app .cc-gap-card p {
+  margin: 0;
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.khonsera-app .cc-intention-card {
+  padding: 16px;
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-base-node {
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--kh-green-soft) 54%, var(--kh-surface));
+  box-shadow: none;
+}
+
+.khonsera-app .cc-base-title {
+  color: var(--kh-ink);
+  font-size: 16px;
+  font-weight: 680;
+}
+
+.khonsera-app .cc-base-time {
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.khonsera-app .cc-node-remove {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  border: 1px solid var(--kh-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kh-surface) 94%, transparent);
+  color: var(--kh-ink-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.khonsera-app .cc-node-remove:hover {
+  border-color: color-mix(in srgb, var(--kh-danger) 36%, var(--kh-border));
+  background: var(--kh-danger-soft);
+  color: var(--kh-danger);
+}
+
+/* --------------------------------------------------------------------------
+ * Today operational variants
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-walk {
+  padding: 16px 17px;
+}
+
+.khonsera-app .cc-walk-window {
+  display: grid;
+  grid-template-columns: auto minmax(24px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.khonsera-app .cc-walk-rule {
+  height: 1px;
+  overflow: hidden;
+  background: var(--kh-border-strong);
+  color: transparent;
+}
+
+.khonsera-app .cc-walk-dest {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 10px;
+  color: var(--kh-ink-2);
+  font-size: 12px;
+}
+
+.khonsera-app .cc-walk-foot {
+  margin-top: 12px;
+}
+
+.khonsera-app .cc-node[data-state="next"] .cc-walk {
+  border-color: var(--kh-green-strong);
+  background: var(--kh-green-strong);
+  color: #fff;
+  box-shadow: 0 18px 38px -28px rgba(7, 58, 52, 0.95);
+}
+
+.khonsera-app .cc-node[data-state="next"] .cc-walk::before {
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-node[data-state="next"] .cc-walk :is(
+  .cc-walk-mode,
+  .cc-walk-mins,
+  .cc-walk-time,
+  .cc-walk-dest,
+  .cc-walk-spare
+) {
+  color: #fff;
+}
+
+.khonsera-app .cc-node[data-state="next"] .cc-walk-rule {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.khonsera-app .cc-node[data-state="next"] .cc-walk .sb {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+
+.khonsera-app .cc-appt {
+  padding: 18px;
+}
+
+.khonsera-app .cc-appt-title {
+  margin: 9px 0 0;
+  color: var(--kh-ink);
+  font-family: var(--display);
+  font-size: clamp(22px, 5vw, 29px);
+  font-weight: 620;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.khonsera-app .cc-appt-sub {
+  margin: 6px 0 0;
+  color: var(--kh-ink-muted);
+  font-size: 12px;
+}
+
+.khonsera-app .cc-appt-times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.khonsera-app .cc-appt-time {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px;
+  border: 1px solid var(--kh-border);
+  border-radius: 10px 10px 10px 4px;
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-appt-clock {
+  color: var(--kh-ink);
+  font-size: 17px;
+  font-weight: 760;
+}
+
+.khonsera-app .cc-station-card {
+  padding: 14px 16px;
+}
+
+.khonsera-app .cc-station-card-head,
+.khonsera-app .cc-transfer-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.khonsera-app .cc-station-time {
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.khonsera-app .cc-station-title {
+  display: block;
+  margin-top: 8px;
+  color: var(--kh-ink);
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.khonsera-app .cc-transfer {
+  padding: 13px 15px;
+  border-color: color-mix(in srgb, var(--kh-orange) 30%, var(--kh-border));
+  background: color-mix(in srgb, var(--kh-orange-soft) 58%, var(--kh-surface));
+  box-shadow: none;
+}
+
+.khonsera-app .cc-transfer-head strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--kh-ink);
+  font-size: 14px;
+}
+
+.khonsera-app .cc-transfer-time {
+  margin: 7px 0 0;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.khonsera-app [data-past="true"],
+.khonsera-app [data-past=""] {
+  opacity: 0.62;
+}
+
+.khonsera-app .cc-live-alert {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--kh-warning);
+  border-radius: 5px 10px 10px 5px;
+  background: var(--kh-warning-soft);
+  color: var(--kh-warning);
+}
+
+.khonsera-app .cc-live-alert[data-state="severe"] {
+  border-left-color: var(--kh-danger);
+  background: var(--kh-danger-soft);
+  color: var(--kh-danger);
+}
+
+/* --------------------------------------------------------------------------
+ * Pass and ticket family
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-pass, .cc-ticket) {
+  --kh-document-accent: var(--kh-green);
+  box-sizing: border-box;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--kh-border) !important;
+  border-radius: 18px 18px 18px 7px !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-raised) !important;
+}
+
+.khonsera-app :is(.cc-pass, .cc-ticket)[data-kind="rail"] {
+  --kh-document-accent: var(--kh-orange);
+}
+
+.khonsera-app :is(.cc-pass, .cc-ticket)[data-kind="air"] {
+  --kh-document-accent: var(--kh-info);
+}
+
+.khonsera-app :is(.cc-pass, .cc-ticket)[data-kind="stay"] {
+  --kh-document-accent: var(--kh-green);
+}
+
+.khonsera-app .cc-pass::before,
+.khonsera-app .cc-ticket::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: var(--kh-document-accent);
+}
+
+.khonsera-app .cc-pass-band,
+.khonsera-app .cc-ticket-head {
+  min-height: 46px;
+  border-bottom: 1px solid color-mix(in srgb, var(--kh-border) 78%, transparent) !important;
+  background: var(--kh-green-strong) !important;
+  color: #fff !important;
+}
+
+.khonsera-app .cc-pass-band {
+  padding: 11px 15px 10px !important;
+}
+
+.khonsera-app .cc-pass-band :is(.eyb, .engr-d),
+.khonsera-app .cc-ticket-head :is(.cc-ticket-operator, .cc-ticket-ref) {
+  color: #fff !important;
+  text-shadow: none !important;
+}
+
+.khonsera-app .cc-ticket-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px 11px;
+}
+
+.khonsera-app .cc-ticket-operator {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-ticket-operator::before {
+  content: attr(data-kind-label);
+  margin-right: 8px;
+  padding: 3px 6px;
+  border-radius: 5px 5px 5px 2px;
+  background: var(--kh-document-accent);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-ticket-ref {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.khonsera-app .cc-pass-route {
+  padding: 19px 17px 15px !important;
+  background: var(--kh-surface) !important;
+}
+
+.khonsera-app .cc-pass-code {
+  color: var(--kh-ink) !important;
+  font-family: var(--display) !important;
+  font-size: clamp(28px, 7vw, 42px) !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.045em !important;
+  text-shadow: none !important;
+}
+
+.khonsera-app .cc-pass-place {
+  color: var(--kh-ink-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.25;
+}
+
+.khonsera-app .cc-pass-perf {
+  margin-inline: 12px !important;
+  border-top: 1px dashed var(--kh-border-strong) !important;
+  background: none !important;
+}
+
+.khonsera-app .cc-pass-stub {
+  gap: 0 !important;
+  padding: 0 16px 8px !important;
+}
+
+.khonsera-app .cc-pass-stub-cell {
+  min-height: 62px;
+  justify-content: center;
+  padding: 10px 9px !important;
+  border-right: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-pass-stub-cell:last-child {
+  border-right: 0;
+}
+
+.khonsera-app .cc-pass-stub-cell > .eyb {
+  color: var(--kh-ink-muted) !important;
+  font-family: var(--mono) !important;
+  font-size: 7.5px !important;
+  font-weight: 750;
+  letter-spacing: 0.1em !important;
+}
+
+.khonsera-app .cc-pass-stub-cell > .mono {
+  color: var(--kh-ink) !important;
+  font-size: 14px !important;
+  font-weight: 720;
+}
+
+.khonsera-app .cc-pass-stub-cell > .mono.engr-d {
+  min-height: 25px !important;
+  border-radius: 7px 7px 7px 3px !important;
+  background: var(--kh-green-strong) !important;
+  color: #fff !important;
+}
+
+.khonsera-app .cc-pass-today-head {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-pass-today-time {
+  color: var(--kh-ink);
+  font-size: 15px;
+  font-weight: 780;
+}
+
+.khonsera-app .cc-pass-today-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.khonsera-app .cc-pass-boarding {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 30%, var(--kh-border));
+  border-radius: 11px 11px 11px 4px;
+  background: var(--kh-orange-soft);
+}
+
+.khonsera-app .cc-pass-boarding-num {
+  color: var(--kh-orange-strong);
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.khonsera-app .cc-pass-ready {
+  padding: 10px 14px 14px !important;
+}
+
+.khonsera-app .cc-pass-ready > button {
+  width: 100% !important;
+  min-height: 44px !important;
+  justify-content: center !important;
+  border: 0 !important;
+  border-radius: 10px 10px 10px 4px !important;
+  background: var(--kh-green-strong) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 20px -16px rgba(7, 58, 52, 0.9) !important;
+  font-family: var(--sans) !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  text-shadow: none !important;
+}
+
+.khonsera-app .cc-pass-consequence,
+.khonsera-app .cc-ticket-consequence {
+  margin: 0;
+  border-left: 3px solid var(--kh-orange);
+  background: var(--kh-orange-soft);
+  color: var(--kh-orange-strong);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.khonsera-app .cc-ticket-pair {
+  display: grid;
+  grid-template-columns: 38px 1fr 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-ticket-chev {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--kh-border);
+  border-radius: 9px 9px 9px 3px;
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+}
+
+.khonsera-app .cc-ticket-pair-label {
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-ticket-journey {
+  padding: 17px 16px 14px;
+}
+
+.khonsera-app .cc-ticket-endpoints {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.khonsera-app .cc-ticket-endpoint {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.khonsera-app .cc-ticket-endpoint[data-role="destination"] {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.khonsera-app .cc-ticket-time {
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 780;
+}
+
+.khonsera-app .cc-ticket-place {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-ticket-code,
+.khonsera-app .cc-ticket-platform {
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.khonsera-app .cc-ticket-arrow {
+  color: var(--kh-orange);
+  font-size: 18px;
+}
+
+.khonsera-app .cc-ticket-changes,
+.khonsera-app .cc-ticket-detail {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-ticket-change,
+.khonsera-app .cc-ticket-detail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 7px 0;
+  color: var(--kh-ink-2);
+  font-size: 11px;
+}
+
+.khonsera-app .cc-ticket-change[data-tight=""] {
+  color: var(--kh-warning);
+}
+
+.khonsera-app .cc-ticket-detail-label {
+  color: var(--kh-ink-muted);
+}
+
+.khonsera-app .cc-ticket-detail-value {
+  margin: 0;
+  color: var(--kh-ink);
+  text-align: right;
+}
+
+.khonsera-app .cc-ticket-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 15px;
+  border-top: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-status-strip {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.khonsera-app .cc-status-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.khonsera-app .cc-status-detail,
+.khonsera-app .cc-status-stale {
+  color: var(--kh-ink-muted);
+  font-weight: 550;
+}
+
+/* --------------------------------------------------------------------------
+ * Sheets and overlays
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-sheet-scrim {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  background: rgba(8, 34, 30, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.khonsera-app .cc-sheet {
+  width: min(100%, 680px);
+  max-height: min(90dvh, 860px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding: 10px clamp(18px, 4vw, 30px)
+    calc(22px + env(safe-area-inset-bottom));
+  border: 1px solid var(--kh-border);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-overlay);
+  overscroll-behavior: contain;
+}
+
+.khonsera-app .cc-sheet-grip {
+  width: 44px;
+  height: 4px;
+  margin: 0 auto 18px;
+  border-radius: 999px;
+  background: var(--kh-border-strong);
+}
+
+.khonsera-app .cc-sheet :is(h1, h2, h3) {
+  color: var(--kh-ink);
+  font-family: var(--display);
+  letter-spacing: -0.03em;
+}
+
+.khonsera-app .cc-sheet label {
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.khonsera-app .cc-sheet :is(input, select, textarea) {
+  background: var(--kh-ground-raised);
+}
+
+/* --------------------------------------------------------------------------
+ * Responsive component rules
+ * ----------------------------------------------------------------------- */
+
+@media (max-width: 430px) {
+  .khonsera-app .cc-tabbar {
+    gap: 2px;
+    padding-inline: 4px;
+  }
+
+  .khonsera-app .cc-tab {
+    min-height: 54px;
+    border-radius: 11px 11px 5px 11px;
+  }
+
+  .khonsera-app .cc-tab-label {
+    font-size: 9px;
+  }
+
+  .khonsera-app .cc-timeline-icon {
+    width: 31px;
+    height: 31px;
+  }
+
+  .khonsera-app :is(
+    .cc-anchor-card,
+    .cc-leg-card,
+    .cc-walk,
+    .cc-appt,
+    .cc-station-card,
+    .cc-transfer,
+    .cc-base-node
+  ) {
+    border-radius: 15px 15px 15px 6px;
+  }
+
+  .khonsera-app .cc-anchor-card {
+    padding: 17px 15px 15px;
+  }
+
+  .khonsera-app .cc-vars {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .khonsera-app .cc-var {
+    min-height: 60px;
+    padding: 9px 8px;
+  }
+
+  .khonsera-app .cc-var-value {
+    font-size: 13px;
+  }
+
+  .khonsera-app .cc-leg-route strong {
+    font-size: 15px;
+  }
+
+  .khonsera-app .cc-walk-dest {
+    align-items: start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .khonsera-app .cc-pass-route {
+    gap: 7px !important;
+    padding-inline: 14px !important;
+  }
+
+  .khonsera-app .cc-pass-code {
+    font-size: clamp(25px, 9vw, 35px) !important;
+  }
+
+  .khonsera-app .cc-pass-stub {
+    padding-inline: 10px !important;
+  }
+
+  .khonsera-app .cc-pass-stub-cell {
+    padding-inline: 6px !important;
+  }
+
+  .khonsera-app .cc-ticket-time {
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 760px) {
+  .khonsera-app .cc-sheet-scrim {
+    place-items: center;
+    padding: 32px;
+  }
+
+  .khonsera-app .cc-sheet {
+    max-height: min(82dvh, 820px);
+    border-bottom: 1px solid var(--kh-border);
+    border-radius: 22px 22px 22px 8px;
+  }
+
+  .khonsera-app .cc-sheet-grip {
+    display: none;
+  }
+}
+
+@media (hover: hover) {
+  .khonsera-app :is(
+    .cc-anchor-card,
+    .cc-leg-card,
+    .cc-ticket,
+    .cc-pass
+  ) {
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  .khonsera-app :is(
+    .cc-anchor-card,
+    .cc-leg-card,
+    .cc-ticket,
+    .cc-pass
+  ):hover {
+    border-color: var(--kh-border-strong) !important;
+    box-shadow: var(--kh-shadow-raised) !important;
+    transform: translateY(-1px);
+  }
+}

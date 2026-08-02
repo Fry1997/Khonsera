@@ -1,0 +1,1033 @@
+/*
+ * Khonsera app-wide system · Pass 3
+ *
+ * Today and Plan are two states of the same travel-day instrument:
+ * planning the day, then operating it. This layer gives them one shared
+ * composition and hierarchy without changing any data, actions or contracts.
+ */
+
+:root {
+  --kh-flow-main: 760px;
+  --kh-flow-context: 360px;
+  --kh-flow-gap: clamp(16px, 2.2vw, 24px);
+  --kh-flow-section-gap: 18px;
+  --kh-flow-corner: 19px 19px 19px 7px;
+}
+
+/* --------------------------------------------------------------------------
+ * One primary-flow canvas
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-today-direction, .cc-plan-detail) {
+  width: min(100%, calc(var(--kh-flow-main) + var(--kh-flow-context) + var(--kh-flow-gap)));
+  max-width: none;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.khonsera-app .cc-today-direction {
+  gap: 18px;
+}
+
+.khonsera-app :is(.cc-day-dashboard, .cc-plan-grid) {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--kh-flow-gap);
+  align-items: start;
+}
+
+.khonsera-app :is(.cc-day-primary, .cc-plan-primary, .cc-day-context, .cc-plan-context) {
+  min-width: 0;
+}
+
+.khonsera-app :is(.cc-day-primary, .cc-plan-primary) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kh-flow-section-gap);
+}
+
+.khonsera-app :is(.cc-day-context, .cc-plan-context) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Legacy Today used a separate page background and route-specific shell skin.
+ * The shared ground and chrome now remain stable when moving into Plan. */
+.khonsera-app--unified:has(.cc-today-direction),
+.khonsera-app--unified:has(.cc-plan-detail) {
+  background: var(--kh-ground) !important;
+}
+
+.khonsera-app--unified:has(.cc-today-direction) .cc-app-main,
+.khonsera-app--unified:has(.cc-plan-detail) .cc-app-main {
+  padding-top: 14px;
+}
+
+/* --------------------------------------------------------------------------
+ * Shared day identity
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-today-head, .cc-day-header) {
+  min-width: 0;
+  position: relative;
+  padding: 5px 0 14px 16px;
+  border-bottom: 1px solid var(--kh-border);
+}
+
+.khonsera-app :is(.cc-today-head, .cc-day-header)::before {
+  content: "";
+  width: 4px;
+  position: absolute;
+  top: 5px;
+  bottom: 14px;
+  left: 0;
+  border-radius: 1px;
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-today-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.khonsera-app .cc-day-header {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.khonsera-app .cc-today-head .cc-eyebrow,
+.khonsera-app .cc-day-header-eyebrow {
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: 0.13em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-today-head .cc-screen-title,
+.khonsera-app .cc-day-header :is(.cc-plan-title, .cc-plan-title-input) {
+  margin-top: 4px;
+  color: var(--kh-ink);
+  font-family: var(--display);
+  font-size: clamp(34px, 6.5vw, 54px);
+  font-weight: 610;
+  line-height: 0.96;
+  letter-spacing: -0.048em;
+}
+
+.khonsera-app .cc-today-head .cc-screen-description {
+  margin-top: 7px;
+}
+
+.khonsera-app .cc-today-destination {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kh-ink-muted);
+  font-size: 12px;
+}
+
+.khonsera-app .cc-today-destination svg {
+  width: 15px;
+  height: 15px;
+  color: var(--kh-orange);
+}
+
+.khonsera-app .cc-today-destination strong {
+  color: var(--kh-ink-2);
+  font-weight: 690;
+}
+
+/* Plan's editable title remains visually part of the same day identity. */
+.khonsera-app .cc-day-purpose-edit {
+  width: 100%;
+  margin: 0;
+}
+
+.khonsera-app .cc-day-header :is(input, button) {
+  max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * Weather and conditions — supporting information, not a second hero
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-today-head .cc-screen-actions {
+  width: auto;
+  min-width: 0;
+}
+
+.khonsera-app .cc-today-direction .cc-weather {
+  min-width: 136px;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 26px auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--kh-border);
+  border-radius: 13px 13px 13px 5px;
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-today-direction .cc-weather-glyph {
+  width: 25px;
+  height: 25px;
+  grid-row: 1 / 3;
+  color: var(--kh-orange);
+}
+
+.khonsera-app .cc-today-direction .cc-weather[data-day="false"] .cc-weather-glyph {
+  color: var(--kh-info);
+}
+
+.khonsera-app .cc-today-direction .cc-weather-temp {
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.khonsera-app .cc-today-direction .cc-weather-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.khonsera-app .cc-today-direction .cc-weather-headline {
+  overflow: hidden;
+  color: var(--kh-ink-2);
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-today-direction .cc-weather-place {
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-day-forecast {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.khonsera-app .cc-weather-hours {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(54px, 1fr));
+  overflow-x: auto;
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-flow-corner);
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+  scrollbar-width: none;
+}
+
+.khonsera-app .cc-weather-hours::-webkit-scrollbar {
+  display: none;
+}
+
+.khonsera-app .cc-weather-hour {
+  min-width: 58px;
+  display: grid;
+  grid-template-rows: auto auto 18px auto;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px 7px 9px;
+  border-right: 1px solid var(--kh-border);
+  background: transparent;
+}
+
+.khonsera-app .cc-weather-hour:last-child {
+  border-right: 0;
+}
+
+.khonsera-app .cc-weather-hour:first-child {
+  background: var(--kh-orange-soft);
+}
+
+.khonsera-app .cc-weather-hour-time,
+.khonsera-app .cc-weather-hour-cond {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-weather-hour-temp {
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.khonsera-app .cc-weather-hour-glyph {
+  width: 17px;
+  height: 17px;
+  color: var(--kh-orange);
+}
+
+/* --------------------------------------------------------------------------
+ * The next move — one decisive, light instrument panel
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-today-command {
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.khonsera-app .cc-today-command-content {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.khonsera-app .cc-today-command-map {
+  display: none;
+}
+
+.khonsera-app .cc-today-command .cc-active-tile {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  padding: clamp(18px, 3vw, 25px);
+  border: 1px solid var(--kh-border) !important;
+  border-radius: 21px 21px 21px 7px;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-raised) !important;
+}
+
+.khonsera-app .cc-today-command .cc-active-tile::before {
+  content: "";
+  width: 5px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-today-command .cc-active-tile::after,
+.khonsera-app .cc-today-command .cc-active-tile .pg::after {
+  content: none !important;
+}
+
+.khonsera-app .cc-next-move-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.khonsera-app .cc-today-command .cc-at-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--kh-green-strong);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-today-command .cc-at-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--kh-orange);
+  box-shadow: none;
+}
+
+.khonsera-app .cc-next-priority {
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 28%, var(--kh-border));
+  border-radius: 7px 7px 7px 3px;
+  background: var(--kh-orange-soft);
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-sheet {
+  min-width: 0;
+  display: grid;
+  gap: 11px;
+  padding: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-eyb {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-kicker {
+  color: var(--kh-ink-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-for {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--kh-ink-faint);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-core {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-figure {
+  min-width: 0;
+  color: var(--kh-green-strong);
+  font-family: var(--display);
+  font-size: clamp(52px, 13vw, 82px);
+  font-weight: 660;
+  line-height: 0.84;
+  letter-spacing: -0.065em;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-colon {
+  color: var(--kh-orange);
+}
+
+/* The circular countdown was visually decorative and consumed too much room.
+ * It becomes a compact technical readout while preserving its live data. */
+.khonsera-app .cc-today-command .cc-leave-ring {
+  width: auto;
+  height: auto;
+  min-width: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 9px 10px;
+  border: 1px solid var(--kh-border);
+  border-radius: 10px 10px 10px 4px;
+  background: var(--kh-surface-subtle);
+  box-shadow: none;
+}
+
+.khonsera-app .cc-today-command .cc-leave-ring svg {
+  display: none;
+}
+
+.khonsera-app .cc-today-command .cc-leave-ring > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-today-command .cc-leave-ring strong {
+  color: var(--kh-ink);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.khonsera-app .cc-today-command .cc-next-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.khonsera-app .cc-today-command .cc-next-facts > span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--kh-border);
+  border-radius: 8px 8px 8px 3px;
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink-2);
+  box-shadow: none;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.khonsera-app .cc-today-command .cc-next-facts svg {
+  width: 13px;
+  height: 13px;
+  color: var(--kh-orange);
+}
+
+.khonsera-app .cc-today-command .cc-setoff-move {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--kh-ink-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.khonsera-app .cc-today-command .cc-next-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 44px);
+  gap: 7px;
+  margin-top: 1px;
+}
+
+.khonsera-app .cc-today-command .cc-next-action {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  border: 1px solid var(--kh-border);
+  border-radius: 10px 10px 10px 4px;
+  background: var(--kh-surface-subtle);
+  color: var(--kh-ink-2);
+  box-shadow: none;
+}
+
+.khonsera-app .cc-today-command .cc-next-action--primary {
+  width: auto;
+  min-width: 0;
+  padding-inline: 14px;
+  justify-content: space-between;
+  border-color: var(--kh-green-strong);
+  background: var(--kh-green-strong);
+  color: #fff;
+  box-shadow: 0 12px 24px -18px rgba(7, 58, 52, 0.88);
+}
+
+.khonsera-app .cc-today-command .cc-next-action-label {
+  display: none;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.khonsera-app .cc-today-command .cc-next-action--primary .cc-next-action-label {
+  display: inline;
+}
+
+.khonsera-app .cc-today-command .cc-next-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.khonsera-app .cc-today-command .cc-next-action:hover:not(:disabled) {
+  border-color: var(--kh-green);
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app .cc-today-command .cc-next-action--primary:hover:not(:disabled) {
+  background: var(--kh-green);
+  color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+ * Plan decision readout — planning equivalent of the next-move panel
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-decision-clock {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: end;
+  gap: 3px 14px;
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px 15px 22px;
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-flow-corner);
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-decision-clock::before {
+  content: "";
+  width: 5px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-decision-clock > span {
+  align-self: center;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-decision-clock > strong {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  justify-self: end;
+  color: var(--kh-green-strong);
+  font-family: var(--display);
+  font-size: clamp(42px, 8vw, 62px);
+  font-weight: 660;
+  line-height: 0.88;
+  letter-spacing: -0.06em;
+}
+
+.khonsera-app .cc-decision-clock > small {
+  max-width: 30ch;
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-ripple {
+  margin: 0;
+  padding: 11px 13px;
+  border-left: 4px solid var(--kh-danger);
+  border-radius: 5px 11px 11px 5px;
+  background: var(--kh-danger-soft);
+  color: var(--kh-danger);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+ * Context column — compact concierge utility rail
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-day-context, .cc-plan-context) > * {
+  min-width: 0;
+}
+
+.khonsera-app :is(
+  .cc-context-actions,
+  .cc-today-context-row,
+  .cc-plan-context-bundle,
+  .cc-plan-tools,
+  .cc-today-plan-action
+) {
+  border-radius: 15px 15px 15px 5px;
+}
+
+.khonsera-app .cc-context-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-context-label {
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-context-detail {
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.khonsera-app .cc-today-context-row {
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid var(--kh-border);
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-rest);
+  text-decoration: none;
+}
+
+.khonsera-app .cc-today-context-row:hover {
+  border-color: var(--kh-border-strong);
+  box-shadow: var(--kh-shadow-raised);
+}
+
+.khonsera-app .cc-today-context-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px 9px 9px 3px;
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app .cc-today-context-row--ticket .cc-today-context-icon {
+  background: var(--kh-orange-soft);
+  color: var(--kh-orange-strong);
+}
+
+.khonsera-app .cc-today-context-icon svg,
+.khonsera-app .cc-today-context-chevron svg {
+  width: 17px;
+  height: 17px;
+}
+
+.khonsera-app .cc-today-context-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.khonsera-app .cc-today-context-copy strong {
+  color: var(--kh-ink);
+  font-size: 12px;
+  font-weight: 740;
+}
+
+.khonsera-app .cc-today-context-copy span {
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-today-context-chevron {
+  color: var(--kh-ink-faint);
+}
+
+.khonsera-app .cc-today-plan-action,
+.khonsera-app .cc-today-plan-button {
+  width: 100%;
+}
+
+/* Plan context's disclosure bundle is aligned with the Today utility rows. */
+.khonsera-app .cc-plan-context-bundle {
+  overflow: hidden;
+  border: 1px solid var(--kh-border);
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-plan-context-toggle {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.khonsera-app .cc-plan-context-bundle > label {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  cursor: pointer;
+}
+
+.khonsera-app .cc-plan-context-bundle > label > span:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.khonsera-app .cc-plan-context-bundle > label strong {
+  color: var(--kh-ink);
+  font-size: 12px;
+}
+
+.khonsera-app .cc-plan-context-bundle > label small {
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-plan-context-bundle > label > span:last-child {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px 8px 8px 3px;
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+  font-size: 17px;
+  transition: transform 160ms ease;
+}
+
+.khonsera-app .cc-plan-context-body {
+  display: none;
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-plan-context-toggle:checked ~ label > span:last-child {
+  transform: rotate(45deg);
+}
+
+.khonsera-app .cc-plan-context-toggle:checked ~ .cc-plan-context-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.khonsera-app .cc-plan-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-plan-tools > * {
+  min-width: 0;
+}
+
+/* Map and operational panels sit in the same surface family as Today context. */
+.khonsera-app .cc-plan-context > :is(section, article, div):not(.cc-plan-context-bundle) {
+  max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * Pass 2 corrective coverage used by both primary flows
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-node-anchor {
+  position: relative;
+}
+
+.khonsera-app .cc-pass--docked,
+.khonsera-app .cc-pass--today {
+  box-shadow: var(--kh-shadow-rest) !important;
+}
+
+.khonsera-app .cc-pass--docked .cc-pass-route,
+.khonsera-app .cc-pass--today .cc-pass-route {
+  padding-top: 15px !important;
+  padding-bottom: 12px !important;
+}
+
+.khonsera-app .cc-pass--docked .cc-pass-code,
+.khonsera-app .cc-pass--today .cc-pass-code {
+  font-size: clamp(25px, 6vw, 34px) !important;
+}
+
+/* --------------------------------------------------------------------------
+ * Empty day and sparse-plan states
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-day-empty,
+.khonsera-app .cc-plan-detail[data-state="empty"] .cc-plan-primary {
+  min-height: min(58dvh, 520px);
+  justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+ * Responsive composition
+ * ----------------------------------------------------------------------- */
+
+@media (max-width: 559px) {
+  .khonsera-app .cc-today-head {
+    grid-template-columns: minmax(0, 1fr) 118px;
+    gap: 10px;
+    padding-left: 13px;
+  }
+
+  .khonsera-app .cc-today-head::before,
+  .khonsera-app .cc-day-header::before {
+    width: 3px;
+  }
+
+  .khonsera-app .cc-today-head .cc-screen-title,
+  .khonsera-app .cc-day-header :is(.cc-plan-title, .cc-plan-title-input) {
+    font-size: clamp(32px, 10.5vw, 43px);
+  }
+
+  .khonsera-app .cc-today-direction .cc-weather {
+    min-width: 0;
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding-inline: 9px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-weather-glyph {
+    width: 21px;
+    height: 21px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-weather-place {
+    display: none;
+  }
+
+  .khonsera-app .cc-today-command .cc-active-tile {
+    padding: 18px 16px 17px;
+  }
+
+  .khonsera-app .cc-today-command .cc-setoff-core {
+    align-items: center;
+  }
+
+  .khonsera-app .cc-today-command .cc-setoff-figure {
+    font-size: clamp(49px, 17vw, 66px);
+  }
+
+  .khonsera-app .cc-today-command .cc-leave-ring {
+    min-width: 86px;
+    padding-inline: 8px;
+  }
+
+  .khonsera-app .cc-today-command .cc-next-actions {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 42px);
+    gap: 5px;
+  }
+
+  .khonsera-app .cc-today-command .cc-next-action {
+    width: 42px;
+    min-width: 42px;
+    min-height: 42px;
+  }
+
+  .khonsera-app .cc-decision-clock {
+    min-height: 82px;
+    padding: 14px 14px 13px 18px;
+  }
+
+  .khonsera-app .cc-decision-clock > strong {
+    font-size: clamp(38px, 13vw, 52px);
+  }
+
+  .khonsera-app .cc-plan-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 760px) and (max-width: 1099px) {
+  .khonsera-app .cc-day-context,
+  .khonsera-app .cc-plan-context {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .khonsera-app .cc-day-context > :is(.cc-context-actions, .cc-today-plan-action),
+  .khonsera-app .cc-plan-context > .cc-plan-context-bundle {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1100px) {
+  .khonsera-app .cc-day-dashboard {
+    grid-template-columns: minmax(0, var(--kh-flow-main)) minmax(300px, var(--kh-flow-context));
+    grid-template-areas:
+      "command conditions"
+      "primary context";
+  }
+
+  .khonsera-app .cc-today-command {
+    grid-area: command;
+  }
+
+  .khonsera-app .cc-day-forecast {
+    grid-area: conditions;
+  }
+
+  .khonsera-app .cc-day-primary {
+    grid-area: primary;
+  }
+
+  .khonsera-app .cc-day-context {
+    grid-area: context;
+    position: sticky;
+    top: 22px;
+  }
+
+  .khonsera-app .cc-plan-grid {
+    grid-template-columns: minmax(0, var(--kh-flow-main)) minmax(320px, var(--kh-flow-context));
+  }
+
+  .khonsera-app .cc-plan-context {
+    position: sticky;
+    top: 22px;
+    max-height: calc(100dvh - 44px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--kh-border-strong) transparent;
+  }
+}
+
+@media (min-width: 1360px) {
+  .khonsera-app .cc-today-direction,
+  .khonsera-app .cc-plan-detail {
+    width: min(100%, 1180px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .khonsera-app .cc-plan-context-bundle > label > span:last-child {
+    transition: none;
+  }
+}
