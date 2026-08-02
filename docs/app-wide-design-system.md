@@ -1,6 +1,6 @@
 # Khonsera app-wide design system
 
-Status: **Pass 2 — shared component language**
+Status: **Pass 3 — Today and Plan primary flows**
 
 This document defines how the approved visual reference becomes the language of the whole application. It replaces the previous pattern of treating individual routes as separate visual editions.
 
@@ -29,8 +29,9 @@ The shared authority is layered deliberately:
 
 1. `src/app/khonsera-system.css` — colour, type, spacing, shell, controls, surfaces and semantic status.
 2. `src/app/khonsera-components.css` — navigation items, itinerary nodes, commitment cards, movement cards, transfers, passes, tickets and sheets.
+3. `src/app/khonsera-primary-flows.css` — the shared planning-to-operation composition used by Today and Plan.
 
-Both load after the historical route styles. Older files remain temporarily for composition while their appearance rules are removed during the rollout.
+These layers load after the historical route styles. Older files remain temporarily for structural compatibility while their visual authority is retired during the rollout.
 
 ## Shared primitives
 
@@ -80,7 +81,7 @@ Today and Plan use the same spine vocabulary:
 - compact, squared timeline glyphs
 - orange for movement and changes
 - green for commitments and dependable actions
-- one dark-green emphasis surface only for the immediate next movement
+- one decisive emphasis treatment for the immediate next movement
 - shared appointment, station, transfer, gap and base treatments
 
 Plan variables use a common three-readout grid. Movement cards use the same route, timing, spare-time and risk hierarchy whether they appear during planning or on the live day.
@@ -100,11 +101,26 @@ The document family is modern and technical rather than decorative paper cosplay
 
 All plan, import and edit dialogs use the shared `Sheet` primitive. Mobile presents a bottom sheet with safe-area padding; tablet and desktop use a centred, bounded dialog. Focus, Escape handling and opener restoration remain owned by the component.
 
+## Today and Plan: one product flow
+
+Today is the operational state of the plan, not a separate dashboard skin.
+
+Both routes now share:
+
+- the same bounded working canvas and desktop main/context proportions
+- the same orange-marked day identity header
+- the same itinerary, movement, commitment and document hierarchy
+- the same compact concierge context rail
+- matching decision readouts: Plan’s leave-by decision and Today’s live next move
+- the same responsive transition from one-column mobile to a main/context command desk
+
+The live next-move surface remains light and structured. The former decorative gradient and circular countdown treatment are replaced by a near-white instrument panel, an orange directional seam and a compact technical countdown readout.
+
 ## Migration sequence
 
 1. **Foundation** — shared tokens, shell, typography, controls, surfaces and status language. Complete in Pass 1.
 2. **Common components** — navigation, cards, sheets, itinerary primitives, tickets and passes. Established in Pass 2.
-3. **Primary flows** — Today and Plan migrate together.
+3. **Primary flows** — Today and Plan share one planning-to-operation hierarchy. Established in Pass 3.
 4. **Secondary surfaces** — Trips, Bookings, Wallet, live updates, wayfinding and settings.
 5. **Coherence audit** — remove route-level appearance rules and test all supported widths.
 
