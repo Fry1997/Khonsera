@@ -23,6 +23,7 @@ import "./khonsera-components.css"; // Pass 2 — shared navigation, itinerary, 
 import "./khonsera-primary-flows.css"; // Pass 3 — Today and Plan as one planning-to-operation product flow
 import "./khonsera-secondary-surfaces.css"; // Pass 4 — Plan index, Wallet and supporting list surfaces
 import "./khonsera-demo.css"; // Staff demo boundary — shared components, isolated scenario data
+import "./khonsera-layout.css"; // Pass 5 — spacing, alignment and placement across every app route
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical type stack:
