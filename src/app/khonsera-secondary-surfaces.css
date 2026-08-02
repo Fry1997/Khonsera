@@ -1,0 +1,765 @@
+/*
+ * Khonsera app-wide system · Pass 4
+ * Secondary routes: Plan index, Wallet, Tasks, Expenses, Mileage and the
+ * common list / ledger / empty-state vocabulary used by supporting surfaces.
+ */
+
+:root {
+  --kh-secondary-max: 980px;
+  --kh-secondary-reading: 760px;
+}
+
+/* --------------------------------------------------------------------------
+ * Secondary page hierarchy
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-screen:not(.cc-today-direction) {
+  width: min(100%, var(--kh-secondary-max));
+  max-width: none;
+  margin-inline: auto;
+}
+
+.khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head {
+  min-width: 0;
+  position: relative;
+  align-items: end;
+  padding: 5px 0 14px 16px;
+  border-bottom: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head::before {
+  content: "";
+  width: 4px;
+  position: absolute;
+  top: 5px;
+  bottom: 14px;
+  left: 0;
+  border-radius: 1px;
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head .cc-screen-title {
+  margin-top: 4px;
+  font-size: clamp(34px, 6vw, 52px);
+  font-weight: 610;
+  line-height: 0.97;
+  letter-spacing: -0.046em;
+}
+
+.khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-content {
+  gap: 18px;
+}
+
+/* --------------------------------------------------------------------------
+ * Plan index — days as compact operational records
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-plan-group {
+  overflow: hidden;
+  border: 1px solid var(--kh-border);
+  border-radius: 18px 18px 18px 7px;
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-plan-group-head {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-plan-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.khonsera-app .cc-journey-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: stretch;
+  position: relative;
+  border-bottom: 1px solid var(--kh-border);
+}
+
+.khonsera-app .cc-journey-row:last-child {
+  border-bottom: 0;
+}
+
+.khonsera-app .cc-journey-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "when when"
+    "title meta";
+  align-items: end;
+  gap: 8px 16px;
+  position: relative;
+  padding: 16px 12px 15px 18px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--kh-ink);
+  box-shadow: none !important;
+  text-decoration: none;
+}
+
+.khonsera-app .cc-journey-card::before {
+  content: "";
+  width: 3px;
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  border-radius: 0 2px 2px 0;
+  background: var(--kh-green);
+}
+
+.khonsera-app .cc-journey-card[data-mode="work"]::before {
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-journey-card:hover {
+  background: var(--kh-surface-subtle) !important;
+  transform: none !important;
+}
+
+.khonsera-app .cc-journey-when {
+  min-width: 0;
+  grid-area: when;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.khonsera-app .cc-journey-span {
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-journey-title {
+  min-width: 0;
+  grid-area: title;
+  margin: 0;
+  overflow: hidden;
+  color: var(--kh-ink);
+  font-family: var(--display);
+  font-size: clamp(19px, 3.5vw, 25px);
+  font-weight: 620;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-journey-meta {
+  grid-area: meta;
+  margin: 0;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-journey-gaps {
+  color: var(--kh-warning);
+  font-weight: 700;
+}
+
+.khonsera-app .cc-journey-status {
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-journey-del {
+  width: 44px;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid var(--kh-border);
+  background: transparent;
+  color: var(--kh-ink-faint);
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.khonsera-app .cc-journey-del:hover:not(:disabled) {
+  background: var(--kh-danger-soft);
+  color: var(--kh-danger);
+}
+
+.khonsera-app .cc-plan-archive {
+  opacity: 0.72;
+}
+
+/* --------------------------------------------------------------------------
+ * Wallet — a precise document library rather than a novelty card stack
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-wallet {
+  width: min(100%, 840px);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.khonsera-app .cc-wallet-group {
+  min-width: 0;
+}
+
+.khonsera-app .cc-wallet-group-head {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 9px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--kh-border-strong);
+  border-bottom: 1px solid var(--kh-border);
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-wallet-group[data-when="today"] .cc-wallet-group-head {
+  border-top-color: var(--kh-orange);
+  background: var(--kh-orange-soft);
+}
+
+.khonsera-app .cc-pass-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.khonsera-app .cc-pass-wrap {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.khonsera-app .cc-pass-wrap > .cc-pass {
+  min-width: 0;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.khonsera-app .cc-pass-wrap > .cc-btn {
+  grid-column: 1;
+  justify-self: start;
+  margin: -2px 0 0 12px;
+}
+
+.khonsera-app .cc-pass-del,
+.khonsera-app .cc-pass-collapse {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--kh-border);
+  border-radius: 8px 8px 8px 3px;
+  background: var(--kh-surface);
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.khonsera-app .cc-pass-del {
+  grid-column: 2;
+  margin: -2px 12px 0 0;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.khonsera-app .cc-pass-del:hover {
+  border-color: color-mix(in srgb, var(--kh-danger) 34%, var(--kh-border));
+  background: var(--kh-danger-soft);
+  color: var(--kh-danger);
+}
+
+.khonsera-app .cc-pass-collapse {
+  grid-column: 2;
+  margin: -2px 12px 0 0;
+}
+
+.khonsera-app .cc-pass--peek {
+  min-height: 58px;
+  border-radius: 13px 13px 13px 5px !important;
+  box-shadow: var(--kh-shadow-rest) !important;
+}
+
+.khonsera-app .cc-pass--peek::before {
+  height: 3px;
+}
+
+.khonsera-app .cc-pass--peek .cc-pass-band {
+  min-height: 57px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px !important;
+  border: 0 !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink) !important;
+}
+
+.khonsera-app .cc-pass--peek :is(.cc-pass-operator, .cc-pass-peekline) {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.khonsera-app .cc-pass--peek .cc-pass-operator {
+  overflow: hidden;
+}
+
+.khonsera-app .cc-pass--peek .cc-pass-kind {
+  flex: none;
+  padding: 4px 6px;
+  border-radius: 6px 6px 6px 2px;
+  background: var(--kh-document-accent, var(--kh-green));
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-pass--peek .cc-pass-name {
+  overflow: hidden;
+  color: var(--kh-ink);
+  font-size: 11px;
+  font-weight: 730;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-pass--peek .cc-pass-peektime {
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.khonsera-app .cc-wallet-archive {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  opacity: 0.62;
+}
+
+/* --------------------------------------------------------------------------
+ * Shared lists, tasks and ledgers
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-add {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 13px;
+  border: 1px solid var(--kh-border);
+  border-radius: 14px 14px 14px 5px;
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-add .ic {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px 8px 8px 3px;
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app .cc-add .ic svg {
+  width: 15px;
+  height: 15px;
+}
+
+.khonsera-app .cc-add:focus-within {
+  border-color: var(--kh-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kh-green) 12%, transparent);
+}
+
+.khonsera-app .cc-section {
+  overflow: hidden;
+  border: 1px solid var(--kh-border);
+  border-radius: 16px 16px 16px 6px;
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-section-head {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--kh-border);
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-section-title {
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-section-meta {
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.khonsera-app :is(.cc-task-row, .cc-expense-row, .cc-list-row) {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--kh-border);
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+}
+
+.khonsera-app :is(.cc-task-row, .cc-expense-row, .cc-list-row):last-child {
+  border-bottom: 0;
+}
+
+.khonsera-app :is(.cc-task-row, .cc-expense-row, .cc-list-row):hover {
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-task-tick {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 1px solid var(--kh-border-strong);
+  border-radius: 6px 6px 6px 2px;
+  background: var(--kh-surface);
+}
+
+.khonsera-app .cc-task-row[data-done="true"] .cc-task-tick {
+  border-color: var(--kh-green);
+  background: var(--kh-green);
+  box-shadow: inset 0 0 0 5px var(--kh-surface);
+}
+
+.khonsera-app .cc-task-title {
+  min-width: 0;
+  flex: 1;
+  color: var(--kh-ink-2);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.khonsera-app .cc-task-row[data-done="true"] .cc-task-title {
+  color: var(--kh-ink-muted);
+  text-decoration: line-through;
+}
+
+.khonsera-app .cc-task-due {
+  flex: none;
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.khonsera-app .cc-list-row .main {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.khonsera-app .cc-list-row .t {
+  overflow: hidden;
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  font-weight: 710;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-list-row .s {
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-list-row .r,
+.khonsera-app .cc-expense-amt {
+  margin-left: auto;
+  color: var(--kh-ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-expense-cat {
+  margin: 0;
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.khonsera-app .cc-total-bar {
+  min-height: 84px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+  padding: 15px 17px 14px 21px;
+  border: 1px solid var(--kh-border);
+  border-radius: 18px 18px 18px 7px;
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-total-bar::before {
+  content: "";
+  width: 5px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--kh-orange);
+}
+
+.khonsera-app .cc-total-bar .l {
+  color: var(--kh-ink-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-total-bar .v {
+  color: var(--kh-green-strong);
+  font-family: var(--display);
+  font-size: clamp(30px, 7vw, 45px);
+  font-weight: 650;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+
+/* --------------------------------------------------------------------------
+ * People and contact primitives
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-contact-chip {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--kh-border);
+  border-radius: 13px 13px 13px 5px;
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-contact-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px 9px 9px 3px;
+  background: var(--kh-green-strong);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.khonsera-app .cc-contact-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--kh-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-contact-ch {
+  color: var(--kh-orange);
+}
+
+.khonsera-app .cc-contact-ch svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --------------------------------------------------------------------------
+ * Empty states — direct and useful, without decorative stock imagery
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-empty {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 7px;
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px dashed var(--kh-border-strong);
+  border-radius: 18px 18px 18px 7px;
+  background: color-mix(in srgb, var(--kh-surface) 74%, transparent);
+  color: var(--kh-ink);
+  text-align: left;
+}
+
+.khonsera-app .cc-empty > img {
+  display: none;
+}
+
+.khonsera-app .cc-empty-title {
+  margin: 0;
+  color: var(--kh-ink);
+  font-family: var(--display);
+  font-size: clamp(24px, 5vw, 34px);
+  font-weight: 620;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.khonsera-app .cc-empty-sub {
+  max-width: 50ch;
+  margin: 0;
+  color: var(--kh-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.khonsera-app .cc-empty-actions {
+  justify-content: flex-start !important;
+  margin-top: 9px !important;
+}
+
+/* --------------------------------------------------------------------------
+ * Responsive secondary surfaces
+ * ----------------------------------------------------------------------- */
+
+@media (max-width: 559px) {
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head {
+    padding-left: 13px;
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head::before {
+    width: 3px;
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head .cc-screen-title {
+    font-size: clamp(32px, 11vw, 43px);
+  }
+
+  .khonsera-app .cc-journey-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "when"
+      "title"
+      "meta";
+    gap: 7px;
+  }
+
+  .khonsera-app .cc-journey-meta {
+    text-align: left;
+  }
+
+  .khonsera-app .cc-pass-wrap {
+    gap: 6px;
+  }
+
+  .khonsera-app .cc-pass-wrap > .cc-btn {
+    margin-left: 6px;
+  }
+
+  .khonsera-app .cc-pass-del,
+  .khonsera-app .cc-pass-collapse {
+    margin-right: 6px;
+  }
+
+  .khonsera-app .cc-pass--peek .cc-status-strip {
+    display: none;
+  }
+
+  .khonsera-app .cc-total-bar {
+    min-height: 76px;
+  }
+
+  .khonsera-app .cc-total-bar .v {
+    font-size: clamp(28px, 10vw, 38px);
+  }
+
+  .khonsera-app .cc-empty {
+    min-height: 165px;
+    padding: 21px 17px;
+  }
+}
+
+@media (min-width: 900px) {
+  .khonsera-app .cc-plan-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .khonsera-app .cc-journey-row {
+    border-right: 1px solid var(--kh-border);
+  }
+
+  .khonsera-app .cc-journey-row:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .khonsera-app .cc-journey-row:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+}
