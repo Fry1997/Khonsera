@@ -1,6 +1,6 @@
 # Khonsera app-wide design system
 
-Status: **Pass 3 — Today and Plan primary flows**
+Status: **Pass 4 — secondary travel surfaces**
 
 This document defines how the approved visual reference becomes the language of the whole application. It replaces the previous pattern of treating individual routes as separate visual editions.
 
@@ -23,13 +23,14 @@ The visual language is:
 
 **Routes own composition. The design system owns appearance.**
 
-A route may decide that Today uses a continuous itinerary while Wallet uses a document stack. It may not invent its own colour palette, typography scale, button treatment, status language, card geometry or navigation pattern.
+A route may decide that Today uses a continuous itinerary while Wallet uses a document library. It may not invent its own colour palette, typography scale, button treatment, status language, card geometry or navigation pattern.
 
 The shared authority is layered deliberately:
 
 1. `src/app/khonsera-system.css` — colour, type, spacing, shell, controls, surfaces and semantic status.
 2. `src/app/khonsera-components.css` — navigation items, itinerary nodes, commitment cards, movement cards, transfers, passes, tickets and sheets.
 3. `src/app/khonsera-primary-flows.css` — the shared planning-to-operation composition used by Today and Plan.
+4. `src/app/khonsera-secondary-surfaces.css` — Plan index, Wallet and the common list, ledger, task, contact and empty-state language.
 
 These layers load after the historical route styles. Older files remain temporarily for structural compatibility while their visual authority is retired during the rollout.
 
@@ -116,12 +117,22 @@ Both routes now share:
 
 The live next-move surface remains light and structured. The former decorative gradient and circular countdown treatment are replaced by a near-white instrument panel, an orange directional seam and a compact technical countdown readout.
 
+## Secondary surfaces
+
+The application no longer falls back to an older card language after leaving Today or an individual plan.
+
+- **Plan index** presents days as dense operational records grouped by time horizon, with work/personal line identity and quiet destructive actions.
+- **Wallet** behaves as a document library rather than a novelty overlapping stack. The next pass remains complete; additional documents use compact, recognisable previews.
+- **Tasks and ledgers** share section headers, row density, check controls, totals and monetary typography.
+- **Contacts** use the same asymmetric geometry, green identity block and orange communication cue.
+- **Empty states** are direct and actionable. Decorative brand imagery is removed from the working UI.
+
 ## Migration sequence
 
 1. **Foundation** — shared tokens, shell, typography, controls, surfaces and status language. Complete in Pass 1.
 2. **Common components** — navigation, cards, sheets, itinerary primitives, tickets and passes. Established in Pass 2.
 3. **Primary flows** — Today and Plan share one planning-to-operation hierarchy. Established in Pass 3.
-4. **Secondary surfaces** — Trips, Bookings, Wallet, live updates, wayfinding and settings.
+4. **Secondary surfaces** — Plan index, Wallet, tasks, ledgers, contacts and empty states use the shared language. Established in Pass 4.
 5. **Coherence audit** — remove route-level appearance rules and test all supported widths.
 
 ## Responsive contract
