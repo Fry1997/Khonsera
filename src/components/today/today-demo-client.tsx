@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useMemo, useState } from "react";
 import type { TicketVM } from "@/components/concierge";
+import type { LocalWeather } from "@/lib/actions/weather";
 import { AppScreen } from "@/components/ui/page-shell";
 import { LiveDay } from "@/components/today/live-day";
 import { TodaySpine } from "@/components/today/today-spine";
@@ -38,7 +39,37 @@ const londonClock = (iso: string) =>
     hour12: false,
   }).format(new Date(iso));
 
-export function TodayDemoClient() {
+function DemoWeatherGlyph({ isDay }: { isDay: boolean }) {
+  return isDay ? (
+    <svg
+      className="cc-weather-glyph"
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <circle cx="24" cy="24" r="7" />
+      <path d="M24 4v6M24 38v6M4 24h6M38 24h6M9.9 9.9l4.2 4.2M33.9 33.9l4.2 4.2M38.1 9.9l-4.2 4.2M14.1 33.9l-4.2 4.2" />
+    </svg>
+  ) : (
+    <svg
+      className="cc-weather-glyph"
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M37 31.5A16 16 0 0 1 16.5 11 16 16 0 1 0 37 31.5Z" />
+    </svg>
+  );
+}
+
+export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
   // The scenario is rebuilt relative to the moment it is opened. It behaves
   // like a live day without ever borrowing the user's actual itinerary data.
   const [base] = useState(() => Date.now());
@@ -151,12 +182,27 @@ export function TodayDemoClient() {
 
   return (
     <AppScreen
-      eyebrow="Staff demo"
-      title="Project review"
-      description="Harpenden → Luton → Wellingborough"
+      eyebrow="Today"
+      title="Right now"
+      titleAs="h1"
       headerClassName="cc-today-head"
       className="cc-today-direction cc-today-demo"
       data-demo="true"
+      actions={
+        weather ? (
+          <div
+            className="cc-weather"
+            data-day={weather.isDay ? "true" : "false"}
+          >
+            <DemoWeatherGlyph isDay={weather.isDay} />
+            <span className="cc-weather-temp">{weather.tempC}&deg;</span>
+            <span className="cc-weather-meta">
+              <span className="cc-weather-headline">{weather.headline}</span>
+              <span className="cc-weather-place">{weather.place}</span>
+            </span>
+          </div>
+        ) : undefined
+      }
     >
       <div className="cc-demo-banner" role="status">
         <span className="cc-demo-banner-mark">Demo scenario</span>
@@ -170,6 +216,14 @@ export function TodayDemoClient() {
       </div>
 
       <div className="cc-day-dashboard">
+        <div className="cc-demo-controls" aria-label="Demo scenario clock">
+          <div className="cc-demo-readout">
+            <span className="cc-demo-readout-label">Scenario clock</span>
+            <strong>{londonClock(new Date().toISOString())}</strong>
+            <span>Opened with all services on time</span>
+          </div>
+        </div>
+
         <section className="cc-today-command" aria-label="Demo next move">
           <div className="cc-today-command-content">
             <LiveDay
@@ -179,14 +233,6 @@ export function TodayDemoClient() {
             />
           </div>
         </section>
-
-        <div className="cc-day-forecast" aria-label="Demo scenario status">
-          <div className="cc-demo-readout">
-            <span className="cc-demo-readout-label">Scenario clock</span>
-            <strong>{londonClock(new Date().toISOString())}</strong>
-            <span>Opened with all services on time</span>
-          </div>
-        </div>
 
         <section
           className="cc-day-primary"
