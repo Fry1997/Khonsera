@@ -40,7 +40,10 @@ describe("staff Today demo boundary", () => {
 
   it("keeps the scenario visibly and semantically separate from account data", () => {
     expect(demo).toContain('data-demo="true"');
-    expect(demo).toContain("isolated sample data, not your Today");
+    expect(demo).toContain("Sample itinerary only");
+    expect(demo).toContain(
+      "Your real Today and account data remain untouched",
+    );
     expect(demo).not.toContain("createClient");
     expect(demo).not.toContain("setLiveTransitionProgress");
   });
