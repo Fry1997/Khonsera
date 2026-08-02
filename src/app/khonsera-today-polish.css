@@ -1,0 +1,414 @@
+/*
+ * Today component QA pass
+ *
+ * A focused card-by-card and control-by-control correction for the shared
+ * Today component family. Demo-only chrome remains scoped; travel cards,
+ * movement rows, passes and actions continue to be shared with live Today.
+ */
+
+/* Page rhythm ------------------------------------------------------------- */
+.khonsera-app .cc-today-direction {
+  gap: 14px;
+}
+
+.khonsera-app .cc-today-direction > .cc-screen-content {
+  row-gap: 14px;
+}
+
+.khonsera-app .cc-today-head {
+  padding-bottom: 12px;
+}
+
+/* Demo identification: obvious, but not the dominant card ---------------- */
+.khonsera-app .cc-today-demo .cc-demo-banner {
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-color: color-mix(in srgb, var(--kh-orange) 34%, var(--kh-border));
+  border-radius: 12px 12px 12px 5px;
+  background: color-mix(in srgb, var(--kh-orange-soft) 72%, var(--kh-surface));
+  box-shadow: none;
+}
+
+.khonsera-app .cc-today-demo .cc-demo-banner-mark {
+  min-height: 24px;
+  padding: 4px 7px;
+  border-radius: 6px 6px 6px 2px;
+  font-size: 7.5px;
+}
+
+.khonsera-app .cc-today-demo .cc-demo-banner-copy {
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.khonsera-app .cc-today-demo .cc-demo-banner-link {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+/* Scenario clock: a utility strip, not a second hero ---------------------- */
+.khonsera-app .cc-today-demo .cc-demo-readout {
+  min-height: 54px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 10px 12px;
+  border-radius: 12px 12px 12px 5px;
+  background: var(--kh-surface-subtle);
+}
+
+.khonsera-app .cc-today-demo .cc-demo-readout strong {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.khonsera-app .cc-today-demo .cc-demo-readout > span:last-child {
+  font-size: 9.5px;
+}
+
+/* Next move: decisive without consuming half the screen ------------------ */
+.khonsera-app .cc-today-command .cc-active-tile {
+  gap: 11px;
+  padding: 16px;
+  border-radius: 17px 17px 17px 6px;
+  box-shadow: 0 12px 28px -24px rgba(39, 31, 20, 0.72) !important;
+}
+
+.khonsera-app .cc-today-command .cc-active-tile::before {
+  width: 4px;
+}
+
+.khonsera-app .cc-next-move-head {
+  min-height: 26px;
+}
+
+.khonsera-app .cc-today-command .cc-at-status {
+  font-size: 8px;
+}
+
+.khonsera-app .cc-next-priority {
+  min-height: 23px;
+  padding: 3px 7px;
+  font-size: 7px;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-sheet {
+  gap: 9px;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-core {
+  min-height: 48px;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-figure,
+.khonsera-app .cc-today-command .cc-setoff-figure--word {
+  font-size: clamp(42px, 12vw, 58px);
+  line-height: 0.9;
+}
+
+.khonsera-app .cc-today-command .cc-next-facts {
+  gap: 5px;
+}
+
+.khonsera-app .cc-today-command .cc-next-facts > span {
+  min-height: 27px;
+  padding: 5px 7px;
+  border-radius: 7px 7px 7px 3px;
+  font-size: 9px;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-move {
+  max-width: none;
+  font-size: 11px;
+  line-height: 1.42;
+}
+
+/* Every action is named. Primary action first, utilities beneath. */
+.khonsera-app .cc-today-command .cc-next-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.khonsera-app .cc-today-command .cc-next-action {
+  width: auto;
+  min-width: 0;
+  min-height: 42px;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 9px 9px 9px 4px;
+}
+
+.khonsera-app .cc-today-command .cc-next-action--primary {
+  grid-column: 1 / -1;
+  min-height: 45px;
+  justify-content: center;
+}
+
+.khonsera-app .cc-today-command .cc-next-action-label,
+.khonsera-app .cc-today-command .cc-next-action--primary .cc-next-action-label {
+  display: inline;
+  font-size: 9.5px;
+  font-weight: 740;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-today-command .cc-next-action svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* Itinerary alignment ----------------------------------------------------- */
+.khonsera-app .cc-today-direction .cc-spine-heading {
+  min-height: 34px;
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  font-size: 10.5px;
+}
+
+.khonsera-app .cc-today-direction .cc-node {
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 10px;
+  padding: 0 0 11px;
+}
+
+.khonsera-app .cc-today-direction .cc-node-dot {
+  width: 34px;
+  min-width: 34px;
+  padding-top: 9px;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-rail {
+  left: 16px;
+}
+
+.khonsera-app .cc-today-direction .cc-now-row {
+  min-height: 25px;
+  padding: 4px 7px;
+  border-radius: 7px 7px 7px 3px;
+  font-size: 8px;
+}
+
+.khonsera-app .cc-today-direction .cc-node-dot :is(
+  .cc-med-leg,
+  .cc-med-anchor,
+  .cc-med-pass,
+  .cc-med-change
+) {
+  width: 32px;
+  height: 32px;
+}
+
+/* Movement rows: retain emphasis, never invert into unreadable white text. */
+.khonsera-app .cc-today-direction .cc-walk {
+  padding: 13px 14px 12px;
+  border-radius: 14px 14px 14px 5px;
+  box-shadow: none;
+}
+
+.khonsera-app .cc-today-direction .cc-node[data-state="next"] .cc-walk {
+  border-color: color-mix(in srgb, var(--kh-green) 42%, var(--kh-border)) !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink) !important;
+  box-shadow: 0 10px 24px -22px rgba(7, 58, 52, 0.72) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node[data-state="next"] .cc-walk :is(
+  .cc-walk-mins,
+  .cc-walk-time,
+  .cc-walk-dest
+) {
+  color: var(--kh-ink-2) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node[data-state="next"] .cc-walk-mode {
+  color: var(--kh-orange-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node[data-state="next"] .cc-walk-spare {
+  color: var(--kh-success) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node[data-state="next"] .cc-walk-rule {
+  background: var(--kh-border-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-window {
+  margin-top: 8px;
+  font-size: 10.5px;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-dest {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 10.5px;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-foot {
+  display: none;
+}
+
+/* Rail pass: denser hierarchy and a quieter consequence note. */
+.khonsera-app .cc-today-direction .cc-pass--docked {
+  border-radius: 15px 15px 15px 6px !important;
+  box-shadow: 0 12px 28px -24px rgba(39, 31, 20, 0.72) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-today-head {
+  min-height: 38px;
+  padding: 8px 12px 7px;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-today-time {
+  font-size: 13px;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-today-status {
+  font-size: 9px;
+}
+
+.khonsera-app .cc-today-direction .cc-pass--docked .cc-pass-route {
+  padding: 14px 13px 11px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass--docked .cc-pass-code {
+  font-size: clamp(27px, 8vw, 34px) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-boarding {
+  gap: 9px;
+  margin: 0 12px 10px;
+  padding: 9px 10px !important;
+  border-radius: 9px 9px 9px 4px;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-boarding-num {
+  font-size: 23px;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-stub {
+  padding: 0 10px 7px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-stub-cell {
+  min-height: 54px;
+  padding: 8px 7px !important;
+}
+
+.khonsera-app .cc-today-direction :is(.cc-pass-consequence, .cc-ticket-consequence) {
+  margin: 0 12px 11px;
+  padding: 8px 9px;
+  border-left-width: 2px;
+  border-radius: 3px 8px 8px 3px;
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+  font-size: 9.5px;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-ready {
+  padding: 0 12px 12px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-ready > button {
+  min-height: 42px !important;
+  font-size: 10.5px !important;
+}
+
+/* Appointment: compact but still a proper destination card. */
+.khonsera-app .cc-today-direction .cc-appt {
+  padding: 15px;
+  border-radius: 15px 15px 15px 6px;
+}
+
+.khonsera-app .cc-today-direction .cc-appt-title {
+  margin-top: 7px;
+  font-size: clamp(20px, 5.5vw, 25px);
+}
+
+.khonsera-app .cc-today-direction .cc-appt-times {
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.khonsera-app .cc-today-direction .cc-appt-time {
+  min-height: 56px;
+  padding: 8px 9px;
+}
+
+.khonsera-app .cc-today-direction .cc-appt-clock {
+  font-size: 15px;
+}
+
+/* The demo explanation belongs on desktop. Mobile already has the banner. */
+@media (max-width: 759px) {
+  .khonsera-app .cc-today-demo .cc-day-context {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .khonsera-app .cc-today-head {
+    grid-template-columns: minmax(0, 1fr) 112px;
+  }
+
+  .khonsera-app .cc-today-head .cc-screen-title {
+    font-size: clamp(34px, 10.5vw, 42px);
+  }
+
+  .khonsera-app .cc-today-direction .cc-weather {
+    min-height: 54px;
+    padding: 8px;
+  }
+
+  .khonsera-app .cc-today-demo .cc-demo-banner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .khonsera-app .cc-today-demo .cc-demo-banner-copy {
+    grid-column: 1 / -1;
+  }
+
+  .khonsera-app .cc-today-command .cc-active-tile {
+    padding: 15px 14px;
+  }
+
+  .khonsera-app .cc-today-command .cc-next-action-label,
+  .khonsera-app .cc-today-command .cc-next-action--primary .cc-next-action-label {
+    font-size: 8.5px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-node {
+    grid-template-columns: 32px minmax(0, 1fr);
+    column-gap: 8px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-node-dot {
+    width: 32px;
+    min-width: 32px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-rail {
+    left: 15px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-walk-dest {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .khonsera-app .cc-tabbar {
+    padding-top: 5px;
+  }
+
+  .khonsera-app .cc-tab {
+    min-height: 51px;
+    border-radius: 10px 10px 5px 10px;
+  }
+}
