@@ -11,6 +11,10 @@ const demo = readFileSync(
   join(root, "src/components/today/today-demo-client.tsx"),
   "utf8",
 );
+const demoCss = readFileSync(
+  join(root, "src/app/khonsera-demo.css"),
+  "utf8",
+);
 const demoMode = readFileSync(
   join(root, "src/lib/demo-mode.ts"),
   "utf8",
@@ -39,6 +43,19 @@ describe("staff Today demo boundary", () => {
     expect(demo).toContain("isolated sample data, not your Today");
     expect(demo).not.toContain("createClient");
     expect(demo).not.toContain("setLiveTransitionProgress");
+  });
+
+  it("preserves the natural Today header before presenting demo controls", () => {
+    expect(gate).toContain("getLocalWeather");
+    expect(gate).toContain("<TodayDemoClient weather={weather}");
+    expect(demo).toContain('eyebrow="Today"');
+    expect(demo).toContain('title="Right now"');
+    expect(demo).toContain('className="cc-weather"');
+    expect(demo).toContain('className="cc-demo-controls"');
+    expect(demo.indexOf("actions={")).toBeLessThan(
+      demo.indexOf('className="cc-demo-controls"'),
+    );
+    expect(demoCss).toContain('"demo-controls context"');
   });
 
   it("uses the Settings switch as the authority for every entry point", () => {
