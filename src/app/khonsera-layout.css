@@ -1,0 +1,733 @@
+/*
+ * Khonsera app-wide system · Pass 5
+ *
+ * Spacing, alignment and placement only. This layer does not introduce a new
+ * colour, type, surface or component treatment. It establishes one page grid,
+ * one vertical rhythm and predictable internal alignment across every route.
+ */
+
+:root {
+  --kh-space-1: 4px;
+  --kh-space-2: 8px;
+  --kh-space-3: 12px;
+  --kh-space-4: 16px;
+  --kh-space-5: 20px;
+  --kh-space-6: 24px;
+  --kh-space-7: 32px;
+  --kh-space-8: 40px;
+
+  --kh-layout-gutter: clamp(16px, 3vw, 32px);
+  --kh-layout-top: clamp(16px, 2.4vw, 26px);
+  --kh-layout-bottom: clamp(32px, 5vw, 64px);
+  --kh-layout-max: 1160px;
+  --kh-layout-secondary: 960px;
+  --kh-layout-reading: 760px;
+  --kh-layout-main: 744px;
+  --kh-layout-side: 336px;
+  --kh-layout-column-gap: 24px;
+  --kh-layout-section-gap: 18px;
+  --kh-layout-card-pad: clamp(16px, 2.2vw, 22px);
+}
+
+/* --------------------------------------------------------------------------
+ * Application frame and page edges
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-app-main {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding-top: var(--kh-layout-top);
+  padding-bottom: var(--kh-layout-bottom);
+}
+
+.khonsera-app .cc-mobile-main,
+.khonsera-app .cc-shell-col {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  padding-right: max(var(--kh-layout-gutter), env(safe-area-inset-right));
+  padding-left: max(var(--kh-layout-gutter), env(safe-area-inset-left));
+}
+
+.khonsera-app .cc-shell-col {
+  max-width: calc(var(--kh-content-max) + (var(--kh-layout-gutter) * 2));
+}
+
+.khonsera-app :is(.cc-screen, .cc-today-direction, .cc-plan-detail) {
+  box-sizing: border-box;
+  width: min(100%, var(--kh-layout-max));
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.khonsera-app .cc-screen:not(.cc-today-direction) {
+  width: min(100%, var(--kh-layout-secondary));
+}
+
+.khonsera-app :is(.cc-screen, .cc-screen-content) {
+  row-gap: var(--kh-layout-section-gap);
+}
+
+.khonsera-app .cc-screen-content > *,
+.khonsera-app :is(.cc-day-primary, .cc-plan-primary, .cc-day-context, .cc-plan-context) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * Page headers and first-content alignment
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(
+  .cc-screen:not(.cc-today-direction) > .cc-screen-head,
+  .cc-today-head,
+  .cc-day-header
+) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding-top: var(--kh-space-1);
+  padding-bottom: var(--kh-space-4);
+}
+
+.khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--kh-space-5);
+}
+
+.khonsera-app :is(.cc-screen-head, .cc-today-head) .cc-screen-actions {
+  flex: none;
+  margin: 0;
+  align-self: flex-end;
+}
+
+.khonsera-app :is(.cc-screen-title, .cc-plan-title, .cc-plan-title-input) {
+  margin-bottom: 0;
+}
+
+.khonsera-app .cc-screen-description {
+  max-width: 62ch;
+  margin: var(--kh-space-2) 0 0;
+}
+
+.khonsera-app :is(.cc-screen-head, .cc-today-head, .cc-day-header) + * {
+  margin-top: 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Primary flows: Today and Plan share exact column edges
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-today-direction, .cc-plan-detail) {
+  width: min(
+    100%,
+    calc(var(--kh-layout-main) + var(--kh-layout-side) + var(--kh-layout-column-gap))
+  );
+}
+
+.khonsera-app :is(.cc-day-dashboard, .cc-plan-grid) {
+  width: 100%;
+  min-width: 0;
+  column-gap: var(--kh-layout-column-gap);
+  row-gap: var(--kh-layout-column-gap);
+}
+
+.khonsera-app :is(.cc-day-primary, .cc-plan-primary) {
+  gap: var(--kh-layout-section-gap);
+}
+
+.khonsera-app :is(.cc-day-context, .cc-plan-context) {
+  gap: var(--kh-space-3);
+}
+
+.khonsera-app .cc-today-command,
+.khonsera-app .cc-today-command-content,
+.khonsera-app .cc-today-command .cc-active-tile,
+.khonsera-app .cc-decision-clock {
+  width: 100%;
+  min-width: 0;
+}
+
+.khonsera-app .cc-today-command .cc-active-tile {
+  gap: var(--kh-space-4);
+  padding: var(--kh-layout-card-pad);
+}
+
+.khonsera-app .cc-next-move-head,
+.khonsera-app .cc-setoff-eyb,
+.khonsera-app .cc-setoff-core {
+  width: 100%;
+}
+
+.khonsera-app .cc-today-command .cc-setoff-core {
+  min-height: 72px;
+}
+
+.khonsera-app .cc-today-command .cc-next-facts {
+  gap: var(--kh-space-2);
+}
+
+.khonsera-app .cc-today-command .cc-next-actions {
+  width: 100%;
+  gap: var(--kh-space-2);
+  margin-top: 0;
+}
+
+.khonsera-app .cc-day-forecast,
+.khonsera-app .cc-weather-hours {
+  width: 100%;
+}
+
+.khonsera-app .cc-context-actions,
+.khonsera-app .cc-today-context-row,
+.khonsera-app .cc-plan-context-bundle,
+.khonsera-app .cc-plan-tools,
+.khonsera-app .cc-today-plan-action {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.khonsera-app .cc-today-context-row,
+.khonsera-app .cc-plan-context-bundle > label {
+  min-height: 64px;
+  gap: var(--kh-space-3);
+  padding: var(--kh-space-3) var(--kh-space-4);
+}
+
+.khonsera-app .cc-context-actions,
+.khonsera-app .cc-plan-tools {
+  padding: var(--kh-space-4);
+}
+
+/* --------------------------------------------------------------------------
+ * Itinerary alignment and continuous rhythm
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-spine-heading {
+  min-height: 38px;
+  align-items: flex-end;
+  margin: 0 0 var(--kh-space-3);
+  padding: 0 0 var(--kh-space-3);
+}
+
+.khonsera-app .cc-spine-toolbar {
+  margin: 0 0 var(--kh-space-3);
+}
+
+.khonsera-app .cc-spine {
+  width: 100%;
+  min-width: 0;
+}
+
+.khonsera-app .cc-node {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: stretch;
+  column-gap: var(--kh-space-3);
+  padding: var(--kh-space-1) 0 var(--kh-space-3);
+  background: transparent;
+}
+
+.khonsera-app .cc-node:last-child {
+  padding-bottom: 0;
+}
+
+.khonsera-app .cc-node-dot {
+  width: 30px;
+  min-width: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: var(--kh-space-3);
+}
+
+.khonsera-app .cc-spine-rail {
+  left: 14px;
+}
+
+.khonsera-app .cc-node > :last-child,
+.khonsera-app .cc-node-anchor,
+.khonsera-app :is(
+  .cc-anchor-card,
+  .cc-leg-card,
+  .cc-gap-card,
+  .cc-intention-card,
+  .cc-walk,
+  .cc-appt,
+  .cc-station-card,
+  .cc-transfer,
+  .cc-base-node,
+  .cc-pass,
+  .cc-ticket
+) {
+  width: 100%;
+  min-width: 0;
+}
+
+.khonsera-app .cc-now-row,
+.khonsera-app .cc-spine-toggle {
+  align-self: start;
+  margin: 0;
+}
+
+.khonsera-app .cc-spine-toggle {
+  width: fit-content;
+  margin-block: var(--kh-space-2) var(--kh-space-3);
+}
+
+/* --------------------------------------------------------------------------
+ * Card internals: shared baselines and padding
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(
+  .cc-anchor-card,
+  .cc-leg-card,
+  .cc-walk,
+  .cc-appt,
+  .cc-station-card,
+  .cc-transfer,
+  .cc-base-node
+) {
+  box-sizing: border-box;
+}
+
+.khonsera-app .cc-anchor-card {
+  padding: var(--kh-layout-card-pad);
+}
+
+.khonsera-app :is(.cc-leg-card, .cc-walk, .cc-appt) {
+  padding: var(--kh-space-5);
+}
+
+.khonsera-app :is(.cc-station-card, .cc-transfer, .cc-base-node) {
+  padding: var(--kh-space-4);
+}
+
+.khonsera-app :is(
+  .cc-anchor-head,
+  .cc-leg-head,
+  .cc-walk-head,
+  .cc-station-card-head,
+  .cc-transfer-head
+) {
+  min-height: 28px;
+  margin-top: 0;
+}
+
+.khonsera-app .cc-anchor-head {
+  margin-bottom: var(--kh-space-3);
+}
+
+.khonsera-app :is(.cc-anchor-title, .cc-appt-title, .cc-anchor-place, .cc-appt-sub) {
+  max-width: 100%;
+}
+
+.khonsera-app .cc-vars {
+  width: 100%;
+  gap: var(--kh-space-2);
+  margin-top: var(--kh-space-4);
+  padding-top: var(--kh-space-4);
+}
+
+.khonsera-app .cc-var {
+  box-sizing: border-box;
+  min-height: 66px;
+  padding: 10px 12px;
+}
+
+.khonsera-app :is(.cc-leg-route, .cc-walk-window) {
+  width: 100%;
+}
+
+.khonsera-app .cc-leg-actions {
+  width: 100%;
+  gap: var(--kh-space-2);
+  margin-top: var(--kh-space-4);
+  padding-top: var(--kh-space-3);
+}
+
+.khonsera-app .cc-appt-times {
+  width: 100%;
+  gap: var(--kh-space-2);
+  margin-top: var(--kh-space-4);
+}
+
+.khonsera-app .cc-appt-time {
+  min-height: 64px;
+  justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+ * Documents, tickets and Wallet placement
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app :is(.cc-pass, .cc-ticket) {
+  width: 100%;
+}
+
+.khonsera-app .cc-pass-band,
+.khonsera-app .cc-ticket-head,
+.khonsera-app .cc-pass-today-head,
+.khonsera-app .cc-ticket-actions {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.khonsera-app .cc-pass-route,
+.khonsera-app .cc-ticket-journey {
+  box-sizing: border-box;
+  width: 100%;
+  padding-right: var(--kh-space-4) !important;
+  padding-left: var(--kh-space-4) !important;
+}
+
+.khonsera-app .cc-pass-stub {
+  box-sizing: border-box;
+  width: 100%;
+  padding-right: var(--kh-space-4) !important;
+  padding-left: var(--kh-space-4) !important;
+}
+
+.khonsera-app .cc-ticket-endpoints,
+.khonsera-app .cc-pass-route {
+  align-items: center;
+}
+
+.khonsera-app .cc-ticket-actions {
+  flex-wrap: wrap;
+  padding: var(--kh-space-3) var(--kh-space-4) var(--kh-space-4);
+}
+
+.khonsera-app .cc-wallet {
+  width: min(100%, 840px);
+  margin-inline: auto;
+  gap: var(--kh-space-6);
+}
+
+.khonsera-app .cc-wallet-group-head {
+  margin: 0 0 var(--kh-space-3);
+  padding-right: var(--kh-space-3);
+  padding-left: var(--kh-space-3);
+}
+
+.khonsera-app .cc-pass-stack {
+  gap: var(--kh-space-3);
+}
+
+.khonsera-app .cc-pass-wrap {
+  width: 100%;
+  gap: var(--kh-space-2);
+}
+
+/* --------------------------------------------------------------------------
+ * Secondary surfaces and settings
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-plan-group,
+.khonsera-app .cc-section,
+.khonsera-app .cc-total-bar,
+.khonsera-app .cc-empty,
+.khonsera-app .j-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.khonsera-app .cc-plan-group-head,
+.khonsera-app .cc-section-head {
+  padding-right: var(--kh-space-4);
+  padding-left: var(--kh-space-4);
+}
+
+.khonsera-app .cc-journey-card {
+  min-height: 104px;
+  padding: var(--kh-space-4) var(--kh-space-3) var(--kh-space-4) var(--kh-space-5);
+}
+
+.khonsera-app .cc-journey-when {
+  align-self: start;
+}
+
+.khonsera-app .cc-journey-title,
+.khonsera-app .cc-journey-meta {
+  align-self: end;
+}
+
+.khonsera-app :is(.cc-task-row, .cc-expense-row, .cc-list-row) {
+  min-height: 56px;
+  gap: var(--kh-space-3);
+  padding: var(--kh-space-3) var(--kh-space-4);
+}
+
+.khonsera-app .cc-total-bar {
+  padding: var(--kh-space-4) var(--kh-space-5) var(--kh-space-4) var(--kh-space-6);
+}
+
+.khonsera-app .cc-empty {
+  padding: clamp(22px, 4vw, 36px);
+}
+
+.khonsera-app .cc-empty-actions {
+  width: 100%;
+  gap: var(--kh-space-2) !important;
+}
+
+.khonsera-app .j-card {
+  margin: 0;
+}
+
+.khonsera-app .cc-settings-group {
+  width: 100%;
+  min-width: 0;
+}
+
+.khonsera-app #travel-profile {
+  scroll-margin-top: calc(72px + var(--kh-space-6));
+}
+
+/* --------------------------------------------------------------------------
+ * Demo placement remains distinct but follows the production grid
+ * ----------------------------------------------------------------------- */
+
+.khonsera-app .cc-today-demo {
+  width: min(
+    100%,
+    calc(var(--kh-layout-main) + var(--kh-layout-side) + var(--kh-layout-column-gap))
+  );
+}
+
+.khonsera-app .cc-demo-banner {
+  width: 100%;
+  gap: var(--kh-space-3);
+  padding: var(--kh-space-3) var(--kh-space-4);
+}
+
+.khonsera-app .cc-demo-readout {
+  width: 100%;
+  padding: var(--kh-space-4);
+}
+
+.khonsera-app .cc-demo-setting,
+.khonsera-app .cc-demo-toggle {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * Mobile: edge discipline and deliberate stacking
+ * ----------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  :root {
+    --kh-layout-gutter: 16px;
+    --kh-layout-top: 14px;
+    --kh-layout-bottom: calc(92px + env(safe-area-inset-bottom));
+    --kh-layout-section-gap: 16px;
+    --kh-layout-card-pad: 16px;
+  }
+
+  .khonsera-app .cc-app-main {
+    padding-top: var(--kh-layout-top);
+    padding-bottom: var(--kh-layout-bottom);
+  }
+
+  .khonsera-app :is(.cc-screen, .cc-screen-content, .cc-today-direction, .cc-plan-detail) {
+    width: 100%;
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--kh-space-3);
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head .cc-screen-actions {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head .cc-screen-actions > * {
+    max-width: 100%;
+  }
+
+  .khonsera-app .cc-today-head {
+    align-items: end;
+  }
+
+  .khonsera-app :is(.cc-day-dashboard, .cc-plan-grid) {
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+    row-gap: var(--kh-layout-section-gap);
+  }
+
+  .khonsera-app :is(.cc-day-primary, .cc-plan-primary) {
+    gap: var(--kh-layout-section-gap);
+  }
+
+  .khonsera-app :is(.cc-day-context, .cc-plan-context) {
+    gap: var(--kh-space-3);
+  }
+
+  .khonsera-app .cc-today-command .cc-active-tile {
+    padding: var(--kh-layout-card-pad);
+  }
+
+  .khonsera-app .cc-today-command .cc-setoff-core {
+    min-height: 62px;
+    gap: var(--kh-space-3);
+  }
+
+  .khonsera-app .cc-today-command .cc-next-actions {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 44px);
+    gap: var(--kh-space-1);
+  }
+
+  .khonsera-app .cc-node {
+    grid-template-columns: 26px minmax(0, 1fr);
+    column-gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .khonsera-app .cc-node-dot {
+    width: 26px;
+    min-width: 26px;
+    padding-top: 10px;
+  }
+
+  .khonsera-app .cc-spine-rail {
+    left: 12px;
+  }
+
+  .khonsera-app :is(.cc-leg-card, .cc-walk, .cc-appt) {
+    padding: var(--kh-space-4);
+  }
+
+  .khonsera-app .cc-vars {
+    gap: 6px;
+  }
+
+  .khonsera-app .cc-var {
+    min-height: 62px;
+    padding: 9px 8px;
+  }
+
+  .khonsera-app .cc-ticket-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .khonsera-app .cc-journey-card {
+    min-height: 0;
+    padding: var(--kh-space-4) var(--kh-space-3) var(--kh-space-4) var(--kh-space-5);
+  }
+
+  .khonsera-app .cc-demo-banner {
+    padding: var(--kh-space-3);
+  }
+}
+
+@media (max-width: 359px) {
+  :root {
+    --kh-layout-gutter: 14px;
+  }
+
+  .khonsera-app .cc-today-head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .khonsera-app .cc-today-head .cc-screen-actions {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .khonsera-app .cc-today-head .cc-weather {
+    width: 100%;
+  }
+
+  .khonsera-app .cc-today-command .cc-setoff-core {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .khonsera-app .cc-today-command .cc-leave-ring {
+    width: 100%;
+  }
+
+  .khonsera-app .cc-appt-times {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .khonsera-app .cc-demo-banner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .khonsera-app .cc-demo-banner-link,
+  .khonsera-app .cc-demo-banner-copy {
+    grid-column: 1;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Tablet: useful width without premature desktop fragmentation
+ * ----------------------------------------------------------------------- */
+
+@media (min-width: 768px) and (max-width: 1099px) {
+  :root {
+    --kh-layout-gutter: 24px;
+    --kh-layout-top: 22px;
+    --kh-layout-bottom: 48px;
+  }
+
+  .khonsera-app :is(.cc-day-context, .cc-plan-context) {
+    column-gap: var(--kh-space-3);
+    row-gap: var(--kh-space-3);
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head {
+    min-height: 82px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Desktop: balanced working column and aligned context rail
+ * ----------------------------------------------------------------------- */
+
+@media (min-width: 1100px) {
+  :root {
+    --kh-layout-gutter: 32px;
+    --kh-layout-top: 24px;
+    --kh-layout-bottom: 64px;
+  }
+
+  .khonsera-app .cc-day-dashboard {
+    grid-template-columns: minmax(0, var(--kh-layout-main)) minmax(0, var(--kh-layout-side));
+    grid-template-areas:
+      "command conditions"
+      "primary context";
+  }
+
+  .khonsera-app .cc-plan-grid {
+    grid-template-columns: minmax(0, var(--kh-layout-main)) minmax(0, var(--kh-layout-side));
+  }
+
+  .khonsera-app :is(.cc-day-context, .cc-plan-context) {
+    top: var(--kh-layout-top);
+    align-self: start;
+  }
+
+  .khonsera-app .cc-plan-context {
+    max-height: calc(100dvh - (var(--kh-layout-top) * 2));
+    padding-right: 2px;
+  }
+
+  .khonsera-app .cc-screen:not(.cc-today-direction) > .cc-screen-head {
+    min-height: 86px;
+  }
+}
