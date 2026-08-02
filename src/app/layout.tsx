@@ -14,19 +14,17 @@ import "./khonsera-edition-iii-care.css"; // Edition III deviation & care (P11�
 import "./khonsera-edition-iii-connections.css"; // Edition III connections/booking (P14)
 import "./khonsera-edition-iii-sharing.css"; // Edition III sharing/comms/safety (P18)
 import "./khonsera-edition-iii-round13.css"; // Edition III Round 13 coherence + features skin
-import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance surface (.cc-nav*) — LAST
-import "./khonsera-instrument.css"; // Instrument Edition v8 — reviewed production direction, final authority
-import "./khonsera-today-direction.css"; // Jul 2026 app direction — unified shell + route-first Today surface
-import "./khonsera-screen-one.css"; // Jul 2026 Screen One — approved compact orange Today direction
+import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance surface (.cc-nav*)
+import "./khonsera-instrument.css"; // Instrument Edition v8 compatibility and component coverage
+import "./khonsera-today-direction.css"; // Legacy route composition; visual rules migrate into the shared system
+import "./khonsera-screen-one.css"; // Legacy Today composition; no longer the final visual authority
+import "./khonsera-system.css"; // App-wide system — final authority across every authenticated route
 import { PwaRegister } from "@/components/pwa-register";
 
-// Canonical Instrument Edition type stack:
+// Canonical type stack:
 //
 //   • Satoshi         — wordmark, display, headlines, UI and body.
-//   • JetBrains Mono  — codes, times, eyebrows (the travel-document signature)
-//
-// The editorial serif and pictorial mark are retired. Emphasis comes from
-// weight, tracking, and the mono transit layer.
+//   • JetBrains Mono  — codes, times, eyebrows and technical travel labels.
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
@@ -41,7 +39,6 @@ export const metadata: Metadata = {
     title: "Khonsera",
   },
   other: {
-    // Android/Chrome PWA standalone hint (the apple-* meta above covers iOS).
     "mobile-web-app-capable": "yes",
   },
   icons: {
@@ -53,11 +50,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // viewport-fit=cover lets the app paint into the notch/home-indicator area so
-  // env(safe-area-inset-*) becomes non-zero — the appbar/tabbar then inset
-  // themselves to clear the status bar + home-indicator (see the shell layout).
   viewportFit: "cover",
-  themeColor: "#f7f7f4",
+  themeColor: "#f5f1e9",
 };
 
 export default function RootLayout({
