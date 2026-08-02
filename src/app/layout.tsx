@@ -18,6 +18,7 @@ import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance 
 import "./khonsera-instrument.css"; // Instrument Edition v8 — reviewed production direction, final authority
 import "./khonsera-today-direction.css"; // Jul 2026 app direction — unified shell + route-first Today surface
 import "./khonsera-screen-one.css"; // Jul 2026 Screen One — approved compact orange Today direction
+import "./khonsera-mobile-today-reference.css"; // Aug 2026 — approved mobile visual reference, final Today authority
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical Instrument Edition type stack:
