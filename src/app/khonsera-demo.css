@@ -1,0 +1,218 @@
+/*
+ * Khonsera staff demo boundary
+ *
+ * The demo uses production Today components, but it must never be mistaken for
+ * the signed-in user's live itinerary. These treatments identify the scenario
+ * without creating a second visual system.
+ */
+
+.khonsera-app .cc-today-demo {
+  position: relative;
+}
+
+.khonsera-app .cc-demo-banner {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 42%, var(--kh-border));
+  border-radius: 13px 13px 13px 5px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 9px,
+      color-mix(in srgb, var(--kh-orange) 4%, transparent) 9px 18px
+    ),
+    var(--kh-orange-soft);
+  color: var(--kh-ink-2);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-demo-banner-mark {
+  min-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 7px 7px 7px 3px;
+  background: var(--kh-orange-strong);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 820;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-demo-banner-copy {
+  min-width: 0;
+  color: var(--kh-ink-2);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.khonsera-app .cc-demo-banner-link {
+  color: var(--kh-green-strong);
+  font-size: 10px;
+  font-weight: 760;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-demo-readout {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: end;
+  gap: 5px 12px;
+  padding: 14px;
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-flow-corner);
+  background: var(--kh-surface);
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-demo-readout-label {
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-demo-readout strong {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  color: var(--kh-green-strong);
+  font-family: var(--mono);
+  font-size: 25px;
+  font-weight: 780;
+}
+
+.khonsera-app .cc-demo-readout > span:last-child {
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+}
+
+.khonsera-app .cc-demo-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.khonsera-app .cc-demo-setting form {
+  margin: 0;
+}
+
+.khonsera-app .cc-demo-toggle {
+  width: 100%;
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border: 1px solid var(--kh-border);
+  border-radius: 13px 13px 13px 5px;
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  text-align: left;
+  box-shadow: var(--kh-shadow-rest);
+}
+
+.khonsera-app .cc-demo-toggle:hover {
+  border-color: var(--kh-border-strong);
+  box-shadow: var(--kh-shadow-raised);
+}
+
+.khonsera-app .cc-demo-toggle-track {
+  width: 42px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--kh-border-strong);
+  transition: background 160ms ease;
+}
+
+.khonsera-app .cc-demo-toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--kh-surface);
+  box-shadow: 0 2px 5px rgba(32, 27, 18, 0.18);
+  transition: transform 160ms ease;
+}
+
+.khonsera-app .cc-demo-toggle[data-active="true"] {
+  border-color: color-mix(in srgb, var(--kh-orange) 38%, var(--kh-border));
+  background: var(--kh-orange-soft);
+}
+
+.khonsera-app .cc-demo-toggle[data-active="true"] .cc-demo-toggle-track {
+  background: var(--kh-orange-strong);
+}
+
+.khonsera-app .cc-demo-toggle[data-active="true"] .cc-demo-toggle-thumb {
+  transform: translateX(18px);
+}
+
+.khonsera-app .cc-demo-toggle-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.khonsera-app .cc-demo-toggle-copy strong {
+  color: var(--kh-ink);
+  font-size: 12px;
+}
+
+.khonsera-app .cc-demo-toggle-copy span {
+  overflow: hidden;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-demo-toggle-state {
+  color: var(--kh-orange-strong);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-demo-setting-note {
+  margin: 0;
+  color: var(--kh-ink-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-width: 620px) {
+  .khonsera-app .cc-demo-banner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .khonsera-app .cc-demo-banner-copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .khonsera-app .cc-demo-toggle-track,
+  .khonsera-app .cc-demo-toggle-thumb {
+    transition: none;
+  }
+}
