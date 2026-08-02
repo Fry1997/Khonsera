@@ -62,18 +62,26 @@
   white-space: nowrap;
 }
 
+/* The scenario clock is a staff tool inside the day, never a replacement for
+ * the normal Today heading or its weather action. */
+.khonsera-app .cc-demo-controls {
+  width: 100%;
+  min-width: 0;
+}
+
 .khonsera-app .cc-demo-readout {
-  min-height: 82px;
+  width: 100%;
+  min-height: 72px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   align-items: end;
   gap: 5px 12px;
-  padding: 14px;
+  padding: 13px 14px;
   border: 1px solid var(--kh-border);
-  border-radius: var(--kh-flow-corner);
-  background: var(--kh-surface);
-  box-shadow: var(--kh-shadow-rest);
+  border-radius: 13px 13px 13px 5px;
+  background: var(--kh-surface-subtle);
+  box-shadow: none;
 }
 
 .khonsera-app .cc-demo-readout-label {
@@ -207,6 +215,31 @@
   .khonsera-app .cc-demo-banner-copy {
     grid-column: 1 / -1;
     grid-row: 2;
+  }
+}
+
+@media (min-width: 1100px) {
+  .khonsera-app .cc-today-demo .cc-day-dashboard {
+    grid-template-areas:
+      "demo-controls context"
+      "command context"
+      "primary context";
+  }
+
+  .khonsera-app .cc-today-demo .cc-demo-controls {
+    grid-area: demo-controls;
+  }
+
+  .khonsera-app .cc-today-demo .cc-today-command {
+    grid-area: command;
+  }
+
+  .khonsera-app .cc-today-demo .cc-day-primary {
+    grid-area: primary;
+  }
+
+  .khonsera-app .cc-today-demo .cc-day-context {
+    grid-area: context;
   }
 }
 
