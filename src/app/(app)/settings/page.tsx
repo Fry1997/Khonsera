@@ -56,7 +56,6 @@ export default async function SettingsPage({
       .select("id, provider_account_email, last_scan_at")
       .eq("user_id", ctx.userId)
       .eq("workspace_id", ctx.workspaceId)
-      .eq("provider", "google")
       .eq("status", "active")
       .maybeSingle(),
   ]);
