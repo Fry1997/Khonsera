@@ -1,6 +1,6 @@
 # Khonsera app-wide design system
 
-Status: **Pass 1 — shared foundation**
+Status: **Pass 2 — shared component language**
 
 This document defines how the approved visual reference becomes the language of the whole application. It replaces the previous pattern of treating individual routes as separate visual editions.
 
@@ -17,7 +17,7 @@ The visual language is:
 - fine warm borders rather than heavy card shadows
 - large editorial headings paired with compact technical labels
 - dense, detailed information arranged with clear hierarchy
-- restrained radii and a consistent icon weight
+- restrained, slightly asymmetric geometry and a consistent icon weight
 
 ## Architecture rule
 
@@ -25,13 +25,20 @@ The visual language is:
 
 A route may decide that Today uses a continuous itinerary while Wallet uses a document stack. It may not invent its own colour palette, typography scale, button treatment, status language, card geometry or navigation pattern.
 
-`src/app/khonsera-system.css` is loaded after the historical style layers and is the final shared authority. Older route files remain temporarily while their composition rules are separated from their visual rules.
+The shared authority is layered deliberately:
+
+1. `src/app/khonsera-system.css` — colour, type, spacing, shell, controls, surfaces and semantic status.
+2. `src/app/khonsera-components.css` — navigation items, itinerary nodes, commitment cards, movement cards, transfers, passes, tickets and sheets.
+
+Both load after the historical route styles. Older files remain temporarily for composition while their appearance rules are removed during the rollout.
 
 ## Shared primitives
 
 ### Application shell
 
 One wordmark, app bar, desktop rail, mobile bottom navigation, overflow sheet and account treatment are used across all authenticated routes.
+
+Selected navigation uses deep green with a small orange directional mark. Desktop and mobile use the same selection language rather than unrelated skins.
 
 ### Surfaces
 
@@ -65,14 +72,38 @@ Orange is not a general decoration colour. Green is not used to make every surfa
 
 All primary controls use a minimum 44px target. Button, input, selector, chip, icon-button and focus treatments are shared. Focus rings use orange so keyboard state remains visible against green controls.
 
+### Itinerary and commitments
+
+Today and Plan use the same spine vocabulary:
+
+- a fine structural rail
+- compact, squared timeline glyphs
+- orange for movement and changes
+- green for commitments and dependable actions
+- one dark-green emphasis surface only for the immediate next movement
+- shared appointment, station, transfer, gap and base treatments
+
+Plan variables use a common three-readout grid. Movement cards use the same route, timing, spare-time and risk hierarchy whether they appear during planning or on the live day.
+
 ### Transport and documents
 
-Timeline nodes, rail legs, transfers, live status, tickets and passes are one component family wherever they appear. Today may show a compact operational ticket; Bookings may show it in a list; Wallet may show the full pass. Their identity and states remain consistent.
+Timeline nodes, rail legs, transfers, live status, tickets and passes are one component family wherever they appear.
+
+- Today shows a compact operational pass.
+- Plan docks the same pass into the itinerary.
+- Bookings and Wallet may expand the document with changes, seats, restrictions and price.
+- The operator band, route codes, timing hierarchy, status language and ticket action remain recognisably the same.
+
+The document family is modern and technical rather than decorative paper cosplay. A route or line accent identifies the mode; it does not restyle the entire component.
+
+### Sheets
+
+All plan, import and edit dialogs use the shared `Sheet` primitive. Mobile presents a bottom sheet with safe-area padding; tablet and desktop use a centred, bounded dialog. Focus, Escape handling and opener restoration remain owned by the component.
 
 ## Migration sequence
 
-1. **Foundation** — shared tokens, shell, typography, controls, surfaces and status language.
-2. **Common components** — navigation, cards, sheets, itinerary primitives, tickets and passes.
+1. **Foundation** — shared tokens, shell, typography, controls, surfaces and status language. Complete in Pass 1.
+2. **Common components** — navigation, cards, sheets, itinerary primitives, tickets and passes. Established in Pass 2.
 3. **Primary flows** — Today and Plan migrate together.
 4. **Secondary surfaces** — Trips, Bookings, Wallet, live updates, wayfinding and settings.
 5. **Coherence audit** — remove route-level appearance rules and test all supported widths.
