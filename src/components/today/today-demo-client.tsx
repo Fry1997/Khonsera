@@ -19,17 +19,21 @@ import {
 // LiveDay, TodaySpine, pass and navigation components as the real screen, so
 // fixes and design changes carry to both without maintaining a second UI.
 
-const HARPENDEN = {
-  lat: 51.8176,
-  lng: -0.354,
-  name: "Home, Harpenden",
+const HOME = {
+  lat: 52.2962,
+  lng: -0.6896,
+  name: "Home, Wellingborough",
 };
+const WELLINGBOROUGH = { lat: 52.3038, lng: -0.6767 };
 const LUTON = { lat: 51.8821, lng: -0.4147 };
-const WELLINGBOROUGH = { lat: 52.2962, lng: -0.6896 };
+const HARPENDEN = { lat: 51.8147, lng: -0.3516 };
+const REVIEW = { lat: 51.8162, lng: -0.3572 };
 
-const DEPARTURE_MINUTES = 45;
-const ARRIVAL_MINUTES = 70;
-const REVIEW_MINUTES = 95;
+const WEL_DEPARTURE_MINUTES = 45;
+const LUT_ARRIVAL_MINUTES = 68;
+const LUT_DEPARTURE_MINUTES = 74;
+const HPD_ARRIVAL_MINUTES = 85;
+const REVIEW_MINUTES = 98;
 
 const londonClock = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -79,38 +83,78 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
     [base],
   );
 
-  const ticket: TicketVM = useMemo(
+  const firstTicket: TicketVM = useMemo(
     () => ({
-      id: "demo-luton-run",
+      id: "demo-wellingborough-luton",
       kind: "rail",
       operator: "East Midlands Railway",
-      reference: "DEMO 24B",
+      reference: "DEMO WEL-01",
       source: "forwarded",
       consequence:
-        "The Wellingborough arrival leaves a protected walk to the review.",
+        "Your arrival at Luton leaves a protected six-minute change.",
       legs: [
         {
-          id: "demo-luton-leg",
+          id: "demo-wellingborough-luton-leg",
           origin: {
-            place: "Luton",
-            code: "LUT",
-            time: at(DEPARTURE_MINUTES),
+            place: "Wellingborough",
+            code: "WEL",
+            time: at(WEL_DEPARTURE_MINUTES),
             platform: "2",
           },
           destination: {
-            place: "Wellingborough",
-            code: "WEL",
-            time: at(ARRIVAL_MINUTES),
+            place: "Luton",
+            code: "LUT",
+            time: at(LUT_ARRIVAL_MINUTES),
           },
-          durationMinutes: 25,
+          durationMinutes: 23,
           travelClass: "Standard",
           ticketType: "Off-Peak Day Single",
           coach: "B",
-          seat: "24 · table",
+          seat: "42 · table",
           barcodes: [
             {
               format: "aztec",
-              value: "KHONSERA-DEMO-NOT-A-VALID-TICKET",
+              value: "KHONSERA-DEMO-WEL-LUT-NOT-A-VALID-TICKET",
+              passengerLabel: "Demo passenger",
+            },
+          ],
+          status: { status: "on_time", label: "On time" },
+        },
+      ],
+    }),
+    [at],
+  );
+
+  const secondTicket: TicketVM = useMemo(
+    () => ({
+      id: "demo-luton-harpenden",
+      kind: "rail",
+      operator: "Thameslink",
+      reference: "DEMO LUT-02",
+      source: "forwarded",
+      consequence:
+        "Harpenden station leaves a short, comfortable walk to the review.",
+      legs: [
+        {
+          id: "demo-luton-harpenden-leg",
+          origin: {
+            place: "Luton",
+            code: "LUT",
+            time: at(LUT_DEPARTURE_MINUTES),
+            platform: "4",
+          },
+          destination: {
+            place: "Harpenden",
+            code: "HPD",
+            time: at(HPD_ARRIVAL_MINUTES),
+          },
+          durationMinutes: 11,
+          travelClass: "Standard",
+          ticketType: "Anytime Day Single",
+          barcodes: [
+            {
+              format: "aztec",
+              value: "KHONSERA-DEMO-LUT-HPD-NOT-A-VALID-TICKET",
               passengerLabel: "Demo passenger",
             },
           ],
@@ -124,40 +168,62 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
   const anchors: SpineAnchor[] = useMemo(
     () => [
       {
-        id: "demo-luton",
+        id: "demo-wellingborough",
         type: "transport_arrival",
-        title: "Luton Station",
-        arriveByIso: at(DEPARTURE_MINUTES),
-        endIso: at(DEPARTURE_MINUTES),
-        coord: LUTON,
+        title: "Wellingborough Station",
+        arriveByIso: at(WEL_DEPARTURE_MINUTES),
+        endIso: at(WEL_DEPARTURE_MINUTES),
+        coord: WELLINGBOROUGH,
         plannedTravelMinutes: 16,
         bufferMinutes: 8,
+        navMode: navModeForTransition("walk"),
+        station: {
+          name: "Wellingborough",
+          code: "WEL",
+          kind: "rail_station",
+        },
+        role: "departure",
+        pass: {
+          ticket: firstTicket,
+          crs: "WEL",
+          time: londonClock(at(WEL_DEPARTURE_MINUTES)),
+          dest: "LUT",
+        },
+      },
+      {
+        id: "demo-luton-change",
+        type: "transport_arrival",
+        title: "Luton Station",
+        arriveByIso: at(LUT_ARRIVAL_MINUTES),
+        endIso: at(LUT_DEPARTURE_MINUTES),
+        coord: LUTON,
+        plannedTravelMinutes: null,
         navMode: navModeForTransition("walk"),
         station: {
           name: "Luton",
           code: "LUT",
           kind: "rail_station",
         },
-        role: "departure",
+        role: "changeover",
         pass: {
-          ticket,
+          ticket: secondTicket,
           crs: "LUT",
-          time: londonClock(at(DEPARTURE_MINUTES)),
-          dest: "WEL",
+          time: londonClock(at(LUT_DEPARTURE_MINUTES)),
+          dest: "HPD",
         },
       },
       {
-        id: "demo-wellingborough",
+        id: "demo-harpenden",
         type: "transport_arrival",
-        title: "Wellingborough Station",
-        arriveByIso: at(ARRIVAL_MINUTES),
-        endIso: at(ARRIVAL_MINUTES),
-        coord: WELLINGBOROUGH,
-        plannedTravelMinutes: 25,
+        title: "Harpenden Station",
+        arriveByIso: at(HPD_ARRIVAL_MINUTES),
+        endIso: at(HPD_ARRIVAL_MINUTES),
+        coord: HARPENDEN,
+        plannedTravelMinutes: null,
         navMode: navModeForTransition("walk"),
         station: {
-          name: "Wellingborough",
-          code: "WEL",
+          name: "Harpenden",
+          code: "HPD",
           kind: "rail_station",
         },
         role: "arrival",
@@ -166,18 +232,18 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
         id: "demo-review",
         type: "appointment",
         title: "Project review",
-        place: "Wellingborough",
+        place: "The Brew, Harpenden",
         arriveByIso: at(REVIEW_MINUTES),
         endIso: at(REVIEW_MINUTES + 60),
-        coord: WELLINGBOROUGH,
-        plannedTravelMinutes: 8,
-        bufferMinutes: 10,
+        coord: REVIEW,
+        plannedTravelMinutes: 6,
+        bufferMinutes: 7,
         navMode: navModeForTransition("walk"),
         station: null,
         role: "stop",
       },
     ],
-    [at, ticket],
+    [at, firstTicket, secondTicket],
   );
 
   return (
@@ -207,8 +273,7 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
       <div className="cc-demo-banner" role="status">
         <span className="cc-demo-banner-mark">Demo scenario</span>
         <span className="cc-demo-banner-copy">
-          This is isolated sample data, not your Today. It uses the production
-          Today components and live routing services, but cannot change your plan.
+          Sample itinerary only. Your real Today and account data remain untouched.
         </span>
         <Link href={"/settings" as Route} className="cc-demo-banner-link">
           Demo settings
@@ -220,7 +285,7 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
           <div className="cc-demo-readout">
             <span className="cc-demo-readout-label">Scenario clock</span>
             <strong>{londonClock(new Date().toISOString())}</strong>
-            <span>Opened with all services on time</span>
+            <span>Sample journey starts from Wellingborough</span>
           </div>
         </div>
 
@@ -228,8 +293,8 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
           <div className="cc-today-command-content">
             <LiveDay
               anchors={anchors}
-              sub="Demo scenario · from Harpenden"
-              base={HARPENDEN}
+              sub="Demo journey · from Wellingborough"
+              base={HOME}
             />
           </div>
         </section>
@@ -238,7 +303,7 @@ export function TodayDemoClient({ weather }: { weather: LocalWeather | null }) {
           className="cc-day-primary"
           aria-label="Demo itinerary for project review"
         >
-          <TodaySpine anchors={anchors} nextId="demo-luton" />
+          <TodaySpine anchors={anchors} nextId="demo-wellingborough" />
         </section>
 
         <aside className="cc-day-context" aria-label="About this demo">
