@@ -3,8 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
-const demo = readFileSync(
+const gate = readFileSync(
   join(root, "src/components/today/today-demo.tsx"),
+  "utf8",
+);
+const demo = readFileSync(
+  join(root, "src/components/today/today-demo-client.tsx"),
   "utf8",
 );
 const demoMode = readFileSync(
@@ -37,7 +41,10 @@ describe("staff Today demo boundary", () => {
     expect(demo).not.toContain("setLiveTransitionProgress");
   });
 
-  it("keeps activation staff-only and returns to a clean Today route", () => {
+  it("uses the Settings switch as the authority for every entry point", () => {
+    expect(gate).toContain("isDemoModeActive");
+    expect(gate).toContain('redirect("/today")');
+    expect(gate).toContain("<TodayDemoClient");
     expect(demoMode).toContain("if (!ctx.isStaff) return false");
     expect(demoMode).toContain('throw new Error("Demo mode is staff-only")');
     expect(action).toContain('redirect("/today")');
