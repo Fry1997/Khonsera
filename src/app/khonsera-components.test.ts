@@ -13,6 +13,10 @@ const primaryFlows = readFileSync(
   join(root, "src/app/khonsera-primary-flows.css"),
   "utf8",
 );
+const secondarySurfaces = readFileSync(
+  join(root, "src/app/khonsera-secondary-surfaces.css"),
+  "utf8",
+);
 const todayPage = readFileSync(
   join(root, "src/app/(app)/today/page.tsx"),
   "utf8",
@@ -23,14 +27,16 @@ const planPage = readFileSync(
 );
 
 describe("app-wide Khonsera component system", () => {
-  it("loads foundation, components and primary flows in authority order", () => {
+  it("loads every shared layer in authority order", () => {
     const foundationIndex = layout.indexOf('"./khonsera-system.css"');
     const componentIndex = layout.indexOf('"./khonsera-components.css"');
     const primaryFlowIndex = layout.indexOf('"./khonsera-primary-flows.css"');
+    const secondaryIndex = layout.indexOf('"./khonsera-secondary-surfaces.css"');
 
     expect(foundationIndex).toBeGreaterThan(-1);
     expect(componentIndex).toBeGreaterThan(foundationIndex);
     expect(primaryFlowIndex).toBeGreaterThan(componentIndex);
+    expect(secondaryIndex).toBeGreaterThan(primaryFlowIndex);
   });
 
   it("keeps palette and component appearance in central app layers", () => {
@@ -80,6 +86,21 @@ describe("app-wide Khonsera component system", () => {
       ".cc-today-head, .cc-day-header",
     ]) {
       expect(primaryFlows).toContain(selector);
+    }
+  });
+
+  it("covers the secondary route families without route-specific palettes", () => {
+    for (const selector of [
+      ".cc-plan-group",
+      ".cc-journey-card",
+      ".cc-wallet",
+      ".cc-pass--peek",
+      ".cc-task-row",
+      ".cc-list-row",
+      ".cc-total-bar",
+      ".cc-empty",
+    ]) {
+      expect(secondarySurfaces).toContain(selector);
     }
   });
 });
