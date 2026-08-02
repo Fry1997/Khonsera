@@ -1,9 +1,9 @@
-// Demo mode is a per-session toggle available ONLY to staff users.
-// When demo mode is on, integration stubs return realistic mock data so the
-// full flow can be clicked through end-to-end without real API keys. Real
-// users never see demo data — they always go through the real (or honestly
-// unbuilt) flows. The flag is read from a signed cookie, but acceptance is
-// gated by profiles.is_staff server-side.
+// Demo mode is a staff-only selector for an isolated Today scenario.
+//
+// It does not replace, seed or mutate the signed-in user's itinerary. The
+// cookie only decides which data source the Today route projects: production
+// account data when off, fixed scenario data when on. Both paths render through
+// the same production components.
 
 import { cookies } from "next/headers";
 import { requireUserContext } from "@/lib/auth";
@@ -23,9 +23,15 @@ export async function setDemoMode(on: boolean) {
   if (!ctx.isStaff) {
     throw new Error("Demo mode is staff-only");
   }
+
   const store = await cookies();
   if (on) {
-    store.set(COOKIE, "on", { httpOnly: true, sameSite: "lax", path: "/" });
+    store.set(COOKIE, "on", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+    });
   } else {
     store.delete(COOKIE);
   }
