@@ -18,7 +18,8 @@ import "./khonsera-edition-iii-nav.css"; // Edition III N1 — premium guidance 
 import "./khonsera-instrument.css"; // Instrument Edition v8 compatibility and component coverage
 import "./khonsera-today-direction.css"; // Legacy route composition; visual rules migrate into the shared system
 import "./khonsera-screen-one.css"; // Legacy Today composition; no longer the final visual authority
-import "./khonsera-system.css"; // App-wide system — final authority across every authenticated route
+import "./khonsera-system.css"; // Pass 1 — app-wide tokens, shell, hierarchy and controls
+import "./khonsera-components.css"; // Pass 2 — shared navigation, itinerary, transport, document and sheet components
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical type stack:
