@@ -9,14 +9,28 @@ const components = readFileSync(
   join(root, "src/app/khonsera-components.css"),
   "utf8",
 );
+const primaryFlows = readFileSync(
+  join(root, "src/app/khonsera-primary-flows.css"),
+  "utf8",
+);
+const todayPage = readFileSync(
+  join(root, "src/app/(app)/today/page.tsx"),
+  "utf8",
+);
+const planPage = readFileSync(
+  join(root, "src/app/(app)/plan/[id]/page.tsx"),
+  "utf8",
+);
 
 describe("app-wide Khonsera component system", () => {
-  it("loads the shared component layer after the foundation", () => {
+  it("loads foundation, components and primary flows in authority order", () => {
     const foundationIndex = layout.indexOf('"./khonsera-system.css"');
     const componentIndex = layout.indexOf('"./khonsera-components.css"');
+    const primaryFlowIndex = layout.indexOf('"./khonsera-primary-flows.css"');
 
     expect(foundationIndex).toBeGreaterThan(-1);
     expect(componentIndex).toBeGreaterThan(foundationIndex);
+    expect(primaryFlowIndex).toBeGreaterThan(componentIndex);
   });
 
   it("keeps palette and component appearance in central app layers", () => {
@@ -49,6 +63,23 @@ describe("app-wide Khonsera component system", () => {
       ".cc-status-strip",
     ]) {
       expect(components).toContain(selector);
+    }
+  });
+
+  it("treats Today and Plan as one primary-flow family", () => {
+    expect(todayPage).toContain('className="cc-today-direction"');
+    expect(todayPage).toContain('className="cc-day-dashboard"');
+    expect(planPage).toContain('className="cc-plan-detail"');
+    expect(planPage).toContain('className="cc-plan-grid"');
+
+    for (const selector of [
+      ".cc-today-direction, .cc-plan-detail",
+      ".cc-day-dashboard, .cc-plan-grid",
+      ".cc-day-primary, .cc-plan-primary",
+      ".cc-day-context, .cc-plan-context",
+      ".cc-today-head, .cc-day-header",
+    ]) {
+      expect(primaryFlows).toContain(selector);
     }
   });
 });
