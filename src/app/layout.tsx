@@ -22,6 +22,7 @@ import "./khonsera-system.css"; // Pass 1 — app-wide tokens, shell, hierarchy 
 import "./khonsera-components.css"; // Pass 2 — shared navigation, itinerary, transport, document and sheet components
 import "./khonsera-primary-flows.css"; // Pass 3 — Today and Plan as one planning-to-operation product flow
 import "./khonsera-secondary-surfaces.css"; // Pass 4 — Plan index, Wallet and supporting list surfaces
+import "./khonsera-demo.css"; // Staff demo boundary — shared components, isolated scenario data
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical type stack:
