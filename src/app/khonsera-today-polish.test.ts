@@ -9,7 +9,7 @@ const polish = readFileSync(
   "utf8",
 );
 const demo = readFileSync(
-  join(root, "src/components/today/today-demo-client.tsx"),
+  join(root, "src/components/today/today-demo-v2-client.tsx"),
   "utf8",
 );
 
@@ -35,8 +35,10 @@ describe("Today card-by-card polish", () => {
     expect(demo).toContain("No stops, bookings or status are read from or");
   });
 
-  it("uses a coherent Wellingborough to Harpenden sample journey", () => {
+  it("uses a coherent five-stage Wellingborough to Harpenden sample journey", () => {
     expect(demo).toContain('name: "Home, Wellingborough"');
+    expect(demo).toContain('title: "Arrive at Wellingborough Station"');
+    expect(demo).toContain('id: "demo-wellingborough-departure-v2"');
     expect(demo).toContain('place: "Wellingborough"');
     expect(demo).toContain('place: "Luton"');
     expect(demo).toContain('place: "Harpenden"');
