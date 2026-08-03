@@ -1,0 +1,375 @@
+/*
+ * Today spine visual correction
+ *
+ * Final authority for the shared real/demo Today spine. This deliberately
+ * neutralises older timeline geometry before defining one icon family,
+ * reliable movement-header clearance and readable operational states.
+ */
+
+/* One grid, one rail and one marker container ----------------------------- */
+.khonsera-app .cc-today-direction .cc-node {
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  column-gap: 10px !important;
+  padding: 0 0 16px !important;
+  overflow: visible !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node:last-child {
+  padding-bottom: 0 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node-dot {
+  width: 38px !important;
+  min-width: 38px !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  position: relative !important;
+  inset: auto !important;
+  z-index: 4 !important;
+  padding: 14px 0 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node-dot::before,
+.khonsera-app .cc-today-direction .cc-node-dot::after {
+  content: none !important;
+  display: none !important;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-rail {
+  left: 18px !important;
+  width: 2px !important;
+  background: linear-gradient(
+    to bottom,
+    var(--kh-orange) 0 72px,
+    var(--kh-border-strong) 72px calc(100% - 20px),
+    transparent 100%
+  ) !important;
+  box-shadow: none !important;
+}
+
+/* Consistent, high-contrast icon family ---------------------------------- */
+.khonsera-app .cc-today-direction .cc-spine-icon {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  place-items: center !important;
+  position: relative !important;
+  inset: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 1px solid color-mix(in srgb, var(--kh-green) 42%, var(--kh-border-strong)) !important;
+  border-radius: 9px 9px 9px 3px !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-green-strong) !important;
+  box-shadow: 0 4px 12px -9px rgba(7, 58, 52, 0.75) !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon svg {
+  width: 17px !important;
+  height: 17px !important;
+  display: block !important;
+  overflow: visible !important;
+  color: inherit !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.9 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon svg * {
+  fill: none !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  vector-effect: non-scaling-stroke;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="walk"],
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="cycle"],
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="drive"],
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="change"] {
+  border-color: color-mix(in srgb, var(--kh-orange) 50%, var(--kh-border-strong)) !important;
+  background: var(--kh-orange-soft) !important;
+  color: var(--kh-orange-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="hub"],
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="appointment"] {
+  border-color: color-mix(in srgb, var(--kh-green) 46%, var(--kh-border-strong)) !important;
+  background: var(--kh-green-soft) !important;
+  color: var(--kh-green-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="train"] {
+  border-color: var(--kh-orange-strong) !important;
+  background: var(--kh-orange-strong) !important;
+  color: #fff !important;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="now"],
+.khonsera-app .cc-today-direction .cc-spine-icon[data-active="true"]:not([data-kind="train"]) {
+  border-color: var(--kh-green-strong) !important;
+  background: var(--kh-green-strong) !important;
+  color: #fff !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node--now .cc-node-dot {
+  padding-top: 0 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node--now .cc-spine-icon {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  margin-top: 2px !important;
+}
+
+/* Movement card: badge lives inside the card, clear of its accent line ---- */
+.khonsera-app .cc-today-direction .cc-walk {
+  padding: 22px 14px 14px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--kh-border-strong) !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink) !important;
+  box-shadow: 0 8px 20px -20px rgba(39, 31, 20, 0.7) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk::before {
+  top: 0 !important;
+  right: 0 !important;
+  left: 0 !important;
+  height: 4px !important;
+  background: var(--kh-orange) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-head {
+  min-height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: static !important;
+  inset: auto !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-mode {
+  min-height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  margin: 0 !important;
+  padding: 4px 8px !important;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 42%, var(--kh-border)) !important;
+  border-radius: 6px 6px 6px 2px !important;
+  background: var(--kh-orange-soft) !important;
+  color: var(--kh-orange-strong) !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-mode::before,
+.khonsera-app .cc-today-direction .cc-walk-mode::after {
+  content: none !important;
+  display: none !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-mins,
+.khonsera-app .cc-today-direction .cc-walk-time,
+.khonsera-app .cc-today-direction .cc-walk-dest {
+  color: var(--kh-ink-2) !important;
+  opacity: 1 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-mins {
+  font-size: 13px !important;
+  font-weight: 720 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-window {
+  margin-top: 12px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-rule {
+  background: var(--kh-border-strong) !important;
+  opacity: 1 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-dest {
+  margin-top: 11px !important;
+  font-size: 11px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-spare {
+  min-height: 23px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 4px 7px !important;
+  border-radius: 6px 6px 6px 2px !important;
+  background: var(--kh-green-soft) !important;
+  color: var(--kh-green-strong) !important;
+  font-size: 9.5px !important;
+  font-weight: 760 !important;
+  opacity: 1 !important;
+}
+
+/* Hub, transfer and appointment cards ------------------------------------ */
+.khonsera-app .cc-today-direction .cc-station-card,
+.khonsera-app .cc-today-direction .cc-hub-arrival,
+.khonsera-app .cc-today-direction .cc-appt {
+  border-color: var(--kh-border-strong) !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink) !important;
+  box-shadow: 0 8px 20px -20px rgba(39, 31, 20, 0.65) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-station-card {
+  padding: 18px 16px 15px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-station-title,
+.khonsera-app .cc-today-direction .cc-station-time,
+.khonsera-app .cc-today-direction .cc-hub-arrival-copy strong {
+  color: var(--kh-ink) !important;
+  opacity: 1 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 48%, var(--kh-border-strong)) !important;
+  border-radius: 14px 14px 14px 5px !important;
+  background: var(--kh-surface) !important;
+  color: var(--kh-ink) !important;
+  box-shadow: 0 8px 20px -20px rgba(39, 31, 20, 0.65) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: 0 !important;
+  height: 4px !important;
+  background: var(--kh-orange) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-main,
+.khonsera-app .cc-today-direction .cc-transfer-duration {
+  padding: 18px 14px 11px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-main strong,
+.khonsera-app .cc-today-direction .cc-transfer-window strong {
+  color: var(--kh-ink) !important;
+  opacity: 1 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-duration strong {
+  color: var(--kh-orange-strong) !important;
+  font-size: 13px !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-duration span,
+.khonsera-app .cc-today-direction .cc-transfer-window small {
+  color: var(--kh-ink-muted) !important;
+  opacity: 1 !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-window {
+  grid-column: 1 / -1 !important;
+  margin: 0 !important;
+  padding: 11px 14px 12px !important;
+  border-top: 1px solid color-mix(in srgb, var(--kh-orange) 28%, var(--kh-border)) !important;
+  background: var(--kh-orange-soft) !important;
+}
+
+/* Rail document contrast ------------------------------------------------- */
+.khonsera-app .cc-today-direction .cc-pass--docked {
+  border-color: var(--kh-border-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-today-head {
+  background: var(--kh-surface-subtle) !important;
+  color: var(--kh-ink) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-pass-today-status {
+  color: var(--kh-ink-2) !important;
+  opacity: 1 !important;
+}
+
+.khonsera-app .cc-today-direction :is(.cc-pass-consequence, .cc-ticket-consequence) {
+  padding: 9px 10px !important;
+  border-left: 3px solid var(--kh-green) !important;
+  background: color-mix(in srgb, var(--kh-green-soft) 68%, var(--kh-surface)) !important;
+  color: var(--kh-green-strong) !important;
+  font-size: 10px !important;
+  font-style: normal !important;
+  font-weight: 620 !important;
+  line-height: 1.4 !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 430px) {
+  .khonsera-app .cc-today-direction .cc-node {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    column-gap: 8px !important;
+  }
+
+  .khonsera-app .cc-today-direction .cc-node-dot {
+    width: 36px !important;
+    min-width: 36px !important;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-rail {
+    left: 17px !important;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-icon {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .khonsera-app .cc-today-direction .cc-walk {
+    padding-top: 21px !important;
+  }
+
+  .khonsera-app .cc-today-direction .cc-walk-dest {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 7px !important;
+  }
+}
