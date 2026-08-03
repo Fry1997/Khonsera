@@ -8,6 +8,12 @@ const PUBLIC_PATHS = [
   "/login",
   "/signup",
   "/forgot-password",
+  // PWA bootstrap/update assets must remain available before authentication.
+  // A service worker request cannot follow an HTML login redirect and will
+  // otherwise leave an installed app running an obsolete JavaScript bundle.
+  "/sw.js",
+  "/manifest.webmanifest",
+  "/offline",
   // /reset-password is intentionally NOT public — it requires the recovery
   // session that /auth/callback installs after the magic link exchange.
   "/auth/callback",
