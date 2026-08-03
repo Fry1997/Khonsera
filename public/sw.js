@@ -1,10 +1,10 @@
 /*
  * Khonsera service worker — the offline spine for the day-of surfaces.
  *
- * Hashed Next.js assets are cache-first. Page navigations are network-first and
- * fall back to the last known page only when the network is unavailable.
- * The deployment version is supplied in the service-worker URL so an installed
- * PWA cannot remain indefinitely on an older production JavaScript/CSS bundle.
+ * Only immutable, content-hashed Next.js assets are cache-first. Full document
+ * navigations are network-first with an offline fallback. Next.js router/RSC
+ * payloads are always network-only: caching those responses can combine a new
+ * application shell with an obsolete component tree after a deployment.
  */
 
 const deploymentVersion =
@@ -14,6 +14,7 @@ const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 
 const PRECACHE = ["/offline", "/manifest.webmanifest", "/icon.svg"];
+const SAFE_STATIC_PATHS = new Set(["/manifest.webmanifest", "/icon.svg"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -32,7 +33,9 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys();
       await Promise.all(
-        keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key)),
+        keys
+          .filter((key) => !key.startsWith(VERSION))
+          .map((key) => caches.delete(key)),
       );
       await self.clients.claim();
     })(),
@@ -58,18 +61,41 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin !== self.location.origin) return;
 
+  // React Server Component and Next router payloads are deployment-specific.
+  // Never read or write them through Cache Storage, even while online.
+  if (isNextRouteData(request, url)) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
+    return;
+  }
+
+  // These filenames are content-hashed, so a cache hit is always the same file.
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
+  // Full documents remain available offline, but online always wins.
   if (request.mode === "navigate") {
     event.respondWith(networkFirstPage(request));
     return;
   }
 
-  event.respondWith(staleWhileRevalidate(request));
+  // Cache only the deliberately offline-safe manifest and icon. API responses,
+  // route handlers and all other application data stay under normal networking.
+  if (SAFE_STATIC_PATHS.has(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(request));
+  }
 });
+
+function isNextRouteData(request, url) {
+  return Boolean(
+    url.pathname.startsWith("/_next/data/") ||
+      url.searchParams.has("_rsc") ||
+      request.headers.get("RSC") === "1" ||
+      request.headers.has("Next-Router-State-Tree") ||
+      request.headers.has("Next-Router-Prefetch"),
+  );
+}
 
 async function cacheFirst(request) {
   const cache = await caches.open(STATIC_CACHE);
