@@ -34,6 +34,12 @@ import { PwaRegister } from "@/components/pwa-register";
 //   • JetBrains Mono  — codes, times, eyebrows and technical travel labels.
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
+const deploymentVersion =
+  process.env.VERCEL_GIT_COMMIT_SHA ??
+  process.env.VERCEL_DEPLOYMENT_ID ??
+  process.env.NEXT_PUBLIC_APP_VERSION ??
+  "development";
+
 export const metadata: Metadata = {
   title: "Khonsera — travel days that run on time.",
   description:
@@ -78,7 +84,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
-        <PwaRegister />
+        <PwaRegister version={deploymentVersion} />
       </body>
     </html>
   );

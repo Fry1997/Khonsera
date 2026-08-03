@@ -1,25 +1,18 @@
 /*
- * Khonsera service worker — the offline spine for the day-of surfaces. The point
- * is the barrier: you got off the train with no signal and needed your Aztec. The
- * Aztec already draws on-device (bwip-js) from a saved payload; what was missing
- * was the app booting at all with no network. This caches the shell so it does.
+ * Khonsera service worker — the offline spine for the day-of surfaces.
  *
- * Conservative by design (it ships to the live PWA on a real phone):
- *   - Hashed build assets (/_next/static) → cache-first (safe: content-hashed).
- *   - Page navigations → network-first, fall back to the last cached snapshot,
- *     then to /offline (which reads the on-device ticket cache). So fresh content
- *     online, last-known content offline — never a stale app that can't update.
- *   - Cross-origin (Supabase, Darwin, fonts) is never touched — those just fail
- *     offline and the UI keeps its last-known state.
- *
- * Bump VERSION to roll the caches (old ones are deleted on activate).
+ * Hashed Next.js assets are cache-first. Page navigations are network-first and
+ * fall back to the last known page only when the network is unavailable.
+ * The deployment version is supplied in the service-worker URL so an installed
+ * PWA cannot remain indefinitely on an older production JavaScript/CSS bundle.
  */
 
-const VERSION = "khonsera-v2";
+const deploymentVersion =
+  new URL(self.location.href).searchParams.get("v") || "development";
+const VERSION = `khonsera-${deploymentVersion}`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 
-// Minimal precache: the emergency offline ticket surface + the icons/manifest.
 const PRECACHE = ["/offline", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -39,74 +32,87 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys();
       await Promise.all(
-        keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k)),
+        keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key)),
       );
       await self.clients.claim();
     })(),
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    void self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  if (req.method !== "GET") return;
+  const request = event.request;
+  if (request.method !== "GET") return;
 
   let url;
   try {
-    url = new URL(req.url);
+    url = new URL(request.url);
   } catch {
     return;
   }
-  // Only ever handle our own origin — never proxy Supabase / Darwin / fonts.
+
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.startsWith("/_next/static/")) {
-    event.respondWith(cacheFirst(req));
+    event.respondWith(cacheFirst(request));
     return;
   }
-  if (req.mode === "navigate") {
-    event.respondWith(networkFirstPage(req));
+
+  if (request.mode === "navigate") {
+    event.respondWith(networkFirstPage(request));
     return;
   }
-  // Same-origin static files (icons, brand images, manifest).
-  event.respondWith(staleWhileRevalidate(req));
+
+  event.respondWith(staleWhileRevalidate(request));
 });
 
-async function cacheFirst(req) {
+async function cacheFirst(request) {
   const cache = await caches.open(STATIC_CACHE);
-  const hit = await cache.match(req);
+  const hit = await cache.match(request);
   if (hit) return hit;
+
   try {
-    const res = await fetch(req);
-    if (res.ok) cache.put(req, res.clone());
-    return res;
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
   } catch {
     return hit || Response.error();
   }
 }
 
-async function networkFirstPage(req) {
+async function networkFirstPage(request) {
   const cache = await caches.open(PAGE_CACHE);
+
   try {
-    const res = await fetch(req);
-    // Cache only real, full responses (not opaque redirects/partials).
-    if (res.ok && res.type === "basic") cache.put(req, res.clone());
-    return res;
+    const response = await fetch(request, { cache: "no-store" });
+    if (response.ok && response.type === "basic") {
+      await cache.put(request, response.clone());
+    }
+    return response;
   } catch {
-    const hit = await cache.match(req);
+    const hit = await cache.match(request);
     if (hit) return hit;
     const offline = await caches.match("/offline");
     return offline || Response.error();
   }
 }
 
-async function staleWhileRevalidate(req) {
+async function staleWhileRevalidate(request) {
   const cache = await caches.open(STATIC_CACHE);
-  const hit = await cache.match(req);
-  const fetching = fetch(req)
-    .then((res) => {
-      if (res.ok && res.type === "basic") cache.put(req, res.clone());
-      return res;
+  const hit = await cache.match(request);
+  const fetching = fetch(request)
+    .then(async (response) => {
+      if (response.ok && response.type === "basic") {
+        await cache.put(request, response.clone());
+      }
+      return response;
     })
     .catch(() => hit);
+
   return hit || fetching;
 }
