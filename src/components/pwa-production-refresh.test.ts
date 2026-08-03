@@ -32,4 +32,20 @@ describe("production PWA refresh", () => {
     expect(worker).toContain('{ cache: "no-store" }');
     expect(worker).toContain('event.data?.type === "SKIP_WAITING"');
   });
+
+  it("never caches Next router or React Server Component responses", () => {
+    expect(worker).toContain("function isNextRouteData");
+    expect(worker).toContain('url.searchParams.has("_rsc")');
+    expect(worker).toContain('request.headers.get("RSC") === "1"');
+    expect(worker).toContain('request.headers.has("Next-Router-State-Tree")');
+    expect(worker).toContain('request.headers.has("Next-Router-Prefetch")');
+    expect(worker).toContain('fetch(request, { cache: "no-store" })');
+  });
+
+  it("limits non-hashed cache writes to explicit offline-safe assets", () => {
+    expect(worker).toContain("const SAFE_STATIC_PATHS");
+    expect(worker).toContain('"/manifest.webmanifest"');
+    expect(worker).toContain('"/icon.svg"');
+    expect(worker).not.toContain("event.respondWith(staleWhileRevalidate(request));\n});");
+  });
 });
