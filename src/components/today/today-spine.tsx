@@ -50,6 +50,16 @@ function iso(value: number | null): string | null {
   return value == null ? null : new Date(value).toISOString();
 }
 
+function minutesBetween(
+  startIso: string | null | undefined,
+  endIso: string | null | undefined,
+): number | null {
+  const start = ms(startIso);
+  const end = ms(endIso);
+  if (start == null || end == null) return null;
+  return Math.max(0, Math.round((end - start) / 60_000));
+}
+
 function normalisePlace(value: string | null | undefined): string {
   return (value ?? "")
     .toLowerCase()
@@ -100,21 +110,19 @@ function movementTimes(
         ? preferredDepartureMs
         : Math.max(preferredDepartureMs, notBeforeMs);
     const arriveMs = departMs + durationMs;
-    const spare = Math.round((targetMs - arriveMs) / 60_000);
     return {
       departIso: iso(departMs),
       arriveIso: iso(arriveMs),
-      spareMinutes: spare,
+      spareMinutes: Math.round((targetMs - arriveMs) / 60_000),
     };
   }
 
   if (previousEndMs != null) {
     const arriveMs = previousEndMs + durationMs;
-    const spare = Math.round((targetMs - arriveMs) / 60_000);
     return {
       departIso: iso(previousEndMs),
       arriveIso: iso(arriveMs),
-      spareMinutes: spare,
+      spareMinutes: Math.round((targetMs - arriveMs) / 60_000),
     };
   }
 
@@ -149,7 +157,7 @@ function SpineIcon({
 }) {
   return (
     <span
-      className="cc-spine-icon"
+      className="kh-spine-marker"
       data-kind={kind}
       data-active={active || undefined}
       aria-hidden
@@ -274,15 +282,17 @@ export function TodaySpine({
   };
 
   return (
-    <section>
-      <div className="cc-spine-heading">
-        <span className="cc-eyebrow">Your itinerary</span>
-        <span>
+    <section className="kh-today-itinerary">
+      <div className="kh-itinerary-head">
+        <h2 className="kh-itinerary-title">Your itinerary</h2>
+        <span className="kh-itinerary-count">
           {visualPointCount} timed point{visualPointCount === 1 ? "" : "s"}
         </span>
       </div>
-      <div className="cc-spine">
-        <div className="cc-spine-rail" />
+
+      <div className="kh-spine">
+        <div className="kh-spine-rail" aria-hidden />
+
         {past.length ? (
           <Toggle
             label={`${past.length} earlier`}
@@ -290,6 +300,7 @@ export function TodaySpine({
             onClick={() => setShowPast((value) => !value)}
           />
         ) : null}
+
         {showPast
           ? past.map((anchor, index) => (
               <Entry
@@ -301,14 +312,16 @@ export function TodaySpine({
               />
             ))
           : null}
-        <div className="cc-node cc-node--now">
-          <div className="cc-node-dot">
+
+        <div className="kh-spine-node kh-spine-node--now">
+          <div className="kh-spine-marker-col">
             <SpineIcon kind="now" active />
           </div>
-          <span className="cc-now-row">
+          <span className="kh-spine-now-label">
             Now · {londonClock(new Date(now).toISOString())}
           </span>
         </div>
+
         {currentAndNear.map((anchor, index) => {
           const absoluteIndex = nextIndex + index;
           return (
@@ -321,6 +334,7 @@ export function TodaySpine({
             />
           );
         })}
+
         {later.length ? (
           <>
             <Toggle
@@ -345,6 +359,7 @@ export function TodaySpine({
           </>
         ) : null}
       </div>
+
       {scan ? (
         <ScanView
           summary={scan.summary}
@@ -437,44 +452,42 @@ function MovementCard({
     : (anchor.place ?? anchor.title);
 
   return (
-    <div className="cc-node" data-state={active ? "next" : "future"}>
-      <div className="cc-node-dot">
+    <div
+      className="kh-spine-node kh-spine-node--movement"
+      data-state={active ? "next" : "future"}
+    >
+      <div className="kh-spine-marker-col">
         <SpineIcon kind={iconKind} active={active} />
       </div>
-      <div className="pg cc-walk">
-        <div className="cc-walk-head">
-          <span className="cc-walk-mode">{mode}</span>
-          <span className="cc-walk-mins mono engr">
+      <article className="kh-movement-card">
+        <header className="kh-movement-head">
+          <span className="kh-mode-tag">{mode}</span>
+          <strong className="kh-movement-duration mono">
             {anchor.plannedTravelMinutes} min
-          </span>
-        </div>
+          </strong>
+        </header>
+
         {movement.departIso && movement.arriveIso ? (
-          <div className="cc-walk-window">
-            <span className="mono cc-walk-time">
-              {londonClock(movement.departIso)}
-            </span>
-            <span className="cc-walk-rule" aria-hidden />
-            <span className="mono cc-walk-time">
-              {londonClock(movement.arriveIso)}
-            </span>
+          <div className="kh-movement-times">
+            <time className="mono">{londonClock(movement.departIso)}</time>
+            <span className="kh-movement-rule" aria-hidden />
+            <time className="mono">{londonClock(movement.arriveIso)}</time>
           </div>
         ) : null}
-        <div className="cc-walk-dest">
+
+        <div className="kh-movement-destination">
           <span>→ {destination}</span>
           {movement.spareMinutes != null && movement.spareMinutes > 0 ? (
-            <span className="cc-walk-spare">
+            <span className="kh-buffer-chip">
               {movement.spareMinutes} min spare
             </span>
           ) : movement.spareMinutes != null && movement.spareMinutes < 0 ? (
-            <span className="cc-walk-spare">
+            <span className="kh-buffer-chip" data-state="late">
               {Math.abs(movement.spareMinutes)} min late
             </span>
           ) : null}
         </div>
-        <div className="cc-walk-foot">
-          <span className="sb">Planned</span>
-        </div>
-      </div>
+      </article>
     </div>
   );
 }
@@ -495,24 +508,21 @@ function HubArrivalCard({
   const dwell = movement.spareMinutes;
 
   return (
-    <div className="cc-node" data-state={state}>
-      <div className="cc-node-dot">
+    <div className="kh-spine-node" data-state={state}>
+      <div className="kh-spine-marker-col">
         <SpineIcon kind="hub" />
       </div>
-      <div
-        className="cc-hub-arrival"
-        data-past={state === "past" || undefined}
-      >
-        <div className="cc-hub-arrival-copy">
-          <span className="cc-eyebrow">Arrive at station</span>
+      <article className="kh-hub-card" data-past={state === "past" || undefined}>
+        <div className="kh-hub-copy">
+          <span className="kh-card-eyebrow">Arrive at station</span>
           <strong>{anchor.title}</strong>
         </div>
-        <div className="cc-hub-arrival-window">
+        <div className="kh-hub-times">
           <span>
             <small>Arrive</small>
             <strong className="mono">{arrival ?? "—"}</strong>
           </span>
-          <span className="cc-hub-arrival-arrow" aria-hidden>
+          <span className="kh-time-arrow" aria-hidden>
             →
           </span>
           <span>
@@ -521,11 +531,9 @@ function HubArrivalCard({
           </span>
         </div>
         {dwell != null && dwell > 0 ? (
-          <span className="cc-hub-arrival-buffer">
-            {dwell} min at station
-          </span>
+          <span className="kh-buffer-chip">{dwell} min at station</span>
         ) : null}
-      </div>
+      </article>
     </div>
   );
 }
@@ -538,37 +546,34 @@ function AppointmentCard({
   state: State;
 }) {
   return (
-    <div className="cc-node" data-state={state}>
-      <div className="cc-node-dot">
+    <div className="kh-spine-node" data-state={state}>
+      <div className="kh-spine-marker-col">
         <SpineIcon kind="appointment" />
       </div>
-      <div className="pg cc-appt" data-past={state === "past" || undefined}>
-        <div className="cc-appt-head">
-          <span className="cc-eyebrow">{TYPE_LABEL[anchor.type]}</span>
-        </div>
-        <h3 className="cc-appt-title">{anchor.title}</h3>
+      <article
+        className="kh-appointment-card"
+        data-past={state === "past" || undefined}
+      >
+        <span className="kh-card-eyebrow">{TYPE_LABEL[anchor.type]}</span>
+        <h3>{anchor.title}</h3>
         {anchor.place && anchor.place !== anchor.title ? (
-          <p className="cc-appt-sub">{anchor.place}</p>
+          <p>{anchor.place}</p>
         ) : null}
-        <div className="cc-appt-times">
+        <div className="kh-appointment-times">
           {anchor.arriveByIso ? (
-            <span className="cc-appt-time">
-              <span className="cc-eyebrow">Starts</span>
-              <span className="mono engr cc-appt-clock">
-                {londonClock(anchor.arriveByIso)}
-              </span>
+            <span>
+              <small>Starts</small>
+              <strong className="mono">{londonClock(anchor.arriveByIso)}</strong>
             </span>
           ) : null}
           {anchor.endIso ? (
-            <span className="cc-appt-time">
-              <span className="cc-eyebrow">Ends</span>
-              <span className="mono engr cc-appt-clock">
-                {londonClock(anchor.endIso)}
-              </span>
+            <span>
+              <small>Ends</small>
+              <strong className="mono">{londonClock(anchor.endIso)}</strong>
             </span>
           ) : null}
         </div>
-      </div>
+      </article>
     </div>
   );
 }
@@ -584,24 +589,26 @@ function AnchorCard({
   const eyebrow = station
     ? roleLabel(anchor.role, station)
     : TYPE_LABEL[anchor.type];
+  const dwell = station ? minutesBetween(anchor.arriveByIso, anchor.endIso) : null;
 
   return (
-    <div className="cc-node" data-state={state}>
-      <div className="cc-node-dot">
+    <div className="kh-spine-node" data-state={state}>
+      <div className="kh-spine-marker-col">
         <SpineIcon kind={station ? "hub" : "appointment"} />
       </div>
-      <div
-        className="cc-station-card"
+      <article
+        className="kh-station-card"
         data-past={state === "past" || undefined}
       >
-        <div className="cc-station-card-head">
-          <span className="cc-eyebrow">{eyebrow}</span>
-          <span className="mono cc-station-time">
-            {londonClock(anchor.arriveByIso)}
-          </span>
-        </div>
-        <strong className="cc-station-title">{anchor.title}</strong>
-      </div>
+        <header>
+          <span className="kh-card-eyebrow">{eyebrow}</span>
+          <time className="mono">{londonClock(anchor.arriveByIso)}</time>
+        </header>
+        <strong className="kh-station-title">{anchor.title}</strong>
+        {dwell != null && dwell > 0 ? (
+          <span className="kh-station-dwell">{dwell} min before departure</span>
+        ) : null}
+      </article>
     </div>
   );
 }
@@ -613,40 +620,33 @@ function ChangeCard({
   anchor: SpineAnchor;
   state: State;
 }) {
-  const arrive = ms(anchor.arriveByIso);
-  const depart = ms(anchor.endIso);
-  const minutes =
-    arrive != null && depart != null
-      ? Math.max(0, Math.round((depart - arrive) / 60_000))
-      : null;
+  const minutes = minutesBetween(anchor.arriveByIso, anchor.endIso);
 
   return (
-    <div className="cc-node" data-state={state}>
-      <div className="cc-node-dot">
+    <div className="kh-spine-node" data-state={state}>
+      <div className="kh-spine-marker-col">
         <SpineIcon kind="change" />
       </div>
-      <div
-        className="cc-transfer"
+      <article
+        className="kh-change-card"
         data-past={state === "past" || undefined}
       >
-        <div className="cc-transfer-main">
-          <span className="cc-eyebrow">Change at</span>
+        <div className="kh-change-main">
+          <span className="kh-card-eyebrow">Change at</span>
           <strong>{anchor.station?.name ?? anchor.title}</strong>
         </div>
         {minutes != null ? (
-          <div className="cc-transfer-duration">
+          <div className="kh-change-duration">
             <strong className="mono">{minutes} min</strong>
             <span>connection</span>
           </div>
         ) : null}
-        <div className="cc-transfer-window">
+        <div className="kh-change-times">
           <span>
             <small>Arrive</small>
-            <strong className="mono">
-              {londonClock(anchor.arriveByIso)}
-            </strong>
+            <strong className="mono">{londonClock(anchor.arriveByIso)}</strong>
           </span>
-          <span className="cc-transfer-arrow" aria-hidden>
+          <span className="kh-time-arrow" aria-hidden>
             →
           </span>
           <span>
@@ -654,7 +654,7 @@ function ChangeCard({
             <strong className="mono">{londonClock(anchor.endIso)}</strong>
           </span>
         </div>
-      </div>
+      </article>
     </div>
   );
 }
@@ -670,21 +670,24 @@ function PassCard({
 }) {
   return (
     <div
-      className="cc-node"
+      className="kh-spine-node kh-spine-node--pass"
       data-state={state}
       data-past={state === "past" || undefined}
     >
-      <div className="cc-node-dot">
+      <div className="kh-spine-marker-col">
         <SpineIcon kind="train" active={state === "next"} />
       </div>
-      <LivePass
-        ticket={pass.ticket}
-        crs={pass.crs}
-        time={pass.time}
-        dest={pass.dest}
-        docked
-        onShow={onShowTicket}
-      />
+      <div className="kh-pass-shell">
+        <LivePass
+          ticket={pass.ticket}
+          crs={pass.crs}
+          time={pass.time}
+          dest={pass.dest}
+          docked
+          today
+          onShow={onShowTicket}
+        />
+      </div>
     </div>
   );
 }
@@ -699,7 +702,7 @@ function Toggle({
   onClick: () => void;
 }) {
   return (
-    <button type="button" className="cc-spine-toggle" onClick={onClick}>
+    <button type="button" className="kh-spine-toggle" onClick={onClick}>
       {open ? "Hide" : "Show"} {label}
     </button>
   );
