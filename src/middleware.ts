@@ -7,7 +7,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on everything except static assets.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Authentication must never intercept the install/update assets used by the
+    // PWA. In particular, /sw.js must be returned as JavaScript even when no
+    // Supabase session is present; redirecting it to /login leaves installed
+    // clients permanently pinned to an old bundle.
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|offline|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
