@@ -8,7 +8,7 @@ const gate = readFileSync(
   "utf8",
 );
 const demo = readFileSync(
-  join(root, "src/components/today/today-demo-client.tsx"),
+  join(root, "src/components/today/today-demo-v2-client.tsx"),
   "utf8",
 );
 const demoCss = readFileSync(
@@ -50,7 +50,7 @@ describe("staff Today demo boundary", () => {
 
   it("preserves the natural Today header before presenting demo controls", () => {
     expect(gate).toContain("getLocalWeather");
-    expect(gate).toContain("<TodayDemoClient weather={weather}");
+    expect(gate).toContain("<TodayDemoV2Client weather={weather} buildId={buildId}");
     expect(demo).toContain('eyebrow="Today"');
     expect(demo).toContain('title="Right now"');
     expect(demo).toContain('className="cc-weather"');
@@ -64,12 +64,20 @@ describe("staff Today demo boundary", () => {
   it("uses the Settings switch as the authority for every entry point", () => {
     expect(gate).toContain("isDemoModeActive");
     expect(gate).toContain('redirect("/today")');
-    expect(gate).toContain("<TodayDemoClient");
+    expect(gate).toContain("<TodayDemoV2Client");
     expect(demoMode).toContain("if (!ctx.isStaff) return false");
     expect(demoMode).toContain('throw new Error("Demo mode is staff-only")');
     expect(action).toContain('redirect("/today")');
     expect(indicator).toContain('role="switch"');
     expect(indicator).toContain("Showing your real Today");
+  });
+
+  it("uses an explicit station arrival and exposes the deployed build", () => {
+    expect(demo).toContain('id: "demo-wellingborough-arrival-v2"');
+    expect(demo).toContain('title: "Arrive at Wellingborough Station"');
+    expect(demo).toContain('id: "demo-wellingborough-departure-v2"');
+    expect(demo).toContain("Build {buildId} · explicit hub stage");
+    expect(gate).toContain("VERCEL_GIT_COMMIT_SHA");
   });
 
   it("loads the demo identifier after the shared application system", () => {
