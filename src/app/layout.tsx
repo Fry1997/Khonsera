@@ -26,6 +26,7 @@ import "./khonsera-demo.css"; // Staff demo boundary — shared components, isol
 import "./khonsera-layout.css"; // Pass 5 — spacing, alignment and placement across every app route
 import "./khonsera-today-polish.css"; // Focused QA — Today cards, controls and itinerary hierarchy
 import "./khonsera-today-feedback.css"; // Detailed review — spine icons, hub dwell, transfers and badge spacing
+import "./khonsera-today-spine-fix.css"; // Final authority — consistent markers, badge clearance and readable states
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical type stack:
