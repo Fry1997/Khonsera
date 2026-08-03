@@ -25,6 +25,7 @@ import "./khonsera-secondary-surfaces.css"; // Pass 4 — Plan index, Wallet and
 import "./khonsera-demo.css"; // Staff demo boundary — shared components, isolated scenario data
 import "./khonsera-layout.css"; // Pass 5 — spacing, alignment and placement across every app route
 import "./khonsera-today-polish.css"; // Focused QA — Today cards, controls and itinerary hierarchy
+import "./khonsera-today-feedback.css"; // Detailed review — spine icons, hub dwell, transfers and badge spacing
 import { PwaRegister } from "@/components/pwa-register";
 
 // Canonical type stack:

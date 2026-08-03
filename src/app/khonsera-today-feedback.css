@@ -1,0 +1,343 @@
+/*
+ * Today feedback round 2
+ *
+ * Direct corrections from populated mobile review:
+ * - give movement badges breathing room beneath card accents
+ * - replace inherited geometric markers with one legible icon family
+ * - make connection timing a deliberate grid rather than floating metadata
+ * - expose arrival and dwell at transport hubs before the booked service
+ */
+
+/* Shared spine icon family ------------------------------------------------ */
+.khonsera-app .cc-today-direction .cc-node-dot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 7px;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon {
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--kh-border-strong);
+  border-radius: 999px;
+  background: var(--kh-surface);
+  color: var(--kh-green-strong);
+  box-shadow: 0 5px 14px -11px rgba(30, 28, 22, 0.8);
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="now"] {
+  width: 26px;
+  height: 26px;
+  margin-top: 3px;
+  border-color: var(--kh-green-strong);
+  background: var(--kh-green-strong);
+  color: #fff;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="hub"] {
+  border-color: color-mix(in srgb, var(--kh-green) 38%, var(--kh-border));
+  background: var(--kh-green-soft);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="change"] {
+  border-color: color-mix(in srgb, var(--kh-orange) 55%, var(--kh-border));
+  background: var(--kh-orange-soft);
+  color: var(--kh-orange-strong);
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="train"] {
+  border-color: var(--kh-orange);
+  background: var(--kh-orange);
+  color: #fff;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-kind="appointment"] {
+  background: var(--kh-surface);
+  color: var(--kh-green-strong);
+}
+
+.khonsera-app .cc-today-direction .cc-spine-icon[data-active="true"]:not([data-kind="train"]):not([data-kind="now"]) {
+  border-color: var(--kh-green-strong);
+  background: var(--kh-green-strong);
+  color: #fff;
+}
+
+.khonsera-app .cc-today-direction .cc-spine-rail {
+  left: 16px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    var(--kh-orange) 0 62px,
+    var(--kh-border-strong) 62px calc(100% - 28px),
+    transparent 100%
+  ) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node--now {
+  min-height: 36px;
+  padding-bottom: 7px;
+}
+
+/* Movement card and badge clearance -------------------------------------- */
+.khonsera-app .cc-today-direction .cc-walk {
+  padding: 17px 14px 13px;
+}
+
+.khonsera-app .cc-today-direction .cc-walk::before {
+  height: 3px;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-head {
+  min-height: 23px;
+  align-items: center;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-mode {
+  min-height: 21px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--kh-orange) 24%, var(--kh-border));
+  border-radius: 999px;
+  background: var(--kh-orange-soft);
+  line-height: 1;
+}
+
+.khonsera-app .cc-today-direction .cc-walk-mins {
+  line-height: 1;
+}
+
+/* Explicit arrival and dwell at a transport hub -------------------------- */
+.khonsera-app .cc-today-direction .cc-hub-arrival {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 11px 14px;
+  align-items: center;
+  padding: 14px 15px;
+  border: 1px solid var(--kh-border);
+  border-radius: 14px 14px 14px 5px;
+  background: var(--kh-surface);
+  color: var(--kh-ink);
+  box-shadow: 0 9px 22px -22px rgba(39, 31, 20, 0.72);
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-copy .cc-eyebrow {
+  color: var(--kh-orange-strong);
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-copy strong {
+  overflow: hidden;
+  color: var(--kh-ink);
+  font-size: 14px;
+  font-weight: 730;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-window {
+  display: grid;
+  grid-template-columns: auto 14px auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-window > span:not(.cc-hub-arrival-arrow) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-window small {
+  color: var(--kh-ink-faint);
+  font-family: var(--mono);
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-window strong {
+  color: var(--kh-ink);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-arrow {
+  color: var(--kh-orange);
+  font-size: 13px;
+}
+
+.khonsera-app .cc-today-direction .cc-hub-arrival-buffer {
+  grid-column: 1 / -1;
+  width: fit-content;
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--kh-green-soft);
+  color: var(--kh-success);
+  font-size: 9px;
+  font-weight: 720;
+}
+
+/* Transfer card: clear place, duration and time relationship -------------- */
+.khonsera-app .cc-today-direction .cc-transfer {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 11px 14px;
+  align-items: center;
+  padding: 14px 15px;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--kh-orange) 32%, var(--kh-border));
+  border-radius: 14px 14px 14px 5px;
+  background: color-mix(in srgb, var(--kh-orange-soft) 44%, var(--kh-surface));
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-main strong {
+  overflow: hidden;
+  color: var(--kh-ink);
+  font-size: 15px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-duration {
+  min-width: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-duration strong {
+  color: var(--kh-orange-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-duration span {
+  color: var(--kh-ink-faint);
+  font-size: 8px;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-window {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--kh-orange) 18%, var(--kh-border));
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-window > span:not(.cc-transfer-arrow) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-window small {
+  color: var(--kh-ink-muted);
+  font-size: 8px;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-window strong {
+  color: var(--kh-ink);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-arrow {
+  color: var(--kh-orange);
+  text-align: center;
+}
+
+@media (max-width: 430px) {
+  .khonsera-app .cc-today-direction .cc-node-dot {
+    width: 32px;
+    min-width: 32px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-spine-rail {
+    left: 15px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-hub-arrival {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-hub-arrival-window {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
+    padding-top: 9px;
+    border-top: 1px solid var(--kh-border);
+  }
+
+  .khonsera-app .cc-today-direction .cc-hub-arrival-window > span:last-child {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .khonsera-app .cc-today-direction .cc-transfer {
+    gap: 10px 12px;
+    padding: 13px 14px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-transfer-duration {
+    min-width: 62px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-transfer-window > span:not(.cc-transfer-arrow) {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .khonsera-app .cc-today-direction .cc-transfer-window > span:last-child {
+    align-items: flex-end;
+    text-align: right;
+  }
+}
