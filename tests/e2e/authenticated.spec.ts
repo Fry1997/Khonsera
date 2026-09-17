@@ -40,7 +40,7 @@ async function expectNoHorizontalOverflow(page: Page) {
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
-  expect(hasHorizontalOverflow).toBe(false);
+  expect.soft(hasHorizontalOverflow).toBe(false);
 }
 
 test("authenticated staff can use the real shell with isolated demo travel data", async ({
@@ -112,10 +112,10 @@ test("authenticated staff can use the real shell with isolated demo travel data"
     ]);
 
     await page.goto("/today");
-    await expect(page.getByRole("heading", { name: /right now/i })).toBeVisible();
-    await expect(page.getByText("Demo scenario", { exact: true })).toBeVisible();
-    await expect(page.getByText(/project review/i).first()).toBeVisible();
-    await expect(page.getByText(/wellingborough/i).first()).toBeVisible();
+    await expect.soft(page.getByRole("heading", { name: /right now/i })).toBeVisible();
+    await expect.soft(page.getByText("Demo scenario", { exact: true })).toBeVisible();
+    await expect.soft(page.getByText(/project review/i).first()).toBeVisible();
+    await expect.soft(page.getByText(/wellingborough/i).first()).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAccessibilityViolations(page);
     await page.screenshot({
@@ -126,8 +126,8 @@ test("authenticated staff can use the real shell with isolated demo travel data"
     // Exercise an authenticated data-backed surface against the real local
     // schema/RLS. A new test account should naturally see the empty Plan state.
     await page.goto("/plan");
-    await expect(page.getByRole("heading", { name: /what are you planning/i })).toBeVisible();
-    await expect(page.getByText(/nothing planned yet/i)).toBeVisible();
+    await expect.soft(page.getByRole("heading", { name: /what are you planning/i })).toBeVisible();
+    await expect.soft(page.getByText(/nothing planned yet/i)).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAccessibilityViolations(page);
     await page.screenshot({
@@ -135,7 +135,7 @@ test("authenticated staff can use the real shell with isolated demo travel data"
       fullPage: true,
     });
 
-    expect(browserErrors, `Browser errors: ${browserErrors.join("\n")}`).toEqual([]);
+    expect.soft(browserErrors, `Browser errors: ${browserErrors.join("\n")}`).toEqual([]);
   } finally {
     if (userId) await admin.auth.admin.deleteUser(userId);
   }
