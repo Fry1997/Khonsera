@@ -38,6 +38,8 @@ const deploymentVersion =
   process.env.NEXT_PUBLIC_APP_VERSION ??
   "development";
 
+const enableVercelTelemetry = process.env.VERCEL === "1";
+
 export const metadata: Metadata = {
   title: "Khonsera — travel days that run on time.",
   description:
@@ -83,7 +85,7 @@ export default function RootLayout({
       <body>
         {children}
         <PwaRegister version={deploymentVersion} />
-        <Observability />
+        <Observability enableVercelTelemetry={enableVercelTelemetry} />
       </body>
     </html>
   );
