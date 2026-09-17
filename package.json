@@ -14,8 +14,11 @@
     "db:types": "supabase gen types typescript --local > src/lib/types/database.ts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.75.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "bwip-js": "^4.10.1",
     "chrono-node": "^2.9.1",
     "class-variance-authority": "^0.7.0",
@@ -25,6 +28,7 @@
     "maplibre-gl": "^5.24.0",
     "next": "^15.5.18",
     "pmtiles": "^4.4.1",
+    "posthog-js": "^1.433.10",
     "protomaps-themes-base": "^4.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -34,6 +38,9 @@
     "zxing-wasm": "^3.0.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.63.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.7.5",
     "@types/react": "^19.0.0",
