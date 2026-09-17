@@ -68,6 +68,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # The remote database currently contains historical schema changes that
+          # are absent from git, so the production migration directory cannot yet
+          # recreate the project from zero. Authenticated browser testing must not
+          # depend on production or hide that drift. Start the local Supabase stack
+          # with a deliberately bounded E2E schema instead; migration reproducibility
+          # is tracked separately as recovery debt.
+          mv supabase/migrations /tmp/khonsera-production-migrations
+          mkdir -p supabase/migrations
+          cp tests/e2e/fixtures/0001_e2e_schema.sql supabase/migrations/0001_e2e_schema.sql
+
           npx supabase start
           status_env="$(npx supabase status -o env)"
           eval "$status_env"
