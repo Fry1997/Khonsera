@@ -24,6 +24,7 @@ import "./khonsera-demo.css"; // Staff demo boundary — shared components, isol
 import "./khonsera-layout.css"; // Pass 5 — spacing, alignment and placement across every app route
 import "./khonsera-today.css"; // Canonical Today composition — the sole route-specific visual authority
 import { PwaRegister } from "@/components/pwa-register";
+import { Observability } from "@/components/observability";
 
 // Canonical type stack:
 //
@@ -82,6 +83,7 @@ export default function RootLayout({
       <body>
         {children}
         <PwaRegister version={deploymentVersion} />
+        <Observability />
       </body>
     </html>
   );
