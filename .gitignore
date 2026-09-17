@@ -15,6 +15,11 @@ tsconfig.tsbuildinfo
 supabase/.branches
 supabase/.temp
 
+# Browser verification output (CI uploads these as short-lived artifacts)
+playwright-report/
+test-results/
+lighthouse-report/
+
 # Design export zip is a derived artifact (source lives in design-export/)
 design-export.zip
 
