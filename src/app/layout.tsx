@@ -38,7 +38,11 @@ const deploymentVersion =
   process.env.NEXT_PUBLIC_APP_VERSION ??
   "development";
 
-const enableVercelTelemetry = process.env.VERCEL === "1";
+// Vercel exposes VERCEL_ENV only inside a Vercel deployment. Using the
+// deployment environment rather than the more generic VERCEL flag keeps the
+// Analytics/Speed Insights script tags out of local and GitHub Actions builds,
+// where the /_vercel ingestion endpoints do not exist.
+const enableVercelTelemetry = Boolean(process.env.VERCEL_ENV);
 
 export const metadata: Metadata = {
   title: "Khonsera — travel days that run on time.",
