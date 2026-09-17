@@ -30,19 +30,27 @@ function PostHogInstrumentation() {
   return null;
 }
 
+type ObservabilityProps = {
+  enableVercelTelemetry: boolean;
+};
+
 /**
  * Root-level telemetry that is safe to render in every environment.
  * Sentry is initialised through Next instrumentation files; PostHog remains
  * dormant until both NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST are
- * supplied. Vercel's components are no-ops when their platform features are
- * not available.
+ * supplied. Vercel's browser scripts are rendered only on Vercel deployments;
+ * a plain local Next server does not serve their ingestion script endpoints.
  */
-export function Observability() {
+export function Observability({ enableVercelTelemetry }: ObservabilityProps) {
   return (
     <>
       <PostHogInstrumentation />
-      <Analytics />
-      <SpeedInsights />
+      {enableVercelTelemetry ? (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      ) : null}
     </>
   );
 }
