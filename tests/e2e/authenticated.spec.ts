@@ -135,6 +135,23 @@ test("authenticated staff can use the real shell with isolated demo travel data"
       fullPage: true,
     });
 
+    // Navigate's initial planning surface is client-side and does not require
+    // additional application tables, so it can be exercised against the same
+    // isolated Auth/RLS fixture without manufacturing backend dependencies.
+    await page.goto("/navigate");
+    await expect.soft(page.getByRole("heading", { name: /point to point/i })).toBeVisible();
+    await expect.soft(page.getByText("From", { exact: true })).toBeVisible();
+    await expect.soft(page.getByText("To", { exact: true })).toBeVisible();
+    await expect.soft(page.getByRole("button", { name: "Walk" })).toBeVisible();
+    await expect.soft(page.getByRole("button", { name: "Cycle" })).toBeVisible();
+    await expect.soft(page.getByRole("button", { name: "Drive" })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await expectNoSeriousAccessibilityViolations(page);
+    await page.screenshot({
+      path: `test-results/visual-evidence/${projectSlug}-navigate.png`,
+      fullPage: true,
+    });
+
     expect.soft(browserErrors, `Browser errors: ${browserErrors.join("\n")}`).toEqual([]);
   } finally {
     if (userId) await admin.auth.admin.deleteUser(userId);
