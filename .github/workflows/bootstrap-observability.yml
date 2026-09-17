@@ -29,10 +29,10 @@ jobs:
           cache: npm
 
       - name: Add runtime observability dependencies
-        run: npm install @sentry/nextjs posthog-js @vercel/analytics @vercel/speed-insights
+        run: npm install --legacy-peer-deps @sentry/nextjs posthog-js @vercel/analytics @vercel/speed-insights
 
       - name: Add browser, accessibility and performance test dependencies
-        run: npm install --save-dev @playwright/test @axe-core/playwright @lhci/cli
+        run: npm install --legacy-peer-deps --save-dev @playwright/test @axe-core/playwright @lhci/cli
 
       - name: Commit generated dependency lockfile
         run: |
