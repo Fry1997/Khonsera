@@ -1,13 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-async function expectNoSeriousAccessibilityViolations(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
+async function expectNoSeriousAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
 
-  const blocking = results.violations.filter((violation) =>
-    violation.impact === "serious" || violation.impact === "critical",
+  const blocking = results.violations.filter(
+    (violation) => violation.impact === "serious" || violation.impact === "critical",
   );
 
   expect(
