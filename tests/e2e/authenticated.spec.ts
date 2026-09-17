@@ -28,7 +28,7 @@ async function expectNoSeriousAccessibilityViolations(page: Page) {
     (violation) => violation.impact === "serious" || violation.impact === "critical",
   );
 
-  expect(
+  expect.soft(
     blocking,
     blocking
       .map((violation) => `${violation.id}: ${violation.help} (${violation.nodes.length} nodes)`)
