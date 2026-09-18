@@ -87,6 +87,7 @@ function ScanIco() {
 // service on the same platform. Fed by LivePass; absent in static contexts.
 export type BoardingVM = {
   platform?: string; // "2" — undefined means not announced yet
+  platformUnavailable?: boolean; // live source explicitly cannot confirm/display one
   toward?: string; // the train's final destination — "Corby"
   earlier?: string; // "Platform 2 also has the 17:25 to Bedford before yours"
 };
@@ -179,7 +180,10 @@ export function Pass({
   const showBoarding =
     !!boarding &&
     !isStay &&
-    (!!boarding.platform || !!boarding.toward || !!boarding.earlier);
+    (!!boarding.platform ||
+      !!boarding.platformUnavailable ||
+      !!boarding.toward ||
+      !!boarding.earlier);
   const passClassName = [
     "cc-pass",
     docked ? "cc-pass--docked" : null,
@@ -358,6 +362,10 @@ export function Pass({
           ) : null}
           {boarding!.earlier ? (
             <p className="cc-pass-boarding-warn">{boarding!.earlier}</p>
+          ) : boarding!.platformUnavailable ? (
+            <p className="cc-pass-boarding-note">
+              Live platform unavailable — check station information.
+            </p>
           ) : !boarding!.platform ? (
             <p className="cc-pass-boarding-note">
               Platform not shown yet — watch the boards.
