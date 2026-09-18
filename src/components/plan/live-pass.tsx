@@ -53,7 +53,9 @@ export function LivePass({
   today?: boolean;
   onShow?: (ticket: TicketVM) => void;
 }) {
+  const expectsLiveLookup = Boolean(crs && time);
   const [live, setLive] = useState<Live | null>(null);
+  const [checkingLive, setCheckingLive] = useState(expectsLiveLookup);
   const [resolvedServiceId, setResolvedServiceId] = useState<string | null>(
     serviceId ?? null,
   );
@@ -63,9 +65,18 @@ export function LivePass({
   }, [ticket.id, serviceId]);
 
   useEffect(() => {
-    if (!crs || !time) return;
+    setLive(null);
+    setCheckingLive(Boolean(crs && time));
+  }, [ticket.id, crs, time]);
+
+  useEffect(() => {
+    if (!crs || !time) {
+      setCheckingLive(false);
+      return;
+    }
     let active = true;
     const load = () => {
+      setCheckingLive(true);
       const qs = new URLSearchParams({ crs, time });
       if (dest) qs.set("dest", dest);
       if (resolvedServiceId) qs.set("serviceId", resolvedServiceId);
@@ -74,6 +85,7 @@ export function LivePass({
         .then((d: Live) => {
           if (!active) return;
           setLive(d?.available ? d : null);
+          setCheckingLive(false);
 
           // A legacy booking may not have a provider identity yet. Darwin gives
           // us one only after the server has made a confident (unique-minute)
@@ -90,7 +102,9 @@ export function LivePass({
           }
         })
         .catch(() => {
-          /* keep the previous truthful state until #66 adds explicit freshness */
+          if (!active) return;
+          setCheckingLive(false);
+          /* #66 adds the explicit unavailable/stale state after request failure. */
         });
     };
     load();
@@ -102,25 +116,25 @@ export function LivePass({
   }, [crs, time, dest, resolvedServiceId, ticket.id]);
 
   const enriched = useMemo<TicketVM>(() => {
-    if (!live?.available) return ticket;
+    if (!live?.available && !checkingLive) return ticket;
     const leg0 = ticket.legs[0];
     if (!leg0) return ticket;
     const leg = { ...leg0 };
-    // Once a live service response exists, the booked platform is no longer a
-    // current day-of platform. Replace it only with a provider-confirmed live
-    // value; otherwise remove it from the operational pass.
+    // Suppress the booked platform from the moment a live lookup is in flight.
+    // It must never occupy the current-platform position while Khonsera waits
+    // to learn whether Darwin confirms, suppresses or changes it.
     const origin = { ...leg.origin };
-    if (live.platform) origin.platform = live.platform;
+    if (!checkingLive && live?.platform) origin.platform = live.platform;
     else delete origin.platform;
     leg.origin = origin;
-    if (live.status)
+    if (live?.status)
       leg.status = {
         status: live.status,
         label: live.label,
         detail: live.detail,
       };
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
-  }, [ticket, live]);
+  }, [ticket, live, checkingLive]);
 
   // The loud boarding callout. Before any live response arrives we may show the
   // booked platform as static context. Once Darwin responds for this service,
@@ -131,19 +145,35 @@ export function LivePass({
     const leg0 = ticket.legs[0];
     if (!leg0 || ticket.kind === "stay") return undefined;
     const hasLiveService = Boolean(live?.available);
-    const platform = hasLiveService
-      ? live?.platform ?? undefined
-      : leg0.origin.platform ?? undefined;
-    const toward = live?.destination ?? undefined;
+    const platform = checkingLive
+      ? undefined
+      : hasLiveService
+        ? live?.platform ?? undefined
+        : leg0.origin.platform ?? undefined;
+    const toward = checkingLive ? undefined : live?.destination ?? undefined;
     const e = live?.earlierSamePlatform;
     const lab = ticket.kind === "air" ? "Gate" : "Platform";
     const earlier = e
       ? `${lab} ${e.platform} also has the ${e.std}${e.destination ? ` to ${e.destination}` : ""} before yours — let that one go.`
       : undefined;
+    const platformChecking = checkingLive && expectsLiveLookup;
     const platformUnavailable = hasLiveService && !platform;
-    if (!platform && !toward && !earlier && !platformUnavailable) return undefined;
-    return { platform, toward, earlier, platformUnavailable };
-  }, [ticket, live]);
+    if (
+      !platform &&
+      !toward &&
+      !earlier &&
+      !platformUnavailable &&
+      !platformChecking
+    )
+      return undefined;
+    return {
+      platform,
+      toward,
+      earlier,
+      platformUnavailable,
+      platformChecking,
+    };
+  }, [ticket, live, checkingLive, expectsLiveLookup]);
 
   return (
     <Pass
