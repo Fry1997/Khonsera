@@ -135,6 +135,10 @@ export type TransportSegment = {
   departure_at: string;
   arrival_at: string;
   service_number: string;
+  /** Provider/timetable identity supplied by a selector/importer; not user-entered. */
+  service_uid?: string | null;
+  /** Darwin day-of service identity when already resolved; not user-entered. */
+  darwin_service_id?: string | null;
   platform_dep: string;
   platform_arr: string;
 };
