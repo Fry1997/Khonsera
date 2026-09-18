@@ -29,16 +29,16 @@ export default async function SignupPage({
           style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
         >
           <div className="cc-auth-field">
-            <label>Name</label>
-            <input name="full_name" required autoComplete="name" className="field" />
+            <label htmlFor="signup-full-name">Name</label>
+            <input id="signup-full-name" name="full_name" required autoComplete="name" className="field" />
           </div>
           <div className="cc-auth-field" data-error={err}>
-            <label>Email</label>
-            <input name="email" type="email" required autoComplete="email" className="field" />
+            <label htmlFor="signup-email">Email</label>
+            <input id="signup-email" name="email" type="email" required autoComplete="email" className="field" />
           </div>
           <div className="cc-auth-field" data-error={err}>
-            <label>Password</label>
-            <input name="password" type="password" required autoComplete="new-password" className="field" />
+            <label htmlFor="signup-password">Password</label>
+            <input id="signup-password" name="password" type="password" required autoComplete="new-password" className="field" />
           </div>
           {sp.error ? <p className="cc-auth-error">{sp.error}</p> : null}
           <button type="submit" className="cc-btn cc-btn-gold cc-btn-block">
