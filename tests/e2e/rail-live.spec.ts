@@ -92,6 +92,9 @@ test("live service with no platform does not reuse the booked platform as curren
       const crs = url.searchParams.get("crs");
 
       if (crs === "WEL") {
+        // Keep the first live lookup in flight long enough to prove the booked
+        // platform never flashes as current while Darwin is being checked.
+        await new Promise((resolve) => setTimeout(resolve, 350));
         await route.fulfill({
           status: 200,
           contentType: "application/json",
