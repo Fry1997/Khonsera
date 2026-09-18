@@ -448,7 +448,7 @@
   text-transform: uppercase;
   color: var(--ink-dim);
 }
-.cc-recurring-hint { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-faint); }
+.cc-recurring-hint { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-dim); }
 .cc-recurring-body {
   padding: var(--space-3) var(--space-4) var(--space-4);
   border-top: 1px solid var(--rule);

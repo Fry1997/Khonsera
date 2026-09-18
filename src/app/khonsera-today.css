@@ -1578,3 +1578,16 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* WCAG AA: keep operational text readable on tinted Today surfaces without changing status semantics. */
+.khonsera-app .cc-today-direction .cc-now-row {
+  color: var(--today-orange-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-node[data-state="future"] > .cc-pass.cc-pass--today > .cc-pass-consequence {
+  color: var(--today-orange-strong) !important;
+}
+
+.khonsera-app .cc-today-direction .cc-transfer-time {
+  color: var(--today-ink-2) !important;
+}

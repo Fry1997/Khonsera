@@ -297,9 +297,10 @@ export function TodayDemoV2Client({
           aria-label={`Demo build ${buildId}`}
           style={{
             gridColumn: "1 / -1",
-            color: "var(--kh-ink-faint)",
+            color: "var(--kh-ink-2)",
             fontFamily: "var(--mono)",
-            fontSize: "7px",
+            fontSize: "8px",
+            fontWeight: 650,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
           }}
