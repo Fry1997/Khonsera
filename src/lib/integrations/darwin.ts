@@ -36,6 +36,7 @@ export type LiveDeparture = {
   label: string; // "On time" · "Delayed" · "Cancelled" · "Now 07:38"
   detail?: string; // "+13 min" · "Platform 2"
   platform?: string;
+  platformAvailable: boolean; // board-level Darwin permission to surface platform data
   std: string; // scheduled departure HH:MM
   etd: string; // raw estimate from Darwin, preserved verbatim for diagnostics
   uncertain?: boolean; // Darwin appended * to an absolute forecast
@@ -46,6 +47,11 @@ export type LiveDeparture = {
 };
 
 // One service from the LDBWS JSON board — the ServiceItem schema (GetDepartureBoard).
+type DarwinStationBoard = {
+  platformAvailable?: boolean;
+  trainServices?: DarwinService[];
+};
+
 type DarwinService = {
   serviceID?: string; // exact Darwin/OpenLDB identity for the returned live service
   rsid?: string; // Retail Service ID, if supplied
@@ -95,9 +101,15 @@ export async function liveDeparture(
   }
 
   // The StationBoard object — top-level, or under a SOAP-style wrapper.
-  const data = json as { trainServices?: DarwinService[]; GetStationBoardResult?: { trainServices?: DarwinService[] } };
-  const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
+  // LDBWS says platform headings must be suppressed unless platformAvailable is
+  // explicitly true. Do not infer availability from a stale per-service field.
+  const data = json as DarwinStationBoard & {
+    GetStationBoardResult?: DarwinStationBoard;
+  };
+  const board = data?.GetStationBoardResult ?? data;
+  const services = board?.trainServices;
   if (!Array.isArray(services)) return null;
+  const platformAvailable = board?.platformAvailable === true;
 
   const requestedServiceId = serviceId?.trim();
   let target: DarwinService | undefined;
@@ -113,7 +125,7 @@ export async function liveDeparture(
     target = sameMinute[0];
   }
 
-  const live = toLiveDeparture(target);
+  const live = toLiveDeparture(target, platformAvailable);
 
   // Wrong-train guard is context, not identity. Compare CURRENT expected order,
   // not timetable order. Unknown forecasts are excluded rather than guessed.
@@ -183,13 +195,25 @@ export async function nextServicesTo(originCrs: string, destCrs: string, count =
   } finally {
     clearTimeout(timer);
   }
-  const data = json as { trainServices?: DarwinService[]; GetStationBoardResult?: { trainServices?: DarwinService[] } };
-  const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
+  const data = json as DarwinStationBoard & {
+    GetStationBoardResult?: DarwinStationBoard;
+  };
+  const board = data?.GetStationBoardResult ?? data;
+  const services = board?.trainServices;
   if (!Array.isArray(services)) return null;
+  const platformAvailable = board?.platformAvailable === true;
   return services
     .filter((s) => s?.std)
     .slice(0, count)
-    .map((s) => ({ std: s.std!, etd: s.etd ?? "On time", isCancelled: Boolean(s.isCancelled), platform: s.platform }));
+    .map((s) => ({
+      std: s.std!,
+      etd: s.etd ?? "On time",
+      isCancelled: Boolean(s.isCancelled),
+      platform:
+        platformAvailable && typeof s.platform === "string"
+          ? s.platform
+          : undefined,
+    }));
 }
 
 function hhmmToMin(s: string): number {
@@ -217,16 +241,30 @@ function relativeClockDelta(candidate: string, target: string): number | null {
   return delta;
 }
 
-function toLiveDeparture(svc: DarwinService): LiveDeparture {
+function toLiveDeparture(
+  svc: DarwinService,
+  platformAvailable: boolean,
+): LiveDeparture {
   const std = svc.std ?? "";
   // Keep Darwin's passenger-facing value intact. Missing/unknown live data must
   // never be upgraded to a fabricated "On time" assertion.
   const etd = typeof svc.etd === "string" ? svc.etd.trim() : "";
-  const platform = typeof svc.platform === "string" ? svc.platform : undefined;
+  const platform =
+    platformAvailable && typeof svc.platform === "string"
+      ? svc.platform
+      : undefined;
   const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
   const serviceId = typeof svc.serviceID === "string" && svc.serviceID ? svc.serviceID : undefined;
   const rsid = typeof svc.rsid === "string" && svc.rsid ? svc.rsid : undefined;
-  const base = { std, etd, platform, destination, serviceId, rsid } as const;
+  const base = {
+    std,
+    etd,
+    platform,
+    platformAvailable,
+    destination,
+    serviceId,
+    rsid,
+  } as const;
   const plat = platform ? `Platform ${platform}` : undefined;
 
   if (svc.isCancelled === true || /cancel/i.test(etd)) {
@@ -333,9 +371,10 @@ export async function debugDeparture(
     try {
       const j = JSON.parse(text) as Record<string, unknown>;
       topLevelKeys = Object.keys(j);
-      const svcs =
-        (j.trainServices as DarwinService[] | undefined) ??
-        ((j.GetStationBoardResult as { trainServices?: DarwinService[] })?.trainServices);
+      const board =
+        (j.GetStationBoardResult as DarwinStationBoard | undefined) ??
+        (j as DarwinStationBoard);
+      const svcs = board.trainServices;
       if (Array.isArray(svcs)) stds = svcs.map((s) => s.std ?? "").filter(Boolean);
     } catch {
       // body wasn't JSON
