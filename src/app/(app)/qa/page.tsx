@@ -420,8 +420,8 @@ export default async function QaObservatoryPage() {
             </div>
 
             <p className="small mt-3">
-              “Relay result” contains the adaptive traveller's outcome, UX findings
-              and what worked. “Action log” records the screen-driven computer actions.
+              “Relay result” contains the controller-supplied outcome and browser
+              signals. “Action log” records every mechanical browser command.
               “Inspect trace” remains the browser-level forensic view for DOM, console,
               network and timing evidence.
             </p>
