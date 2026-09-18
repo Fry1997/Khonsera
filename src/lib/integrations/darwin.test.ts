@@ -331,6 +331,7 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.platformAvailable).toBe(false);
     expect(live?.platform).toBeUndefined();
     expect(live?.detail).toBeUndefined();
+    expect(live?.earlierSamePlatform).toBeUndefined();
     expect(live?.source).toBe("darwin");
     expect(live?.generatedAt).toBe("2026-09-18T08:14:30Z");
   });
