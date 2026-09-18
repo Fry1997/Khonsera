@@ -242,6 +242,15 @@ async function authenticateWithoutRecording(
     ).toBeGreaterThan(0);
 
     await context.addCookies(cookies);
+    await context.addCookies([
+      {
+        name: "khonsera_welcomed",
+        value: "1",
+        url: "https://www.khonsera.com",
+        sameSite: "Lax",
+        secure: true,
+      },
+    ]);
   } finally {
     await authContext.close();
   }
