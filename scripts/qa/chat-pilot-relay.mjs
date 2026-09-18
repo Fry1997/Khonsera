@@ -15,8 +15,8 @@ const githubToken = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
 const runId = process.env.GITHUB_RUN_ID;
 const viewportName = process.env.KQA_VIEWPORT ?? "desktop-chromium";
-const controlIssue = Number(process.env.QA_CONTROL_ISSUE ?? "90");
-const triggerCommentId = Number(process.env.QA_START_COMMENT_ID ?? "0");
+const controlBranch = `qa-control-${runId}`;
+const controlPath = "qa-control/command.json";
 const maxMinutes = Number(process.env.KQA_RELAY_MAX_MINUTES ?? "35");
 const maxCommands = Number(process.env.KQA_RELAY_MAX_COMMANDS ?? "80");
 
@@ -72,7 +72,7 @@ const signals = {
 const requestStartedAt = new WeakMap();
 const actions = [];
 let commandCount = 0;
-let lastCommentId = triggerCommentId;
+let lastControlSequence = 0;
 let finishPayload = null;
 let relayError = null;
 let video = null;
@@ -114,10 +114,86 @@ async function github(method, apiPath, body) {
   return response.status === 204 ? null : response.json();
 }
 
-async function postControlComment(body) {
-  await github("POST", `/repos/${owner}/${repo}/issues/${controlIssue}/comments`, {
-    body,
+async function githubResponse(method, apiPath, body) {
+  return fetch(`https://api.github.com${apiPath}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${githubToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    },
+    body: body == null ? undefined : JSON.stringify(body),
   });
+}
+
+async function ensureControlBranch() {
+  const refPath = `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(controlBranch)}`;
+  const existing = await githubResponse("GET", refPath);
+
+  if (existing.status === 404) {
+    await github("POST", `/repos/${owner}/${repo}/git/refs`, {
+      ref: `refs/heads/${controlBranch}`,
+      sha: process.env.GITHUB_SHA,
+    });
+  } else if (!existing.ok) {
+    throw new Error(
+      `Could not inspect control branch: ${existing.status} ${(await existing.text()).slice(0, 800)}`,
+    );
+  }
+}
+
+async function readControlFile() {
+  const apiPath =
+    `/repos/${owner}/${repo}/contents/${controlPath}?ref=${encodeURIComponent(controlBranch)}`;
+  const response = await githubResponse("GET", apiPath);
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(
+      `Could not read control file: ${response.status} ${(await response.text()).slice(0, 800)}`,
+    );
+  }
+
+  const payload = await response.json();
+  const text = Buffer.from(String(payload.content ?? "").replace(/\\n/g, ""), "base64").toString("utf8");
+  return { sha: payload.sha, data: JSON.parse(text) };
+}
+
+async function seedControlFile() {
+  await ensureControlBranch();
+  const existing = await readControlFile();
+  const body = {
+    runId,
+    viewport: viewportName,
+    sequence: 0,
+    command: { type: "screenshot" },
+    updatedAt: new Date().toISOString(),
+  };
+
+  await github("PUT", `/repos/${owner}/${repo}/contents/${controlPath}`, {
+    message: `qa-control: ready ${viewportName}`,
+    content: Buffer.from(JSON.stringify(body, null, 2) + "\n", "utf8").toString("base64"),
+    branch: controlBranch,
+    ...(existing?.sha ? { sha: existing.sha } : {}),
+  });
+}
+
+async function fetchControlCommand() {
+  const current = await readControlFile();
+  const data = current?.data;
+  if (!data) return null;
+  if (String(data.runId) !== String(runId)) return null;
+  if (data.viewport !== viewportName) return null;
+
+  const sequence = Number(data.sequence ?? 0);
+  if (!Number.isFinite(sequence) || sequence <= lastControlSequence) return null;
+
+  lastControlSequence = sequence;
+  return {
+    sequence,
+    command: data.command,
+  };
 }
 
 async function ensureLiveBranch() {
@@ -181,6 +257,8 @@ async function publishState(status, extra = {}) {
     viewportSize: viewport.viewport,
     liveScreenshot: `${rawBase}/current.png`,
     liveState: `${rawBase}/state.json`,
+    controlBranch,
+    controlPath,
     lastAction: actions.at(-1) ?? null,
     signals: {
       consoleErrors: signals.consoleErrors.slice(-8),
@@ -390,44 +468,6 @@ async function executeCommand(command) {
   }
 }
 
-function parseControlCommand(comment) {
-  const prefix = `QA:DO ${runId} ${viewportName} `;
-  const body = String(comment.body ?? "").trim();
-  if (!body.startsWith(prefix)) return null;
-
-  const payload = body.slice(prefix.length).trim();
-  try {
-    return JSON.parse(payload);
-  } catch (error) {
-    throw new Error(
-      `Invalid JSON in control comment ${comment.id}: ${error instanceof Error ? error.message : error}`,
-    );
-  }
-}
-
-async function fetchCommands() {
-  const since = encodeURIComponent(startedAt.toISOString());
-  const comments = await github(
-    "GET",
-    `/repos/${owner}/${repo}/issues/${controlIssue}/comments?per_page=100&since=${since}`,
-  );
-
-  const fresh = (comments ?? [])
-    .filter((comment) => Number(comment.id) > lastCommentId)
-    .sort((a, b) => Number(a.id) - Number(b.id));
-
-  const commands = [];
-  for (const comment of fresh) {
-    lastCommentId = Math.max(lastCommentId, Number(comment.id));
-
-    if (comment.author_association !== "OWNER") continue;
-    const command = parseControlCommand(comment);
-    if (command) commands.push({ comment, command });
-  }
-
-  return commands;
-}
-
 const browser = await chromium.launch({ headless: true });
 
 try {
@@ -516,16 +556,8 @@ try {
     throw new Error(`QA relay landed outside Khonsera: ${page.url()}`);
   }
 
+  await seedControlFile();
   await publishState("ready");
-
-  await postControlComment(
-    [
-      `QA:READY ${runId} ${viewportName}`,
-      `Live screen: ${rawBase}/current.png`,
-      `Live state: ${rawBase}/state.json`,
-      `Command format: QA:DO ${runId} ${viewportName} {"type":"click","x":100,"y":100}`,
-    ].join("\n"),
-  );
 
   while (!finishPayload) {
     if (Date.now() > deadline) {
@@ -535,57 +567,50 @@ try {
       throw new Error(`QA relay exceeded ${maxCommands} commands for ${viewportName}.`);
     }
 
-    const pending = await fetchCommands();
+    const pending = await fetchControlCommand();
 
-    if (!pending.length) {
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+    if (!pending) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       continue;
     }
 
-    for (const { comment, command } of pending) {
-      if (finishPayload) break;
+    const { sequence, command } = pending;
+    const beforeUrl = page.url();
+    const before = Date.now();
+    let commandError = null;
 
-      const beforeUrl = page.url();
-      const before = Date.now();
-      let commandError = null;
+    try {
+      await executeCommand(command);
+    } catch (error) {
+      commandError = error instanceof Error ? error.message : String(error);
+    }
 
-      try {
-        await executeCommand(command);
-      } catch (error) {
-        commandError = error instanceof Error ? error.message : String(error);
-      }
+    commandCount += 1;
+    const entry = {
+      sequence,
+      commandNumber: commandCount,
+      at: new Date().toISOString(),
+      command,
+      beforeUrl,
+      afterUrl: page.url(),
+      durationMs: Date.now() - before,
+      error: commandError,
+    };
+    actions.push(entry);
+    await appendFile(actionLogPath, JSON.stringify(entry) + "\n", "utf8");
 
-      commandCount += 1;
-      const entry = {
-        sequence: commandCount,
-        commentId: comment.id,
-        at: new Date().toISOString(),
-        command,
-        beforeUrl,
-        afterUrl: page.url(),
-        durationMs: Date.now() - before,
-        error: commandError,
-      };
-      actions.push(entry);
-      await appendFile(actionLogPath, JSON.stringify(entry) + "\n", "utf8");
+    await publishState(
+      finishPayload ? "finished" : commandError ? "command-error" : "ready",
+      commandError ? { commandError } : {},
+    );
 
-      await publishState(
-        finishPayload ? "finished" : commandError ? "command-error" : "ready",
-        commandError ? { commandError } : {},
-      );
-
-      if (commandError) {
-        console.error(`Relay command ${commandCount} failed: ${commandError}`);
-      }
+    if (commandError) {
+      console.error(`Relay command ${commandCount} failed: ${commandError}`);
     }
   }
 
   await publishState("finished", { finish: finishPayload });
   await capture(page, finalShotPath);
-
-  await postControlComment(
-    `QA:VIEWPORT-DONE ${runId} ${viewportName} · ${finishPayload.outcome}\n${finishPayload.summary || "No summary supplied."}`,
-  );
 } catch (error) {
   relayError = error instanceof Error ? error.message : String(error);
   console.error(relayError);
@@ -623,6 +648,8 @@ const result = {
   viewport: viewportName,
   target: targetUrl,
   liveBranch,
+  controlBranch,
+  controlPath,
   liveScreenshot: `${rawBase}/current.png`,
   liveState: `${rawBase}/state.json`,
   startedAt: startedAt.toISOString(),
