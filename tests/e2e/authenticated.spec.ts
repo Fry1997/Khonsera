@@ -157,3 +157,182 @@ test("authenticated staff can use the real shell with isolated demo travel data"
     if (userId) await admin.auth.admin.deleteUser(userId);
   }
 });
+
+
+test("Today replaces a booked rail platform with the live Darwin platform", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "Authenticated E2E requires the isolated local Supabase environment.",
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const projectSlug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const email = `khonsera-e2e-live-platform-${projectSlug}-${randomUUID()}@example.test`;
+  let userId: string | undefined;
+
+  try {
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password: testPassword,
+      email_confirm: true,
+      user_metadata: { full_name: "Khonsera Rail E2E" },
+    });
+    expect(createError, createError?.message).toBeNull();
+    userId = created.user?.id;
+    expect(userId).toBeTruthy();
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({ is_staff: true })
+      .eq("id", userId!);
+    expect(profileError, profileError?.message).toBeNull();
+
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
+
+    const origin = new URL(page.url()).origin;
+    await context.addCookies([
+      {
+        name: "journies_demo_mode",
+        value: "on",
+        url: origin,
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+
+    await page.route("**/api/darwin/departure**", async (route) => {
+      const url = new URL(route.request().url());
+      const crs = url.searchParams.get("crs");
+      if (crs === "WEL") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            available: true,
+            status: "on_time",
+            label: "On time",
+            detail: "Platform 5",
+            platform: "5",
+            destination: "Luton",
+          }),
+        });
+        return;
+      }
+      if (crs === "LUT") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            available: true,
+            status: "on_time",
+            label: "On time",
+            detail: "Platform 4",
+            platform: "4",
+            destination: "Harpenden",
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ available: false }),
+      });
+    });
+
+    await page.goto("/today");
+    await expect(page.getByText("Platform 5", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/towards Luton/i).first()).toBeVisible();
+    expect(await page.getByText("Platform 2", { exact: true }).count()).toBe(0);
+    await page.screenshot({
+      path: `test-results/visual-evidence/${projectSlug}-today-live-platform.png`,
+      fullPage: true,
+    });
+  } finally {
+    if (userId) await admin.auth.admin.deleteUser(userId);
+  }
+});
+
+test("Today does not present static On time as current when Darwin is unavailable", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.fail(
+    true,
+    "Known rail-trust defect #66: unavailable Darwin currently leaves the static On time state standing.",
+  );
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "Authenticated E2E requires the isolated local Supabase environment.",
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const projectSlug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const email = `khonsera-e2e-live-unavailable-${projectSlug}-${randomUUID()}@example.test`;
+  let userId: string | undefined;
+
+  try {
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password: testPassword,
+      email_confirm: true,
+      user_metadata: { full_name: "Khonsera Rail E2E" },
+    });
+    expect(createError, createError?.message).toBeNull();
+    userId = created.user?.id;
+    expect(userId).toBeTruthy();
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({ is_staff: true })
+      .eq("id", userId!);
+    expect(profileError, profileError?.message).toBeNull();
+
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
+
+    const origin = new URL(page.url()).origin;
+    await context.addCookies([
+      {
+        name: "journies_demo_mode",
+        value: "on",
+        url: origin,
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    await page.route("**/api/darwin/departure**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ available: false }),
+      });
+    });
+
+    await page.goto("/today");
+    await expect(page.getByText("On time", { exact: true }).first()).toBeVisible();
+    await page.screenshot({
+      path: `test-results/visual-evidence/${projectSlug}-today-live-unavailable.png`,
+      fullPage: true,
+    });
+    await expect(
+      page.getByText(/live (data|status) unavailable|scheduled only|live status stale/i).first(),
+    ).toBeVisible();
+  } finally {
+    if (userId) await admin.auth.admin.deleteUser(userId);
+  }
+});
