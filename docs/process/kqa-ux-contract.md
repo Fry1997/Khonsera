@@ -53,7 +53,7 @@ It must not:
 
 ## Control channel
 
-Issue #90 is both the start command bus and the live control channel.
+Issue #90 is the start command bus only.
 
 A normal command:
 
@@ -61,9 +61,26 @@ A normal command:
 
 starts the workflow.
 
-For each active viewport the relay publishes a `QA:READY` comment containing the run ID and live screenshot/state URLs. The controlling ChatGPT conversation then sends commands in this machine-readable form:
+Once the workflow has a run ID it creates a dedicated control branch:
 
-`QA:DO <run-id> <viewport> {"type":"click","x":100,"y":200}`
+`qa-control-<workflow-run-id>`
+
+and seeds:
+
+`qa-control/command.json`
+
+For each active viewport the relay resets that file to sequence 0 and waits. The controlling ChatGPT conversation updates the file with an incrementing sequence number and one mechanical command at a time.
+
+Example:
+
+```json
+{
+  "runId": "35393789105",
+  "viewport": "desktop-chromium",
+  "sequence": 4,
+  "command": { "type": "click", "x": 312, "y": 744 }
+}
+```
 
 Supported command types are:
 
@@ -79,7 +96,9 @@ Supported command types are:
 - `finish`
 - `abort`
 
-Only OWNER-authored commands for the exact run and viewport are accepted. Stale commands from previous runs are ignored.
+The relay accepts only a command matching its exact run ID and active viewport, and only when the sequence number increases. Stale commands are ignored.
+
+The control branch deliberately does not trigger QA workflows or CI. This prevents every mouse click from creating a fake/skipped Actions run.
 
 ## Live screen
 
