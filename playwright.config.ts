@@ -27,7 +27,7 @@ export default defineConfig({
               cursor: "pointer",
             },
             test: {
-              level: "test",
+              level: "step",
               position: "top-left",
               fontSize: 14,
             },
