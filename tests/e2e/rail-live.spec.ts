@@ -85,11 +85,6 @@ test("live service with no platform does not reuse the booked platform as curren
   page,
   context,
 }, testInfo) => {
-  test.fail(
-    true,
-    "Known rail-trust defect #71: live no-platform currently falls back to the booked platform.",
-  );
-
   const slug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   await withDemoRailUser(page, context, `no-platform-${slug}`, async () => {
     await page.route("**/api/darwin/departure**", async (route) => {
@@ -128,17 +123,16 @@ test("live service with no platform does not reuse the booked platform as curren
 
     await page.goto("/today");
 
-    // Characterise the unsafe current behaviour before the expectation that
-    // defines the passenger-safe target.
-    await expect(page.getByText("Platform 2", { exact: true }).first()).toBeVisible();
+    expect(await page.getByText("Platform 2", { exact: true }).count()).toBe(0);
+    await expect(
+      page.getByText(/platform not (shown|announced|available)|platform unavailable/i).first(),
+    ).toBeVisible();
+    await expect(page.getByText(/towards Luton/i).first()).toBeVisible();
+
     await page.screenshot({
       path: `test-results/visual-evidence/${slug}-today-live-no-platform.png`,
       fullPage: true,
     });
-
-    await expect(
-      page.getByText(/platform not (shown|announced|available)|platform unavailable/i).first(),
-    ).toBeVisible();
   });
 });
 
