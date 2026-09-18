@@ -7,6 +7,10 @@ export interface SpinePass {
   crs: string | null;
   time: string | null;
   dest: string | null;
+  /** Durable timetable/provider identity when the booking source supplies one. */
+  serviceUid?: string | null;
+  /** Darwin board-relative serviceID used for exact day-of live matching. */
+  liveServiceId?: string | null;
 }
 
 export type StationKind = "rail_station" | "airport";
