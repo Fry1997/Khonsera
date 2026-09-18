@@ -92,15 +92,11 @@ test("authenticated staff can use the real shell with isolated demo travel data"
     // cookies, Supabase Auth, the provisioning trigger and the app access gate
     // work together instead of bypassing authentication with injected state.
     await page.goto("/login");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(testPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
-
-    // Staff demo mode is Khonsera's production-isolated sample itinerary. It
-    // renders through the real Today components without reading or mutating the
-    // signed-in user's travel records.
     const origin = new URL(page.url()).origin;
+
+    // Staff demo mode is Khonsera's production-isolated sample itinerary. Put
+    // that boundary in place before submitting because login redirects straight
+    // to /today; otherwise a brand-new empty account can race into /welcome.
     await context.addCookies([
       {
         name: "journies_demo_mode",
@@ -110,6 +106,11 @@ test("authenticated staff can use the real shell with isolated demo travel data"
         sameSite: "Lax",
       },
     ]);
+
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
 
     await page.goto("/today");
     await expect.soft(page.getByRole("heading", { name: /right now/i })).toBeVisible();
@@ -193,12 +194,10 @@ test("Today replaces a booked rail platform with the live Darwin platform", asyn
     expect(profileError, profileError?.message).toBeNull();
 
     await page.goto("/login");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(testPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
-
     const origin = new URL(page.url()).origin;
+
+    // The login action immediately redirects to /today. Enable demo mode first
+    // so onboarding for the empty throwaway account cannot race the rail check.
     await context.addCookies([
       {
         name: "journies_demo_mode",
@@ -208,6 +207,11 @@ test("Today replaces a booked rail platform with the live Darwin platform", asyn
         sameSite: "Lax",
       },
     ]);
+
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
 
     await page.route("**/api/darwin/departure**", async (route) => {
       const url = new URL(route.request().url());
@@ -300,12 +304,10 @@ test("Today does not present static On time as current when Darwin is unavailabl
     expect(profileError, profileError?.message).toBeNull();
 
     await page.goto("/login");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(testPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
-
     const origin = new URL(page.url()).origin;
+
+    // The login action immediately redirects to /today. Enable demo mode first
+    // so onboarding for the empty throwaway account cannot race the rail check.
     await context.addCookies([
       {
         name: "journies_demo_mode",
@@ -315,6 +317,11 @@ test("Today does not present static On time as current when Darwin is unavailabl
         sameSite: "Lax",
       },
     ]);
+
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
     await page.route("**/api/darwin/departure**", async (route) => {
       await route.fulfill({
         status: 200,

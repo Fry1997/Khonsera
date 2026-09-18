@@ -44,12 +44,11 @@ async function withDemoRailUser(
     expect(profileError, profileError?.message).toBeNull();
 
     await page.goto("/login");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(testPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
-
     const origin = new URL(page.url()).origin;
+
+    // Login redirects straight to /today. Put the isolated demo boundary in
+    // place before submitting so a brand-new empty user cannot race through
+    // /today -> /welcome before the rail fixture becomes active.
     await context.addCookies([
       {
         name: "journies_demo_mode",
@@ -59,6 +58,11 @@ async function withDemoRailUser(
         sameSite: "Lax",
       },
     ]);
+
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/today(?:\?.*)?$/);
 
     await run();
   } finally {
