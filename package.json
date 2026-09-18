@@ -17,8 +17,8 @@
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "lighthouse": "lhci autorun",
     "db:types": "supabase gen types typescript --local > src/lib/types/database.ts",
-    "qa:adaptive": "node scripts/qa/adaptive-pilot.mjs",
-    "qa:adaptive:check": "node --check scripts/qa/adaptive-pilot.mjs && node --check scripts/qa/publish-findings.mjs"
+    "qa:relay": "node scripts/qa/chat-pilot-relay.mjs",
+    "qa:relay:check": "node --check scripts/qa/chat-pilot-relay.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.75.0",
