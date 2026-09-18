@@ -179,4 +179,42 @@ describe("Darwin live rail accuracy edge cases", () => {
     });
   });
 
+  it("preserves an alphanumeric platform exactly as announced", async () => {
+    mockBoard([
+      {
+        std: "00:15",
+        etd: "On time",
+        platform: "13R",
+        destination: [{ locationName: "Ayr", crs: "AYR" }],
+      },
+    ]);
+
+    const live = await liveDeparture("GLC", "00:15", "AYR");
+
+    expect(live).not.toBeNull();
+    expect(live?.platform).toBe("13R");
+    expect(live?.detail).toContain("Platform 13R");
+  });
+
+  it("maps a cancelled service to an explicit cancelled state", async () => {
+    mockBoard([
+      {
+        std: "23:06",
+        etd: "Cancelled",
+        platform: "5",
+        isCancelled: true,
+        cancelReason: "Operational incident",
+        destination: [{ locationName: "Bedford", crs: "BDM" }],
+      },
+    ]);
+
+    const live = await liveDeparture("LBG", "23:06", "BDM");
+
+    expect(live).not.toBeNull();
+    expect(live?.status).toBe("cancelled");
+    expect(live?.label).toBe("Cancelled");
+    expect(live?.detail).toBe("Operational incident");
+    expect(live?.platform).toBe("5");
+  });
+
 });
