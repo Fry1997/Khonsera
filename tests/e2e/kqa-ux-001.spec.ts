@@ -315,9 +315,22 @@ async function navigateViaShell(
 }
 
 async function openAddSheet(page: Page) {
-  const trigger = page.getByRole("button", { name: "Add", exact: true }).first();
+  const addSection = page.locator('section[aria-label="Add to plan"]');
+  const trigger = addSection.locator("button.cc-add-trigger");
+
+  if (!(await trigger.isVisible())) {
+    const dayToolsToggle = page.locator(
+      'input.cc-plan-context-toggle[id^="day-tools-"]',
+    );
+    const toggleId = await dayToolsToggle.getAttribute("id");
+    expect(toggleId, "Day tools toggle should have an id").toBeTruthy();
+    await page.locator(`label[for="${toggleId}"]`).click();
+  }
+
   await expect(trigger).toBeVisible({ timeout: 15_000 });
+  await expect(trigger).toBeEnabled({ timeout: 15_000 });
   await trigger.click();
+
   const dialog = page.getByRole("dialog", {
     name: /what would you like to add/i,
   });
