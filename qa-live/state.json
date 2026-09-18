@@ -3,11 +3,11 @@
   "executionMode": "chat-piloted-relay",
   "runId": "35396649830",
   "viewportName": "mobile-390",
-  "status": "ready",
-  "commandCount": 0,
+  "status": "finished",
+  "commandCount": 1,
   "maxCommands": 80,
   "startedAt": "2026-09-18T21:27:43.878Z",
-  "updatedAt": "2026-09-18T21:27:53.965Z",
+  "updatedAt": "2026-09-18T21:28:45.364Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -18,7 +18,19 @@
   "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35396649830/qa-live/state.json",
   "controlBranch": "qa-control-35396649830",
   "controlPath": "qa-control/command.json",
-  "lastAction": null,
+  "lastAction": {
+    "sequence": 1,
+    "commandNumber": 1,
+    "at": "2026-09-18T21:28:45.295Z",
+    "command": {
+      "type": "abort",
+      "summary": "Relay smoke test complete; upgrading screen observation payload before full traveller pilot."
+    },
+    "beforeUrl": "https://www.khonsera.com/today",
+    "afterUrl": "https://www.khonsera.com/today",
+    "durationMs": 1,
+    "error": null
+  },
   "signals": {
     "consoleErrors": [],
     "pageErrors": [],
