@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Check adaptive QA runner
+        run: npm run qa:adaptive:check
+
       - name: Typecheck
         run: npm run typecheck
 
