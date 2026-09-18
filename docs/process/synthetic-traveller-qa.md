@@ -293,6 +293,71 @@ Verify:
 - last trustworthy state is distinguishable from current truth;
 - the user can continue using unrelated parts of the app.
 
+## Reactivity and no-refresh testing
+
+Khonsera must be tested as a live stateful application, not only as a sequence of eventually-correct pages.
+
+For every meaningful mutation, capture the full human-visible transition:
+
+**action -> immediate feedback -> background work -> visible consequence -> stable state**
+
+A browser test must not call `page.reload()`, `page.goto()`, navigate away/back, or otherwise force a remount in order to obtain the expected post-mutation state unless reload/navigation is the behaviour under test.
+
+### Human dwell rule
+
+After important actions, deliberately remain on the same screen and observe it as a traveller would.
+
+Examples:
+- set or change the day's base;
+- add/edit/delete an anchor;
+- change a transport mode;
+- import a booking;
+- save an intention;
+- change a comfort buffer;
+- accept a replan/recovery option.
+
+For each action record:
+- time to acknowledgement (button state/toast/local optimistic response);
+- time to first dependent UI change;
+- time to stable derived state;
+- whether stale information remained visible during computation;
+- whether any manual refresh was needed.
+
+If a mutation succeeds in storage but dependent guidance remains stale, the test fails even when a later reload produces the correct final state.
+
+### Mutation-to-consequence assertions
+
+Tests should assert both the direct mutation and at least one meaningful dependent consequence.
+
+Examples:
+- setting base -> base label updates **and** first/last bookend + leave-by recompute;
+- changing leg mode -> mode label updates **and** duration/leave guidance recomputes;
+- moving an appointment -> appointment time updates **and** surrounding legs/buffers re-solve;
+- adding a booking -> ticket appears **and** surrounding travel thread changes;
+- disruption update -> live status changes **and** connection/consequence guidance changes.
+
+This catches stale client state, missing cache invalidation, effect dependency bugs, server/client split-brain state and optimistic UI that updates only the edited field.
+
+### Observation windows
+
+Use short explicit budgets rather than arbitrary sleeps:
+- acknowledgement should normally appear within 300 ms;
+- local/optimistic visual mutation should normally appear within 500 ms where safe;
+- derived route/replanning state should show either progress or a new trustworthy value within 2 s;
+- any longer-running provider work must expose a meaningful pending state and may use a wider provider-specific ceiling.
+
+The assertion is not simply "eventually becomes correct". During the observation window the tester should also fail states such as:
+- nothing appears to happen;
+- stale guidance remains presented as current after success;
+- a spinner/pending state disappears before dependants update;
+- a second click is needed;
+- navigation/refresh is required to reconcile state;
+- old and new values coexist without explanation.
+
+### Canonical regression
+
+Issue #87 (changing Plan base leaves leave-by/bookend state stale until refresh) is the first canonical reactivity regression. The regression test must set a base through the real UI and prove dependent guidance updates without reload/remount.
+
 ## Performance budgets
 
 These are experience ceilings, not micro-benchmarks. Regressions within the ceiling still deserve investigation when a previously fast action becomes noticeably slower.
