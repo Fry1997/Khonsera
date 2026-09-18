@@ -77,6 +77,7 @@ describe("Darwin live rail accuracy edge cases", () => {
     mockBoard([
       {
         serviceID: "svc-derby",
+        rsid: "EM123400",
         std: "00:30",
         etd: "On time",
         platform: "3",
@@ -88,8 +89,13 @@ describe("Darwin live rail accuracy edge cases", () => {
 
     expect(live).not.toBeNull();
     expect(live?.serviceId).toBe("svc-derby");
+    expect(live?.rsid).toBe("EM123400");
     expect(live?.std).toBe("00:30");
     expect(live?.platform).toBe("3");
+
+    const requestUrl = new URL(String(vi.mocked(fetch).mock.calls[0]?.[0]));
+    expect(requestUrl.searchParams.get("numRows")).toBe("149");
+    expect(requestUrl.searchParams.get("timeWindow")).toBe("119");
   });
 
   it("uses durable identity even when the passenger destination is only an intermediate stop", async () => {
