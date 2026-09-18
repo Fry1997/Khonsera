@@ -15,7 +15,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const crs = url.searchParams.get("crs");
   const time = url.searchParams.get("time"); // planned departure HH:MM (London)
-  const dest = url.searchParams.get("dest"); // optional destination CRS to disambiguate
+  const dest = url.searchParams.get("dest"); // passenger hop destination; not an identity key
+  const serviceId = url.searchParams.get("serviceId"); // exact Darwin board service identity when known
 
   // ?debug=1 → reveal the cause (key-present boolean, HTTP status, board contents)
   // without ever exposing the key. Runs BEFORE the key gate so it can report
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ available: false });
   }
 
-  const live = await liveDeparture(crs, time, dest);
+  const live = await liveDeparture(crs, time, dest, serviceId);
   if (!live) return NextResponse.json({ available: false });
 
   return NextResponse.json(
