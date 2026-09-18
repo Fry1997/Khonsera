@@ -22,3 +22,12 @@ No production Supabase key, production user, production itinerary or production 
 The E2E fixture must not be mistaken for a production schema baseline. During setup of authenticated CI, a clean `supabase start` against the committed application migrations failed because the remote production schema and the Git migration directory have drifted. That recovery problem is tracked separately and should eventually be resolved by reconciling the remote migration ledger/schema with Git and proving a clean `supabase db reset` succeeds.
 
 Do not expand the E2E fixture into a second copy of the entire production schema. Add only the contract needed for a browser flow under test; repair the canonical application migration history separately.
+
+
+## Production QA:UX Observatory
+
+The deterministic CI browser suite above is not the same thing as the production passenger-experience audit.
+
+Production `QA:UX` runs use the deployed Khonsera front end, a dedicated persistent QA traveller in live Supabase, and the GitHub Pages QA Observatory for browser evidence. They must not be silently substituted with the isolated CI fixture or demo-mode data.
+
+The standing execution and data-boundary rules live in [`docs/process/kqa-ux-contract.md`](./process/kqa-ux-contract.md).
