@@ -31,3 +31,9 @@ Use migrations for schema changes. Review RLS whenever a public schema/table cha
 ## UI completion standard
 
 A UI task is complete only when implementation, browser behaviour and responsive presentation agree. At minimum verify the target flow in desktop Chromium and the 390px mobile Chromium viewport and leave no unexplained browser console errors.
+
+## Perspective-driven frontend QA
+
+When a user asks for a UI, UX, fidelity/truth, or combined traveller review, load and follow `.agents/skills/khonsera-perspective-qa/SKILL.md`.
+
+Keep the traveller mission and exact build constant when rerunning the same scenario through different lenses. UI, UX and fidelity are separate gates; do not collapse them into one generic pass/fail result.
