@@ -37,7 +37,8 @@ export type LiveDeparture = {
   detail?: string; // "+13 min" · "Platform 2"
   platform?: string;
   std: string; // scheduled departure HH:MM
-  etd: string; // raw estimate from Darwin
+  etd: string; // raw estimate from Darwin, preserved verbatim for diagnostics
+  uncertain?: boolean; // Darwin appended * to an absolute forecast
   destination?: string; // the train's final destination — "the Corby train"
   serviceId?: string; // Darwin/OpenLDB exact day-of identity for this service
   rsid?: string; // Retail Service ID when Darwin supplies one
@@ -218,7 +219,9 @@ function relativeClockDelta(candidate: string, target: string): number | null {
 
 function toLiveDeparture(svc: DarwinService): LiveDeparture {
   const std = svc.std ?? "";
-  const etd = typeof svc.etd === "string" && svc.etd ? svc.etd : "On time";
+  // Keep Darwin's passenger-facing value intact. Missing/unknown live data must
+  // never be upgraded to a fabricated "On time" assertion.
+  const etd = typeof svc.etd === "string" ? svc.etd.trim() : "";
   const platform = typeof svc.platform === "string" ? svc.platform : undefined;
   const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
   const serviceId = typeof svc.serviceID === "string" && svc.serviceID ? svc.serviceID : undefined;
@@ -232,7 +235,35 @@ function toLiveDeparture(svc: DarwinService): LiveDeparture {
   if (/^on time$/i.test(etd)) {
     return { ...base, status: "on_time", label: "On time", detail: plat };
   }
-  // A revised HH:MM, or the word "Delayed".
+  if (/^delayed$/i.test(etd)) {
+    return { ...base, status: "delayed", label: "Delayed", detail: svc.delayReason || plat };
+  }
+  if (/^no report$/i.test(etd)) {
+    return {
+      ...base,
+      status: "stale",
+      label: "No live report",
+      detail: plat,
+    };
+  }
+
+  // Darwin marks an absolute forecast with * when that time is uncertain.
+  // Preserve the time, but deliberately render it through the existing stale
+  // trust state so an uncertain forecast cannot look confirmed.
+  const uncertainTime = /^(\d{1,2}:\d{2})\*$/.exec(etd);
+  if (uncertainTime) {
+    const expected = uncertainTime[1];
+    const mins = hhmmDiff(std, expected);
+    const delay = mins > 0 ? `+${mins} min` : null;
+    return {
+      ...base,
+      status: "stale",
+      label: `Expected ${expected} · uncertain`,
+      detail: [delay, plat].filter(Boolean).join(" · ") || undefined,
+      uncertain: true,
+    };
+  }
+
   if (/^\d{1,2}:\d{2}$/.test(etd)) {
     const mins = hhmmDiff(std, etd);
     const delay = mins > 0 ? `+${mins} min` : null;
@@ -243,7 +274,16 @@ function toLiveDeparture(svc: DarwinService): LiveDeparture {
       detail: [delay, plat].filter(Boolean).join(" · ") || undefined,
     };
   }
-  return { ...base, status: "delayed", label: "Delayed", detail: svc.delayReason || plat };
+
+  // Unknown or missing provider values are live uncertainty, not evidence of a
+  // delay. Keep the raw value in `etd` for diagnostics while showing a
+  // passenger-safe unknown state.
+  return {
+    ...base,
+    status: "stale",
+    label: "Live forecast unavailable",
+    detail: plat,
+  };
 }
 
 function hhmmDiff(a: string, b: string): number {
