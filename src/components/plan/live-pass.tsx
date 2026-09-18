@@ -18,6 +18,7 @@ import type {
 
 type Live = {
   available: boolean;
+  serviceId?: string;
   status?: TravelStatus;
   label?: string;
   detail?: string;
@@ -54,14 +55,20 @@ export function LivePass({
   useEffect(() => {
     if (!crs || !time) return;
     let active = true;
+    // A legacy booking may begin with only a unique scheduled-minute match.
+    // Once Darwin returns the physical serviceID, pin every later poll in this
+    // open session to that exact service instead of re-solving by time.
+    let exactServiceId = serviceId ?? null;
     const load = () => {
       const qs = new URLSearchParams({ crs, time });
       if (dest) qs.set("dest", dest);
-      if (serviceId) qs.set("serviceId", serviceId);
+      if (exactServiceId) qs.set("serviceId", exactServiceId);
       fetch(`/api/darwin/departure?${qs.toString()}`)
         .then((r) => r.json())
         .then((d: Live) => {
-          if (active) setLive(d?.available ? d : null);
+          if (!active) return;
+          if (d?.available && d.serviceId) exactServiceId = d.serviceId;
+          setLive(d?.available ? d : null);
         })
         .catch(() => {
           /* keep the static card */
