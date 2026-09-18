@@ -27,7 +27,7 @@ describe("Darwin live rail accuracy edge cases", () => {
     else process.env.DARWIN_LDBWS_KEY = originalKey;
   });
 
-  it.fails("reports a cross-midnight delay with the correct positive delay magnitude", async () => {
+  it("reports a cross-midnight delay with the correct positive delay magnitude", async () => {
     mockBoard([
       {
         serviceID: "svc-midnight",
@@ -45,6 +45,89 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.label).toBe("Now 00:05");
     expect(live?.detail).toContain("+7 min");
     expect(live?.detail).toContain("Platform 2");
+  });
+
+  it("keeps an ordinary same-day delay magnitude unchanged", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-same-day",
+        std: "22:06",
+        etd: "22:11",
+        platform: "1",
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "22:06", "STP", "svc-same-day");
+
+    expect(live?.detail).toContain("+5 min");
+  });
+
+  it("does not invent a next-day rollover for a small backwards live-time move", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-backwards",
+        std: "10:00",
+        etd: "09:55",
+        platform: "1",
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "10:00", "STP", "svc-backwards");
+
+    expect(live).not.toBeNull();
+    expect(live?.label).toBe("Now 09:55");
+    expect(live?.detail).not.toContain("+1435 min");
+  });
+
+  it("treats exactly six hours backwards as back-in-time, not a midnight rollover", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-minus-six",
+        std: "12:00",
+        etd: "06:00",
+        platform: "1",
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "12:00", "STP", "svc-minus-six");
+
+    expect(live?.detail).not.toContain("+1080 min");
+  });
+
+  it("keeps exactly eighteen hours forwards as a normal increasing Darwin time", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-plus-eighteen",
+        std: "00:00",
+        etd: "18:00",
+        platform: "1",
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "00:00", "STP", "svc-plus-eighteen");
+
+    expect(live?.detail).toContain("+1080 min");
+  });
+
+  it("treats a forward jump over eighteen hours as back-in-time across midnight", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-forward-wrap",
+        std: "00:05",
+        etd: "23:58",
+        platform: "1",
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "00:05", "STP", "svc-forward-wrap");
+
+    expect(live).not.toBeNull();
+    expect(live?.detail).not.toContain("+1433 min");
   });
 
   it("does not warn about a same-platform train that is now expected to leave after the user's train", async () => {
