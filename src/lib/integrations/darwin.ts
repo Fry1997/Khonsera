@@ -36,6 +36,9 @@ export type LiveDeparture = {
   label: string; // "On time" · "Delayed" · "Cancelled" · "Now 07:38"
   detail?: string; // "+13 min" · "Platform 2"
   platform?: string;
+  platformAvailable: boolean; // board-level Darwin permission to display platform data
+  source: "darwin";
+  generatedAt?: string; // board freshness timestamp from Darwin
   std: string; // scheduled departure HH:MM
   etd: string; // raw estimate from Darwin, preserved verbatim for diagnostics
   uncertain?: boolean; // Darwin appended * to an absolute forecast
@@ -56,6 +59,12 @@ type DarwinService = {
   cancelReason?: string;
   delayReason?: string;
   destination?: Array<{ locationName?: string; crs?: string }>;
+};
+
+type DarwinBoard = {
+  trainServices?: DarwinService[];
+  platformAvailable?: boolean;
+  generatedAt?: string;
 };
 
 // Fetch the live departure board for `crs` and resolve the passenger's service.
@@ -95,9 +104,18 @@ export async function liveDeparture(
   }
 
   // The StationBoard object — top-level, or under a SOAP-style wrapper.
-  const data = json as { trainServices?: DarwinService[]; GetStationBoardResult?: { trainServices?: DarwinService[] } };
-  const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
+  // National Rail's public contract is strict: platform information is only
+  // displayable when platformAvailable is explicitly true. Absent/false means
+  // suppress the platform heading even if a service-level value leaks through.
+  const data = json as DarwinBoard & { GetStationBoardResult?: DarwinBoard };
+  const board = data?.GetStationBoardResult ?? data;
+  const services = board?.trainServices;
   if (!Array.isArray(services)) return null;
+  const platformAvailable = board.platformAvailable === true;
+  const generatedAt =
+    typeof board.generatedAt === "string" && board.generatedAt
+      ? board.generatedAt
+      : undefined;
 
   const requestedServiceId = serviceId?.trim();
   let target: DarwinService | undefined;
@@ -113,7 +131,7 @@ export async function liveDeparture(
     target = sameMinute[0];
   }
 
-  const live = toLiveDeparture(target);
+  const live = toLiveDeparture(target, platformAvailable, generatedAt);
 
   // Wrong-train guard is context, not identity. Compare CURRENT expected order,
   // not timetable order. Unknown forecasts are excluded rather than guessed.
@@ -183,13 +201,23 @@ export async function nextServicesTo(originCrs: string, destCrs: string, count =
   } finally {
     clearTimeout(timer);
   }
-  const data = json as { trainServices?: DarwinService[]; GetStationBoardResult?: { trainServices?: DarwinService[] } };
-  const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
+  const data = json as DarwinBoard & { GetStationBoardResult?: DarwinBoard };
+  const board = data?.GetStationBoardResult ?? data;
+  const services = board?.trainServices;
   if (!Array.isArray(services)) return null;
+  const platformAvailable = board.platformAvailable === true;
   return services
     .filter((s) => s?.std)
     .slice(0, count)
-    .map((s) => ({ std: s.std!, etd: s.etd ?? "On time", isCancelled: Boolean(s.isCancelled), platform: s.platform }));
+    .map((s) => ({
+      std: s.std!,
+      etd: s.etd ?? "On time",
+      isCancelled: Boolean(s.isCancelled),
+      platform:
+        platformAvailable && typeof s.platform === "string"
+          ? s.platform
+          : undefined,
+    }));
 }
 
 function hhmmToMin(s: string): number {
@@ -217,16 +245,33 @@ function relativeClockDelta(candidate: string, target: string): number | null {
   return delta;
 }
 
-function toLiveDeparture(svc: DarwinService): LiveDeparture {
+function toLiveDeparture(
+  svc: DarwinService,
+  platformAvailable: boolean,
+  generatedAt?: string,
+): LiveDeparture {
   const std = svc.std ?? "";
   // Keep Darwin's passenger-facing value intact. Missing/unknown live data must
   // never be upgraded to a fabricated "On time" assertion.
   const etd = typeof svc.etd === "string" ? svc.etd.trim() : "";
-  const platform = typeof svc.platform === "string" ? svc.platform : undefined;
+  const platform =
+    platformAvailable && typeof svc.platform === "string"
+      ? svc.platform
+      : undefined;
   const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
   const serviceId = typeof svc.serviceID === "string" && svc.serviceID ? svc.serviceID : undefined;
   const rsid = typeof svc.rsid === "string" && svc.rsid ? svc.rsid : undefined;
-  const base = { std, etd, platform, destination, serviceId, rsid } as const;
+  const base = {
+    std,
+    etd,
+    platform,
+    platformAvailable,
+    source: "darwin" as const,
+    generatedAt,
+    destination,
+    serviceId,
+    rsid,
+  } as const;
   const plat = platform ? `Platform ${platform}` : undefined;
 
   if (svc.isCancelled === true || /cancel/i.test(etd)) {
