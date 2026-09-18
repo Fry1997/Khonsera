@@ -1,21 +1,15 @@
 name: QA Observatory
 
 on:
-  # Self-test the observer whenever its workflow changes on the production
-  # branch. This makes the first merge prove the recording pipeline without
-  # requiring a local terminal or a manual bootstrap run.
-  push:
-    branches:
-      - claude/khonsera-build-brief-An4oz
-    paths:
-      - .github/workflows/qa-observatory.yml
   workflow_dispatch:
     inputs:
-      label:
-        description: Human label for this traveller run
+      scenario:
+        description: Production QA scenario to run
         required: true
-        default: Traveller experience
-        type: string
+        default: KQA-UX-001
+        type: choice
+        options:
+          - KQA-UX-001
       viewport:
         description: Browser viewports to record
         required: true
@@ -26,22 +20,33 @@ on:
           - desktop
           - mobile
 
+  issue_comment:
+    types:
+      - created
+
 permissions:
   contents: write
+  id-token: write
+  issues: read
 
 env:
-  NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-  NEXT_PUBLIC_APP_ENV: ci
+  PLAYWRIGHT_BASE_URL: https://www.khonsera.com
   NEXT_TELEMETRY_DISABLED: 1
-  SUPABASE_TELEMETRY_DISABLED: 1
-  OBSERVATORY_LABEL: ${{ inputs.label || 'QA Observatory smoke' }}
+  OBSERVATORY_SCENARIO: ${{ inputs.scenario || 'KQA-UX-001' }}
   OBSERVATORY_VIEWPORT: ${{ inputs.viewport || 'both' }}
+  QA_AUTH_FUNCTION_URL: https://attbfwemjoslugvtfbrt.supabase.co/functions/v1/qa-observer-auth
 
 jobs:
   observe:
-    name: Record traveller
+    name: Record production traveller
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.number == 90 &&
+        github.event.comment.author_association == 'OWNER' &&
+        startsWith(github.event.comment.body, 'QA:UX KQA-UX-001')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -58,38 +63,41 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Start isolated Supabase
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Mint production QA login
         shell: bash
         run: |
           set -euo pipefail
 
-          mv supabase/migrations /tmp/khonsera-production-migrations
-          mkdir -p supabase/migrations
-          cp tests/e2e/fixtures/0001_e2e_schema.sql supabase/migrations/0001_e2e_schema.sql
+          oidc_json="$(curl --fail --silent --show-error             -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=khonsera-qa-observer")"
 
-          npx supabase start
-          status_env="$(npx supabase status -o env)"
-          eval "$status_env"
-          test -n "${ANON_KEY:-}"
-          test -n "${SERVICE_ROLE_KEY:-}"
+          oidc_token="$(jq -r '.value // empty' <<<"$oidc_json")"
+          test -n "$oidc_token"
+
+          auth_json="$(curl --fail --silent --show-error             -X POST             -H "Authorization: Bearer $oidc_token"             "$QA_AUTH_FUNCTION_URL")"
+
+          qa_email="$(jq -r '.email // empty' <<<"$auth_json")"
+          magic_link="$(jq -r '.action_link // empty' <<<"$auth_json")"
+
+          test -n "$qa_email"
+          test -n "$magic_link"
+
+          echo "::add-mask::$magic_link"
           {
-            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
-            echo "E2E_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "KHONSERA_QA_EMAIL=$qa_email"
+            echo "KHONSERA_QA_MAGIC_LINK=$magic_link"
           } >> "$GITHUB_ENV"
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Production build
-        run: npm run build
-
-      - name: Record traveller experience
+      - name: Record KQA-UX-001
         id: traveller
         continue-on-error: true
         shell: bash
         env:
           PLAYWRIGHT_OBSERVER: "1"
+          KQA_PRODUCTION: "1"
+          KQA_RUN_NUMBER: ${{ github.run_number }}
           OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
         run: |
           set -euo pipefail
@@ -110,13 +118,21 @@ jobs:
               ;;
           esac
 
-          npx playwright test tests/e2e/traveller-experience.spec.ts             --workers=1             "${project_args[@]}"
+          case "$OBSERVATORY_SCENARIO" in
+            KQA-UX-001)
+              npx playwright test tests/e2e/kqa-ux-001.spec.ts                 --workers=1                 "${project_args[@]}"
+              ;;
+            *)
+              echo "Unsupported scenario: $OBSERVATORY_SCENARIO" >&2
+              exit 2
+              ;;
+          esac
 
       - name: Prepare browser evidence
         if: always()
         shell: bash
         env:
-          RUN_LABEL: ${{ env.OBSERVATORY_LABEL }}
+          RUN_SCENARIO: ${{ env.OBSERVATORY_SCENARIO }}
           OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
         run: |
           set -euo pipefail
@@ -147,13 +163,16 @@ jobs:
             zip -qr qa-publish/playwright-report.zip playwright-report
           fi
 
-          jq -n             --arg runId "$GITHUB_RUN_ID"             --arg runNumber "$GITHUB_RUN_NUMBER"             --arg label "$RUN_LABEL"             --arg viewport "$OBSERVER_VIEWPORT"             --arg sha "$GITHUB_SHA"             --arg outcome "${{ steps.traveller.outcome }}"             '{
+          jq -n             --arg runId "$GITHUB_RUN_ID"             --arg runNumber "$GITHUB_RUN_NUMBER"             --arg scenario "$RUN_SCENARIO"             --arg viewport "$OBSERVER_VIEWPORT"             --arg sha "$GITHUB_SHA"             --arg outcome "${{ steps.traveller.outcome }}"             --arg environment "production"             --arg targetUrl "https://www.khonsera.com"             --arg dataBoundary "Persistent dedicated QA traveller in live Supabase; no real passenger data."             '{
               runId: $runId,
               runNumber: $runNumber,
-              label: $label,
+              scenario: $scenario,
               viewport: $viewport,
               sha: $sha,
-              outcome: $outcome
+              outcome: $outcome,
+              environment: $environment,
+              targetUrl: $targetUrl,
+              dataBoundary: $dataBoundary
             }' > qa-publish/manifest.json
 
       - name: Upload workflow evidence
@@ -173,7 +192,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_LABEL: ${{ env.OBSERVATORY_LABEL }}
+          RUN_SCENARIO: ${{ env.OBSERVATORY_SCENARIO }}
           OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
           TRAVELLER_OUTCOME: ${{ steps.traveller.outcome }}
         run: |
@@ -182,23 +201,22 @@ jobs:
           notes="$(mktemp)"
 
           cat > "$notes" <<EOF
-          Synthetic Khonsera traveller evidence.
+          Production Khonsera traveller evidence.
 
+          - Scenario: ${RUN_SCENARIO}
           - Workflow run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           - Commit: ${GITHUB_SHA}
+          - Target: https://www.khonsera.com
           - Viewport: ${OBSERVER_VIEWPORT}
           - Playwright outcome: ${TRAVELLER_OUTCOME}
-          - Data boundary: isolated CI Supabase fixture only; no production traveller data.
+          - Data boundary: persistent dedicated QA traveller in live Supabase; no real passenger data.
+          - Cleanup policy: preserve QA-created data unless a specific retest requires selective cleanup.
           EOF
 
-          gh release create "$tag" qa-publish/*             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --title "$RUN_LABEL · Observer #$GITHUB_RUN_NUMBER"             --notes-file "$notes"             --prerelease
-
-      - name: Stop isolated Supabase
-        if: always()
-        run: npx supabase stop --no-backup || true
+          gh release create "$tag" qa-publish/*             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --title "${RUN_SCENARIO} · Production Observer #$GITHUB_RUN_NUMBER"             --notes-file "$notes"             --prerelease
 
       - name: Preserve traveller failure
         if: steps.traveller.outcome == 'failure'
         run: |
-          echo "The observer evidence was published, but the traveller test failed." >&2
+          echo "The production observer evidence was published, but the traveller test failed." >&2
           exit 1
