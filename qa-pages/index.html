@@ -19,8 +19,13 @@
     h1 { margin:5px 0 4px; font-size:clamp(28px,5vw,46px); line-height:1.02; letter-spacing:-.035em; }
     .sub { color:var(--muted); max-width:720px; margin:0; }
     .stack { display:flex; gap:10px; flex-wrap:wrap; }
-    .statusbar,.panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 20px 50px rgba(0,0,0,.18); }
+    .statusbar,.panel,.live-panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 20px 50px rgba(0,0,0,.18); }
     .statusbar { padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; }
+    .live-panel { display:none; padding:20px; margin-bottom:22px; }
+    .live-panel.active { display:block; }
+    .live-stage { border:1px solid var(--line); border-radius:15px; overflow:hidden; background:#050609; min-height:280px; display:grid; place-items:center; }
+    .live-stage img { display:block; width:100%; max-height:760px; object-fit:contain; background:#050609; }
+    .live-meta { color:var(--muted); font-size:13px; margin-top:10px; display:flex; gap:12px; flex-wrap:wrap; }
     .status-left { display:flex; align-items:center; gap:11px; min-width:0; }
     .dot { width:10px; height:10px; border-radius:999px; background:var(--muted); box-shadow:0 0 0 4px rgba(155,168,184,.08); flex:0 0 auto; }
     .dot.good { background:var(--good); box-shadow:0 0 0 4px rgba(112,214,168,.09); }
@@ -60,7 +65,7 @@
       <div>
         <div class="eyebrow">Khonsera · Production traveller QA</div>
         <h1>QA Observatory</h1>
-        <p class="sub">Watch an adaptive AI traveller pilot the real deployed Khonsera product screen by screen, recover from UI differences, and preserve recordings, traces and findings.</p>
+        <p class="sub">Watch this ChatGPT conversation pilot the real deployed Khonsera product screen by screen through a dumb Playwright browser relay.</p>
       </div>
       <div class="stack">
         <a class="button primary" href="https://github.com/Fry1997/Khonsera/actions/workflows/qa-observatory.yml" target="_blank" rel="noreferrer">Start traveller run ↗</a>
@@ -79,6 +84,22 @@
       <button id="refresh">Refresh</button>
     </section>
 
+    <section id="live-panel" class="live-panel">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Live relay</div>
+          <h2 id="live-title">Waiting for browser…</h2>
+          <div id="live-meta" class="meta">The runner will publish its current screen after authentication.</div>
+        </div>
+        <a id="live-state-link" class="button" href="#" target="_blank" rel="noreferrer" style="display:none">Open state ↗</a>
+      </div>
+      <div class="live-stage">
+        <img id="live-image" alt="Current Khonsera QA browser screen" style="display:none" />
+        <div id="live-placeholder" class="skeleton">Waiting for the relay to publish its first screenshot…</div>
+      </div>
+      <div id="live-detail" class="live-meta"></div>
+    </section>
+
     <div class="grid">
       <section class="panel">
         <div class="section-head">
@@ -89,7 +110,7 @@
           <div id="view-switch" class="view-switch"></div>
         </div>
         <div id="evidence"><div class="skeleton">Loading recording and trace links…</div></div>
-        <div class="footer-note">QA:UX uses an adaptive computer-use pilot: screenshot → reason → UI action → screenshot. Playwright records and executes the browser but no longer decides the journey with fixed selectors. Evidence uses a dedicated persistent QA traveller; real passenger or personal data must never be introduced while Observatory releases are public.</div>
+        <div class="footer-note">QA:UX is piloted by the active ChatGPT conversation: screenshot → reason here → mechanical command → new screenshot. Playwright is only the remote browser and recorder. No OpenAI API key or separate model API billing is used. Evidence uses a dedicated persistent QA traveller; real passenger or personal data must never be introduced while Observatory releases are public.</div>
       </section>
 
       <aside class="panel">
@@ -109,6 +130,7 @@
     let releases = [];
     let selectedRelease = null;
     let selectedViewport = "desktop-chromium";
+    let latestRun = null;
 
     function escapeHtml(value) {
       return String(value == null ? "" : value)
@@ -130,7 +152,7 @@
         video: assetByName(release, viewport + ".webm"),
         trace: assetByName(release, viewport + "-trace.zip"),
         metrics: assetByName(release, viewport + "-metrics.json"),
-        pilot: assetByName(release, viewport + "-pilot.json"),
+        relay: assetByName(release, viewport + "-relay.json"),
         actions: assetByName(release, viewport + "-actions.jsonl"),
         calm: assetByName(release, viewport + "-traveller-calm-top.png"),
         delayed: assetByName(release, viewport + "-traveller-delayed.png"),
@@ -172,8 +194,8 @@
 
       const links = ['<a class="button primary" href="' + escapeHtml(assets.video.browser_download_url) + '" target="_blank" rel="noreferrer">Open recording ↗</a>'];
       if (assets.trace) links.push('<a class="button" href="' + escapeHtml(traceUrl(assets.trace)) + '" target="_blank" rel="noreferrer">Inspect Playwright trace ↗</a>');
-      if (assets.pilot) links.push('<a class="button" href="' + escapeHtml(assets.pilot.browser_download_url) + '" target="_blank" rel="noreferrer">Adaptive pilot report ↗</a>');
-      if (assets.actions) links.push('<a class="button" href="' + escapeHtml(assets.actions.browser_download_url) + '" target="_blank" rel="noreferrer">Pilot action log ↗</a>');
+      if (assets.relay) links.push('<a class="button" href="' + escapeHtml(assets.relay.browser_download_url) + '" target="_blank" rel="noreferrer">Relay result ↗</a>');
+      if (assets.actions) links.push('<a class="button" href="' + escapeHtml(assets.actions.browser_download_url) + '" target="_blank" rel="noreferrer">Action log ↗</a>');
       if (assets.metrics) links.push('<a class="button" href="' + escapeHtml(assets.metrics.browser_download_url) + '" target="_blank" rel="noreferrer">Legacy metrics JSON ↗</a>');
 
       const namedShots = [["Calm state",assets.calm],["Delayed state",assets.delayed]].filter((entry) => entry[1]);
@@ -232,6 +254,7 @@
         const data = await response.json();
         const run = data.workflow_runs && data.workflow_runs[0];
         if (!run) throw new Error("No observer runs found");
+        latestRun = run;
 
         const dot = $("run-dot");
         dot.className = "dot";
@@ -242,10 +265,51 @@
 
         $("run-title").textContent = title;
         $("run-meta").innerHTML = '<a href="' + escapeHtml(run.html_url) + '" target="_blank" rel="noreferrer">Observer #' + escapeHtml(run.run_number) + '</a> · ' + escapeHtml(fmtDate(run.updated_at));
+        await loadLiveRelay(run);
       } catch (error) {
         $("run-dot").className = "dot bad";
         $("run-title").textContent = "Could not read GitHub Actions status";
         $("run-meta").textContent = error.message;
+      }
+    }
+
+    async function loadLiveRelay(run) {
+      const panel = $("live-panel");
+      if (!run || run.status === "completed") {
+        panel.classList.remove("active");
+        return;
+      }
+
+      panel.classList.add("active");
+      const base = "https://raw.githubusercontent.com/" + REPO + "/qa-live-" + run.id + "/qa-live";
+      const stateUrl = base + "/state.json";
+      const imageUrl = base + "/current.png?t=" + Date.now();
+
+      try {
+        const response = await fetch(stateUrl + "?t=" + Date.now(), { cache:"no-store" });
+        if (!response.ok) throw new Error("Relay has not published a screen yet");
+        const state = await response.json();
+
+        $("live-title").textContent = (state.viewportName === "mobile-390" ? "Mobile" : "Desktop") + " · " + (state.status || "ready");
+        $("live-meta").textContent = state.url || "Khonsera";
+        $("live-detail").innerHTML =
+          '<span>Command ' + escapeHtml(state.commandCount) + ' / ' + escapeHtml(state.maxCommands) + '</span>' +
+          '<span>Updated ' + escapeHtml(fmtDate(state.updatedAt)) + '</span>' +
+          (state.signals && state.signals.serverErrors && state.signals.serverErrors.length ? '<span style="color:var(--bad)">5xx: ' + state.signals.serverErrors.length + '</span>' : '');
+
+        const image = $("live-image");
+        image.src = imageUrl;
+        image.style.display = "block";
+        $("live-placeholder").style.display = "none";
+
+        const stateLink = $("live-state-link");
+        stateLink.href = stateUrl;
+        stateLink.style.display = "inline-flex";
+      } catch (error) {
+        $("live-title").textContent = "Browser starting…";
+        $("live-meta").textContent = error.message;
+        $("live-image").style.display = "none";
+        $("live-placeholder").style.display = "block";
       }
     }
 
@@ -278,7 +342,10 @@
 
     $("refresh").addEventListener("click",refresh);
     refresh();
-    setInterval(loadRunStatus,15000);
+    setInterval(loadRunStatus,60000);
+    setInterval(() => {
+      if (latestRun && latestRun.status !== "completed") void loadLiveRelay(latestRun);
+    },3000);
   </script>
 </body>
 </html>

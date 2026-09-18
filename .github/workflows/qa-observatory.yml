@@ -11,7 +11,7 @@ on:
         options:
           - KQA-UX-001
       viewport:
-        description: Browser viewports to record
+        description: Browser viewports to pilot
         required: true
         default: both
         type: choice
@@ -27,7 +27,7 @@ on:
 permissions:
   contents: write
   id-token: write
-  issues: write
+  issues: read
 
 env:
   PLAYWRIGHT_BASE_URL: https://www.khonsera.com
@@ -37,7 +37,6 @@ env:
   QA_AUTH_FUNCTION_URL: https://attbfwemjoslugvtfbrt.supabase.co/functions/v1/qa-observer-auth
   KQA_SUPABASE_URL: https://attbfwemjoslugvtfbrt.supabase.co
   KQA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_qGQTlzrEcNjV33Ia2hwPmA_GZE22stL
-  KQA_MODEL: gpt-5.6-sol
 
 jobs:
   observe:
@@ -51,7 +50,7 @@ jobs:
         startsWith(github.event.comment.body, 'QA:UX KQA-UX-001')
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -69,21 +68,16 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Record adaptive KQA-UX-001
+      - name: Record chat-piloted KQA-UX-001
         id: traveller
         continue-on-error: true
         shell: bash
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           KQA_RUN_NUMBER: ${{ github.run_number }}
           OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
         run: |
           set -u -o pipefail
-
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo "::error::OPENAI_API_KEY repository secret is required for adaptive QA:UX computer use."
-            exit 78
-          fi
 
           oidc_json="$(curl --fail --silent --show-error \
             -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -115,11 +109,10 @@ jobs:
             KHONSERA_QA_EMAIL="$qa_email" \
             KHONSERA_QA_MAGIC_LINK="$link" \
             KQA_VIEWPORT="$project" \
-            KQA_EVIDENCE_DIR="test-results/adaptive/$project" \
-            KQA_MAX_TURNS="40" \
-            KQA_MAX_MINUTES="12" \
-            KQA_MAX_ACTIONS="140" \
-              npm run qa:adaptive
+            KQA_EVIDENCE_DIR="test-results/relay/$project" \
+            KQA_RELAY_MAX_MINUTES="35" \
+            KQA_RELAY_MAX_COMMANDS="80" \
+              npm run qa:relay
           }
 
           status=0
@@ -143,7 +136,7 @@ jobs:
 
           exit "$status"
 
-      - name: Prepare adaptive browser evidence
+      - name: Prepare relay evidence
         if: always()
         shell: bash
         env:
@@ -155,22 +148,21 @@ jobs:
 
           outcome_for() {
             local project="$1"
-            local result="test-results/adaptive/$project/result.json"
+            local result="test-results/relay/$project/result.json"
             if [ -f "$result" ]; then
-              jq -r '.pilot.outcome // "unknown"' "$result"
+              jq -r '.finish.outcome // (if .relayError then "relay-error" else "unknown" end)' "$result"
             else
               echo "not-run"
             fi
           }
 
           for project in desktop-chromium mobile-390; do
-            root="test-results/adaptive/$project"
+            root="test-results/relay/$project"
 
             [ -f "$root/$project.webm" ] && cp "$root/$project.webm" "qa-publish/$project.webm"
             [ -f "$root/$project-trace.zip" ] && cp "$root/$project-trace.zip" "qa-publish/$project-trace.zip"
-            [ -f "$root/result.json" ] && cp "$root/result.json" "qa-publish/$project-pilot.json"
+            [ -f "$root/result.json" ] && cp "$root/result.json" "qa-publish/$project-relay.json"
             [ -f "$root/actions.jsonl" ] && cp "$root/actions.jsonl" "qa-publish/$project-actions.jsonl"
-            [ -f "$root/$project-start.png" ] && cp "$root/$project-start.png" "qa-publish/$project-start.png"
             [ -f "$root/$project-final.png" ] && cp "$root/$project-final.png" "qa-publish/$project-final.png"
           done
 
@@ -188,7 +180,8 @@ jobs:
             --arg mobileOutcome "$mobile_outcome" \
             --arg environment "production" \
             --arg targetUrl "https://www.khonsera.com" \
-            --arg executionMode "adaptive-computer-use" \
+            --arg executionMode "chat-piloted-relay" \
+            --arg liveBranch "qa-live-$GITHUB_RUN_ID" \
             --arg dataBoundary "Persistent dedicated QA traveller in live Supabase; no real passenger data." \
             '{
               runId: $runId,
@@ -202,6 +195,7 @@ jobs:
                 mobile: $mobileOutcome
               },
               executionMode: $executionMode,
+              liveBranch: $liveBranch,
               environment: $environment,
               targetUrl: $targetUrl,
               dataBoundary: $dataBoundary
@@ -216,9 +210,9 @@ jobs:
           retention-days: 14
           path: |
             qa-publish/
-            test-results/adaptive/
+            test-results/relay/
 
-      - name: Publish adaptive browser-viewable evidence
+      - name: Publish browser-viewable evidence
         if: always()
         shell: bash
         env:
@@ -231,6 +225,9 @@ jobs:
           tag="qa-observer-${GITHUB_RUN_ID}"
           notes="$(mktemp)"
 
+          desktop_outcome="$(jq -r '.finish.outcome // (if .relayError then "relay-error" else "not-run" end)' test-results/relay/desktop-chromium/result.json 2>/dev/null || echo not-run)"
+          mobile_outcome="$(jq -r '.finish.outcome // (if .relayError then "relay-error" else "not-run" end)' test-results/relay/mobile-390/result.json 2>/dev/null || echo not-run)"
+
           cat > "$notes" <<EOF
           Production Khonsera traveller evidence.
 
@@ -239,25 +236,36 @@ jobs:
           - Commit: ${GITHUB_SHA}
           - Target: https://www.khonsera.com
           - Viewport: ${OBSERVER_VIEWPORT}
-          - Execution: adaptive computer-use pilot (screen observation → action → re-observation)
+          - Execution: ChatGPT conversation piloting a dumb Playwright relay screen by screen
           - Infrastructure outcome: ${INFRASTRUCTURE_OUTCOME}
-          - Desktop pilot outcome: $(jq -r '.pilot.outcome // "not-run"' test-results/adaptive/desktop-chromium/result.json 2>/dev/null || echo not-run)
-          - Mobile pilot outcome: $(jq -r '.pilot.outcome // "not-run"' test-results/adaptive/mobile-390/result.json 2>/dev/null || echo not-run)
+          - Desktop pilot outcome: ${desktop_outcome}
+          - Mobile pilot outcome: ${mobile_outcome}
+          - Live branch: qa-live-${GITHUB_RUN_ID}
           - Data boundary: persistent dedicated QA traveller in live Supabase; no real passenger data.
           - Cleanup policy: preserve QA-created data unless a specific retest requires selective cleanup.
           EOF
 
-          gh release create "$tag" qa-publish/*             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --title "${RUN_SCENARIO} · Production Observer #$GITHUB_RUN_NUMBER"             --notes-file "$notes"             --prerelease
+          shopt -s nullglob
+          assets=(qa-publish/*)
 
-      - name: Publish adaptive findings to GitHub
-        if: always() && steps.traveller.outcome == 'success'
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/qa/publish-findings.mjs
+          if [ "${#assets[@]}" -gt 0 ]; then
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "${RUN_SCENARIO} · Production Observer #$GITHUB_RUN_NUMBER" \
+              --notes-file "$notes" \
+              --prerelease
+          else
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "${RUN_SCENARIO} · Production Observer #$GITHUB_RUN_NUMBER" \
+              --notes-file "$notes" \
+              --prerelease
+          fi
 
-      - name: Preserve adaptive pilot infrastructure failure
+      - name: Preserve relay infrastructure failure
         if: steps.traveller.outcome == 'failure'
         run: |
-          echo "Adaptive QA evidence was preserved where possible, but the pilot infrastructure failed." >&2
+          echo "QA relay evidence was preserved where possible, but the browser relay infrastructure failed." >&2
           exit 1
