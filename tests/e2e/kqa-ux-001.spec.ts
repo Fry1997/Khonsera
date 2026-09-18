@@ -8,7 +8,8 @@ import {
 } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
+const desktopMagicLink = process.env.KHONSERA_QA_MAGIC_LINK_DESKTOP;
+const mobileMagicLink = process.env.KHONSERA_QA_MAGIC_LINK_MOBILE;
 const productionMode = process.env.KQA_PRODUCTION === "1";
 const runNumber = process.env.KQA_RUN_NUMBER ?? "local";
 
@@ -38,7 +39,7 @@ type KqaMetrics = {
 };
 
 test.skip(
-  !productionMode || !magicLink,
+  !productionMode || !desktopMagicLink || !mobileMagicLink,
   "KQA-UX-001 only runs from the production QA Observatory workflow.",
 );
 
@@ -140,11 +141,12 @@ function collectSignals(page: Page): BrowserSignals {
 async function authenticateWithoutRecording(
   browser: Browser,
   context: BrowserContext,
+  magicLink: string,
 ) {
   const authContext = await browser.newContext();
   try {
     const authPage = await authContext.newPage();
-    await authPage.goto(magicLink!, { waitUntil: "domcontentloaded" });
+    await authPage.goto(magicLink, { waitUntil: "domcontentloaded" });
     await authPage.waitForURL(/https:\/\/www\.khonsera\.com\/(today|welcome)(?:[/?#].*)?$/, {
       timeout: 30_000,
     });
@@ -257,7 +259,9 @@ test("KQA-UX-001 · persistent production traveller builds a tight rail day", as
   mkdirSync("test-results/traveller-audit", { recursive: true });
   mkdirSync("test-results/visual-evidence", { recursive: true });
 
-  await authenticateWithoutRecording(browser, context);
+  const magicLink =
+    testInfo.project.name === "mobile-390" ? mobileMagicLink! : desktopMagicLink!;
+  await authenticateWithoutRecording(browser, context, magicLink);
 
   const authStart = Date.now();
   await page.goto("/today", { waitUntil: "domcontentloaded" });

@@ -66,28 +66,42 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Mint production QA login
+      - name: Mint production QA logins
         shell: bash
         run: |
           set -euo pipefail
 
-          oidc_json="$(curl --fail --silent --show-error             -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=khonsera-qa-observer")"
+          oidc_json="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=khonsera-qa-observer")"
 
           oidc_token="$(jq -r '.value // empty' <<<"$oidc_json")"
           test -n "$oidc_token"
 
-          auth_json="$(curl --fail --silent --show-error             -X POST             -H "Authorization: Bearer $oidc_token"             "$QA_AUTH_FUNCTION_URL")"
+          mint_link() {
+            curl --fail --silent --show-error \
+              -X POST \
+              -H "Authorization: Bearer $oidc_token" \
+              "$QA_AUTH_FUNCTION_URL"
+          }
 
-          qa_email="$(jq -r '.email // empty' <<<"$auth_json")"
-          magic_link="$(jq -r '.action_link // empty' <<<"$auth_json")"
+          desktop_json="$(mint_link)"
+          mobile_json="$(mint_link)"
+
+          qa_email="$(jq -r '.email // empty' <<<"$desktop_json")"
+          desktop_link="$(jq -r '.action_link // empty' <<<"$desktop_json")"
+          mobile_link="$(jq -r '.action_link // empty' <<<"$mobile_json")"
 
           test -n "$qa_email"
-          test -n "$magic_link"
+          test -n "$desktop_link"
+          test -n "$mobile_link"
 
-          echo "::add-mask::$magic_link"
+          echo "::add-mask::$desktop_link"
+          echo "::add-mask::$mobile_link"
           {
             echo "KHONSERA_QA_EMAIL=$qa_email"
-            echo "KHONSERA_QA_MAGIC_LINK=$magic_link"
+            echo "KHONSERA_QA_MAGIC_LINK_DESKTOP=$desktop_link"
+            echo "KHONSERA_QA_MAGIC_LINK_MOBILE=$mobile_link"
           } >> "$GITHUB_ENV"
 
       - name: Record KQA-UX-001
