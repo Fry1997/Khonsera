@@ -13,6 +13,7 @@ export default defineConfig({
   reporter: process.env.CI
     ? [["line"], ["html", { outputFolder: "playwright-report", open: "never" }]]
     : "list",
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR ?? "test-results",
   use: {
     baseURL,
     trace: observerMode ? "on" : "retain-on-failure",

@@ -109,6 +109,7 @@ jobs:
 
             KHONSERA_QA_EMAIL="$qa_email" \
             KHONSERA_QA_MAGIC_LINK="$link" \
+            PLAYWRIGHT_OUTPUT_DIR="test-results/$project" \
               npx playwright test tests/e2e/kqa-ux-001.spec.ts \
                 --workers=1 \
                 --project="$project"
