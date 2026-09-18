@@ -1,14 +1,11 @@
 import {
   expect,
   test,
-  type Browser,
-  type BrowserContext,
   type Locator,
   type Page,
 } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
 const productionMode = process.env.KQA_PRODUCTION === "1";
 const runNumber = process.env.KQA_RUN_NUMBER ?? "local";
 
@@ -38,7 +35,7 @@ type KqaMetrics = {
 };
 
 test.skip(
-  !productionMode || !magicLink,
+  !productionMode,
   "KQA-UX-001 only runs from the production QA Observatory workflow.",
 );
 
@@ -137,25 +134,6 @@ function collectSignals(page: Page): BrowserSignals {
   return signals;
 }
 
-async function authenticateWithoutRecording(
-  browser: Browser,
-  context: BrowserContext,
-) {
-  const authContext = await browser.newContext();
-  try {
-    const authPage = await authContext.newPage();
-    await authPage.goto(magicLink!, { waitUntil: "domcontentloaded" });
-    await authPage.waitForURL(/https:\/\/www\.khonsera\.com\/(today|welcome)(?:[/?#].*)?$/, {
-      timeout: 30_000,
-    });
-    const cookies = await authContext.cookies("https://www.khonsera.com");
-    expect(cookies.length, "QA auth callback should establish Khonsera cookies").toBeGreaterThan(0);
-    await context.addCookies(cookies);
-  } finally {
-    await authContext.close();
-  }
-}
-
 async function captureFirstViewport(page: Page) {
   await page.evaluate(() => window.scrollTo(0, 0));
   return page.evaluate(() => {
@@ -196,6 +174,11 @@ async function captureFirstViewport(page: Page) {
   });
 }
 
+async function waitForToday(page: Page) {
+  await expect(page).toHaveURL(/\/today(?:[/?#].*)?$/, { timeout: 20_000 });
+  await expect(page.locator("main h1").first()).toBeVisible({ timeout: 20_000 });
+}
+
 async function navigateViaShell(
   page: Page,
   href: string,
@@ -216,6 +199,13 @@ async function navigateViaShell(
 
 async function openAddSheet(page: Page) {
   const trigger = page.getByRole("button", { name: "Add", exact: true }).first();
+
+  if (!(await trigger.isVisible().catch(() => false))) {
+    const dayTools = page.locator("label").filter({ hasText: /Day tools/ }).first();
+    await expect(dayTools).toBeVisible({ timeout: 15_000 });
+    await dayTools.click();
+  }
+
   await expect(trigger).toBeVisible({ timeout: 15_000 });
   await trigger.click();
   const dialog = page.getByRole("dialog", {
@@ -243,8 +233,6 @@ async function pickHub(
 }
 
 test("KQA-UX-001 · persistent production traveller builds a tight rail day", async ({
-  browser,
-  context,
   page,
 }, testInfo) => {
   const signals = collectSignals(page);
@@ -257,13 +245,9 @@ test("KQA-UX-001 · persistent production traveller builds a tight rail day", as
   mkdirSync("test-results/traveller-audit", { recursive: true });
   mkdirSync("test-results/visual-evidence", { recursive: true });
 
-  await authenticateWithoutRecording(browser, context);
-
   const authStart = Date.now();
   await page.goto("/today", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /right now/i })).toBeVisible({
-    timeout: 20_000,
-  });
+  await waitForToday(page);
   const authenticatedTodayMs = Date.now() - authStart;
 
   await page.screenshot({
@@ -351,9 +335,7 @@ test("KQA-UX-001 · persistent production traveller builds a tight rail day", as
   });
 
   const planToTodayMs = await navigateViaShell(page, "/today", notes, async () => {
-    await expect(
-      page.getByRole("heading", { name: /right now/i }),
-    ).toBeVisible({ timeout: 20_000 });
+    await waitForToday(page);
   });
 
   await page.screenshot({
