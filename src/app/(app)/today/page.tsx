@@ -317,6 +317,8 @@ export default async function TodayPage({
       crs: string | null;
       time: string | null;
       dest: string | null;
+      serviceUid: string | null;
+      liveServiceId: string | null;
     }
   >();
 
@@ -397,11 +399,21 @@ export default async function TodayPage({
         origin.type === "transit_changeover"
           ? origin.end_time
           : origin.start_time;
+      const serviceUid =
+        typeof origin.metadata?.service_uid === "string"
+          ? origin.metadata.service_uid
+          : null;
+      const liveServiceId =
+        typeof origin.metadata?.darwin_service_id === "string"
+          ? origin.metadata.darwin_service_id
+          : null;
       legCardByOriginId.set(lt.originStopId, {
         ticket: lt.ticket,
         crs: origin.transport_hub?.code ?? null,
         time: londonHHMM(iso),
         dest: lt.ticket.legs[0]?.destination.code ?? null,
+        serviceUid,
+        liveServiceId,
       });
     }
   }
@@ -423,7 +435,13 @@ export default async function TodayPage({
       !st.start_time
     )
       continue;
-    const live = await liveDeparture(code, londonHHMM(st.start_time) ?? "");
+    const bookedLeg = legCardByOriginId.get(st.id);
+    const live = await liveDeparture(
+      code,
+      londonHHMM(st.start_time) ?? "",
+      bookedLeg?.dest,
+      bookedLeg?.liveServiceId,
+    );
     if (!live) continue;
     const m = /\+(\d+)/.exec(live.detail ?? "");
     const delayMin = live.label === "Cancelled" ? 999 : m ? Number(m[1]) : 0;
