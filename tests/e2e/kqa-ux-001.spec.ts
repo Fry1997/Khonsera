@@ -316,7 +316,7 @@ async function navigateViaShell(
 
 async function openAddSheet(page: Page) {
   const addSection = page.locator('section[aria-label="Add to plan"]');
-  const trigger = addSection.locator("button.cc-add-trigger");
+  const trigger = addSection.getByRole("button", { name: "Add", exact: true });
 
   if (!(await trigger.isVisible())) {
     const dayToolsToggle = page.locator(
