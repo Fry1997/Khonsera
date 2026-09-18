@@ -23,6 +23,7 @@ type Live = {
   detail?: string;
   platform?: string | null;
   destination?: string | null; // the train's final destination — "the Corby train"
+  serviceId?: string | null;
   earlierSamePlatform?: {
     std: string;
     destination?: string;
@@ -50,6 +51,13 @@ export function LivePass({
   onShow?: (ticket: TicketVM) => void;
 }) {
   const [live, setLive] = useState<Live | null>(null);
+  const [resolvedServiceId, setResolvedServiceId] = useState<string | null>(
+    serviceId ?? null,
+  );
+
+  useEffect(() => {
+    setResolvedServiceId(serviceId ?? null);
+  }, [ticket.id, serviceId]);
 
   useEffect(() => {
     if (!crs || !time) return;
@@ -57,14 +65,29 @@ export function LivePass({
     const load = () => {
       const qs = new URLSearchParams({ crs, time });
       if (dest) qs.set("dest", dest);
-      if (serviceId) qs.set("serviceId", serviceId);
+      if (resolvedServiceId) qs.set("serviceId", resolvedServiceId);
       fetch(`/api/darwin/departure?${qs.toString()}`)
         .then((r) => r.json())
         .then((d: Live) => {
-          if (active) setLive(d?.available ? d : null);
+          if (!active) return;
+          setLive(d?.available ? d : null);
+
+          // A legacy booking may not have a provider identity yet. Darwin gives
+          // us one only after the server has made a confident (unique-minute)
+          // match. Adopt it for subsequent polls and persist it for this stop.
+          if (!resolvedServiceId && d?.available && d.serviceId) {
+            setResolvedServiceId(d.serviceId);
+            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ticket.id)) {
+              void fetch("/api/darwin/departure", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ stopId: ticket.id, serviceId: d.serviceId }),
+              });
+            }
+          }
         })
         .catch(() => {
-          /* keep the static card */
+          /* keep the previous truthful state until #66 adds explicit freshness */
         });
     };
     load();
@@ -73,7 +96,7 @@ export function LivePass({
       active = false;
       clearInterval(id);
     };
-  }, [crs, time, dest, serviceId]);
+  }, [crs, time, dest, resolvedServiceId, ticket.id]);
 
   const enriched = useMemo<TicketVM>(() => {
     if (!live?.available) return ticket;
