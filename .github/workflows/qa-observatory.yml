@@ -1,0 +1,204 @@
+name: QA Observatory
+
+on:
+  # Self-test the observer whenever its workflow changes on the production
+  # branch. This makes the first merge prove the recording pipeline without
+  # requiring a local terminal or a manual bootstrap run.
+  push:
+    branches:
+      - claude/khonsera-build-brief-An4oz
+    paths:
+      - .github/workflows/qa-observatory.yml
+  workflow_dispatch:
+    inputs:
+      label:
+        description: Human label for this traveller run
+        required: true
+        default: Traveller experience
+        type: string
+      viewport:
+        description: Browser viewports to record
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - desktop
+          - mobile
+
+permissions:
+  contents: write
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+  NEXT_PUBLIC_APP_ENV: ci
+  NEXT_TELEMETRY_DISABLED: 1
+  SUPABASE_TELEMETRY_DISABLED: 1
+  OBSERVATORY_LABEL: ${{ inputs.label || 'QA Observatory smoke' }}
+  OBSERVATORY_VIEWPORT: ${{ inputs.viewport || 'both' }}
+
+jobs:
+  observe:
+    name: Record traveller
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Start isolated Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mv supabase/migrations /tmp/khonsera-production-migrations
+          mkdir -p supabase/migrations
+          cp tests/e2e/fixtures/0001_e2e_schema.sql supabase/migrations/0001_e2e_schema.sql
+
+          npx supabase start
+          status_env="$(npx supabase status -o env)"
+          eval "$status_env"
+          test -n "${ANON_KEY:-}"
+          test -n "${SERVICE_ROLE_KEY:-}"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "E2E_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Production build
+        run: npm run build
+
+      - name: Record traveller experience
+        id: traveller
+        continue-on-error: true
+        shell: bash
+        env:
+          PLAYWRIGHT_OBSERVER: "1"
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
+        run: |
+          set -euo pipefail
+          project_args=()
+
+          case "$OBSERVER_VIEWPORT" in
+            desktop)
+              project_args+=(--project=desktop-chromium)
+              ;;
+            mobile)
+              project_args+=(--project=mobile-390)
+              ;;
+            both)
+              ;;
+            *)
+              echo "Unsupported viewport: $OBSERVER_VIEWPORT" >&2
+              exit 2
+              ;;
+          esac
+
+          npx playwright test tests/e2e/traveller-experience.spec.ts             --workers=1             "${project_args[@]}"
+
+      - name: Prepare browser evidence
+        if: always()
+        shell: bash
+        env:
+          RUN_LABEL: ${{ env.OBSERVATORY_LABEL }}
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
+        run: |
+          set -euo pipefail
+          mkdir -p qa-publish
+
+          for project in desktop-chromium mobile-390; do
+            video="$(find test-results -type f -path "*${project}*" -name 'video.webm' 2>/dev/null | head -n 1 || true)"
+            trace="$(find test-results -type f -path "*${project}*" -name 'trace.zip' 2>/dev/null | head -n 1 || true)"
+
+            if [ -n "$video" ]; then
+              cp "$video" "qa-publish/${project}.webm"
+            fi
+
+            if [ -n "$trace" ]; then
+              cp "$trace" "qa-publish/${project}-trace.zip"
+            fi
+
+            if [ -f "test-results/traveller-audit/${project}.json" ]; then
+              cp "test-results/traveller-audit/${project}.json"                 "qa-publish/${project}-metrics.json"
+            fi
+
+            if compgen -G "test-results/visual-evidence/${project}-*.png" > /dev/null; then
+              cp test-results/visual-evidence/${project}-*.png qa-publish/
+            fi
+          done
+
+          if [ -d playwright-report ]; then
+            zip -qr qa-publish/playwright-report.zip playwright-report
+          fi
+
+          jq -n             --arg runId "$GITHUB_RUN_ID"             --arg runNumber "$GITHUB_RUN_NUMBER"             --arg label "$RUN_LABEL"             --arg viewport "$OBSERVER_VIEWPORT"             --arg sha "$GITHUB_SHA"             --arg outcome "${{ steps.traveller.outcome }}"             '{
+              runId: $runId,
+              runNumber: $runNumber,
+              label: $label,
+              viewport: $viewport,
+              sha: $sha,
+              outcome: $outcome
+            }' > qa-publish/manifest.json
+
+      - name: Upload workflow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-observer-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            qa-publish/
+            playwright-report/
+            test-results/
+
+      - name: Publish browser-viewable evidence
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_LABEL: ${{ env.OBSERVATORY_LABEL }}
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
+          TRAVELLER_OUTCOME: ${{ steps.traveller.outcome }}
+        run: |
+          set -euo pipefail
+          tag="qa-observer-${GITHUB_RUN_ID}"
+          notes="$(mktemp)"
+
+          cat > "$notes" <<EOF
+          Synthetic Khonsera traveller evidence.
+
+          - Workflow run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - Commit: ${GITHUB_SHA}
+          - Viewport: ${OBSERVER_VIEWPORT}
+          - Playwright outcome: ${TRAVELLER_OUTCOME}
+          - Data boundary: isolated CI Supabase fixture only; no production traveller data.
+          EOF
+
+          gh release create "$tag" qa-publish/*             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --title "$RUN_LABEL · Observer #$GITHUB_RUN_NUMBER"             --notes-file "$notes"             --prerelease
+
+      - name: Stop isolated Supabase
+        if: always()
+        run: npx supabase stop --no-backup || true
+
+      - name: Preserve traveller failure
+        if: steps.traveller.outcome == 'failure'
+        run: |
+          echo "The observer evidence was published, but the traveller test failed." >&2
+          exit 1

@@ -132,6 +132,11 @@ export default async function SettingsPage({
                 services, but never reads from or writes to your plan.
               </p>
               <DemoModeIndicator />
+              <div className="mt-3">
+                <Link href="/qa" className="btn btn-ghost">
+                  Open QA Observatory
+                </Link>
+              </div>
             </div>
           ) : null}
         </div>
