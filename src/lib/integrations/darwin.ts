@@ -250,7 +250,20 @@ function hhmmDiff(a: string, b: string): number {
   const [ah, am] = a.split(":").map(Number);
   const [bh, bm] = b.split(":").map(Number);
   if ([ah, am, bh, bm].some((n) => Number.isNaN(n))) return 0;
-  return bh * 60 + bm - (ah * 60 + am);
+
+  const raw = bh * 60 + bm - (ah * 60 + am);
+
+  // Darwin's schedule ordering rules are deliberately asymmetric:
+  //   < -6h   => crossed midnight, so the later clock is on the next day
+  //   -6h..0  => genuinely back in time
+  //   0..+18h => normal increasing time
+  //   > +18h  => back in time and crossed midnight
+  //
+  // This is safer than "negative means tomorrow": e.g. 10:00 -> 09:55 must
+  // remain -5 minutes rather than becoming a fabricated +23h55 delay.
+  if (raw < -6 * 60) return raw + 24 * 60;
+  if (raw > 18 * 60) return raw - 24 * 60;
+  return raw;
 }
 
 // Diagnostic — never returns the key (only whether one is set), plus the HTTP
