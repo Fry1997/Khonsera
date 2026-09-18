@@ -39,8 +39,8 @@ export default async function ForgotPasswordPage({
             style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
           >
             <div className="cc-auth-field" data-error={sp.error ? "true" : "false"}>
-              <label>Email</label>
-              <input name="email" type="email" required autoComplete="email" className="field" />
+              <label htmlFor="forgot-email">Email</label>
+              <input id="forgot-email" name="email" type="email" required autoComplete="email" className="field" />
             </div>
             {sp.error ? <p className="cc-auth-error">{sp.error}</p> : null}
             <button type="submit" className="cc-btn cc-btn-gold cc-btn-block">

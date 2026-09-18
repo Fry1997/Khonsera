@@ -24,6 +24,22 @@ test("login has no serious or critical WCAG violations", async ({ page }) => {
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("signup has no serious or critical WCAG violations", async ({ page }) => {
+  await page.goto("/signup");
+  await expect(page.getByRole("heading", { name: /let's set you up/i })).toBeVisible();
+  await expect(page.getByLabel("Name")).toBeVisible();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByLabel("Password")).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("forgot password has no serious or critical WCAG violations", async ({ page }) => {
+  await page.goto("/forgot-password");
+  await expect(page.getByRole("heading", { name: /we'll send a link/i })).toBeVisible();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("deployed landing page passes the same accessibility gate", async ({ page }) => {
   test.skip(
     !process.env.PLAYWRIGHT_BASE_URL,

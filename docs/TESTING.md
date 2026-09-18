@@ -22,3 +22,14 @@ No production Supabase key, production user, production itinerary or production 
 The E2E fixture must not be mistaken for a production schema baseline. During setup of authenticated CI, a clean `supabase start` against the committed application migrations failed because the remote production schema and the Git migration directory have drifted. That recovery problem is tracked separately and should eventually be resolved by reconciling the remote migration ledger/schema with Git and proving a clean `supabase db reset` succeeds.
 
 Do not expand the E2E fixture into a second copy of the entire production schema. Add only the contract needed for a browser flow under test; repair the canonical application migration history separately.
+
+
+## Synthetic traveller QA
+
+Automated browser verification is necessary but not sufficient for Khonsera's release evidence.
+
+The repository also uses a traveller-led frontend gate documented in [`docs/process/synthetic-traveller-qa.md`](process/synthetic-traveller-qa.md). It extends the existing browser suite with realistic traveller scenarios, first-viewport comprehension checks, disruption/recovery testing, performance budgets, back/refresh/deep-link behaviour, hosted real-browser inspection and observability verification.
+
+The existing `tests/e2e/traveller-experience.spec.ts` is the automated core of this gate. It creates a throwaway isolated Supabase traveller, signs in through the real UI, measures useful-screen latency, exercises shell navigation and ticket reveal, captures first-viewport content and screenshots, injects a delayed rail scenario, and records browser errors.
+
+Do not create production users by editing `auth.users` or by using production service-role credentials for frontend QA. Destructive synthetic journeys stay in the isolated E2E environment. Hosted Preview/production testing is non-destructive until a dedicated synthetic account has been provisioned through supported Auth.
