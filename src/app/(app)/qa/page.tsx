@@ -153,15 +153,19 @@ function Recording({
   description,
   video,
   trace,
+  pilot,
+  actions,
   icon,
 }: {
   title: string;
   description: string;
   video: GithubAsset | null;
   trace: GithubAsset | null;
+  pilot: GithubAsset | null;
+  actions: GithubAsset | null;
   icon: React.ReactNode;
 }) {
-  if (!video && !trace) return null;
+  if (!video && !trace && !pilot) return null;
 
   return (
     <article className="j-card overflow-hidden">
@@ -219,6 +223,28 @@ function Recording({
             <ExternalLink size={14} aria-hidden="true" />
           </a>
         ) : null}
+        {pilot ? (
+          <a
+            href={pilot.browser_download_url}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-ghost"
+          >
+            Pilot report
+            <ExternalLink size={14} aria-hidden="true" />
+          </a>
+        ) : null}
+        {actions ? (
+          <a
+            href={actions.browser_download_url}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-ghost"
+          >
+            Action log
+            <ExternalLink size={14} aria-hidden="true" />
+          </a>
+        ) : null}
       </div>
     </article>
   );
@@ -238,11 +264,15 @@ export default async function QaObservatoryPage() {
     : null;
   const mobileVideo = latest ? asset(latest, "mobile-390.webm") : null;
   const mobileTrace = latest ? asset(latest, "mobile-390-trace.zip") : null;
+  const desktopPilot = latest ? asset(latest, "desktop-chromium-pilot.json") : null;
+  const desktopActions = latest ? asset(latest, "desktop-chromium-actions.jsonl") : null;
+  const mobilePilot = latest ? asset(latest, "mobile-390-pilot.json") : null;
+  const mobileActions = latest ? asset(latest, "mobile-390-actions.jsonl") : null;
 
   return (
     <PageShell
       title="QA Observatory"
-      description="Watch Khonsera's dedicated production QA traveller without a local terminal."
+      description="Watch an adaptive AI traveller pilot Khonsera screen by screen, with production recordings and forensic evidence."
     >
       <section className="j-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -292,10 +322,11 @@ export default async function QaObservatoryPage() {
           style={{ background: "var(--paper-2)" }}
         >
           <p className="small">
-            The observer run drives the real deployed Khonsera product with a dedicated
-            persistent QA traveller in live Supabase. QA-created data is preserved
-            between runs. The recording overlays Playwright's pointer and current
-            action so you can follow what the traveller actually did.
+            The observer run uses an adaptive computer-use pilot against the real
+            deployed Khonsera product. It observes the current screen, decides what
+            a traveller would do next, acts through the UI, then reassesses. Playwright
+            supplies the browser, recording and trace; it no longer dictates a fixed
+            selector script. QA-created data is preserved between runs.
           </p>
         </div>
       </section>
@@ -317,6 +348,8 @@ export default async function QaObservatoryPage() {
                 description="1440 × 1000 Chromium. Watch the click flow, timing and UI response."
                 video={desktopVideo}
                 trace={desktopTrace}
+                pilot={desktopPilot}
+                actions={desktopActions}
                 icon={<Monitor size={19} aria-hidden="true" />}
               />
               <Recording
@@ -324,14 +357,17 @@ export default async function QaObservatoryPage() {
                 description="390 × 844 touch Chromium. The same journey through Khonsera's mobile acceptance viewport."
                 video={mobileVideo}
                 trace={mobileTrace}
+                pilot={mobilePilot}
+                actions={mobileActions}
                 icon={<Smartphone size={19} aria-hidden="true" />}
               />
             </div>
 
             <p className="small mt-3">
-              “Inspect trace” opens Playwright's browser-based forensic viewer:
-              every action, before/after DOM snapshot, console message, network
-              request and failure is available there.
+              “Pilot report” contains the adaptive traveller's outcome, UX findings
+              and what worked. “Action log” records the screen-driven computer actions.
+              “Inspect trace” remains the browser-level forensic view for DOM, console,
+              network and timing evidence.
             </p>
           </section>
 
@@ -377,13 +413,13 @@ export default async function QaObservatoryPage() {
       )}
 
       <section className="j-card p-5">
-        <h2 className="h3">What this first version is — and isn't</h2>
+        <h2 className="h3">Adaptive QA, with deterministic regression underneath</h2>
         <p className="small mt-2">
-          This is a browser-accessible replay and forensic lens, not a live remote
-          desktop. You can see when the cloud traveller is running, then watch the
-          annotated browser recording as soon as it completes. Live streaming and
-          click-to-comment annotations can be layered on later without changing the
-          underlying Playwright harness.
+          QA:UX is exploratory: the pilot reasons from the screen and can recover
+          when labels or layouts differ. Deterministic Playwright still belongs in CI
+          for known regression contracts. This Observatory is a replay and forensic
+          lens rather than a live remote desktop; recordings and pilot reports publish
+          when the cloud run completes.
         </p>
         <Link href="/settings" className="small mt-3 inline-block underline">
           Back to Settings
