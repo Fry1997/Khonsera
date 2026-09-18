@@ -75,9 +75,9 @@ export async function liveDeparture(
   // window so an exact serviceID is not silently lost at a busy station.
   url.searchParams.set("numRows", "149");
   url.searchParams.set("timeWindow", "119"); // provider limit is < 120 minutes
-  // NB: deliberately NOT filtered by destination — we need the FULL board to
-  // spot another service sharing your platform before yours (the wrong-train
-  // guard). We disambiguate same-minute departures by destination in memory.
+  // Deliberately NOT filtered by destination: the passenger's hop destination
+  // may be only an intermediate calling point, and we also need the local board
+  // context for the same-platform wrong-train guard.
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
