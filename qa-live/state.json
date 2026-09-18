@@ -1,0 +1,32 @@
+{
+  "scenario": "KQA-UX-001",
+  "executionMode": "chat-piloted-relay",
+  "runId": "35396649830",
+  "viewportName": "desktop-chromium",
+  "status": "ready",
+  "commandCount": 0,
+  "maxCommands": 80,
+  "startedAt": "2026-09-18T21:25:50.902Z",
+  "updatedAt": "2026-09-18T21:26:03.579Z",
+  "url": "https://www.khonsera.com/today",
+  "title": "Khonsera — travel days that run on time.",
+  "viewportSize": {
+    "width": 1440,
+    "height": 1000
+  },
+  "liveScreenshot": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35396649830/qa-live/current.png",
+  "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35396649830/qa-live/state.json",
+  "controlBranch": "qa-control-35396649830",
+  "controlPath": "qa-control/command.json",
+  "lastAction": null,
+  "signals": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED"
+    ],
+    "serverErrors": [],
+    "slowRequests": [],
+    "blockedNavigations": []
+  }
+}
