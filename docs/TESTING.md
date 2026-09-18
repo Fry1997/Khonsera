@@ -30,8 +30,8 @@ The deterministic CI browser suite above is not the same thing as the production
 
 Production `QA:UX` runs use the deployed Khonsera front end, a dedicated persistent QA traveller in live Supabase, and the GitHub Pages QA Observatory for browser evidence. They must not be silently substituted with the isolated CI fixture or demo-mode data.
 
-`QA:UX` is adaptive exploratory QA, not a fixed selector script. The computer-use pilot observes the rendered browser, chooses mouse/keyboard actions from the current screen, re-observes after actions and changes course when the UI differs from expectation. Playwright supplies Chromium, recording, traces and technical signals; it does not define the traveller's click path.
+`QA:UX` is adaptive exploratory QA, not a fixed selector script. The active ChatGPT conversation inspects the current browser screenshot, decides the next traveller action, and sends only mechanical commands to a long-lived Playwright relay. The relay clicks/types/scrolls, republishes the screen, and waits for the next instruction. No model API runs inside GitHub Actions.
 
-Deterministic Playwright remains valuable for regression protection. Once adaptive QA exposes a defect or important invariant, encode that specific behaviour as a regression test rather than turning the exploratory pilot back into a brittle script.
+Deterministic Playwright remains valuable for regression protection. Once exploratory QA exposes a defect or important invariant, encode that specific behaviour as a regression test rather than turning the exploratory pilot back into a brittle script.
 
 The standing execution, safety and data-boundary rules live in [`docs/process/kqa-ux-contract.md`](./process/kqa-ux-contract.md).
