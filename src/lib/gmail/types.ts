@@ -10,6 +10,10 @@ export type ParsedTransportSegment = {
   arrival_date: string; // YYYY-MM-DD
   arrival_time: string; // HH:MM
   service_number: string | null;
+  /** Timetable/provider service identity when the source supplies one. */
+  service_uid?: string | null;
+  /** Darwin LDBWS board-relative serviceID when captured day-of. */
+  darwin_service_id?: string | null;
   operator: string | null;
   route_restriction: string | null;
   ticket_type: string | null;
