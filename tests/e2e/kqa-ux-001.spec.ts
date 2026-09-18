@@ -179,7 +179,7 @@ async function cookiesForSession(accessToken: string, refreshToken: string) {
             value,
           }));
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: SupabaseCookie[]) {
           for (const cookie of cookiesToSet) {
             jar.set(cookie.name, cookie);
           }
