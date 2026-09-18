@@ -7,10 +7,13 @@ import {
   type Page,
 } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 const desktopMagicLink = process.env.KHONSERA_QA_MAGIC_LINK_DESKTOP;
 const mobileMagicLink = process.env.KHONSERA_QA_MAGIC_LINK_MOBILE;
 const productionMode = process.env.KQA_PRODUCTION === "1";
+const qaSupabaseUrl = process.env.KQA_SUPABASE_URL;
+const qaSupabasePublishableKey = process.env.KQA_SUPABASE_PUBLISHABLE_KEY;
 const runNumber = process.env.KQA_RUN_NUMBER ?? "local";
 
 type BrowserSignals = {
@@ -39,7 +42,11 @@ type KqaMetrics = {
 };
 
 test.skip(
-  !productionMode || !desktopMagicLink || !mobileMagicLink,
+  !productionMode ||
+    !desktopMagicLink ||
+    !mobileMagicLink ||
+    !qaSupabaseUrl ||
+    !qaSupabasePublishableKey,
   "KQA-UX-001 only runs from the production QA Observatory workflow.",
 );
 
@@ -138,20 +145,104 @@ function collectSignals(page: Page): BrowserSignals {
   return signals;
 }
 
+type SupabaseCookie = {
+  name: string;
+  value: string;
+  options?: CookieOptions;
+};
+
+function normaliseSameSite(
+  value: CookieOptions["sameSite"] | undefined,
+): "Strict" | "Lax" | "None" | undefined {
+  if (value === "strict") return "Strict";
+  if (value === "lax") return "Lax";
+  if (value === "none") return "None";
+  return undefined;
+}
+
+async function cookiesForSession(accessToken: string, refreshToken: string) {
+  const jar = new Map<string, SupabaseCookie>();
+
+  const supabase = createServerClient(
+    qaSupabaseUrl!,
+    qaSupabasePublishableKey!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: true,
+      },
+      cookies: {
+        getAll() {
+          return Array.from(jar.values()).map(({ name, value }) => ({
+            name,
+            value,
+          }));
+        },
+        setAll(cookiesToSet) {
+          for (const cookie of cookiesToSet) {
+            jar.set(cookie.name, cookie);
+          }
+        },
+      },
+    },
+  );
+
+  const { error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  expect(error, "Supabase should accept the QA magic-link session").toBeNull();
+
+  return Array.from(jar.values())
+    .filter((cookie) => cookie.value)
+    .map(({ name, value, options }) => {
+      const sameSite = normaliseSameSite(options?.sameSite);
+      return {
+        name,
+        value,
+        url: "https://www.khonsera.com",
+        httpOnly: options?.httpOnly ?? false,
+        secure: options?.secure ?? true,
+        ...(sameSite ? { sameSite } : {}),
+      };
+    });
+}
+
 async function authenticateWithoutRecording(
   browser: Browser,
   context: BrowserContext,
   magicLink: string,
 ) {
   const authContext = await browser.newContext();
+
   try {
     const authPage = await authContext.newPage();
     await authPage.goto(magicLink, { waitUntil: "domcontentloaded" });
-    await authPage.waitForURL(/https:\/\/www\.khonsera\.com\/(today|welcome)(?:[/?#].*)?$/, {
-      timeout: 30_000,
-    });
-    const cookies = await authContext.cookies("https://www.khonsera.com");
-    expect(cookies.length, "QA auth callback should establish Khonsera cookies").toBeGreaterThan(0);
+
+    await authPage.waitForURL(
+      (url) =>
+        url.hostname === "www.khonsera.com" &&
+        url.hash.includes("access_token=") &&
+        url.hash.includes("refresh_token="),
+      { timeout: 20_000 },
+    );
+
+    const hash = new URL(authPage.url()).hash.slice(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    expect(accessToken, "QA magic link should yield an access token").toBeTruthy();
+    expect(refreshToken, "QA magic link should yield a refresh token").toBeTruthy();
+
+    const cookies = await cookiesForSession(accessToken!, refreshToken!);
+    expect(
+      cookies.length,
+      "Supabase SSR should serialise the QA session into cookies",
+    ).toBeGreaterThan(0);
+
     await context.addCookies(cookies);
   } finally {
     await authContext.close();
@@ -249,6 +340,8 @@ test("KQA-UX-001 · persistent production traveller builds a tight rail day", as
   context,
   page,
 }, testInfo) => {
+  test.setTimeout(120_000);
+
   const signals = collectSignals(page);
   const notes: string[] = [];
   const projectSlug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
