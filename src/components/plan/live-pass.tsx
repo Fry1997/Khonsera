@@ -129,7 +129,7 @@ export function LivePass({
           !checkingLive && live?.platform ? live.platform : undefined,
       },
     };
-    if (live.status)
+    if (live?.status)
       leg.status = {
         status: live.status,
         label: live.label,
