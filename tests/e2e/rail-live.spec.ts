@@ -85,18 +85,27 @@ test("live service with no platform does not reuse the booked platform as curren
   page,
   context,
 }, testInfo) => {
-  test.fail(
-    true,
-    "Known rail-trust defect #71: live no-platform currently falls back to the booked platform.",
-  );
-
   const slug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   await withDemoRailUser(page, context, `no-platform-${slug}`, async () => {
+    let releaseWel!: () => void;
+    const welRelease = new Promise<void>((resolve) => {
+      releaseWel = resolve;
+    });
+    let markWelRequested!: () => void;
+    const welRequested = new Promise<void>((resolve) => {
+      markWelRequested = resolve;
+    });
+
     await page.route("**/api/darwin/departure**", async (route) => {
       const url = new URL(route.request().url());
       const crs = url.searchParams.get("crs");
 
       if (crs === "WEL") {
+        // Hold the first live lookup open until the test has inspected the
+        // pending state. This proves the booked platform cannot flash as
+        // current while Darwin is being checked, without relying on a sleep.
+        markWelRequested();
+        await welRelease;
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -104,6 +113,9 @@ test("live service with no platform does not reuse the booked platform as curren
             available: true,
             status: "on_time",
             label: "On time",
+            platformAvailable: false,
+            source: "darwin",
+            generatedAt: "2026-09-18T08:14:30Z",
             destination: "Luton",
           }),
         });
@@ -127,18 +139,24 @@ test("live service with no platform does not reuse the booked platform as curren
     });
 
     await page.goto("/today");
+    await welRequested;
 
-    // Characterise the unsafe current behaviour before the expectation that
-    // defines the passenger-safe target.
-    await expect(page.getByText("Platform 2", { exact: true }).first()).toBeVisible();
+    try {
+      await expect(page.getByText("Checking live platform…", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Platform 2", { exact: true })).toHaveCount(0);
+    } finally {
+      releaseWel();
+    }
+
+    await expect(
+      page.getByText(/live platform unavailable|platform not (shown|announced|available)/i).first(),
+    ).toBeVisible();
+    await expect(page.getByText("Platform 2", { exact: true })).toHaveCount(0);
+
     await page.screenshot({
       path: `test-results/visual-evidence/${slug}-today-live-no-platform.png`,
       fullPage: true,
     });
-
-    await expect(
-      page.getByText(/platform not (shown|announced|available)|platform unavailable/i).first(),
-    ).toBeVisible();
   });
 });
 

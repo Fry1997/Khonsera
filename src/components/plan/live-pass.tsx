@@ -22,6 +22,9 @@ type Live = {
   label?: string;
   detail?: string;
   platform?: string | null;
+  platformAvailable?: boolean;
+  source?: "darwin";
+  generatedAt?: string;
   destination?: string | null; // the train's final destination — "the Corby train"
   serviceId?: string | null;
   earlierSamePlatform?: {
@@ -50,7 +53,9 @@ export function LivePass({
   today?: boolean;
   onShow?: (ticket: TicketVM) => void;
 }) {
+  const expectsLiveLookup = Boolean(crs && time);
   const [live, setLive] = useState<Live | null>(null);
+  const [checkingLive, setCheckingLive] = useState(expectsLiveLookup);
   const [resolvedServiceId, setResolvedServiceId] = useState<string | null>(
     serviceId ?? null,
   );
@@ -60,7 +65,15 @@ export function LivePass({
   }, [ticket.id, serviceId]);
 
   useEffect(() => {
-    if (!crs || !time) return;
+    setLive(null);
+    setCheckingLive(Boolean(crs && time));
+  }, [ticket.id, crs, time]);
+
+  useEffect(() => {
+    if (!crs || !time) {
+      setCheckingLive(false);
+      return;
+    }
     let active = true;
     const load = () => {
       const qs = new URLSearchParams({ crs, time });
@@ -71,6 +84,7 @@ export function LivePass({
         .then((d: Live) => {
           if (!active) return;
           setLive(d?.available ? d : null);
+          setCheckingLive(false);
 
           // A legacy booking may not have a provider identity yet. Darwin gives
           // us one only after the server has made a confident (unique-minute)
@@ -87,7 +101,9 @@ export function LivePass({
           }
         })
         .catch(() => {
-          /* keep the previous truthful state until #66 adds explicit freshness */
+          if (!active) return;
+          setCheckingLive(false);
+          /* #66 adds the explicit unavailable/stale state after request failure. */
         });
     };
     load();
@@ -99,36 +115,66 @@ export function LivePass({
   }, [crs, time, dest, resolvedServiceId, ticket.id]);
 
   const enriched = useMemo<TicketVM>(() => {
-    if (!live?.available) return ticket;
+    if (!live?.available && !checkingLive) return ticket;
     const leg0 = ticket.legs[0];
     if (!leg0) return ticket;
-    const leg = { ...leg0 };
-    if (live.platform) leg.origin = { ...leg.origin, platform: live.platform };
-    if (live.status)
+    const leg = {
+      ...leg0,
+      // From the first live lookup onward, a booked platform must not occupy the
+      // current-platform position while Khonsera waits for Darwin. After a live
+      // response, only a provider-confirmed platform may replace it.
+      origin: {
+        ...leg0.origin,
+        platform:
+          !checkingLive && live?.platform ? live.platform : undefined,
+      },
+    };
+    if (live?.status)
       leg.status = {
         status: live.status,
         label: live.label,
         detail: live.detail,
       };
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
-  }, [ticket, live]);
+  }, [ticket, live, checkingLive]);
 
-  // The loud boarding callout. Platform falls back to the booked value (so it
-  // shows — and persists — even with no live signal); destination + wrong-train
-  // guard come only from a live board. Render only when there's something to say.
+  // The loud boarding callout. During the first live lookup, suppress the booked
+  // platform and make the pending verification explicit. A successful live
+  // response owns the platform field: no live platform means an unavailable
+  // state, never a fallback to the booked value. #66 owns later request failure
+  // and stale/unavailable handling.
   const boarding = useMemo<BoardingVM | undefined>(() => {
     const leg0 = ticket.legs[0];
     if (!leg0 || ticket.kind === "stay") return undefined;
-    const platform = live?.platform ?? leg0.origin.platform ?? undefined;
-    const toward = live?.destination ?? undefined;
+    const platform = checkingLive
+      ? undefined
+      : live
+        ? (live.platform ?? undefined)
+        : (leg0.origin.platform ?? undefined);
+    const platformChecking = checkingLive && expectsLiveLookup;
+    const platformUnavailable = Boolean(!checkingLive && live && !live.platform);
+    const toward = checkingLive ? undefined : live?.destination ?? undefined;
     const e = live?.earlierSamePlatform;
     const lab = ticket.kind === "air" ? "Gate" : "Platform";
     const earlier = e
       ? `${lab} ${e.platform} also has the ${e.std}${e.destination ? ` to ${e.destination}` : ""} before yours — let that one go.`
       : undefined;
-    if (!platform && !toward && !earlier) return undefined;
-    return { platform, toward, earlier };
-  }, [ticket, live]);
+    if (
+      !platform &&
+      !platformChecking &&
+      !platformUnavailable &&
+      !toward &&
+      !earlier
+    )
+      return undefined;
+    return {
+      platform,
+      platformChecking,
+      platformUnavailable,
+      toward,
+      earlier,
+    };
+  }, [ticket, live, checkingLive, expectsLiveLookup]);
 
   return (
     <Pass
