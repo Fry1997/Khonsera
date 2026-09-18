@@ -35,6 +35,7 @@ export function LivePass({
   crs,
   time,
   dest,
+  serviceId,
   docked = false,
   today = false,
   onShow,
@@ -42,7 +43,8 @@ export function LivePass({
   ticket: TicketVM;
   crs?: string | null;
   time?: string | null; // planned departure, London HH:MM (matches Darwin <std>)
-  dest?: string | null; // hop destination CRS — disambiguates same-minute departures
+  dest?: string | null; // passenger hop destination CRS; never used as a final-destination identity shortcut
+  serviceId?: string | null; // exact Darwin serviceID when the selected/booked leg has one
   docked?: boolean;
   today?: boolean;
   onShow?: (ticket: TicketVM) => void;
@@ -55,6 +57,7 @@ export function LivePass({
     const load = () => {
       const qs = new URLSearchParams({ crs, time });
       if (dest) qs.set("dest", dest);
+      if (serviceId) qs.set("serviceId", serviceId);
       fetch(`/api/darwin/departure?${qs.toString()}`)
         .then((r) => r.json())
         .then((d: Live) => {
@@ -70,7 +73,7 @@ export function LivePass({
       active = false;
       clearInterval(id);
     };
-  }, [crs, time, dest]);
+  }, [crs, time, dest, serviceId]);
 
   const enriched = useMemo<TicketVM>(() => {
     if (!live?.available) return ticket;
