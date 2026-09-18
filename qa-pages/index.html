@@ -60,7 +60,7 @@
       <div>
         <div class="eyebrow">Khonsera · Production traveller QA</div>
         <h1>QA Observatory</h1>
-        <p class="sub">Watch what the dedicated QA traveller experienced on the real deployed Khonsera product, with recordings, traces and browser evidence.</p>
+        <p class="sub">Watch an adaptive AI traveller pilot the real deployed Khonsera product screen by screen, recover from UI differences, and preserve recordings, traces and findings.</p>
       </div>
       <div class="stack">
         <a class="button primary" href="https://github.com/Fry1997/Khonsera/actions/workflows/qa-observatory.yml" target="_blank" rel="noreferrer">Start traveller run ↗</a>
@@ -89,7 +89,7 @@
           <div id="view-switch" class="view-switch"></div>
         </div>
         <div id="evidence"><div class="skeleton">Loading recording and trace links…</div></div>
-        <div class="footer-note">Evidence uses a dedicated persistent QA traveller against live Khonsera/Supabase. The account contains QA-only data; real passenger or personal data must never be introduced while Observatory releases are public.</div>
+        <div class="footer-note">QA:UX uses an adaptive computer-use pilot: screenshot → reason → UI action → screenshot. Playwright records and executes the browser but no longer decides the journey with fixed selectors. Evidence uses a dedicated persistent QA traveller; real passenger or personal data must never be introduced while Observatory releases are public.</div>
       </section>
 
       <aside class="panel">
@@ -130,6 +130,8 @@
         video: assetByName(release, viewport + ".webm"),
         trace: assetByName(release, viewport + "-trace.zip"),
         metrics: assetByName(release, viewport + "-metrics.json"),
+        pilot: assetByName(release, viewport + "-pilot.json"),
+        actions: assetByName(release, viewport + "-actions.jsonl"),
         calm: assetByName(release, viewport + "-traveller-calm-top.png"),
         delayed: assetByName(release, viewport + "-traveller-delayed.png"),
         screenshots: (release.assets || []).filter(
@@ -170,7 +172,9 @@
 
       const links = ['<a class="button primary" href="' + escapeHtml(assets.video.browser_download_url) + '" target="_blank" rel="noreferrer">Open recording ↗</a>'];
       if (assets.trace) links.push('<a class="button" href="' + escapeHtml(traceUrl(assets.trace)) + '" target="_blank" rel="noreferrer">Inspect Playwright trace ↗</a>');
-      if (assets.metrics) links.push('<a class="button" href="' + escapeHtml(assets.metrics.browser_download_url) + '" target="_blank" rel="noreferrer">Metrics JSON ↗</a>');
+      if (assets.pilot) links.push('<a class="button" href="' + escapeHtml(assets.pilot.browser_download_url) + '" target="_blank" rel="noreferrer">Adaptive pilot report ↗</a>');
+      if (assets.actions) links.push('<a class="button" href="' + escapeHtml(assets.actions.browser_download_url) + '" target="_blank" rel="noreferrer">Pilot action log ↗</a>');
+      if (assets.metrics) links.push('<a class="button" href="' + escapeHtml(assets.metrics.browser_download_url) + '" target="_blank" rel="noreferrer">Legacy metrics JSON ↗</a>');
 
       const namedShots = [["Calm state",assets.calm],["Delayed state",assets.delayed]].filter((entry) => entry[1]);
       const namedUrls = new Set(namedShots.map((entry) => entry[1].browser_download_url));
