@@ -169,13 +169,28 @@ async function createTraveller(
   return { admin, email, userId };
 }
 
+function addMinutesToHhmm(value: string | null, minutes: number): string | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(value ?? "");
+  if (!match) return null;
+
+  const total =
+    (Number(match[1]) * 60 + Number(match[2]) + minutes + 24 * 60) %
+    (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 function installRailScenario(page: Page, getMode: () => RailMode) {
   return page.route("**/api/darwin/departure**", async (route) => {
     const url = new URL(route.request().url());
     const crs = url.searchParams.get("crs");
+    const bookedTime = url.searchParams.get("time");
 
     if (crs === "WEL") {
       const delayed = getMode() === "delayed";
+      const expectedTime = addMinutesToHhmm(bookedTime, 8);
+      if (delayed && !expectedTime) {
+        throw new Error(`Traveller audit received an invalid booked departure time: ${bookedTime}`);
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -185,7 +200,7 @@ function installRailScenario(page: Page, getMode: () => RailMode) {
                 available: true,
                 serviceId: "audit-wel-lut",
                 status: "delayed",
-                label: "Now 09:53",
+                label: `Now ${expectedTime}`,
                 detail: "+8 min · Platform 5",
                 platform: "5",
                 destination: "Luton",
@@ -304,7 +319,7 @@ test("traveller walkthrough audits speed, orientation and disruption comprehensi
     // stress case: can the traveller still understand what the day means?
     railMode = "delayed";
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Now 09:53", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/^Now \d{2}:\d{2}$/, { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/\+8 min/).first()).toBeVisible();
     await expect(page.getByText("Platform 5", { exact: true }).first()).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));
