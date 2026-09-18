@@ -258,7 +258,8 @@ test("traveller walkthrough audits speed, orientation and disruption comprehensi
     const coldStart = Date.now();
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: /right now/i })).toBeVisible();
-    await expect(page.getByText(/demo journey · from wellingborough/i)).toBeVisible();
+    await expect(page.getByText("Demo scenario", { exact: true })).toBeVisible();
+    await expect(page.getByText(/project review/i).first()).toBeVisible();
     const coldTodayReadyMs = Date.now() - coldStart;
     const coldTodayNavigation = await navigationMetrics(page);
 
