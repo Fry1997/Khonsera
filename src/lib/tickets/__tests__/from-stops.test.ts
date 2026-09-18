@@ -19,6 +19,7 @@ const run: TransitStop[] = [
       barcode_data: "AZTEC-THROUGH",
       ticket_type: "Anytime Day Return",
       price: "20.50",
+      provider_service_id: "svc-wel-lut",
     },
   },
   {
@@ -28,7 +29,7 @@ const run: TransitStop[] = [
     start_time: "2026-06-11T06:45:00Z", // arrival at the change
     end_time: "2026-06-11T06:50:00Z", // departure from the change
     code: "LUT",
-    metadata: {},
+    metadata: { provider_service_id: "svc-lut-hpd" },
   },
   {
     id: "hpd",
@@ -57,6 +58,7 @@ describe("foldStopsToLegTickets", () => {
     expect(out.ticket.legs[0].origin.time).toBe("2026-06-11T06:25:00Z");
     expect(out.ticket.legs[0].destination.time).toBe("2026-06-11T06:45:00Z");
     expect(out.ticket.legs[0].durationMinutes).toBe(20);
+    expect(out.serviceId).toBe("svc-wel-lut");
 
     // Hop 2: Luton → Harpenden, departs at the change's end_time (leave time).
     expect(onward.originStopId).toBe("lut");
@@ -67,6 +69,7 @@ describe("foldStopsToLegTickets", () => {
     expect(onward.ticket.legs[0].origin.time).toBe("2026-06-11T06:50:00Z");
     expect(onward.ticket.legs[0].destination.time).toBe("2026-06-11T07:05:00Z");
     expect(onward.ticket.legs[0].durationMinutes).toBe(15);
+    expect(onward.serviceId).toBe("svc-lut-hpd");
   });
 
   it("reuses the through-ticket barcode on the onward hop, prices only the first", () => {
