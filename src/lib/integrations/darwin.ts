@@ -32,6 +32,8 @@ export type EarlierSamePlatform = {
 };
 
 export type LiveDeparture = {
+  serviceId?: string; // Darwin LDBWS serviceID for this board-relative physical service
+  rsid?: string; // Retail Service ID when Darwin supplies one
   status: TravelStatus;
   label: string; // "On time" · "Delayed" · "Cancelled" · "Now 07:38"
   detail?: string; // "+13 min" · "Platform 2"
@@ -44,6 +46,8 @@ export type LiveDeparture = {
 
 // One service from the LDBWS JSON board — the ServiceItem schema (GetDepartureBoard).
 type DarwinService = {
+  serviceID?: string; // board-relative id; exact live-service identity
+  rsid?: string; // Retail Service ID, if supplied
   std?: string; // scheduled time of departure
   etd?: string; // estimated ("On time" | "HH:MM" | "Delayed" | "Cancelled")
   platform?: string;
@@ -61,13 +65,16 @@ export async function liveDeparture(
   crs: string,
   plannedHHMM: string,
   destCrs?: string | null,
+  serviceId?: string | null,
 ): Promise<LiveDeparture | null> {
   const key = darwinKey();
   if (!key || !crs || !plannedHHMM) return null;
 
   const url = new URL(`${BASE}/GetDepartureBoard/${crs.toUpperCase()}`);
-  url.searchParams.set("numRows", "20");
-  url.searchParams.set("timeWindow", "120"); // look up to 2h ahead
+  // Public LDBWS allows up to 149 rows. Use the complete supported board
+  // window so an exact serviceID is not silently lost at a busy station.
+  url.searchParams.set("numRows", "149");
+  url.searchParams.set("timeWindow", "119"); // provider limit is < 120 minutes
   // NB: deliberately NOT filtered by destination — we need the FULL board to
   // spot another service sharing your platform before yours (the wrong-train
   // guard). We disambiguate same-minute departures by destination in memory.
@@ -93,36 +100,62 @@ export async function liveDeparture(
   const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
   if (!Array.isArray(services)) return null;
 
-  // Your service: the one departing at the planned minute, preferring the one
-  // heading to your destination if several share the minute.
-  const sameMinute = services.filter((s) => s?.std === plannedHHMM);
-  if (sameMinute.length === 0) return null;
-  let target = sameMinute[0];
-  if (destCrs && sameMinute.length > 1) {
-    const d = destCrs.toUpperCase();
-    target = sameMinute.find((s) => s.destination?.some((x) => x.crs?.toUpperCase() === d)) ?? target;
+  // Exact provider identity wins. If a caller knows the Darwin serviceID and
+  // it is no longer present, do not silently downgrade to a time-only guess.
+  // serviceID is board-relative, so callers must only pass one obtained for
+  // this boarding location/service.
+  let target: DarwinService | undefined;
+  if (serviceId) {
+    target = services.find((s) => s.serviceID === serviceId);
+    if (!target) return null;
+  } else {
+    // Legacy fallback: a unique scheduled minute is usable, but a collision is
+    // explicitly ambiguous. The passenger's hop destination is NOT a safe
+    // final-destination tie-break (it may be an intermediate calling point).
+    const sameMinute = services.filter((s) => s?.std === plannedHHMM);
+    if (sameMinute.length !== 1) return null;
+    target = sameMinute[0];
   }
+
+  // Keep the parameter in the contract for the later calling-point validation
+  // work (#74). It must not be used as a final-destination identity shortcut.
+  void destCrs;
 
   const live = toLiveDeparture(target);
 
-  // Wrong-train guard: the latest OTHER service from your platform that leaves
-  // before yours is the one you're most likely to step onto by mistake.
+  // Wrong-train guard: use current expected departure order, not the static
+  // timetable. If either service has no usable live departure clock, omit the
+  // warning rather than invent an ordering.
   if (live.platform) {
-    const targetMin = hhmmToMin(plannedHHMM);
-    const earlier = services
-      .filter((s) => {
-        if (s === target || s.isCancelled || !s.platform || s.platform !== target.platform || !s.std) return false;
-        const m = hhmmToMin(s.std);
-        return m >= 0 && m < targetMin;
-      })
-      .sort((a, b) => hhmmToMin(a.std!) - hhmmToMin(b.std!));
-    const prev = earlier[earlier.length - 1];
-    if (prev?.std) {
-      live.earlierSamePlatform = {
-        std: prev.std,
-        destination: prev.destination?.[0]?.locationName,
-        platform: live.platform,
-      };
+    const targetClock = effectiveDepartureClock(target);
+    if (targetClock) {
+      const earlier = services
+        .filter((s) => {
+          if (
+            s === target ||
+            s.isCancelled ||
+            !s.platform ||
+            s.platform !== target.platform ||
+            !s.std
+          ) return false;
+          const clock = effectiveDepartureClock(s);
+          if (!clock) return false;
+          const delta = clockDeltaMinutes(targetClock, clock);
+          return delta < 0 && delta >= -119;
+        })
+        .sort((a, b) => {
+          const aClock = effectiveDepartureClock(a)!;
+          const bClock = effectiveDepartureClock(b)!;
+          return clockDeltaMinutes(targetClock, aClock) - clockDeltaMinutes(targetClock, bClock);
+        });
+      const prev = earlier[earlier.length - 1];
+      if (prev?.std) {
+        live.earlierSamePlatform = {
+          std: prev.std,
+          destination: prev.destination?.[0]?.locationName,
+          platform: live.platform,
+        };
+      }
     }
   }
 
@@ -170,12 +203,33 @@ function hhmmToMin(s: string): number {
   return Number.isNaN(h) || Number.isNaN(m) ? -1 : h * 60 + m;
 }
 
+function effectiveDepartureClock(svc: DarwinService): string | null {
+  const etd = typeof svc.etd === "string" ? svc.etd.trim() : "";
+  if (/^\d{1,2}:\d{2}$/.test(etd)) return etd;
+  if (/^on time$/i.test(etd) && svc.std) return svc.std;
+  return null;
+}
+
+function clockDeltaMinutes(reference: string, candidate: string): number {
+  const ref = hhmmToMin(reference);
+  const cand = hhmmToMin(candidate);
+  if (ref < 0 || cand < 0) return Number.NaN;
+  let delta = cand - ref;
+  // The board window is under two hours. Wrap the clock at midnight so
+  // 23:58 is correctly seven minutes before 00:05, not 1,433 minutes after.
+  if (delta > 720) delta -= 1440;
+  if (delta < -720) delta += 1440;
+  return delta;
+}
+
 function toLiveDeparture(svc: DarwinService): LiveDeparture {
   const std = svc.std ?? "";
   const etd = typeof svc.etd === "string" && svc.etd ? svc.etd : "On time";
   const platform = typeof svc.platform === "string" ? svc.platform : undefined;
   const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
-  const base = { std, etd, platform, destination } as const;
+  const serviceId = typeof svc.serviceID === "string" && svc.serviceID ? svc.serviceID : undefined;
+  const rsid = typeof svc.rsid === "string" && svc.rsid ? svc.rsid : undefined;
+  const base = { serviceId, rsid, std, etd, platform, destination } as const;
   const plat = platform ? `Platform ${platform}` : undefined;
 
   if (svc.isCancelled === true || /cancel/i.test(etd)) {
