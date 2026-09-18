@@ -1,0 +1,649 @@
+import { chromium } from "@playwright/test";
+import { createServerClient } from "@supabase/ssr";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
+
+const execFile = promisify(execFileCb);
+
+const targetUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://www.khonsera.com";
+const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
+const supabaseUrl = process.env.KQA_SUPABASE_URL;
+const supabasePublishableKey = process.env.KQA_SUPABASE_PUBLISHABLE_KEY;
+const githubToken = process.env.GITHUB_TOKEN;
+const repository = process.env.GITHUB_REPOSITORY;
+const runId = process.env.GITHUB_RUN_ID;
+const viewportName = process.env.KQA_VIEWPORT ?? "desktop-chromium";
+const controlIssue = Number(process.env.QA_CONTROL_ISSUE ?? "90");
+const triggerCommentId = Number(process.env.QA_START_COMMENT_ID ?? "0");
+const maxMinutes = Number(process.env.KQA_RELAY_MAX_MINUTES ?? "35");
+const maxCommands = Number(process.env.KQA_RELAY_MAX_COMMANDS ?? "80");
+
+for (const [name, value] of Object.entries({
+  KHONSERA_QA_MAGIC_LINK: magicLink,
+  KQA_SUPABASE_URL: supabaseUrl,
+  KQA_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey,
+  GITHUB_TOKEN: githubToken,
+  GITHUB_REPOSITORY: repository,
+  GITHUB_RUN_ID: runId,
+})) {
+  if (!value) throw new Error(`${name} is required for the QA relay.`);
+}
+
+const [owner, repo] = repository.split("/");
+if (!owner || !repo) throw new Error("GITHUB_REPOSITORY must be owner/repo.");
+
+const viewport =
+  viewportName === "mobile-390"
+    ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
+    : { viewport: { width: 1440, height: 1000 }, isMobile: false, hasTouch: false };
+
+const evidenceRoot = path.resolve(
+  process.env.KQA_EVIDENCE_DIR ?? `test-results/relay/${viewportName}`,
+);
+const stepsDir = path.join(evidenceRoot, "steps");
+const actionLogPath = path.join(evidenceRoot, "actions.jsonl");
+const resultPath = path.join(evidenceRoot, "result.json");
+const tracePath = path.join(evidenceRoot, `${viewportName}-trace.zip`);
+const videoPath = path.join(evidenceRoot, `${viewportName}.webm`);
+const finalShotPath = path.join(evidenceRoot, `${viewportName}-final.png`);
+const liveDir = path.resolve("qa-live");
+const liveShotPath = path.join(liveDir, "current.png");
+const liveStatePath = path.join(liveDir, "state.json");
+const liveBranch = `qa-live-${runId}`;
+const rawBase = `https://raw.githubusercontent.com/${repository}/${liveBranch}/qa-live`;
+const startedAt = new Date();
+const deadline = Date.now() + maxMinutes * 60_000;
+
+await mkdir(stepsDir, { recursive: true });
+await mkdir(liveDir, { recursive: true });
+
+const signals = {
+  consoleErrors: [],
+  consoleWarnings: [],
+  pageErrors: [],
+  failedRequests: [],
+  serverErrors: [],
+  slowRequests: [],
+  blockedNavigations: [],
+};
+
+const requestStartedAt = new WeakMap();
+const actions = [];
+let commandCount = 0;
+let lastCommentId = triggerCommentId;
+let finishPayload = null;
+let relayError = null;
+let video = null;
+let context = null;
+let page = null;
+
+function clean(value, max = 1000) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function allowedHostname(urlString) {
+  try {
+    const url = new URL(urlString);
+    return ["www.khonsera.com", "khonsera.com"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+async function github(method, apiPath, body) {
+  const response = await fetch(`https://api.github.com${apiPath}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${githubToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(
+      `GitHub API ${method} ${apiPath} failed ${response.status}: ${detail.slice(0, 1200)}`,
+    );
+  }
+
+  return response.status === 204 ? null : response.json();
+}
+
+async function postControlComment(body) {
+  await github("POST", `/repos/${owner}/${repo}/issues/${controlIssue}/comments`, {
+    body,
+  });
+}
+
+async function ensureLiveBranch() {
+  await execFile("git", ["config", "user.name", "github-actions[bot]"]);
+  await execFile("git", [
+    "config",
+    "user.email",
+    "41898282+github-actions[bot]@users.noreply.github.com",
+  ]);
+
+  const { stdout } = await execFile("git", ["branch", "--show-current"]);
+  if (stdout.trim() === liveBranch) return;
+
+  await execFile("git", ["switch", "-C", liveBranch, process.env.GITHUB_SHA]);
+}
+
+async function pushLiveState(stepLabel) {
+  await ensureLiveBranch();
+  await execFile("git", ["add", "-f", "qa-live/current.png", "qa-live/state.json"]);
+  await execFile("git", [
+    "commit",
+    "--allow-empty",
+    "-m",
+    `qa-live: ${viewportName} ${stepLabel}`,
+  ]);
+  await execFile("git", [
+    "push",
+    "--force",
+    "origin",
+    `HEAD:refs/heads/${liveBranch}`,
+  ]);
+}
+
+async function capture(page, filePath) {
+  const buffer = await page.screenshot({
+    path: filePath,
+    type: "png",
+    animations: "disabled",
+  });
+  return buffer;
+}
+
+async function publishState(status, extra = {}) {
+  const step = String(commandCount).padStart(3, "0");
+  const stepPath = path.join(stepsDir, `step-${step}.png`);
+  await capture(page, stepPath);
+  await writeFile(liveShotPath, await capture(page), "binary");
+
+  const state = {
+    scenario: "KQA-UX-001",
+    executionMode: "chat-piloted-relay",
+    runId,
+    viewport: viewportName,
+    status,
+    commandCount,
+    maxCommands,
+    startedAt: startedAt.toISOString(),
+    updatedAt: new Date().toISOString(),
+    url: page.url(),
+    title: await page.title().catch(() => ""),
+    viewport: viewport.viewport,
+    liveScreenshot: `${rawBase}/current.png`,
+    liveState: `${rawBase}/state.json`,
+    lastAction: actions.at(-1) ?? null,
+    signals: {
+      consoleErrors: signals.consoleErrors.slice(-8),
+      pageErrors: signals.pageErrors.slice(-8),
+      failedRequests: signals.failedRequests.slice(-8),
+      serverErrors: signals.serverErrors.slice(-8),
+      slowRequests: signals.slowRequests.slice(-8),
+      blockedNavigations: signals.blockedNavigations.slice(-8),
+    },
+    ...extra,
+  };
+
+  await writeFile(liveStatePath, JSON.stringify(state, null, 2) + "\n", "utf8");
+  await pushLiveState(`${status}-${step}`);
+  return state;
+}
+
+async function bootstrapSession(browser, targetContext) {
+  const authContext = await browser.newContext();
+
+  try {
+    const authPage = await authContext.newPage();
+    await authPage.goto(magicLink, {
+      waitUntil: "domcontentloaded",
+      timeout: 30_000,
+    });
+
+    await authPage.waitForURL(
+      (url) =>
+        url.hostname === "www.khonsera.com" &&
+        url.hash.includes("access_token=") &&
+        url.hash.includes("refresh_token="),
+      { timeout: 25_000 },
+    );
+
+    const params = new URLSearchParams(new URL(authPage.url()).hash.slice(1));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (!accessToken || !refreshToken) {
+      throw new Error("QA auth link did not yield a Supabase session.");
+    }
+
+    const jar = new Map();
+    const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: true,
+      },
+      cookies: {
+        getAll() {
+          return Array.from(jar.values()).map(({ name, value }) => ({
+            name,
+            value,
+          }));
+        },
+        setAll(cookiesToSet) {
+          for (const cookie of cookiesToSet) jar.set(cookie.name, cookie);
+        },
+      },
+    });
+
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw new Error(`Supabase rejected QA session: ${error.message}`);
+
+    const cookies = Array.from(jar.values())
+      .filter((cookie) => cookie.value)
+      .map(({ name, value, options = {} }) => ({
+        name,
+        value,
+        url: targetUrl,
+        httpOnly: options.httpOnly ?? false,
+        secure: options.secure ?? true,
+        sameSite:
+          options.sameSite === "strict"
+            ? "Strict"
+            : options.sameSite === "none"
+              ? "None"
+              : "Lax",
+      }));
+
+    if (!cookies.length) {
+      throw new Error("Supabase SSR did not serialise the QA session.");
+    }
+
+    await targetContext.addCookies(cookies);
+    await targetContext.addCookies([
+      {
+        name: "khonsera_welcomed",
+        value: "1",
+        url: targetUrl,
+        sameSite: "Lax",
+        secure: true,
+      },
+    ]);
+  } finally {
+    await authContext.close();
+  }
+}
+
+function normaliseKey(key) {
+  const map = {
+    CTRL: "Control",
+    CONTROL: "Control",
+    CMD: "Meta",
+    COMMAND: "Meta",
+    META: "Meta",
+    ALT: "Alt",
+    SHIFT: "Shift",
+    ENTER: "Enter",
+    RETURN: "Enter",
+    TAB: "Tab",
+    ESC: "Escape",
+    ESCAPE: "Escape",
+    BACKSPACE: "Backspace",
+    DELETE: "Delete",
+    ARROWUP: "ArrowUp",
+    ARROWDOWN: "ArrowDown",
+    ARROWLEFT: "ArrowLeft",
+    ARROWRIGHT: "ArrowRight",
+    HOME: "Home",
+    END: "End",
+    PAGEUP: "PageUp",
+    PAGEDOWN: "PageDown",
+    SPACE: " ",
+  };
+  return map[String(key).toUpperCase()] ?? String(key);
+}
+
+async function executeCommand(command) {
+  switch (command.type) {
+    case "click":
+      await page.mouse.click(Number(command.x), Number(command.y), {
+        button: command.button === "right" ? "right" : "left",
+      });
+      break;
+    case "double_click":
+      await page.mouse.dblclick(Number(command.x), Number(command.y), {
+        button: command.button === "right" ? "right" : "left",
+      });
+      break;
+    case "move":
+      await page.mouse.move(Number(command.x), Number(command.y));
+      break;
+    case "type":
+      await page.keyboard.insertText(String(command.text ?? "").slice(0, 2000));
+      break;
+    case "keypress": {
+      const keys = Array.isArray(command.keys)
+        ? command.keys.map(normaliseKey)
+        : [normaliseKey(command.key ?? "")];
+      if (!keys.filter(Boolean).length) throw new Error("keypress needs key/keys.");
+      await page.keyboard.press(keys.filter(Boolean).join("+"));
+      break;
+    }
+    case "scroll":
+      if (Number.isFinite(Number(command.x)) && Number.isFinite(Number(command.y))) {
+        await page.mouse.move(Number(command.x), Number(command.y));
+      }
+      await page.mouse.wheel(
+        Number(command.deltaX ?? 0),
+        Number(command.deltaY ?? command.yDelta ?? 0),
+      );
+      break;
+    case "wait":
+      await page.waitForTimeout(
+        Math.min(Math.max(Number(command.ms ?? 1000), 100), 10_000),
+      );
+      break;
+    case "goto": {
+      const requested = new URL(String(command.url ?? command.path ?? ""), targetUrl);
+      if (!allowedHostname(requested.toString())) {
+        throw new Error("goto is restricted to khonsera.com.");
+      }
+      await page.goto(requested.toString(), {
+        waitUntil: "domcontentloaded",
+        timeout: 30_000,
+      });
+      break;
+    }
+    case "screenshot":
+      break;
+    case "finish":
+      finishPayload = {
+        outcome: clean(command.outcome || "completed", 60),
+        summary: clean(command.summary || "", 2000),
+        findings: Array.isArray(command.findings) ? command.findings : [],
+      };
+      break;
+    case "abort":
+      finishPayload = {
+        outcome: "aborted",
+        summary: clean(command.summary || "Relay aborted by controller.", 2000),
+        findings: [],
+      };
+      break;
+    default:
+      throw new Error(`Unsupported relay command type: ${command.type}`);
+  }
+
+  if (!["wait", "screenshot", "finish", "abort"].includes(command.type)) {
+    await page.waitForTimeout(450);
+  }
+}
+
+function parseControlCommand(comment) {
+  const prefix = `QA:DO ${runId} ${viewportName} `;
+  const body = String(comment.body ?? "").trim();
+  if (!body.startsWith(prefix)) return null;
+
+  const payload = body.slice(prefix.length).trim();
+  try {
+    return JSON.parse(payload);
+  } catch (error) {
+    throw new Error(
+      `Invalid JSON in control comment ${comment.id}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}
+
+async function fetchCommands() {
+  const since = encodeURIComponent(startedAt.toISOString());
+  const comments = await github(
+    "GET",
+    `/repos/${owner}/${repo}/issues/${controlIssue}/comments?per_page=100&since=${since}`,
+  );
+
+  const fresh = (comments ?? [])
+    .filter((comment) => Number(comment.id) > lastCommentId)
+    .sort((a, b) => Number(a.id) - Number(b.id));
+
+  const commands = [];
+  for (const comment of fresh) {
+    lastCommentId = Math.max(lastCommentId, Number(comment.id));
+
+    if (comment.author_association !== "OWNER") continue;
+    const command = parseControlCommand(comment);
+    if (command) commands.push({ comment, command });
+  }
+
+  return commands;
+}
+
+const browser = await chromium.launch({ headless: true });
+
+try {
+  context = await browser.newContext({
+    viewport: viewport.viewport,
+    isMobile: viewport.isMobile,
+    hasTouch: viewport.hasTouch,
+    recordVideo: {
+      dir: path.join(evidenceRoot, "video"),
+      size: viewport.viewport,
+    },
+  });
+
+  await context.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.isNavigationRequest() &&
+      request.frame() === page?.mainFrame() &&
+      request.resourceType() === "document" &&
+      !allowedHostname(request.url())
+    ) {
+      signals.blockedNavigations.push(request.url());
+      await route.abort("blockedbyclient");
+      return;
+    }
+    await route.continue();
+  });
+
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+
+  page = await context.newPage();
+  video = page.video();
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      signals.consoleErrors.push(clean(message.text(), 800));
+    } else if (message.type() === "warning") {
+      signals.consoleWarnings.push(clean(message.text(), 800));
+    }
+  });
+
+  page.on("pageerror", (error) => {
+    signals.pageErrors.push(clean(error.message, 800));
+  });
+
+  page.on("request", (request) => {
+    requestStartedAt.set(request, Date.now());
+  });
+
+  page.on("requestfailed", (request) => {
+    signals.failedRequests.push(
+      `${request.method()} ${request.url()} · ${request.failure()?.errorText ?? "failed"}`,
+    );
+  });
+
+  page.on("response", (response) => {
+    const elapsed =
+      Date.now() - (requestStartedAt.get(response.request()) ?? Date.now());
+
+    if (response.status() >= 500) {
+      signals.serverErrors.push(
+        `${response.status()} ${response.request().method()} ${response.url()}`,
+      );
+    }
+
+    if (elapsed >= 3000) {
+      signals.slowRequests.push(
+        `${elapsed}ms ${response.status()} ${response.request().method()} ${response.url()}`,
+      );
+    }
+  });
+
+  await bootstrapSession(browser, context);
+
+  await page.goto(`${targetUrl}/today`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(700);
+
+  if (!allowedHostname(page.url())) {
+    throw new Error(`QA relay landed outside Khonsera: ${page.url()}`);
+  }
+
+  await publishState("ready");
+
+  await postControlComment(
+    [
+      `QA:READY ${runId} ${viewportName}`,
+      `Live screen: ${rawBase}/current.png`,
+      `Live state: ${rawBase}/state.json`,
+      `Command format: QA:DO ${runId} ${viewportName} {"type":"click","x":100,"y":100}`,
+    ].join("\n"),
+  );
+
+  while (!finishPayload) {
+    if (Date.now() > deadline) {
+      throw new Error(`QA relay exceeded ${maxMinutes} minutes for ${viewportName}.`);
+    }
+    if (commandCount >= maxCommands) {
+      throw new Error(`QA relay exceeded ${maxCommands} commands for ${viewportName}.`);
+    }
+
+    const pending = await fetchCommands();
+
+    if (!pending.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+      continue;
+    }
+
+    for (const { comment, command } of pending) {
+      if (finishPayload) break;
+
+      const beforeUrl = page.url();
+      const before = Date.now();
+      let commandError = null;
+
+      try {
+        await executeCommand(command);
+      } catch (error) {
+        commandError = error instanceof Error ? error.message : String(error);
+      }
+
+      commandCount += 1;
+      const entry = {
+        sequence: commandCount,
+        commentId: comment.id,
+        at: new Date().toISOString(),
+        command,
+        beforeUrl,
+        afterUrl: page.url(),
+        durationMs: Date.now() - before,
+        error: commandError,
+      };
+      actions.push(entry);
+      await appendFile(actionLogPath, JSON.stringify(entry) + "\n", "utf8");
+
+      await publishState(
+        finishPayload ? "finished" : commandError ? "command-error" : "ready",
+        commandError ? { commandError } : {},
+      );
+
+      if (commandError) {
+        console.error(`Relay command ${commandCount} failed: ${commandError}`);
+      }
+    }
+  }
+
+  await publishState("finished", { finish: finishPayload });
+  await capture(page, finalShotPath);
+
+  await postControlComment(
+    `QA:VIEWPORT-DONE ${runId} ${viewportName} · ${finishPayload.outcome}\n${finishPayload.summary || "No summary supplied."}`,
+  );
+} catch (error) {
+  relayError = error instanceof Error ? error.message : String(error);
+  console.error(relayError);
+
+  if (page) {
+    try {
+      await publishState("error", { relayError });
+      await capture(page, finalShotPath);
+    } catch {}
+  }
+} finally {
+  if (context) {
+    try {
+      await context.tracing.stop({ path: tracePath });
+    } catch {}
+
+    try {
+      await context.close();
+    } catch {}
+  }
+
+  if (video) {
+    try {
+      await video.saveAs(videoPath);
+    } catch {}
+  }
+
+  await browser.close();
+}
+
+const result = {
+  scenario: "KQA-UX-001",
+  executionMode: "chat-piloted-relay",
+  runId,
+  viewport: viewportName,
+  target: targetUrl,
+  liveBranch,
+  liveScreenshot: `${rawBase}/current.png`,
+  liveState: `${rawBase}/state.json`,
+  startedAt: startedAt.toISOString(),
+  completedAt: new Date().toISOString(),
+  commandCount,
+  finish: finishPayload,
+  relayError,
+  signals,
+};
+
+await writeFile(resultPath, JSON.stringify(result, null, 2) + "\n", "utf8");
+
+console.log(
+  "KQA_RELAY_RESULT " +
+    JSON.stringify({
+      runId,
+      viewport: viewportName,
+      commandCount,
+      outcome: finishPayload?.outcome ?? "relay-error",
+      relayError,
+    }),
+);
+
+if (relayError) process.exitCode = 1;
