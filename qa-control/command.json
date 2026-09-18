@@ -1,9 +1,10 @@
 {
   "runId": "35396649830",
   "viewport": "desktop-chromium",
-  "sequence": 0,
+  "sequence": 1,
   "command": {
-    "type": "screenshot"
+    "type": "abort",
+    "summary": "Relay smoke test complete; upgrading screen observation payload before full traveller pilot."
   },
-  "updatedAt": "2026-09-18T21:26:02.627Z"
+  "updatedAt": "2026-09-18T21:27:23.870Z"
 }
