@@ -111,4 +111,72 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.platform).toBe("2");
     expect(live?.label).toBe("Now 08:18");
   });
+  it("refuses to guess when two services share the booked minute and no destination can disambiguate them", async () => {
+    mockBoard([
+      {
+        std: "08:15",
+        etd: "On time",
+        platform: "1",
+        destination: [{ locationName: "Corby", crs: "COR" }],
+      },
+      {
+        std: "08:15",
+        etd: "On time",
+        platform: "2",
+        destination: [{ locationName: "Derby", crs: "DBY" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "08:15");
+
+    expect(live).toBeNull();
+  });
+
+  it("refuses to guess when destination was supplied but none of the same-minute services match it", async () => {
+    mockBoard([
+      {
+        std: "08:15",
+        etd: "On time",
+        platform: "1",
+        destination: [{ locationName: "Corby", crs: "COR" }],
+      },
+      {
+        std: "08:15",
+        etd: "On time",
+        platform: "2",
+        destination: [{ locationName: "Derby", crs: "DBY" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "08:15", "NOT");
+
+    expect(live).toBeNull();
+  });
+
+  it("recognises the immediately preceding same-platform train across midnight", async () => {
+    mockBoard([
+      {
+        std: "23:58",
+        etd: "On time",
+        platform: "2",
+        destination: [{ locationName: "Nottingham", crs: "NOT" }],
+      },
+      {
+        std: "00:05",
+        etd: "On time",
+        platform: "2",
+        destination: [{ locationName: "Derby", crs: "DBY" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "00:05", "DBY");
+
+    expect(live).not.toBeNull();
+    expect(live?.earlierSamePlatform).toMatchObject({
+      std: "23:58",
+      destination: "Nottingham",
+      platform: "2",
+    });
+  });
+
 });
