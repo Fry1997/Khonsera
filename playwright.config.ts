@@ -3,9 +3,12 @@ import { defineConfig } from "@playwright/test";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const useExternalServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
 const observerMode = process.env.PLAYWRIGHT_OBSERVER === "1";
+const productionKqa = process.env.KQA_PRODUCTION === "1";
+const kqaStorageState = process.env.KQA_STORAGE_STATE ?? "/tmp/khonsera-kqa-auth.json";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: productionKqa ? "./tests/e2e/kqa-global-setup.ts" : undefined,
   fullyParallel: !observerMode,
   forbidOnly: Boolean(process.env.CI),
   retries: observerMode ? 0 : process.env.CI ? 1 : 0,
@@ -15,8 +18,9 @@ export default defineConfig({
     : "list",
   use: {
     baseURL,
-    trace: observerMode ? "on" : "retain-on-failure",
+    trace: observerMode && !productionKqa ? "on" : productionKqa ? "off" : "retain-on-failure",
     screenshot: observerMode ? "on" : "only-on-failure",
+    storageState: productionKqa ? kqaStorageState : undefined,
     video: observerMode
       ? {
           mode: "on",
