@@ -242,7 +242,7 @@ export default async function QaObservatoryPage() {
   return (
     <PageShell
       title="QA Observatory"
-      description="Watch Khonsera's synthetic traveller runs without a local terminal."
+      description="Watch Khonsera's dedicated production QA traveller without a local terminal."
     >
       <section className="j-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -292,10 +292,10 @@ export default async function QaObservatoryPage() {
           style={{ background: "var(--paper-2)" }}
         >
           <p className="small">
-            The observer run uses Khonsera's isolated synthetic Supabase fixture,
-            one browser worker at a time, and keeps evidence even when the test
-            passes. The recording overlays Playwright's pointer and current action
-            so you can follow what the synthetic traveller actually did.
+            The observer run drives the real deployed Khonsera product with a dedicated
+            persistent QA traveller in live Supabase. QA-created data is preserved
+            between runs. The recording overlays Playwright's pointer and current
+            action so you can follow what the traveller actually did.
           </p>
         </div>
       </section>
@@ -369,9 +369,9 @@ export default async function QaObservatoryPage() {
         <section className="j-card p-5">
           <h2 className="h3">No recording yet</h2>
           <p className="small mt-2 max-w-2xl">
-            Open the cloud runner above, choose desktop, mobile or both, and press
-            “Run workflow”. You can return to this page while it runs; once the
-            observer finishes, refresh and the recording and trace will appear here.
+            Run an authorised QA:UX command or open the cloud runner above and choose
+            desktop, mobile or both. You can return to this page while it runs; once
+            the observer finishes, refresh and the recording and trace will appear here.
           </p>
         </section>
       )}
