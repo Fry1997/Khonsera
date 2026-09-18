@@ -126,11 +126,11 @@ test("live service with no platform does not reuse the booked platform as curren
 
     await page.goto("/today");
 
-    expect(await page.getByText("Platform 2", { exact: true }).count()).toBe(0);
     await expect(
       page.getByText(/live platform unavailable|platform not (shown|announced|available)/i).first(),
     ).toBeVisible();
     await expect(page.getByText(/towards Luton/i).first()).toBeVisible();
+    await expect(page.getByText("Platform 2", { exact: true })).toHaveCount(0);
 
     await page.screenshot({
       path: `test-results/visual-evidence/${slug}-today-live-no-platform.png`,
