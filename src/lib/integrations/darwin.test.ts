@@ -46,7 +46,7 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.detail).toContain("Platform 2");
   });
 
-  it.fails("does not warn about a same-platform train that is now expected to leave after the user's train", async () => {
+  it("does not warn about a same-platform train that is now expected to leave after the user's train", async () => {
     mockBoard([
       {
         std: "00:25",
@@ -88,30 +88,101 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live).toBeNull();
   });
 
-  it("uses destination to disambiguate two services scheduled in the same minute when possible", async () => {
+  it("does not use the passenger hop destination as a final-destination tie-break", async () => {
     mockBoard([
       {
+        serviceID: "svc-corby",
         std: "08:15",
         etd: "On time",
         platform: "1",
         destination: [{ locationName: "Corby", crs: "COR" }],
       },
       {
+        serviceID: "svc-london",
         std: "08:15",
         etd: "08:18",
         platform: "2",
-        destination: [{ locationName: "Derby", crs: "DBY" }],
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
       },
     ]);
 
-    const live = await liveDeparture("WEL", "08:15", "DBY");
+    // LUT is an intermediate passenger stop on the London train, not its board
+    // destination. Without durable service identity the collision is ambiguous.
+    const live = await liveDeparture("WEL", "08:15", "LUT");
+
+    expect(live).toBeNull();
+  });
+
+  it("uses an exact Darwin serviceID across a legitimate timetable amendment", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-target",
+        rsid: "EM123400",
+        std: "00:30",
+        etd: "On time",
+        platform: "3",
+        destination: [{ locationName: "Derby", crs: "DBY" }],
+      },
+      {
+        serviceID: "svc-other",
+        std: "00:22",
+        etd: "On time",
+        platform: "2",
+        destination: [{ locationName: "Corby", crs: "COR" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "00:22", "DBY", "svc-target");
 
     expect(live).not.toBeNull();
-    expect(live?.destination).toBe("Derby");
-    expect(live?.platform).toBe("2");
-    expect(live?.label).toBe("Now 08:18");
+    expect(live?.serviceId).toBe("svc-target");
+    expect(live?.rsid).toBe("EM123400");
+    expect(live?.std).toBe("00:30");
+    expect(live?.platform).toBe("3");
   });
-  it.fails("refuses to guess when two services share the booked minute and no destination can disambiguate them", async () => {
+
+  it("uses exact service identity when the passenger destination is only an intermediate stop", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-corby",
+        std: "08:15",
+        etd: "On time",
+        platform: "1",
+        destination: [{ locationName: "Corby", crs: "COR" }],
+      },
+      {
+        serviceID: "svc-london",
+        std: "08:15",
+        etd: "08:18",
+        platform: "2",
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "08:15", "LUT", "svc-london");
+
+    expect(live).not.toBeNull();
+    expect(live?.serviceId).toBe("svc-london");
+    expect(live?.destination).toBe("London St Pancras");
+    expect(live?.platform).toBe("2");
+  });
+
+  it("does not downgrade a known serviceID to a time-only guess when that ID is absent", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-other",
+        std: "08:15",
+        etd: "On time",
+        platform: "1",
+        destination: [{ locationName: "Corby", crs: "COR" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "08:15", "COR", "svc-target");
+
+    expect(live).toBeNull();
+  });
+  it("refuses to guess when two services share the booked minute and no destination can disambiguate them", async () => {
     mockBoard([
       {
         std: "08:15",
@@ -132,7 +203,7 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live).toBeNull();
   });
 
-  it.fails("refuses to guess when destination was supplied but none of the same-minute services match it", async () => {
+  it("refuses to guess when destination was supplied but none of the same-minute services match it", async () => {
     mockBoard([
       {
         std: "08:15",
@@ -153,7 +224,7 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live).toBeNull();
   });
 
-  it.fails("recognises the immediately preceding same-platform train across midnight", async () => {
+  it("recognises the immediately preceding same-platform train across midnight", async () => {
     mockBoard([
       {
         std: "23:58",
