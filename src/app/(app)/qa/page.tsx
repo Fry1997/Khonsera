@@ -48,6 +48,16 @@ type WorkflowRunsResponse = {
   workflow_runs: WorkflowRun[];
 };
 
+type LiveRelayState = {
+  status: string;
+  viewportName: string;
+  commandCount: number;
+  maxCommands: number;
+  updatedAt: string;
+  url: string;
+  liveScreenshot: string;
+};
+
 const githubHeaders = {
   Accept: "application/vnd.github+json",
   "X-GitHub-Api-Version": "2022-11-28",
@@ -76,8 +86,18 @@ async function getObservatoryData() {
     ),
   ]);
 
+  const latestWorkflowRun = runData?.workflow_runs?.[0] ?? null;
+  let liveRelay: LiveRelayState | null = null;
+
+  if (latestWorkflowRun && latestWorkflowRun.status !== "completed") {
+    liveRelay = await githubJson<LiveRelayState>(
+      `https://raw.githubusercontent.com/${REPO}/qa-live-${latestWorkflowRun.id}/qa-live/state.json`,
+    );
+  }
+
   return {
-    latestWorkflowRun: runData?.workflow_runs?.[0] ?? null,
+    latestWorkflowRun,
+    liveRelay,
     observerReleases:
       releases?.filter((release) =>
         release.tag_name.startsWith(RELEASE_PREFIX),
@@ -153,7 +173,7 @@ function Recording({
   description,
   video,
   trace,
-  pilot,
+  relay,
   actions,
   icon,
 }: {
@@ -161,11 +181,11 @@ function Recording({
   description: string;
   video: GithubAsset | null;
   trace: GithubAsset | null;
-  pilot: GithubAsset | null;
+  relay: GithubAsset | null;
   actions: GithubAsset | null;
   icon: React.ReactNode;
 }) {
-  if (!video && !trace && !pilot) return null;
+  if (!video && !trace && !relay) return null;
 
   return (
     <article className="j-card overflow-hidden">
@@ -223,14 +243,14 @@ function Recording({
             <ExternalLink size={14} aria-hidden="true" />
           </a>
         ) : null}
-        {pilot ? (
+        {relay ? (
           <a
-            href={pilot.browser_download_url}
+            href={relay.browser_download_url}
             target="_blank"
             rel="noreferrer"
             className="btn btn-ghost"
           >
-            Pilot report
+            Relay result
             <ExternalLink size={14} aria-hidden="true" />
           </a>
         ) : null}
@@ -254,7 +274,7 @@ export default async function QaObservatoryPage() {
   const ctx = await requireUserContext();
   if (!ctx.isStaff && !ctx.isAdmin) notFound();
 
-  const { latestWorkflowRun, observerReleases } = await getObservatoryData();
+  const { latestWorkflowRun, liveRelay, observerReleases } = await getObservatoryData();
   const state = runState(latestWorkflowRun);
   const latest = observerReleases[0] ?? null;
 
@@ -264,15 +284,15 @@ export default async function QaObservatoryPage() {
     : null;
   const mobileVideo = latest ? asset(latest, "mobile-390.webm") : null;
   const mobileTrace = latest ? asset(latest, "mobile-390-trace.zip") : null;
-  const desktopPilot = latest ? asset(latest, "desktop-chromium-pilot.json") : null;
+  const desktopRelay = latest ? asset(latest, "desktop-chromium-relay.json") : null;
   const desktopActions = latest ? asset(latest, "desktop-chromium-actions.jsonl") : null;
-  const mobilePilot = latest ? asset(latest, "mobile-390-pilot.json") : null;
+  const mobileRelay = latest ? asset(latest, "mobile-390-relay.json") : null;
   const mobileActions = latest ? asset(latest, "mobile-390-actions.jsonl") : null;
 
   return (
     <PageShell
       title="QA Observatory"
-      description="Watch an adaptive AI traveller pilot Khonsera screen by screen, with production recordings and forensic evidence."
+      description="Watch this ChatGPT conversation pilot Khonsera screen by screen through a persistent production browser relay."
     >
       <section className="j-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -322,14 +342,50 @@ export default async function QaObservatoryPage() {
           style={{ background: "var(--paper-2)" }}
         >
           <p className="small">
-            The observer run uses an adaptive computer-use pilot against the real
-            deployed Khonsera product. It observes the current screen, decides what
-            a traveller would do next, acts through the UI, then reassesses. Playwright
-            supplies the browser, recording and trace; it no longer dictates a fixed
-            selector script. QA-created data is preserved between runs.
+            The active ChatGPT conversation is the traveller brain. A long-lived
+            Playwright runner only executes mechanical mouse/keyboard commands,
+            republishes the current screen and records evidence. No model API runs
+            inside GitHub Actions and QA-created data is preserved between runs.
           </p>
         </div>
       </section>
+
+      {latestWorkflowRun?.status !== "completed" ? (
+        <section className="j-card overflow-hidden">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-black/10 p-4">
+            <div>
+              <p className="tiny uppercase tracking-[0.14em]">Live relay</p>
+              <h2 className="h3 mt-1">
+                {liveRelay
+                  ? `${liveRelay.viewportName === "mobile-390" ? "Mobile" : "Desktop"} · ${liveRelay.status}`
+                  : "Browser starting…"}
+              </h2>
+              <p className="small mt-1">
+                {liveRelay?.url ?? "Waiting for the relay to publish its first screen."}
+              </p>
+            </div>
+            {liveRelay ? (
+              <span className="tiny">
+                Command {liveRelay.commandCount} / {liveRelay.maxCommands}
+              </span>
+            ) : null}
+          </div>
+          {liveRelay ? (
+            <div className="bg-black">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`${liveRelay.liveScreenshot}?t=${Date.now()}`}
+                alt="Current Khonsera QA browser screen"
+                className="mx-auto block max-h-[760px] w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="p-5">
+              <p className="small">Authentication and browser startup are still in progress.</p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {latest ? (
         <>
@@ -348,7 +404,7 @@ export default async function QaObservatoryPage() {
                 description="1440 × 1000 Chromium. Watch the click flow, timing and UI response."
                 video={desktopVideo}
                 trace={desktopTrace}
-                pilot={desktopPilot}
+                relay={desktopRelay}
                 actions={desktopActions}
                 icon={<Monitor size={19} aria-hidden="true" />}
               />
@@ -357,14 +413,14 @@ export default async function QaObservatoryPage() {
                 description="390 × 844 touch Chromium. The same journey through Khonsera's mobile acceptance viewport."
                 video={mobileVideo}
                 trace={mobileTrace}
-                pilot={mobilePilot}
+                relay={mobileRelay}
                 actions={mobileActions}
                 icon={<Smartphone size={19} aria-hidden="true" />}
               />
             </div>
 
             <p className="small mt-3">
-              “Pilot report” contains the adaptive traveller's outcome, UX findings
+              “Relay result” contains the adaptive traveller's outcome, UX findings
               and what worked. “Action log” records the screen-driven computer actions.
               “Inspect trace” remains the browser-level forensic view for DOM, console,
               network and timing evidence.
@@ -413,13 +469,13 @@ export default async function QaObservatoryPage() {
       )}
 
       <section className="j-card p-5">
-        <h2 className="h3">Adaptive QA, with deterministic regression underneath</h2>
+        <h2 className="h3">Chat-piloted QA, with deterministic regression underneath</h2>
         <p className="small mt-2">
-          QA:UX is exploratory: the pilot reasons from the screen and can recover
-          when labels or layouts differ. Deterministic Playwright still belongs in CI
-          for known regression contracts. This Observatory is a replay and forensic
-          lens rather than a live remote desktop; recordings and pilot reports publish
-          when the cloud run completes.
+          QA:UX is exploratory: this conversation inspects the current screen and
+          decides the next traveller action. The relay itself has no product knowledge.
+          Deterministic Playwright remains in CI for known regression contracts.
+          While a run is active the current screenshot is visible above; full replay
+          evidence publishes when the run finishes.
         </p>
         <Link href="/settings" className="small mt-3 inline-block underline">
           Back to Settings
