@@ -1,6 +1,14 @@
 name: QA Observatory
 
 on:
+  # Self-test the observer whenever its workflow changes on the production
+  # branch. This makes the first merge prove the recording pipeline without
+  # requiring a local terminal or a manual bootstrap run.
+  push:
+    branches:
+      - claude/khonsera-build-brief-An4oz
+    paths:
+      - .github/workflows/qa-observatory.yml
   workflow_dispatch:
     inputs:
       label:
@@ -28,6 +36,8 @@ env:
   NEXT_PUBLIC_APP_ENV: ci
   NEXT_TELEMETRY_DISABLED: 1
   SUPABASE_TELEMETRY_DISABLED: 1
+  OBSERVATORY_LABEL: ${{ inputs.label || 'QA Observatory smoke' }}
+  OBSERVATORY_VIEWPORT: ${{ inputs.viewport || 'both' }}
 
 jobs:
   observe:
@@ -80,7 +90,7 @@ jobs:
         shell: bash
         env:
           PLAYWRIGHT_OBSERVER: "1"
-          OBSERVER_VIEWPORT: ${{ inputs.viewport }}
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
         run: |
           set -euo pipefail
           project_args=()
@@ -106,8 +116,8 @@ jobs:
         if: always()
         shell: bash
         env:
-          RUN_LABEL: ${{ inputs.label }}
-          OBSERVER_VIEWPORT: ${{ inputs.viewport }}
+          RUN_LABEL: ${{ env.OBSERVATORY_LABEL }}
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
         run: |
           set -euo pipefail
           mkdir -p qa-publish
@@ -163,8 +173,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_LABEL: ${{ inputs.label }}
-          OBSERVER_VIEWPORT: ${{ inputs.viewport }}
+          RUN_LABEL: ${{ env.OBSERVATORY_LABEL }}
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
           TRAVELLER_OUTCOME: ${{ steps.traveller.outcome }}
         run: |
           set -euo pipefail
