@@ -105,6 +105,8 @@ export function AddTransportBookingForm({
           departure_at: new Date(s.departure_at).toISOString(),
           arrival_at: new Date(s.arrival_at).toISOString(),
           service_number: s.service_number || null,
+          service_uid: s.service_uid ?? null,
+          darwin_service_id: s.darwin_service_id ?? null,
           platform_dep: s.platform_dep || null,
           platform_arr: s.platform_arr || null,
         })),
