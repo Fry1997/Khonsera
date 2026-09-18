@@ -6,21 +6,25 @@ This file is the standing execution contract for `QA:UX` commands.
 
 `QA:UX KQA-UX-001`
 
-This is an executable adaptive QA command, not a fixed Playwright test case.
+This is an executable exploratory QA command, not a fixed Playwright test case.
 
-The ChatGPT/GitHub integration records the command on the permanent QA Control issue. The `QA Observatory` workflow treats the authorised control comment as the trigger and launches an adaptive browser pilot.
+The ChatGPT/GitHub integration records the command on the permanent QA Control issue. The `QA Observatory` workflow starts a long-lived production Chromium session and exposes it through a deliberately dumb browser relay.
 
-Manual `workflow_dispatch` remains available as a fallback.
+## Execution model
 
-## The important distinction
+The intelligence stays in the active ChatGPT conversation.
 
-`QA:UX` is exploratory passenger QA.
+The loop is:
 
-The pilot must observe the rendered screen, reason about what a traveller would do next, act through the visible UI, inspect the changed screen, and adapt. A different label, layout, control type or navigation path is not itself a test failure.
+`browser screenshot → ChatGPT inspects/reasons → QA:DO mechanical command → Playwright executes → new screenshot/state → ChatGPT reassesses`
 
-Playwright remains underneath the pilot to provide a real Chromium browser, mouse/keyboard execution, video, trace, screenshots and browser/network instrumentation. Playwright does **not** prescribe the sequence of selectors for `QA:UX`.
+The relay understands only mechanical browser actions such as click, double-click, type, keypress, scroll, wait, screenshot, same-site goto and finish. It does not know what a station field, Plan button or journey editor is.
 
-Rigid selector-driven flows belong in regression tests after a behaviour has been discovered and understood.
+That distinction is intentional: exploratory QA must not fail because a pre-written selector, label or DOM assumption changed.
+
+Playwright supplies Chromium, mouse/keyboard execution, video, trace, screenshots and browser/network instrumentation. ChatGPT decides what a traveller should do from the screen that actually exists.
+
+No OpenAI API key or separate model API billing is required. A QA:UX session does require an active ChatGPT conversation to pilot it.
 
 ## KQA-UX-001 boundary
 
@@ -28,125 +32,137 @@ KQA-UX-001 is a production-experience test.
 
 It must:
 
-- exercise the currently deployed Khonsera front end at `https://www.khonsera.com`;
-- use the live Khonsera Supabase project through a dedicated persistent QA traveller;
+- exercise the deployed Khonsera front end at `https://www.khonsera.com`;
+- use the live Khonsera Supabase project through the dedicated persistent QA traveller;
 - behave through the passenger-facing UI wherever a traveller would;
-- observe the current screen before deciding what to do next;
+- inspect the current screen before choosing the next action;
 - recover from ordinary UI variation as a human traveller would;
-- use real application/provider behaviour rather than replacing rail responses with deterministic mocks;
-- preserve the QA traveller and the data produced by the run by default;
-- record desktop and mobile evidence when the command requests both viewports;
-- distinguish a product blocker from a runner/infrastructure failure.
+- preserve QA-created data by default;
+- record evidence for the requested viewport(s);
+- distinguish product blockers from relay/infrastructure failures.
 
 It must not:
 
 - start the isolated CI Supabase fixture;
-- create and delete a throwaway traveller around each run;
+- create/delete a throwaway traveller around each run;
 - force demo mode;
-- mock Darwin or other travel providers merely to make the scenario deterministic;
+- mock travel providers to manufacture a passing result;
 - treat an unexpected label or DOM structure as a product failure;
-- use developer APIs, hidden application state or direct database writes to complete the traveller mission;
-- use, import or expose real passenger/personal data in public Observatory evidence.
+- use direct database writes or hidden application state to complete the traveller mission;
+- introduce real passenger/personal data into public QA evidence.
 
-Unknown, stale, unavailable or contradictory travel information is itself evidence. Do not convert it into invented certainty for the sake of a passing run.
+## Control channel
 
-## Adaptive pilot
+Issue #90 is both the start command bus and the live control channel.
 
-The Observatory uses OpenAI computer use with a persistent Playwright browser.
+A normal command:
 
-The loop is:
+`QA:UX KQA-UX-001`
 
-`current screenshot → model reasoning → mouse/keyboard actions → updated screenshot → reassess`
+starts the workflow.
 
-The model is given a traveller goal, constraints and QA heuristics rather than a list of selectors. It can scroll, click, type, use keyboard controls, wait for UI changes and recover when the interface differs from expectation.
+For each active viewport the relay publishes a `QA:READY` comment containing the run ID and live screenshot/state URLs. The controlling ChatGPT conversation then sends commands in this machine-readable form:
 
-The runner is bounded by a maximum turn count, action count and wall-clock duration. It is restricted to Khonsera navigation and stops rather than acknowledging a computer-use safety handoff automatically.
+`QA:DO <run-id> <viewport> {"type":"click","x":100,"y":200}`
 
-The repository requires an `OPENAI_API_KEY` GitHub Actions secret to run the adaptive pilot. That secret is never written to artifacts, release evidence or the repository.
+Supported command types are:
+
+- `click`
+- `double_click`
+- `move`
+- `type`
+- `keypress`
+- `scroll`
+- `wait`
+- `goto` (restricted to Khonsera)
+- `screenshot`
+- `finish`
+- `abort`
+
+Only OWNER-authored commands for the exact run and viewport are accepted. Stale commands from previous runs are ignored.
+
+## Live screen
+
+Each workflow run owns a temporary-style branch named:
+
+`qa-live-<workflow-run-id>`
+
+The branch is updated after every browser command and contains:
+
+- `qa-live/current.png` — latest rendered browser screen;
+- `qa-live/state.json` — current URL, viewport, command count, recent browser/network signals and last action.
+
+The GitHub Pages Observatory reads those files while the run is active, so a user can refresh and watch the screen advance without waiting for final evidence publication.
+
+The branch contains QA-only synthetic state. Final replay evidence is still published separately after the run.
 
 ## QA identity
 
-The persistent QA traveller is provisioned through Supabase Auth and approved for the current closed-access application gate.
+The persistent QA traveller is provisioned through Supabase Auth and approved for the current closed-access gate.
 
-The Observatory workflow authenticates to a tightly scoped Supabase Edge Function with GitHub Actions OIDC. The function accepts only the Khonsera repository's QA Observatory workflow and issues a fresh one-time Auth link for the dedicated QA traveller.
+The Observatory workflow authenticates to a tightly scoped Supabase Edge Function with GitHub Actions OIDC. It mints a fresh one-time Auth link for the dedicated QA traveller.
 
-No reusable QA password or Supabase service-role credential is stored in the repository or GitHub Actions.
+The token-bearing URL is consumed in a separate unrecorded browser context. The resulting Supabase SSR cookies are copied into the recorded traveller context.
 
-The one-time Auth URL is consumed in a separate unrecorded browser context. The resulting Supabase SSR cookies are moved into the recorded traveller context, and the token-bearing URL is never recorded.
+Khonsera's first-run welcome state is currently cookie-based, so the returning QA context is seeded with the normal `khonsera_welcomed=1` cookie before recording.
 
-Khonsera's first-run welcome state is currently cookie-based, so the returning synthetic traveller context is seeded with the normal `khonsera_welcomed=1` cookie before recording.
+No reusable QA password or Supabase service-role credential is stored in GitHub.
 
 ## Data policy
 
 The QA account is deliberately persistent.
 
-Plans, places, preferences, odd states and prior test history created by QA should remain attached to that user. This lets later runs encounter accumulated state a real long-lived traveller would have.
+Plans, places, preferences, odd states and prior test history created by QA remain attached to that account unless a specific retest requires selective cleanup.
 
-Cleanup is selective, not automatic. Delete or reset QA data only when:
-
-- a fix specifically requires a clean retest;
-- accumulated test data makes the target condition impossible to reproduce; or
-- pre-launch hygiene requires a deliberate reset.
-
-Never clean data simply to make a run look tidy.
+Do not reset synthetic history merely to make a run tidy.
 
 ## KQA-UX-001 traveller mission
 
-The pilot is given a mission, not a click script:
+The active ChatGPT conversation pilots the traveller toward these goals:
 
-- enter the authenticated production Today experience;
+- enter authenticated Today;
 - create a dated travel day;
 - add a fixed project-review commitment;
-- add a Wellingborough → Harpenden rail journey with a deliberately tight Luton change;
+- add Wellingborough → Harpenden rail travel with a deliberately tight Luton change;
 - return to Today;
-- assess whether the passenger experience is clear, useful, fast and trustworthy.
+- assess whether the resulting passenger experience is clear, useful, fast and trustworthy.
 
-If the UI takes a different route to accomplish those goals, the pilot should use it. If a confusing state is recoverable, the pilot records the friction and continues. It declares the mission blocked only when the product genuinely prevents progress after reasonable UI attempts.
+The mission defines intent, not the click path.
 
-Re-runs may encounter prior KQA plans because synthetic data is intentionally persistent.
+If the UI takes a different route, ChatGPT should use it. If a confusing state is recoverable, record the friction and continue. Declare the mission blocked only when the product genuinely prevents progress after reasonable attempts.
 
 ## Evidence
 
-Adaptive Observer mode records:
+The relay records:
 
 - Playwright video;
 - Playwright trace;
-- start/final screenshots plus per-turn screenshots in the workflow artifact;
-- a JSONL action log containing each computer-use action and URL transition;
-- a structured adaptive pilot report containing outcome, findings and what worked;
-- console/page errors, failed requests, HTTP 5xx responses and slow network responses;
-- turn/action timing and total duration;
+- a screenshot after every command;
+- a JSONL action log;
+- final relay result and controller-supplied outcome/summary;
+- console/page errors;
+- failed requests;
+- HTTP 5xx responses;
+- slow responses;
+- blocked external-navigation attempts;
 - the workflow result and commit.
 
-Evidence is published as a GitHub prerelease and appears automatically in the GitHub Pages QA Observatory.
-
-The Observatory status is near-live: it can show queued/running/completed while the workflow executes. Video, trace and reports become available after evidence publication. It is replay/forensics, not a live VNC stream.
+Final evidence is published as a GitHub prerelease and appears in the QA Observatory.
 
 ## Findings
 
-Product findings come from the pilot's observed UI experience and technical browser signals.
+The controlling ChatGPT conversation reviews the actual UI evidence and creates GitHub issues for meaningful product defects. The QA Control issue remains only the command/control channel.
 
-Medium/high adaptive findings are published to GitHub as separate issues. If an issue with the same KQA title is already open, a later run adds new evidence to that issue instead of creating a duplicate.
-
-A product blocker is a valid QA result and does not mean the adaptive runner itself failed. The workflow only fails its infrastructure gate when the browser/model/auth/evidence machinery cannot conduct the QA run.
-
-For meaningful defects:
-
-1. preserve the actual product evidence;
-2. link the Observer run/release;
-3. describe passenger impact and UI reproduction;
-4. fix the smallest coherent cause;
-5. add a deterministic regression test where the defect merits permanent protection;
-6. retest with adaptive QA when passenger experience matters.
-
-The QA Control issue is only a command bus. Product defects do not live there.
+Once exploratory QA discovers an important defect or invariant, encode that specific behaviour as deterministic regression coverage where appropriate.
 
 ## Relationship to normal CI
 
 Normal pull-request CI remains isolated and deterministic.
 
-The ordinary `Validate` workflow may continue to use its local Supabase fixture and mocked/stubbed provider boundaries where appropriate for regression testing.
+The ordinary `Validate` workflow may continue to use its local Supabase fixture and deterministic Playwright tests.
 
-The old selector-driven KQA scenario is retained only as regression reference/protection. It is not the `QA:UX` execution engine.
+That suite answers: “did a known behaviour regress?”
 
-That is separate from adaptive `QA:UX`, whose purpose is to explore the real passenger experience and adjust to the product that is actually on screen.
+`QA:UX` answers: “what happens when an intelligent traveller uses the product that is actually on screen?”
+
+They are complementary and should remain separate.
