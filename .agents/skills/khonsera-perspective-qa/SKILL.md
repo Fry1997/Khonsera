@@ -66,8 +66,8 @@ Capture these before execution:
 - **environment**: preview preferred for destructive/full-flow testing; production only for safe smoke work
 - **exact commit/deployment**
 - **account strategy**:
-  - isolated throwaway user for destructive CI/browser work
-  - hosted synthetic account only if provisioned through supported Auth
+  - persistent synthetic QA account for normal hosted/dev UX runs
+  - isolated throwaway user for CI or tests that require a pristine account
   - never use a real customer's account/data for destructive testing
 - **device/viewports**: default desktop + 390px mobile for user-facing work
 - **scope**: routes/features explicitly in scope
@@ -144,11 +144,14 @@ These mutation-after-render paths are mandatory for stateful frontend features.
 
 Use the smallest realistic setup.
 
-For destructive/repeatable flows:
-- isolated Supabase;
-- fresh synthetic user;
-- synthetic places/appointments/bookings;
-- cleanup after run.
+For normal hosted/dev UX flows:
+- use the persistent synthetic QA account;
+- create synthetic places/appointments/bookings through the product where that behaviour is under test;
+- preserve the resulting state after the run unless cleanup is needed for a specific retest.
+
+For deterministic CI or new-user/empty-state flows:
+- use an isolated fresh synthetic user;
+- clean it up at the end of the run.
 
 Do not seed the final expected UI state if the scenario is meant to prove the UI can create it.
 
