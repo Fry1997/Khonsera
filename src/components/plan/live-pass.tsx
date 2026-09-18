@@ -22,6 +22,7 @@ type Live = {
   label?: string;
   detail?: string;
   platform?: string | null;
+  platformAvailable?: boolean;
   destination?: string | null; // the train's final destination — "the Corby train"
   serviceId?: string | null;
   earlierSamePlatform?: {
@@ -103,7 +104,13 @@ export function LivePass({
     const leg0 = ticket.legs[0];
     if (!leg0) return ticket;
     const leg = { ...leg0 };
-    if (live.platform) leg.origin = { ...leg.origin, platform: live.platform };
+    // Once a live service response exists, the booked platform is no longer a
+    // current day-of platform. Replace it only with a provider-confirmed live
+    // value; otherwise remove it from the operational pass.
+    const origin = { ...leg.origin };
+    if (live.platform) origin.platform = live.platform;
+    else delete origin.platform;
+    leg.origin = origin;
     if (live.status)
       leg.status = {
         status: live.status,
@@ -113,21 +120,27 @@ export function LivePass({
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
   }, [ticket, live]);
 
-  // The loud boarding callout. Platform falls back to the booked value (so it
-  // shows — and persists — even with no live signal); destination + wrong-train
-  // guard come only from a live board. Render only when there's something to say.
+  // The loud boarding callout. Before any live response arrives we may show the
+  // booked platform as static context. Once Darwin responds for this service,
+  // however, only a provider-confirmed platform is allowed in the live boarding
+  // position. Missing/suppressed live platform data becomes an explicit waiting
+  // state instead of falling back to the booking.
   const boarding = useMemo<BoardingVM | undefined>(() => {
     const leg0 = ticket.legs[0];
     if (!leg0 || ticket.kind === "stay") return undefined;
-    const platform = live?.platform ?? leg0.origin.platform ?? undefined;
+    const hasLiveService = Boolean(live?.available);
+    const platform = hasLiveService
+      ? live?.platform ?? undefined
+      : leg0.origin.platform ?? undefined;
     const toward = live?.destination ?? undefined;
     const e = live?.earlierSamePlatform;
     const lab = ticket.kind === "air" ? "Gate" : "Platform";
     const earlier = e
       ? `${lab} ${e.platform} also has the ${e.std}${e.destination ? ` to ${e.destination}` : ""} before yours — let that one go.`
       : undefined;
-    if (!platform && !toward && !earlier) return undefined;
-    return { platform, toward, earlier };
+    const platformUnavailable = hasLiveService && !platform;
+    if (!platform && !toward && !earlier && !platformUnavailable) return undefined;
+    return { platform, toward, earlier, platformUnavailable };
   }, [ticket, live]);
 
   return (
