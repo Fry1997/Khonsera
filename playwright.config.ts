@@ -2,21 +2,38 @@ import { defineConfig } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const useExternalServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+const observerMode = process.env.PLAYWRIGHT_OBSERVER === "1";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  fullyParallel: !observerMode,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  retries: observerMode ? 0 : process.env.CI ? 1 : 0,
+  workers: observerMode ? 1 : process.env.CI ? 2 : undefined,
   reporter: process.env.CI
     ? [["line"], ["html", { outputFolder: "playwright-report", open: "never" }]]
     : "list",
   use: {
     baseURL,
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: observerMode ? "on" : "retain-on-failure",
+    screenshot: observerMode ? "on" : "only-on-failure",
+    video: observerMode
+      ? {
+          mode: "on",
+          show: {
+            actions: {
+              duration: 650,
+              position: "bottom-right",
+              cursor: "pointer",
+            },
+            test: {
+              level: "test",
+              position: "top-left",
+              fontSize: 14,
+            },
+          },
+        }
+      : "retain-on-failure",
   },
   projects: [
     {
