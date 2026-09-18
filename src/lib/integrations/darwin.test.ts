@@ -3,11 +3,14 @@ import { liveDeparture } from "./darwin";
 
 const originalKey = process.env.DARWIN_LDBWS_KEY;
 
-function mockBoard(trainServices: unknown[]) {
+function mockBoard(
+  trainServices: unknown[],
+  board: Record<string, unknown> = {},
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
-      new Response(JSON.stringify({ trainServices }), {
+      new Response(JSON.stringify({ platformAvailable: true, ...board, trainServices }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -297,6 +300,65 @@ describe("Darwin live rail accuracy edge cases", () => {
       destination: "Nottingham",
       platform: "2",
     });
+  });
+
+
+  it("suppresses service-level platform data when the Darwin board says platforms are unavailable", async () => {
+    mockBoard(
+      [
+        {
+          serviceID: "svc-hidden-platform",
+          std: "08:15",
+          etd: "On time",
+          platform: "9",
+          destination: [{ locationName: "London St Pancras", crs: "STP" }],
+        },
+      ],
+      {
+        platformAvailable: false,
+        generatedAt: "2026-09-18T08:14:30Z",
+      },
+    );
+
+    const live = await liveDeparture(
+      "WEL",
+      "08:15",
+      "STP",
+      "svc-hidden-platform",
+    );
+
+    expect(live).not.toBeNull();
+    expect(live?.platformAvailable).toBe(false);
+    expect(live?.platform).toBeUndefined();
+    expect(live?.detail).toBeUndefined();
+    expect(live?.source).toBe("darwin");
+    expect(live?.generatedAt).toBe("2026-09-18T08:14:30Z");
+  });
+
+  it("treats an absent Darwin platformAvailable flag as platform unavailable", async () => {
+    mockBoard(
+      [
+        {
+          serviceID: "svc-platform-flag-absent",
+          std: "08:15",
+          etd: "On time",
+          platform: "7",
+          destination: [{ locationName: "London St Pancras", crs: "STP" }],
+        },
+      ],
+      { platformAvailable: undefined },
+    );
+
+    const live = await liveDeparture(
+      "WEL",
+      "08:15",
+      "STP",
+      "svc-platform-flag-absent",
+    );
+
+    expect(live?.platformAvailable).toBe(false);
+    expect(live?.platform).toBeUndefined();
+    expect(live?.detail).toBeUndefined();
   });
 
   it("preserves an alphanumeric platform exactly as announced", async () => {
