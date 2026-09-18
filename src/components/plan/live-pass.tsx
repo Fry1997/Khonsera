@@ -76,7 +76,6 @@ export function LivePass({
     }
     let active = true;
     const load = () => {
-      setCheckingLive(true);
       const qs = new URLSearchParams({ crs, time });
       if (dest) qs.set("dest", dest);
       if (resolvedServiceId) qs.set("serviceId", resolvedServiceId);
@@ -136,11 +135,11 @@ export function LivePass({
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
   }, [ticket, live, checkingLive]);
 
-  // The loud boarding callout. Before any live response arrives we may show the
-  // booked platform as static context. Once Darwin responds for this service,
-  // however, only a provider-confirmed platform is allowed in the live boarding
-  // position. Missing/suppressed live platform data becomes an explicit waiting
-  // state instead of falling back to the booking.
+  // The loud boarding callout. While the first live lookup is pending, suppress
+  // the booked platform and say that Khonsera is checking. Once Darwin responds
+  // for this service, only a provider-confirmed platform is allowed in the live
+  // boarding position. Missing/suppressed live platform data becomes an explicit
+  // waiting state instead of falling back to the booking.
   const boarding = useMemo<BoardingVM | undefined>(() => {
     const leg0 = ticket.legs[0];
     if (!leg0 || ticket.kind === "stay") return undefined;
