@@ -68,10 +68,17 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Mint production QA logins
+      - name: Record KQA-UX-001
+        id: traveller
+        continue-on-error: true
         shell: bash
+        env:
+          PLAYWRIGHT_OBSERVER: "1"
+          KQA_PRODUCTION: "1"
+          KQA_RUN_NUMBER: ${{ github.run_number }}
+          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
         run: |
-          set -euo pipefail
+          set -u -o pipefail
 
           oidc_json="$(curl --fail --silent --show-error \
             -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -87,46 +94,38 @@ jobs:
               "$QA_AUTH_FUNCTION_URL"
           }
 
-          desktop_json="$(mint_link)"
-          mobile_json="$(mint_link)"
+          run_viewport() {
+            local project="$1"
+            local auth_json qa_email link
 
-          qa_email="$(jq -r '.email // empty' <<<"$desktop_json")"
-          desktop_link="$(jq -r '.action_link // empty' <<<"$desktop_json")"
-          mobile_link="$(jq -r '.action_link // empty' <<<"$mobile_json")"
+            auth_json="$(mint_link)" || return 1
+            qa_email="$(jq -r '.email // empty' <<<"$auth_json")"
+            link="$(jq -r '.action_link // empty' <<<"$auth_json")"
 
-          test -n "$qa_email"
-          test -n "$desktop_link"
-          test -n "$mobile_link"
+            test -n "$qa_email" || return 1
+            test -n "$link" || return 1
 
-          echo "::add-mask::$desktop_link"
-          echo "::add-mask::$mobile_link"
-          {
-            echo "KHONSERA_QA_EMAIL=$qa_email"
-            echo "KHONSERA_QA_MAGIC_LINK_DESKTOP=$desktop_link"
-            echo "KHONSERA_QA_MAGIC_LINK_MOBILE=$mobile_link"
-          } >> "$GITHUB_ENV"
+            echo "::add-mask::$link"
 
-      - name: Record KQA-UX-001
-        id: traveller
-        continue-on-error: true
-        shell: bash
-        env:
-          PLAYWRIGHT_OBSERVER: "1"
-          KQA_PRODUCTION: "1"
-          KQA_RUN_NUMBER: ${{ github.run_number }}
-          OBSERVER_VIEWPORT: ${{ env.OBSERVATORY_VIEWPORT }}
-        run: |
-          set -euo pipefail
-          project_args=()
+            KHONSERA_QA_EMAIL="$qa_email" \
+            KHONSERA_QA_MAGIC_LINK="$link" \
+              npx playwright test tests/e2e/kqa-ux-001.spec.ts \
+                --workers=1 \
+                --project="$project"
+          }
+
+          status=0
 
           case "$OBSERVER_VIEWPORT" in
             desktop)
-              project_args+=(--project=desktop-chromium)
+              run_viewport desktop-chromium || status=1
               ;;
             mobile)
-              project_args+=(--project=mobile-390)
+              run_viewport mobile-390 || status=1
               ;;
             both)
+              run_viewport desktop-chromium || status=1
+              run_viewport mobile-390 || status=1
               ;;
             *)
               echo "Unsupported viewport: $OBSERVER_VIEWPORT" >&2
@@ -134,15 +133,7 @@ jobs:
               ;;
           esac
 
-          case "$OBSERVATORY_SCENARIO" in
-            KQA-UX-001)
-              npx playwright test tests/e2e/kqa-ux-001.spec.ts                 --workers=1                 "${project_args[@]}"
-              ;;
-            *)
-              echo "Unsupported scenario: $OBSERVATORY_SCENARIO" >&2
-              exit 2
-              ;;
-          esac
+          exit "$status"
 
       - name: Prepare browser evidence
         if: always()
