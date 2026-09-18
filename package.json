@@ -16,7 +16,9 @@
     "test:e2e:report": "playwright show-report",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "lighthouse": "lhci autorun",
-    "db:types": "supabase gen types typescript --local > src/lib/types/database.ts"
+    "db:types": "supabase gen types typescript --local > src/lib/types/database.ts",
+    "qa:adaptive": "node scripts/qa/adaptive-pilot.mjs",
+    "qa:adaptive:check": "node --check scripts/qa/adaptive-pilot.mjs && node --check scripts/qa/publish-findings.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.75.0",
