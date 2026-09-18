@@ -199,6 +199,124 @@ test("Today surfaces a live rail cancellation and removes the stale booked platf
   });
 });
 
+
+test("Today presents Darwin No report as unavailable live forecast, not Delayed", async ({
+  page,
+  context,
+}, testInfo) => {
+  const slug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+
+  await withDemoRailUser(page, context, `no-report-${slug}`, async () => {
+    await page.route("**/api/darwin/departure**", async (route) => {
+      const url = new URL(route.request().url());
+      const crs = url.searchParams.get("crs");
+
+      if (crs === "WEL") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            available: true,
+            status: "stale",
+            label: "No live report",
+            detail: "Platform 5",
+            platform: "5",
+            destination: "Luton",
+            etd: "No report",
+          }),
+        });
+        return;
+      }
+
+      if (crs === "LUT") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(normalLutonResponse()),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ available: false }),
+      });
+    });
+
+    await page.goto("/today");
+
+    await expect(page.getByText("No live report", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Platform 5", { exact: true }).first()).toBeVisible();
+    expect(await page.getByText("Delayed", { exact: true }).count()).toBe(0);
+
+    await page.screenshot({
+      path: `test-results/visual-evidence/${slug}-today-live-no-report.png`,
+      fullPage: true,
+    });
+  });
+});
+
+test("Today makes an uncertain Darwin absolute forecast explicit", async ({
+  page,
+  context,
+}, testInfo) => {
+  const slug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+
+  await withDemoRailUser(page, context, `uncertain-${slug}`, async () => {
+    await page.route("**/api/darwin/departure**", async (route) => {
+      const url = new URL(route.request().url());
+      const crs = url.searchParams.get("crs");
+
+      if (crs === "WEL") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            available: true,
+            status: "stale",
+            label: "Expected 02:07 · uncertain",
+            detail: "+8 min · Platform 5",
+            platform: "5",
+            destination: "Luton",
+            etd: "02:07*",
+            uncertain: true,
+          }),
+        });
+        return;
+      }
+
+      if (crs === "LUT") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(normalLutonResponse()),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ available: false }),
+      });
+    });
+
+    await page.goto("/today");
+
+    await expect(
+      page.getByText("Expected 02:07 · uncertain", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(page.getByText(/\+8 min/).first()).toBeVisible();
+    await expect(page.getByText("Platform 5", { exact: true }).first()).toBeVisible();
+
+    await page.screenshot({
+      path: `test-results/visual-evidence/${slug}-today-live-uncertain.png`,
+      fullPage: true,
+    });
+  });
+});
+
 test("Today surfaces a live delay together with a changed platform", async ({
   page,
   context,
