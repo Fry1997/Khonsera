@@ -88,6 +88,7 @@ function ScanIco() {
 export type BoardingVM = {
   platform?: string; // "2" — undefined means not announced yet
   platformUnavailable?: boolean; // live source explicitly cannot confirm/display one
+  platformChecking?: boolean; // first live platform lookup is still in flight
   toward?: string; // the train's final destination — "Corby"
   earlier?: string; // "Platform 2 also has the 17:25 to Bedford before yours"
 };
@@ -182,6 +183,7 @@ export function Pass({
     !isStay &&
     (!!boarding.platform ||
       !!boarding.platformUnavailable ||
+      !!boarding.platformChecking ||
       !!boarding.toward ||
       !!boarding.earlier);
   const passClassName = [
@@ -362,6 +364,8 @@ export function Pass({
           ) : null}
           {boarding!.earlier ? (
             <p className="cc-pass-boarding-warn">{boarding!.earlier}</p>
+          ) : boarding!.platformChecking ? (
+            <p className="cc-pass-boarding-note">Checking live platform…</p>
           ) : boarding!.platformUnavailable ? (
             <p className="cc-pass-boarding-note">
               Live platform unavailable — check station information.
