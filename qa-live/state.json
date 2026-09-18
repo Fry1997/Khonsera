@@ -7,7 +7,7 @@
   "commandCount": 1,
   "maxCommands": 80,
   "startedAt": "2026-09-18T21:27:43.878Z",
-  "updatedAt": "2026-09-18T21:28:45.364Z",
+  "updatedAt": "2026-09-18T21:28:46.593Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -38,5 +38,10 @@
     "serverErrors": [],
     "slowRequests": [],
     "blockedNavigations": []
+  },
+  "finish": {
+    "outcome": "aborted",
+    "summary": "Relay smoke test complete; upgrading screen observation payload before full traveller pilot.",
+    "findings": []
   }
 }
