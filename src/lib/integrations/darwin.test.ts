@@ -331,6 +331,8 @@ describe("Darwin live rail accuracy edge cases", () => {
 
     expect(live).not.toBeNull();
     expect(live?.platformAvailable).toBe(false);
+    expect(live?.source).toBe("darwin");
+    expect(Date.parse(live?.observedAt ?? "")).not.toBeNaN();
     expect(live?.platform).toBeUndefined();
     expect(live?.detail).toBeUndefined();
     expect(live?.earlierSamePlatform).toBeUndefined();
