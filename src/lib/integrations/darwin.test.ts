@@ -3,11 +3,19 @@ import { liveDeparture } from "./darwin";
 
 const originalKey = process.env.DARWIN_LDBWS_KEY;
 
-function mockBoard(trainServices: unknown[]) {
+function mockBoard(
+  trainServices: unknown[],
+  platformAvailable: boolean | "absent" = true,
+) {
+  const board =
+    platformAvailable === "absent"
+      ? { trainServices }
+      : { trainServices, platformAvailable };
+
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
-      new Response(JSON.stringify({ trainServices }), {
+      new Response(JSON.stringify(board), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -297,6 +305,62 @@ describe("Darwin live rail accuracy edge cases", () => {
       destination: "Nottingham",
       platform: "2",
     });
+  });
+
+
+  it("suppresses a service platform when Darwin says platform data is unavailable", async () => {
+    mockBoard(
+      [
+        {
+          serviceID: "svc-platform-suppressed",
+          std: "09:30",
+          etd: "On time",
+          platform: "2",
+          destination: [{ locationName: "London St Pancras", crs: "STP" }],
+        },
+      ],
+      false,
+    );
+
+    const live = await liveDeparture(
+      "WEL",
+      "09:30",
+      "STP",
+      "svc-platform-suppressed",
+    );
+
+    expect(live).not.toBeNull();
+    expect(live?.platformAvailable).toBe(false);
+    expect(live?.platform).toBeUndefined();
+    expect(live?.detail).toBeUndefined();
+    expect(live?.earlierSamePlatform).toBeUndefined();
+  });
+
+  it("suppresses platform data when Darwin omits platformAvailable", async () => {
+    mockBoard(
+      [
+        {
+          serviceID: "svc-platform-unknown",
+          std: "09:30",
+          etd: "On time",
+          platform: "2",
+          destination: [{ locationName: "London St Pancras", crs: "STP" }],
+        },
+      ],
+      "absent",
+    );
+
+    const live = await liveDeparture(
+      "WEL",
+      "09:30",
+      "STP",
+      "svc-platform-unknown",
+    );
+
+    expect(live).not.toBeNull();
+    expect(live?.platformAvailable).toBe(false);
+    expect(live?.platform).toBeUndefined();
+    expect(live?.detail).toBeUndefined();
   });
 
   it("preserves an alphanumeric platform exactly as announced", async () => {
