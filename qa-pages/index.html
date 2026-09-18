@@ -342,7 +342,10 @@
 
     $("refresh").addEventListener("click",refresh);
     refresh();
-    setInterval(loadRunStatus,5000);
+    setInterval(loadRunStatus,60000);
+    setInterval(() => {
+      if (latestRun && latestRun.status !== "completed") void loadLiveRelay(latestRun);
+    },3000);
   </script>
 </body>
 </html>
