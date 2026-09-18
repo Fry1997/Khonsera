@@ -43,6 +43,57 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect.soft(hasHorizontalOverflow).toBe(false);
 }
 
+test("new traveller can create an account through the real signup form", async ({ page }, testInfo) => {
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "Signup E2E requires the isolated local Supabase environment.",
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const projectSlug = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const email = `khonsera-signup-${projectSlug}-${randomUUID()}@example.test`;
+  let userId: string | undefined;
+  const browserErrors = collectBrowserErrors(page);
+
+  try {
+    await page.goto("/signup");
+    await expect(page.getByRole("heading", { name: /let's set you up/i })).toBeVisible();
+    await expectNoSeriousAccessibilityViolations(page);
+
+    await page.getByLabel("Name").fill("Synthetic Traveller");
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(testPassword);
+    await page.getByRole("button", { name: /create account/i }).click();
+
+    // Fresh public signups are authenticated but intentionally not approved
+    // while Khonsera remains staff-gated. The app route redirects them to the
+    // signed-in gated state on the public front door.
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("heading", { name: /your place is reserved/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
+    await expectNoSeriousAccessibilityViolations(page);
+
+    const { data: users, error: listError } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    expect(listError, listError?.message).toBeNull();
+    const created = users.users.find((user) => user.email === email);
+    expect(created).toBeTruthy();
+    userId = created?.id;
+    expect(created?.user_metadata?.full_name).toBe("Synthetic Traveller");
+
+    expect.soft(browserErrors, `Browser errors: ${browserErrors.join("\n")}`).toEqual([]);
+  } finally {
+    if (userId) await admin.auth.admin.deleteUser(userId);
+  }
+});
+
+
 test("authenticated staff can use the real shell with isolated demo travel data", async ({
   page,
   context,
