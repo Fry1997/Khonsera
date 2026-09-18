@@ -317,6 +317,103 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.detail).toContain("Platform 13R");
   });
 
+
+  it("preserves Darwin No report as an honest unknown live state", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-no-report",
+        std: "12:30",
+        etd: "No report",
+        platform: "4",
+        destination: [{ locationName: "Bedford", crs: "BDM" }],
+      },
+    ]);
+
+    const live = await liveDeparture("LUT", "12:30", "BDM", "svc-no-report");
+
+    expect(live).not.toBeNull();
+    expect(live?.status).toBe("stale");
+    expect(live?.label).toBe("No live report");
+    expect(live?.detail).toBe("Platform 4");
+    expect(live?.etd).toBe("No report");
+    expect(live?.uncertain).toBeUndefined();
+  });
+
+  it("preserves an asterisked Darwin forecast without presenting it as confirmed", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-uncertain",
+        std: "12:30",
+        etd: "12:34*",
+        platform: "5",
+        destination: [{ locationName: "Bedford", crs: "BDM" }],
+      },
+    ]);
+
+    const live = await liveDeparture("LUT", "12:30", "BDM", "svc-uncertain");
+
+    expect(live).not.toBeNull();
+    expect(live?.status).toBe("stale");
+    expect(live?.label).toBe("Expected 12:34 · uncertain");
+    expect(live?.detail).toBe("+4 min · Platform 5");
+    expect(live?.etd).toBe("12:34*");
+    expect(live?.uncertain).toBe(true);
+  });
+
+  it("keeps Darwin's explicit Delayed state distinct from unknown forecasts", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-delayed-text",
+        std: "12:30",
+        etd: "Delayed",
+        platform: "5",
+        delayReason: "Awaiting train crew",
+        destination: [{ locationName: "Bedford", crs: "BDM" }],
+      },
+    ]);
+
+    const live = await liveDeparture("LUT", "12:30", "BDM", "svc-delayed-text");
+
+    expect(live?.status).toBe("delayed");
+    expect(live?.label).toBe("Delayed");
+    expect(live?.detail).toBe("Awaiting train crew");
+    expect(live?.etd).toBe("Delayed");
+  });
+
+  it("maps unknown or missing Darwin forecast values to unavailable rather than Delayed or On time", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-unknown",
+        std: "12:30",
+        etd: "Forecast pending",
+        platform: "2",
+        destination: [{ locationName: "Bedford", crs: "BDM" }],
+      },
+    ]);
+
+    const unknown = await liveDeparture("LUT", "12:30", "BDM", "svc-unknown");
+
+    expect(unknown?.status).toBe("stale");
+    expect(unknown?.label).toBe("Live forecast unavailable");
+    expect(unknown?.detail).toBe("Platform 2");
+    expect(unknown?.etd).toBe("Forecast pending");
+
+    mockBoard([
+      {
+        serviceID: "svc-missing-etd",
+        std: "12:30",
+        platform: "2",
+        destination: [{ locationName: "Bedford", crs: "BDM" }],
+      },
+    ]);
+
+    const missing = await liveDeparture("LUT", "12:30", "BDM", "svc-missing-etd");
+
+    expect(missing?.status).toBe("stale");
+    expect(missing?.label).toBe("Live forecast unavailable");
+    expect(missing?.etd).toBe("");
+  });
+
   it("maps a cancelled service to an explicit cancelled state", async () => {
     mockBoard([
       {
