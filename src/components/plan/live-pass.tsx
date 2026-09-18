@@ -23,6 +23,8 @@ type Live = {
   detail?: string;
   platform?: string | null;
   platformAvailable?: boolean;
+  source?: "darwin";
+  observedAt?: string;
   destination?: string | null; // the train's final destination — "the Corby train"
   serviceId?: string | null;
   earlierSamePlatform?: {
