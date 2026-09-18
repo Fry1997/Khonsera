@@ -37,6 +37,8 @@ export type LiveDeparture = {
   detail?: string; // "+13 min" · "Platform 2"
   platform?: string;
   platformAvailable: boolean; // board-level Darwin permission to surface platform data
+  source: "darwin";
+  observedAt: string; // when Khonsera observed this provider response
   std: string; // scheduled departure HH:MM
   etd: string; // raw estimate from Darwin, preserved verbatim for diagnostics
   uncertain?: boolean; // Darwin appended * to an absolute forecast
@@ -125,7 +127,11 @@ export async function liveDeparture(
     target = sameMinute[0];
   }
 
-  const live = toLiveDeparture(target, platformAvailable);
+  const live = toLiveDeparture(
+    target,
+    platformAvailable,
+    new Date().toISOString(),
+  );
 
   // Wrong-train guard is context, not identity. Compare CURRENT expected order,
   // not timetable order. Unknown forecasts are excluded rather than guessed.
@@ -244,6 +250,7 @@ function relativeClockDelta(candidate: string, target: string): number | null {
 function toLiveDeparture(
   svc: DarwinService,
   platformAvailable: boolean,
+  observedAt: string,
 ): LiveDeparture {
   const std = svc.std ?? "";
   // Keep Darwin's passenger-facing value intact. Missing/unknown live data must
@@ -261,6 +268,8 @@ function toLiveDeparture(
     etd,
     platform,
     platformAvailable,
+    source: "darwin" as const,
+    observedAt,
     destination,
     serviceId,
     rsid,
