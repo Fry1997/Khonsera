@@ -39,13 +39,15 @@ export type LiveDeparture = {
   std: string; // scheduled departure HH:MM
   etd: string; // raw estimate from Darwin
   destination?: string; // the train's final destination — "the Corby train"
-  serviceId?: string; // Darwin/OpenLDB serviceID — durable identity for this physical service
+  serviceId?: string; // Darwin/OpenLDB exact day-of identity for this service
+  rsid?: string; // Retail Service ID when Darwin supplies one
   earlierSamePlatform?: EarlierSamePlatform;
 };
 
 // One service from the LDBWS JSON board — the ServiceItem schema (GetDepartureBoard).
 type DarwinService = {
-  serviceID?: string; // durable Darwin/OpenLDB service identity
+  serviceID?: string; // exact Darwin/OpenLDB identity for the returned live service
+  rsid?: string; // Retail Service ID, if supplied
   std?: string; // scheduled time of departure
   etd?: string; // estimated ("On time" | "HH:MM" | "Delayed" | "Cancelled")
   platform?: string;
@@ -70,8 +72,10 @@ export async function liveDeparture(
   if (!key || !crs || !plannedHHMM) return null;
 
   const url = new URL(`${BASE}/GetDepartureBoard/${crs.toUpperCase()}`);
-  url.searchParams.set("numRows", "20");
-  url.searchParams.set("timeWindow", "120"); // local board context for target + wrong-train guard
+  // Public LDBWS documents numRows/timeWindow as exclusive upper bounds:
+  // use the full supported local board without sending an out-of-range value.
+  url.searchParams.set("numRows", "149");
+  url.searchParams.set("timeWindow", "119"); // local board context for target + wrong-train guard
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
@@ -218,7 +222,8 @@ function toLiveDeparture(svc: DarwinService): LiveDeparture {
   const platform = typeof svc.platform === "string" ? svc.platform : undefined;
   const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
   const serviceId = typeof svc.serviceID === "string" && svc.serviceID ? svc.serviceID : undefined;
-  const base = { std, etd, platform, destination, serviceId } as const;
+  const rsid = typeof svc.rsid === "string" && svc.rsid ? svc.rsid : undefined;
+  const base = { std, etd, platform, destination, serviceId, rsid } as const;
   const plat = platform ? `Platform ${platform}` : undefined;
 
   if (svc.isCancelled === true || /cancel/i.test(etd)) {
