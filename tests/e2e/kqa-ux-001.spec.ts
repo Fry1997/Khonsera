@@ -8,7 +8,7 @@ import {
 } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const magicLink = process.env.KHONsera_QA_MAGIC_LINK ?? process.env.KHONSERA_QA_MAGIC_LINK;
+const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
 const productionMode = process.env.KQA_PRODUCTION === "1";
 const runNumber = process.env.KQA_RUN_NUMBER ?? "local";
 
@@ -53,7 +53,7 @@ function londonParts(date = new Date()) {
     hour12: false,
   }).formatToParts(date);
 
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
+  const value = (type: Intl.DateTimeFormatPart["type"]) =>
     parts.find((part) => part.type === type)?.value ?? "";
 
   return {
@@ -320,8 +320,8 @@ test("KQA-UX-001 · persistent production traveller builds a tight rail day", as
   await dialog.getByRole("button", { name: "Transport", exact: true }).click();
   await dialog.getByRole("button", { name: "Train", exact: true }).click();
 
-  await pickHub(dialog, /From station/i, "Wellingborough", /Wellingborough/i);
-  await pickHub(dialog, /To station/i, "Harpenden", /Harpenden/i);
+  await pickHub(dialog, /From station/i, "Wellingborough", /Wellingborough.*WEL/i);
+  await pickHub(dialog, /To station/i, "Harpenden", /Harpenden.*HPD/i);
 
   await dialog.locator('input[type="date"]').fill(clock.date);
   await dialog.getByLabel("Depart", { exact: true }).fill(clock.depart);
