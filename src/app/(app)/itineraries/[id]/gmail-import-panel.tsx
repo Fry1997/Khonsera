@@ -295,6 +295,8 @@ export function GmailImportPanel({
         `${seg.arrival_date}T${seg.arrival_time || seg.departure_time}:00`,
       ).toISOString(),
       service_number: seg.service_number ?? null,
+      service_uid: seg.service_uid ?? null,
+      darwin_service_id: seg.darwin_service_id ?? null,
       platform_dep: seg.platform_dep ?? null,
       platform_arr: seg.platform_arr ?? null,
       from_station_code: seg.from_station_code ?? null,
