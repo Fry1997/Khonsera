@@ -22,6 +22,9 @@ type Live = {
   label?: string;
   detail?: string;
   platform?: string | null;
+  platformAvailable?: boolean;
+  source?: "darwin";
+  generatedAt?: string;
   destination?: string | null; // the train's final destination — "the Corby train"
   serviceId?: string | null;
   earlierSamePlatform?: {
@@ -102,8 +105,13 @@ export function LivePass({
     if (!live?.available) return ticket;
     const leg0 = ticket.legs[0];
     if (!leg0) return ticket;
-    const leg = { ...leg0 };
-    if (live.platform) leg.origin = { ...leg.origin, platform: live.platform };
+    const leg = {
+      ...leg0,
+      // A successful live refresh is authoritative for the current platform
+      // field. If Darwin does not confirm one, remove the booked/static value
+      // rather than letting it masquerade as live.
+      origin: { ...leg0.origin, platform: live.platform ?? undefined },
+    };
     if (live.status)
       leg.status = {
         status: live.status,
@@ -113,21 +121,25 @@ export function LivePass({
     return { ...ticket, legs: [leg, ...ticket.legs.slice(1)] };
   }, [ticket, live]);
 
-  // The loud boarding callout. Platform falls back to the booked value (so it
-  // shows — and persists — even with no live signal); destination + wrong-train
-  // guard come only from a live board. Render only when there's something to say.
+  // The loud boarding callout. A successful live response owns the platform
+  // field: no live platform means an explicit unavailable/not-announced state,
+  // never a fallback to the booked value. With no live response at all we leave
+  // #66's broader stale/unavailable handling separate.
   const boarding = useMemo<BoardingVM | undefined>(() => {
     const leg0 = ticket.legs[0];
     if (!leg0 || ticket.kind === "stay") return undefined;
-    const platform = live?.platform ?? leg0.origin.platform ?? undefined;
+    const platform = live
+      ? (live.platform ?? undefined)
+      : (leg0.origin.platform ?? undefined);
+    const platformUnavailable = Boolean(live && !live.platform);
     const toward = live?.destination ?? undefined;
     const e = live?.earlierSamePlatform;
     const lab = ticket.kind === "air" ? "Gate" : "Platform";
     const earlier = e
       ? `${lab} ${e.platform} also has the ${e.std}${e.destination ? ` to ${e.destination}` : ""} before yours — let that one go.`
       : undefined;
-    if (!platform && !toward && !earlier) return undefined;
-    return { platform, toward, earlier };
+    if (!platform && !platformUnavailable && !toward && !earlier) return undefined;
+    return { platform, platformUnavailable, toward, earlier };
   }, [ticket, live]);
 
   return (
