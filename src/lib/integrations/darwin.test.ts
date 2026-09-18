@@ -30,6 +30,7 @@ describe("Darwin live rail accuracy edge cases", () => {
   it.fails("reports a cross-midnight delay with the correct positive delay magnitude", async () => {
     mockBoard([
       {
+        serviceID: "svc-midnight",
         std: "23:58",
         etd: "00:05",
         platform: "2",
@@ -37,7 +38,7 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("WEL", "23:58", "DBY");
+    const live = await liveDeparture("WEL", "23:58", "DBY", "svc-midnight");
 
     expect(live).not.toBeNull();
     expect(live?.status).toBe("delayed");
@@ -46,15 +47,17 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.detail).toContain("Platform 2");
   });
 
-  it.fails("does not warn about a same-platform train that is now expected to leave after the user's train", async () => {
+  it("does not warn about a same-platform train that is now expected to leave after the user's train", async () => {
     mockBoard([
       {
+        serviceID: "svc-held",
         std: "00:25",
         etd: "00:40",
         platform: "2",
         destination: [{ locationName: "Nottingham", crs: "NOT" }],
       },
       {
+        serviceID: "svc-user",
         std: "00:30",
         etd: "On time",
         platform: "2",
@@ -62,20 +65,19 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("WEL", "00:30", "DBY");
+    const live = await liveDeparture("WEL", "00:30", "DBY", "svc-user");
 
     expect(live).not.toBeNull();
+    expect(live?.serviceId).toBe("svc-user");
     expect(live?.destination).toBe("Derby");
     expect(live?.earlierSamePlatform).toBeUndefined();
   });
 
-  it("characterises the current amended-timetable gap: a booked minute no longer on the live board cannot be matched", async () => {
-    // Real-world pattern seen on the 23:04 St Pancras -> Derby service during
-    // engineering work: a normally earlier Wellingborough time was amended to
-    // 00:30. Until a durable service identity is stored, exact-minute matching
-    // cannot safely bridge this gap.
+  it("keeps tracking the exact service when a timetable amendment changes its scheduled minute", async () => {
     mockBoard([
       {
+        serviceID: "svc-derby",
+        rsid: "EM123400",
         std: "00:30",
         etd: "On time",
         platform: "3",
@@ -83,43 +85,58 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("WEL", "00:22", "DBY");
+    const live = await liveDeparture("WEL", "00:22", "DBY", "svc-derby");
 
-    expect(live).toBeNull();
+    expect(live).not.toBeNull();
+    expect(live?.serviceId).toBe("svc-derby");
+    expect(live?.rsid).toBe("EM123400");
+    expect(live?.std).toBe("00:30");
+    expect(live?.platform).toBe("3");
+
+    const requestUrl = new URL(String(vi.mocked(fetch).mock.calls[0]?.[0]));
+    expect(requestUrl.searchParams.get("numRows")).toBe("149");
+    expect(requestUrl.searchParams.get("timeWindow")).toBe("119");
   });
 
-  it("uses destination to disambiguate two services scheduled in the same minute when possible", async () => {
+  it("uses durable identity even when the passenger destination is only an intermediate stop", async () => {
     mockBoard([
       {
+        serviceID: "svc-corby",
         std: "08:15",
         etd: "On time",
         platform: "1",
         destination: [{ locationName: "Corby", crs: "COR" }],
       },
       {
+        serviceID: "svc-london",
         std: "08:15",
         etd: "08:18",
         platform: "2",
-        destination: [{ locationName: "Derby", crs: "DBY" }],
+        destination: [{ locationName: "London St Pancras", crs: "STP" }],
       },
     ]);
 
-    const live = await liveDeparture("WEL", "08:15", "DBY");
+    // LUT is the passenger's hop destination, not the train's final destination.
+    const live = await liveDeparture("WEL", "08:15", "LUT", "svc-london");
 
     expect(live).not.toBeNull();
-    expect(live?.destination).toBe("Derby");
+    expect(live?.serviceId).toBe("svc-london");
+    expect(live?.destination).toBe("London St Pancras");
     expect(live?.platform).toBe("2");
     expect(live?.label).toBe("Now 08:18");
   });
-  it.fails("refuses to guess when two services share the booked minute and no destination can disambiguate them", async () => {
+
+  it("refuses to guess when two services share the booked minute and no durable identity is available", async () => {
     mockBoard([
       {
+        serviceID: "svc-corby",
         std: "08:15",
         etd: "On time",
         platform: "1",
         destination: [{ locationName: "Corby", crs: "COR" }],
       },
       {
+        serviceID: "svc-derby",
         std: "08:15",
         etd: "On time",
         platform: "2",
@@ -132,15 +149,17 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live).toBeNull();
   });
 
-  it.fails("refuses to guess when destination was supplied but none of the same-minute services match it", async () => {
+  it("does not use a passenger hop destination as a same-minute identity tie-break", async () => {
     mockBoard([
       {
+        serviceID: "svc-corby",
         std: "08:15",
         etd: "On time",
         platform: "1",
         destination: [{ locationName: "Corby", crs: "COR" }],
       },
       {
+        serviceID: "svc-derby",
         std: "08:15",
         etd: "On time",
         platform: "2",
@@ -148,20 +167,38 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("WEL", "08:15", "NOT");
+    const live = await liveDeparture("WEL", "08:15", "DBY");
 
     expect(live).toBeNull();
   });
 
-  it.fails("recognises the immediately preceding same-platform train across midnight", async () => {
+  it("does not fall back to another train when a stored service identity is absent from the board", async () => {
     mockBoard([
       {
+        serviceID: "svc-other",
+        std: "08:15",
+        etd: "On time",
+        platform: "1",
+        destination: [{ locationName: "Derby", crs: "DBY" }],
+      },
+    ]);
+
+    const live = await liveDeparture("WEL", "08:15", "DBY", "svc-missing");
+
+    expect(live).toBeNull();
+  });
+
+  it("recognises the immediately preceding same-platform train across midnight", async () => {
+    mockBoard([
+      {
+        serviceID: "svc-prev",
         std: "23:58",
         etd: "On time",
         platform: "2",
         destination: [{ locationName: "Nottingham", crs: "NOT" }],
       },
       {
+        serviceID: "svc-user",
         std: "00:05",
         etd: "On time",
         platform: "2",
@@ -169,7 +206,7 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("WEL", "00:05", "DBY");
+    const live = await liveDeparture("WEL", "00:05", "DBY", "svc-user");
 
     expect(live).not.toBeNull();
     expect(live?.earlierSamePlatform).toMatchObject({
@@ -182,6 +219,7 @@ describe("Darwin live rail accuracy edge cases", () => {
   it("preserves an alphanumeric platform exactly as announced", async () => {
     mockBoard([
       {
+        serviceID: "svc-ayr",
         std: "00:15",
         etd: "On time",
         platform: "13R",
@@ -189,7 +227,7 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("GLC", "00:15", "AYR");
+    const live = await liveDeparture("GLC", "00:15", "AYR", "svc-ayr");
 
     expect(live).not.toBeNull();
     expect(live?.platform).toBe("13R");
@@ -199,6 +237,7 @@ describe("Darwin live rail accuracy edge cases", () => {
   it("maps a cancelled service to an explicit cancelled state", async () => {
     mockBoard([
       {
+        serviceID: "svc-cancelled",
         std: "23:06",
         etd: "Cancelled",
         platform: "5",
@@ -208,7 +247,7 @@ describe("Darwin live rail accuracy edge cases", () => {
       },
     ]);
 
-    const live = await liveDeparture("LBG", "23:06", "BDM");
+    const live = await liveDeparture("LBG", "23:06", "BDM", "svc-cancelled");
 
     expect(live).not.toBeNull();
     expect(live?.status).toBe("cancelled");
@@ -216,5 +255,4 @@ describe("Darwin live rail accuracy edge cases", () => {
     expect(live?.detail).toBe("Operational incident");
     expect(live?.platform).toBe("5");
   });
-
 });

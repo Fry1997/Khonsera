@@ -683,6 +683,7 @@ function PassCard({
           crs={pass.crs}
           time={pass.time}
           dest={pass.dest}
+          serviceId={pass.serviceId}
           docked
           today
           onShow={onShowTicket}

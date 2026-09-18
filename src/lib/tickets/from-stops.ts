@@ -42,6 +42,8 @@ export type LegTicketUnit = {
   destStopId: string;
   runDepartureStopId: string;
   isFirstLeg: boolean;
+  /** Durable provider identity stored on the boarding stop when known. */
+  serviceId?: string;
 };
 
 function s(meta: Record<string, unknown> | null, key: string): string | undefined {
@@ -237,5 +239,12 @@ function buildLegTicket(
     legs: [leg],
   };
 
-  return { ticket, originStopId: origin.id, destStopId: dest.id, runDepartureStopId: dep.id, isFirstLeg };
+  return {
+    ticket,
+    originStopId: origin.id,
+    destStopId: dest.id,
+    runDepartureStopId: dep.id,
+    isFirstLeg,
+    serviceId: s(origin.metadata, "provider_service_id"),
+  };
 }

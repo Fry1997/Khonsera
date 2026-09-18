@@ -39,11 +39,15 @@ export type LiveDeparture = {
   std: string; // scheduled departure HH:MM
   etd: string; // raw estimate from Darwin
   destination?: string; // the train's final destination — "the Corby train"
+  serviceId?: string; // Darwin/OpenLDB exact day-of identity for this service
+  rsid?: string; // Retail Service ID when Darwin supplies one
   earlierSamePlatform?: EarlierSamePlatform;
 };
 
 // One service from the LDBWS JSON board — the ServiceItem schema (GetDepartureBoard).
 type DarwinService = {
+  serviceID?: string; // exact Darwin/OpenLDB identity for the returned live service
+  rsid?: string; // Retail Service ID, if supplied
   std?: string; // scheduled time of departure
   etd?: string; // estimated ("On time" | "HH:MM" | "Delayed" | "Cancelled")
   platform?: string;
@@ -53,24 +57,25 @@ type DarwinService = {
   destination?: Array<{ locationName?: string; crs?: string }>;
 };
 
-// Fetch the live departure board for `crs` and return the service whose scheduled
-// departure matches `plannedHHMM` (London 24h). Optionally narrow to services
-// heading toward `destCrs`. null on any failure / no key / no match — the caller
-// keeps the static badge.
+// Fetch the live departure board for `crs` and resolve the passenger's service.
+ // Durable provider identity is authoritative when present. Legacy time matching
+ // is deliberately conservative: exactly one scheduled-minute candidate or no
+ // confident live match. The passenger's hop destination is NOT used as a train
+ // identity tie-break because it may be an intermediate calling point.
 export async function liveDeparture(
   crs: string,
   plannedHHMM: string,
-  destCrs?: string | null,
+  _destCrs?: string | null,
+  serviceId?: string | null,
 ): Promise<LiveDeparture | null> {
   const key = darwinKey();
   if (!key || !crs || !plannedHHMM) return null;
 
   const url = new URL(`${BASE}/GetDepartureBoard/${crs.toUpperCase()}`);
-  url.searchParams.set("numRows", "20");
-  url.searchParams.set("timeWindow", "120"); // look up to 2h ahead
-  // NB: deliberately NOT filtered by destination — we need the FULL board to
-  // spot another service sharing your platform before yours (the wrong-train
-  // guard). We disambiguate same-minute departures by destination in memory.
+  // Public LDBWS documents numRows/timeWindow as exclusive upper bounds:
+  // use the full supported local board without sending an out-of-range value.
+  url.searchParams.set("numRows", "149");
+  url.searchParams.set("timeWindow", "119"); // local board context for target + wrong-train guard
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
@@ -93,41 +98,62 @@ export async function liveDeparture(
   const services = data?.trainServices ?? data?.GetStationBoardResult?.trainServices;
   if (!Array.isArray(services)) return null;
 
-  // Your service: the one departing at the planned minute, preferring the one
-  // heading to your destination if several share the minute.
-  const sameMinute = services.filter((s) => s?.std === plannedHHMM);
-  if (sameMinute.length === 0) return null;
-  let target = sameMinute[0];
-  if (destCrs && sameMinute.length > 1) {
-    const d = destCrs.toUpperCase();
-    target = sameMinute.find((s) => s.destination?.some((x) => x.crs?.toUpperCase() === d)) ?? target;
+  const requestedServiceId = serviceId?.trim();
+  let target: DarwinService | undefined;
+
+  if (requestedServiceId) {
+    // Exact identity never degrades into a time guess. If the target service is
+    // absent from this board response, live truth is unavailable for this poll.
+    target = services.find((service) => service?.serviceID === requestedServiceId);
+    if (!target) return null;
+  } else {
+    const sameMinute = services.filter((service) => service?.std === plannedHHMM);
+    if (sameMinute.length !== 1) return null;
+    target = sameMinute[0];
   }
 
   const live = toLiveDeparture(target);
 
-  // Wrong-train guard: the latest OTHER service from your platform that leaves
-  // before yours is the one you're most likely to step onto by mistake.
+  // Wrong-train guard is context, not identity. Compare CURRENT expected order,
+  // not timetable order. Unknown forecasts are excluded rather than guessed.
   if (live.platform) {
-    const targetMin = hhmmToMin(plannedHHMM);
-    const earlier = services
-      .filter((s) => {
-        if (s === target || s.isCancelled || !s.platform || s.platform !== target.platform || !s.std) return false;
-        const m = hhmmToMin(s.std);
-        return m >= 0 && m < targetMin;
-      })
-      .sort((a, b) => hhmmToMin(a.std!) - hhmmToMin(b.std!));
-    const prev = earlier[earlier.length - 1];
-    if (prev?.std) {
-      live.earlierSamePlatform = {
-        std: prev.std,
-        destination: prev.destination?.[0]?.locationName,
-        platform: live.platform,
-      };
+    const targetClock = effectiveDepartureClock(target);
+    if (targetClock) {
+      const earlier = services
+        .filter(
+          (service) =>
+            service !== target &&
+            !service.isCancelled &&
+            Boolean(service.platform) &&
+            service.platform === target.platform,
+        )
+        .map((service) => {
+          const clock = effectiveDepartureClock(service);
+          return {
+            service,
+            delta: clock ? relativeClockDelta(clock, targetClock) : null,
+          };
+        })
+        .filter(
+          (entry): entry is { service: DarwinService; delta: number } =>
+            entry.delta != null && entry.delta < 0,
+        )
+        .sort((a, b) => a.delta - b.delta);
+
+      const prev = earlier[earlier.length - 1]?.service;
+      if (prev?.std) {
+        live.earlierSamePlatform = {
+          std: prev.std,
+          destination: prev.destination?.[0]?.locationName,
+          platform: live.platform,
+        };
+      }
     }
   }
 
   return live;
 }
+
 
 // Recovery (Phase 11): the next services from `originCrs` heading TO `destCrs` —
 // the ways out when a booked train is cancelled or badly delayed. Uses LDBWS's
@@ -170,12 +196,34 @@ function hhmmToMin(s: string): number {
   return Number.isNaN(h) || Number.isNaN(m) ? -1 : h * 60 + m;
 }
 
+function effectiveDepartureClock(service: DarwinService): string | null {
+  if (service.isCancelled) return null;
+  const etd = typeof service.etd === "string" ? service.etd.trim() : "";
+  if (/^\d{1,2}:\d{2}$/.test(etd)) return etd;
+  if (/^on time$/i.test(etd) && service.std) return service.std;
+  return null;
+}
+
+// Departure-board context is a narrow window around the journey. Treat a clock
+// value on the other side of midnight as adjacent when it is within 12 hours.
+function relativeClockDelta(candidate: string, target: string): number | null {
+  const candidateMin = hhmmToMin(candidate);
+  const targetMin = hhmmToMin(target);
+  if (candidateMin < 0 || targetMin < 0) return null;
+  let delta = candidateMin - targetMin;
+  if (delta > 720) delta -= 1440;
+  else if (delta <= -720) delta += 1440;
+  return delta;
+}
+
 function toLiveDeparture(svc: DarwinService): LiveDeparture {
   const std = svc.std ?? "";
   const etd = typeof svc.etd === "string" && svc.etd ? svc.etd : "On time";
   const platform = typeof svc.platform === "string" ? svc.platform : undefined;
   const destination = Array.isArray(svc.destination) ? svc.destination[0]?.locationName : undefined;
-  const base = { std, etd, platform, destination } as const;
+  const serviceId = typeof svc.serviceID === "string" && svc.serviceID ? svc.serviceID : undefined;
+  const rsid = typeof svc.rsid === "string" && svc.rsid ? svc.rsid : undefined;
+  const base = { std, etd, platform, destination, serviceId, rsid } as const;
   const plat = platform ? `Platform ${platform}` : undefined;
 
   if (svc.isCancelled === true || /cancel/i.test(etd)) {

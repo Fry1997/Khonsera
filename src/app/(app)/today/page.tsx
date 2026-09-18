@@ -77,6 +77,7 @@ type StopRow = {
   id: string;
   type: string;
   title: string | null;
+  metadata?: Record<string, unknown> | null;
   start_time: string | null;
   end_time: string | null;
   location: Geo;
@@ -317,6 +318,7 @@ export default async function TodayPage({
       crs: string | null;
       time: string | null;
       dest: string | null;
+      serviceId: string | null;
     }
   >();
 
@@ -344,9 +346,7 @@ export default async function TodayPage({
         : (ev as { mode?: string | null }).mode === "personal"
           ? "personal"
           : null;
-    const evStops = (s ?? []) as unknown as Array<
-      StopRow & { metadata?: Record<string, unknown> | null }
-    >;
+    const evStops = (s ?? []) as unknown as StopRow[];
     const byId = new Map(evStops.map((st) => [st.id, st]));
 
     for (const st of evStops) {
@@ -402,6 +402,7 @@ export default async function TodayPage({
         crs: origin.transport_hub?.code ?? null,
         time: londonHHMM(iso),
         dest: lt.ticket.legs[0]?.destination.code ?? null,
+        serviceId: lt.serviceId ?? null,
       });
     }
   }
@@ -423,7 +424,16 @@ export default async function TodayPage({
       !st.start_time
     )
       continue;
-    const live = await liveDeparture(code, londonHHMM(st.start_time) ?? "");
+    const providerServiceId =
+      typeof st.metadata?.provider_service_id === "string"
+        ? st.metadata.provider_service_id
+        : undefined;
+    const live = await liveDeparture(
+      code,
+      londonHHMM(st.start_time) ?? "",
+      undefined,
+      providerServiceId,
+    );
     if (!live) continue;
     const m = /\+(\d+)/.exec(live.detail ?? "");
     const delayMin = live.label === "Cancelled" ? 999 : m ? Number(m[1]) : 0;
