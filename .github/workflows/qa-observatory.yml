@@ -35,6 +35,8 @@ env:
   OBSERVATORY_SCENARIO: ${{ inputs.scenario || 'KQA-UX-001' }}
   OBSERVATORY_VIEWPORT: ${{ inputs.viewport || 'both' }}
   QA_AUTH_FUNCTION_URL: https://attbfwemjoslugvtfbrt.supabase.co/functions/v1/qa-observer-auth
+  KQA_SUPABASE_URL: https://attbfwemjoslugvtfbrt.supabase.co
+  KQA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_qGQTlzrEcNjV33Ia2hwPmA_GZE22stL
 
 jobs:
   observe:
