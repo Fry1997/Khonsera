@@ -7,7 +7,7 @@ export interface SpinePass {
   crs: string | null;
   time: string | null;
   dest: string | null;
-  serviceId: string | null;
+  serviceId?: string | null;
 }
 
 export type StationKind = "rail_station" | "airport";
