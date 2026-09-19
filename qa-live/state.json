@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 24,
+  "commandCount": 25,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:09:06.666Z",
+  "updatedAt": "2026-09-19T22:09:18.266Z",
   "url": "https://www.khonsera.com/navigate",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 24,
-    "commandNumber": 24,
-    "at": "2026-09-19T22:09:06.473Z",
+    "sequence": 25,
+    "commandNumber": 25,
+    "at": "2026-09-19T22:09:18.127Z",
     "command": {
-      "type": "type",
-      "text": "Wellingborough"
+      "type": "wait",
+      "ms": 2500
     },
     "beforeUrl": "https://www.khonsera.com/navigate",
     "afterUrl": "https://www.khonsera.com/navigate",
-    "durationMs": 463,
+    "durationMs": 2504,
     "error": null
   },
   "screen": {
@@ -49,6 +49,11 @@
         "text": "Current location Use GPS"
       },
       {
+        "top": 335,
+        "left": 241,
+        "text": "Wellingborough (WEL) Station"
+      },
+      {
         "top": 357,
         "left": 240,
         "text": "Walk"
@@ -62,6 +67,11 @@
         "top": 357,
         "left": 387,
         "text": "Drive"
+      },
+      {
+        "top": 395,
+        "left": 241,
+        "text": "Wellingborough Wellingborough"
       },
       {
         "top": 935,
@@ -192,6 +202,46 @@
       },
       {
         "index": 5,
+        "tag": "button",
+        "role": null,
+        "label": "Wellingborough (WEL) Station",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 365
+        },
+        "box": {
+          "x": 241,
+          "y": 335,
+          "width": 958,
+          "height": 60
+        }
+      },
+      {
+        "index": 6,
+        "tag": "button",
+        "role": null,
+        "label": "Wellingborough Wellingborough",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 425
+        },
+        "box": {
+          "x": 241,
+          "y": 395,
+          "width": 958,
+          "height": 60
+        }
+      },
+      {
+        "index": 7,
         "tag": "input",
         "role": null,
         "label": "Station, place, address…",
@@ -211,7 +261,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 8,
         "tag": "button",
         "role": null,
         "label": "Walk",
@@ -231,7 +281,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 9,
         "tag": "button",
         "role": null,
         "label": "Cycle",
@@ -251,7 +301,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 10,
         "tag": "button",
         "role": null,
         "label": "Drive",
@@ -271,7 +321,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -291,7 +341,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -311,7 +361,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -331,7 +381,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 14,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -351,7 +401,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 15,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
