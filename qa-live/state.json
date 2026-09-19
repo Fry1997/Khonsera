@@ -4,10 +4,10 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 16,
+  "commandCount": 17,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:56:25.786Z",
+  "updatedAt": "2026-09-19T22:56:33.104Z",
   "url": "https://www.khonsera.com/mileage",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 16,
-    "commandNumber": 16,
-    "at": "2026-09-19T22:56:25.649Z",
+    "sequence": 17,
+    "commandNumber": 17,
+    "at": "2026-09-19T22:56:32.978Z",
     "command": {
-      "type": "goto",
-      "path": "/mileage"
+      "type": "click",
+      "x": 1118,
+      "y": 242
     },
-    "beforeUrl": "https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5",
+    "beforeUrl": "https://www.khonsera.com/mileage",
     "afterUrl": "https://www.khonsera.com/mileage",
-    "durationMs": 2346,
+    "durationMs": 471,
     "error": null
   },
   "screen": {
@@ -45,8 +46,8 @@
       },
       {
         "top": 220,
-        "left": 1052,
-        "text": "Record a drive"
+        "left": 820,
+        "text": "Stop & save"
       },
       {
         "top": 333,
@@ -174,19 +175,19 @@
         "index": 3,
         "tag": "button",
         "role": null,
-        "label": "Record a drive",
+        "label": "Stop & save",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1118,
+          "x": 875,
           "y": 242
         },
         "box": {
-          "x": 1052,
+          "x": 820,
           "y": 220,
-          "width": 131,
+          "width": 109,
           "height": 44
         }
       },
@@ -371,7 +372,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "button",
+      "role": null,
+      "label": "Stop & save",
+      "center": {
+        "x": 875,
+        "y": 242
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
