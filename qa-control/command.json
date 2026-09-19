@@ -1,11 +1,10 @@
 {
   "runId": "35472059188",
   "viewport": "desktop-chromium",
-  "sequence": 23,
+  "sequence": 24,
   "command": {
-    "type": "click",
-    "x": 720,
-    "y": 249
+    "type": "type",
+    "text": "Wellingborough"
   },
-  "updatedAt": "2026-09-19T22:08:53.606Z"
+  "updatedAt": "2026-09-19T22:09:00.837Z"
 }
