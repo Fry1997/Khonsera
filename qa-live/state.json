@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 7,
+  "commandCount": 8,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:52:49.043Z",
-  "url": "https://www.khonsera.com/navigate",
+  "updatedAt": "2026-09-19T22:52:58.805Z",
+  "url": "https://www.khonsera.com/expenses",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 7,
-    "commandNumber": 7,
-    "at": "2026-09-19T22:52:48.855Z",
+    "sequence": 8,
+    "commandNumber": 8,
+    "at": "2026-09-19T22:52:58.683Z",
     "command": {
       "type": "goto",
-      "path": "/navigate"
+      "path": "/expenses"
     },
-    "beforeUrl": "https://www.khonsera.com/wallet",
-    "afterUrl": "https://www.khonsera.com/navigate",
-    "durationMs": 1600,
+    "beforeUrl": "https://www.khonsera.com/navigate",
+    "afterUrl": "https://www.khonsera.com/expenses",
+    "durationMs": 2588,
     "error": null
   },
   "screen": {
@@ -41,22 +41,27 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Point to point"
+        "text": "Expenses"
       },
       {
-        "top": 357,
-        "left": 240,
-        "text": "Walk"
+        "top": 244,
+        "left": 277,
+        "text": "Nothing to settle"
       },
       {
-        "top": 357,
-        "left": 310,
-        "text": "Cycle"
+        "top": 285,
+        "left": 277,
+        "text": "Mileage, tickets, parking and receipts captured against a journey will collect here."
       },
       {
-        "top": 357,
-        "left": 387,
-        "text": "Drive"
+        "top": 319,
+        "left": 277,
+        "text": "Log mileage"
+      },
+      {
+        "top": 319,
+        "left": 395,
+        "text": "Open plan"
       },
       {
         "top": 935,
@@ -147,106 +152,46 @@
       },
       {
         "index": 3,
-        "tag": "input",
+        "tag": "a",
         "role": null,
-        "label": "Station, place, address…",
-        "type": "text",
-        "value": "",
+        "label": "Log mileage",
+        "type": null,
+        "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 720,
-          "y": 249
+          "x": 332,
+          "y": 341
         },
         "box": {
-          "x": 240,
-          "y": 227,
-          "width": 960,
-          "height": 43
+          "x": 277,
+          "y": 319,
+          "width": 110,
+          "height": 44
         }
       },
       {
         "index": 4,
-        "tag": "input",
+        "tag": "a",
         "role": null,
-        "label": "Station, place, address…",
-        "type": "text",
-        "value": "",
+        "label": "Open plan",
+        "type": null,
+        "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 720,
-          "y": 319
+          "x": 445,
+          "y": 341
         },
         "box": {
-          "x": 240,
-          "y": 298,
-          "width": 960,
-          "height": 43
+          "x": 395,
+          "y": 319,
+          "width": 101,
+          "height": 44
         }
       },
       {
         "index": 5,
-        "tag": "button",
-        "role": null,
-        "label": "Walk",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 271,
-          "y": 379
-        },
-        "box": {
-          "x": 240,
-          "y": 357,
-          "width": 62,
-          "height": 44
-        }
-      },
-      {
-        "index": 6,
-        "tag": "button",
-        "role": null,
-        "label": "Cycle",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 344,
-          "y": 379
-        },
-        "box": {
-          "x": 310,
-          "y": 357,
-          "width": 68,
-          "height": 44
-        }
-      },
-      {
-        "index": 7,
-        "tag": "button",
-        "role": null,
-        "label": "Drive",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 420,
-          "y": 379
-        },
-        "box": {
-          "x": 387,
-          "y": 357,
-          "width": 66,
-          "height": 44
-        }
-      },
-      {
-        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -266,7 +211,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -286,7 +231,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -306,7 +251,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -326,7 +271,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -360,13 +305,14 @@
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan/38bd89ce-723f-4179-a3fc-a0bf500df982?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/wallet?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/today?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
