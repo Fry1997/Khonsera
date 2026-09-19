@@ -4,10 +4,10 @@
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 7,
+  "commandCount": 8,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:36:03.112Z",
+  "updatedAt": "2026-09-19T22:36:36.606Z",
   "url": "https://www.khonsera.com/tasks",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 7,
-    "commandNumber": 7,
-    "at": "2026-09-19T22:36:02.917Z",
+    "sequence": 8,
+    "commandNumber": 8,
+    "at": "2026-09-19T22:36:36.408Z",
     "command": {
-      "type": "wait",
-      "ms": 1500
+      "type": "click",
+      "x": 741,
+      "y": 233
     },
     "beforeUrl": "https://www.khonsera.com/tasks",
     "afterUrl": "https://www.khonsera.com/tasks",
-    "durationMs": 1505,
+    "durationMs": 462,
     "error": null
   },
   "screen": {
@@ -262,12 +263,12 @@
       }
     ],
     "focused": {
-      "tag": "a",
+      "tag": "input",
       "role": null,
-      "label": "TASKS",
+      "label": "Add a task — surfaces on the day",
       "center": {
-        "x": 720,
-        "y": 964
+        "x": 741,
+        "y": 233
       }
     },
     "scroll": {
