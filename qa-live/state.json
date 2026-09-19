@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 19,
+  "commandCount": 20,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:07:53.870Z",
+  "updatedAt": "2026-09-19T22:08:04.677Z",
   "url": "https://www.khonsera.com/contacts",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 19,
-    "commandNumber": 19,
-    "at": "2026-09-19T22:07:53.685Z",
+    "sequence": 20,
+    "commandNumber": 20,
+    "at": "2026-09-19T22:08:04.496Z",
     "command": {
-      "type": "wait",
-      "ms": 2500
+      "type": "click",
+      "x": 331,
+      "y": 413
     },
     "beforeUrl": "https://www.khonsera.com/contacts",
     "afterUrl": "https://www.khonsera.com/contacts",
-    "durationMs": 2505,
+    "durationMs": 462,
     "error": null
   },
   "screen": {
@@ -54,7 +55,7 @@
         "text": "Add them once, then attach them to visits and meeting days in Plan."
       },
       {
-        "top": 391,
+        "top": 390,
         "left": 277,
         "text": "Add person"
       },
@@ -181,11 +182,11 @@
         "checked": null,
         "center": {
           "x": 331,
-          "y": 413
+          "y": 412
         },
         "box": {
           "x": 277,
-          "y": 391,
+          "y": 390,
           "width": 108,
           "height": 44
         }
@@ -311,7 +312,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "input",
+      "role": null,
+      "label": "Add someone by name",
+      "center": {
+        "x": 741,
+        "y": 233
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
