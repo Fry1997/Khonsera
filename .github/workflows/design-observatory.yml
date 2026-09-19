@@ -1,0 +1,193 @@
+name: Design Observatory
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or ref to preview
+        required: true
+        default: claude/khonsera-build-brief-An4oz
+        type: string
+      path:
+        description: Design route to open
+        required: true
+        default: /__design/visual-gate
+        type: string
+      viewport:
+        description: Browser viewports to pilot
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - desktop
+          - mobile
+
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: write
+  issues: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+  OBSERVATORY_SCENARIO: KDESIGN-STYLE-001
+
+jobs:
+  observe:
+    name: Pilot branch-local design
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.number == 90 &&
+        github.event.comment.author_association == 'OWNER' &&
+        startsWith(github.event.comment.body, 'DESIGN:UI')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 125
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve design target
+        id: target
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_PATH: ${{ inputs.path }}
+          INPUT_VIEWPORT: ${{ inputs.viewport }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            ref="$INPUT_REF"
+            route="$INPUT_PATH"
+            viewport="$INPUT_VIEWPORT"
+          else
+            # Chat command:
+            #   DESIGN:UI
+            #   DESIGN:UI branch/name
+            # The route remains the visual gate; branch defaults to the repo default.
+            ref="${COMMENT_BODY#DESIGN:UI}"
+            ref="$(printf '%s' "$ref" | xargs)"
+            [ -n "$ref" ] || ref="$DEFAULT_BRANCH"
+            route="/__design/visual-gate"
+            viewport="both"
+          fi
+
+          if ! [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$ref" == -* ]] || [[ "$ref" == *".."* ]]; then
+            echo "Unsafe design ref: $ref" >&2
+            exit 2
+          fi
+
+          if ! [[ "$route" =~ ^/[A-Za-z0-9_./?=&-]+$ ]]; then
+            echo "Unsafe design route: $route" >&2
+            exit 2
+          fi
+
+          git fetch origin "$ref"
+          git checkout --detach FETCH_HEAD
+
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "route=$route" >> "$GITHUB_OUTPUT"
+          echo "viewport=$viewport" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start branch-local Khonsera
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -- --hostname 127.0.0.1 > /tmp/khonsera-design.log 2>&1 &
+          echo $! > /tmp/khonsera-design.pid
+
+          for attempt in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:3000 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/khonsera-design.log >&2
+          exit 1
+
+      - name: Record chat-piloted design session
+        id: design
+        continue-on-error: true
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          KQA_SKIP_AUTH: "1"
+          KQA_START_PATH: ${{ steps.target.outputs.route }}
+          OBSERVER_VIEWPORT: ${{ steps.target.outputs.viewport }}
+          KQA_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -u -o pipefail
+
+          run_viewport() {
+            local project="$1"
+
+            KQA_VIEWPORT="$project" \
+            KQA_EVIDENCE_DIR="test-results/design-relay/$project" \
+            KQA_RELAY_MAX_MINUTES="55" \
+            KQA_RELAY_MAX_COMMANDS="160" \
+              npm run qa:relay
+          }
+
+          status=0
+
+          case "$OBSERVER_VIEWPORT" in
+            desktop)
+              run_viewport desktop-chromium || status=1
+              ;;
+            mobile)
+              run_viewport mobile-390 || status=1
+              ;;
+            both)
+              run_viewport desktop-chromium || status=1
+              run_viewport mobile-390 || status=1
+              ;;
+            *)
+              echo "Unsupported viewport: $OBSERVER_VIEWPORT" >&2
+              exit 2
+              ;;
+          esac
+
+          exit "$status"
+
+      - name: Upload design evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-observer-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            test-results/design-relay/
+            /tmp/khonsera-design.log
+
+      - name: Preserve relay infrastructure failure
+        if: steps.design.outcome == 'failure'
+        run: |
+          echo "Design relay evidence was preserved where possible, but the browser relay infrastructure failed." >&2
+          exit 1
