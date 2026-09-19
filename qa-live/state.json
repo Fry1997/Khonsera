@@ -4,10 +4,10 @@
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 4,
+  "commandCount": 5,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:35:06.311Z",
+  "updatedAt": "2026-09-19T22:35:38.470Z",
   "url": "https://www.khonsera.com/wallet",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,9 +19,9 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 4,
-    "commandNumber": 4,
-    "at": "2026-09-19T22:35:06.052Z",
+    "sequence": 5,
+    "commandNumber": 5,
+    "at": "2026-09-19T22:35:38.309Z",
     "command": {
       "type": "click",
       "x": 1402,
@@ -29,7 +29,7 @@
     },
     "beforeUrl": "https://www.khonsera.com/wallet",
     "afterUrl": "https://www.khonsera.com/wallet",
-    "durationMs": 475,
+    "durationMs": 461,
     "error": null
   },
   "screen": {
@@ -58,41 +58,6 @@
         "top": 357,
         "left": 353,
         "text": "Connect Gmail"
-      },
-      {
-        "top": 557,
-        "left": 17,
-        "text": "People"
-      },
-      {
-        "top": 638,
-        "left": 17,
-        "text": "Expenses"
-      },
-      {
-        "top": 682,
-        "left": 17,
-        "text": "Mileage"
-      },
-      {
-        "top": 763,
-        "left": 17,
-        "text": "Pastimes"
-      },
-      {
-        "top": 844,
-        "left": 17,
-        "text": "Settings"
-      },
-      {
-        "top": 888,
-        "left": 17,
-        "text": "Demo & palette (staff)"
-      },
-      {
-        "top": 932,
-        "left": 17,
-        "text": "Sign out"
       },
       {
         "top": 935,
@@ -172,157 +137,17 @@
         "checked": null,
         "center": {
           "x": 1402,
-          "y": 34
+          "y": 33
         },
         "box": {
           "x": 1380,
-          "y": 12,
+          "y": 11,
           "width": 44,
           "height": 44
         }
       },
       {
         "index": 3,
-        "tag": "a",
-        "role": null,
-        "label": "People",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 579
-        },
-        "box": {
-          "x": 17,
-          "y": 557,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 4,
-        "tag": "a",
-        "role": null,
-        "label": "Expenses",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 660
-        },
-        "box": {
-          "x": 17,
-          "y": 638,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 5,
-        "tag": "a",
-        "role": null,
-        "label": "Mileage",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 704
-        },
-        "box": {
-          "x": 17,
-          "y": 682,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 6,
-        "tag": "a",
-        "role": null,
-        "label": "Pastimes",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 785
-        },
-        "box": {
-          "x": 17,
-          "y": 763,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 7,
-        "tag": "a",
-        "role": null,
-        "label": "Settings",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 866
-        },
-        "box": {
-          "x": 17,
-          "y": 844,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 8,
-        "tag": "a",
-        "role": null,
-        "label": "Demo & palette (staff)",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 910
-        },
-        "box": {
-          "x": 17,
-          "y": 888,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 9,
-        "tag": "button",
-        "role": null,
-        "label": "Sign out",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 954
-        },
-        "box": {
-          "x": 17,
-          "y": 932,
-          "width": 1406,
-          "height": 44
-        }
-      },
-      {
-        "index": 10,
         "tag": "a",
         "role": null,
         "label": "Connect Gmail",
@@ -342,7 +167,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 4,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -362,7 +187,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -382,7 +207,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -402,7 +227,7 @@
         }
       },
       {
-        "index": 14,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -422,7 +247,7 @@
         }
       },
       {
-        "index": 15,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -442,15 +267,7 @@
         }
       }
     ],
-    "focused": {
-      "tag": "button",
-      "role": null,
-      "label": "Menu",
-      "center": {
-        "x": 1402,
-        "y": 34
-      }
-    },
+    "focused": null,
     "scroll": {
       "x": 0,
       "y": 0,
@@ -468,7 +285,8 @@
       "POST https://www.khonsera.com/today · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=3bF9wz-5kWNlIWxW · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=FuWua6lJdtadaSNj · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/pastimes?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/pastimes?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/contacts?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
