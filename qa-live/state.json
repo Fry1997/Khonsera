@@ -2,17 +2,17 @@
   "scenario": "KQA-UX-001",
   "executionMode": "chat-piloted-relay",
   "runId": "35474859674",
-  "viewportName": "desktop-chromium",
-  "status": "error",
+  "viewportName": "mobile-390",
+  "status": "ready",
   "commandCount": 0,
   "maxCommands": 120,
-  "startedAt": "2026-09-19T23:00:43.585Z",
-  "updatedAt": "2026-09-19T23:55:44.689Z",
+  "startedAt": "2026-09-19T23:56:51.642Z",
+  "updatedAt": "2026-09-19T23:57:01.942Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
-    "width": 1440,
-    "height": 1000
+    "width": 390,
+    "height": 844
   },
   "liveScreenshot": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35474859674/qa-live/current.png",
   "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35474859674/qa-live/state.json",
@@ -28,52 +28,42 @@
       },
       {
         "top": 111,
-        "left": 176,
+        "left": 14,
         "text": "Project review — KQA-UX-001"
       },
       {
-        "top": 187,
-        "left": 896,
-        "text": "Wallet"
-      },
-      {
-        "top": 244,
-        "left": 177,
+        "top": 300,
+        "left": 17,
         "text": "That’s your travel day"
       },
       {
-        "top": 263,
-        "left": 896,
-        "text": "+ Plan something"
-      },
-      {
-        "top": 282,
-        "left": 177,
+        "top": 337,
+        "left": 17,
         "text": "3 plans today"
       },
       {
-        "top": 935,
-        "left": 407,
+        "top": 779,
+        "left": 7,
         "text": "TODAY"
       },
       {
-        "top": 935,
-        "left": 533,
+        "top": 779,
+        "left": 83,
         "text": "PLAN"
       },
       {
-        "top": 935,
-        "left": 659,
+        "top": 779,
+        "left": 159,
         "text": "TASKS"
       },
       {
-        "top": 935,
-        "left": 785,
+        "top": 779,
+        "left": 235,
         "text": "WALLET"
       },
       {
-        "top": 935,
-        "left": 911,
+        "top": 779,
+        "left": 311,
         "text": "NAVIGATE"
       }
     ],
@@ -108,11 +98,11 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1350,
+          "x": 300,
           "y": 34
         },
         "box": {
-          "x": 1328,
+          "x": 278,
           "y": 12,
           "width": 44,
           "height": 44
@@ -128,11 +118,11 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1402,
+          "x": 352,
           "y": 34
         },
         "box": {
-          "x": 1380,
+          "x": 330,
           "y": 12,
           "width": 44,
           "height": 44
@@ -142,64 +132,24 @@
         "index": 3,
         "tag": "a",
         "role": null,
-        "label": "Wallet",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1052,
-          "y": 219
-        },
-        "box": {
-          "x": 896,
-          "y": 187,
-          "width": 311,
-          "height": 64
-        }
-      },
-      {
-        "index": 4,
-        "tag": "button",
-        "role": null,
-        "label": "+ Plan something",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1052,
-          "y": 274
-        },
-        "box": {
-          "x": 896,
-          "y": 263,
-          "width": 311,
-          "height": 21
-        }
-      },
-      {
-        "index": 5,
-        "tag": "a",
-        "role": null,
         "label": "TODAY",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 468,
-          "y": 965
+          "x": 43,
+          "y": 809
         },
         "box": {
-          "x": 407,
-          "y": 935,
-          "width": 122,
+          "x": 7,
+          "y": 779,
+          "width": 72,
           "height": 59
         }
       },
       {
-        "index": 6,
+        "index": 4,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -208,18 +158,18 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 594,
-          "y": 965
+          "x": 119,
+          "y": 809
         },
         "box": {
-          "x": 533,
-          "y": 935,
-          "width": 122,
+          "x": 83,
+          "y": 779,
+          "width": 72,
           "height": 59
         }
       },
       {
-        "index": 7,
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -228,18 +178,18 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 720,
-          "y": 965
+          "x": 195,
+          "y": 809
         },
         "box": {
-          "x": 659,
-          "y": 935,
-          "width": 122,
+          "x": 159,
+          "y": 779,
+          "width": 72,
           "height": 59
         }
       },
       {
-        "index": 8,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -248,18 +198,18 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 846,
-          "y": 965
+          "x": 271,
+          "y": 809
         },
         "box": {
-          "x": 785,
-          "y": 935,
-          "width": 122,
+          "x": 235,
+          "y": 779,
+          "width": 72,
           "height": 59
         }
       },
       {
-        "index": 9,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -268,13 +218,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 972,
-          "y": 965
+          "x": 347,
+          "y": 809
         },
         "box": {
-          "x": 911,
-          "y": 935,
-          "width": 122,
+          "x": 311,
+          "y": 779,
+          "width": 72,
           "height": 59
         }
       }
@@ -283,22 +233,18 @@
     "scroll": {
       "x": 0,
       "y": 0,
-      "viewportWidth": 1440,
-      "viewportHeight": 1000,
-      "documentWidth": 1440,
-      "documentHeight": 1000
+      "viewportWidth": 390,
+      "viewportHeight": 844,
+      "documentWidth": 390,
+      "documentHeight": 993
     }
   },
   "signals": {
     "consoleErrors": [],
     "pageErrors": [],
-    "failedRequests": [
-      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED"
-    ],
+    "failedRequests": [],
     "serverErrors": [],
     "slowRequests": [],
     "blockedNavigations": []
-  },
-  "relayError": "QA relay exceeded 55 minutes for desktop-chromium."
+  }
 }
