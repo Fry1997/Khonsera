@@ -4,11 +4,11 @@
   "runId": "35474833738",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 0,
+  "commandCount": 1,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:59:57.059Z",
-  "updatedAt": "2026-09-19T23:00:06.801Z",
-  "url": "https://www.khonsera.com/today",
+  "updatedAt": "2026-09-19T23:00:34.906Z",
+  "url": "https://www.khonsera.com/locations",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -18,47 +18,79 @@
   "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35474833738/qa-live/state.json",
   "controlBranch": "qa-control-35474833738",
   "controlPath": "qa-control/command.json",
-  "lastAction": null,
+  "lastAction": {
+    "sequence": 1,
+    "commandNumber": 1,
+    "at": "2026-09-19T23:00:34.739Z",
+    "command": {
+      "type": "goto",
+      "path": "/locations"
+    },
+    "beforeUrl": "https://www.khonsera.com/today",
+    "afterUrl": "https://www.khonsera.com/locations",
+    "durationMs": 2787,
+    "error": null
+  },
   "screen": {
     "viewportText": [
       {
-        "top": 27,
+        "top": 28,
         "left": 16,
         "text": "KHONSERA"
       },
       {
-        "top": 111,
-        "left": 176,
-        "text": "Project review — KQA-UX-001"
+        "top": 120,
+        "left": 0,
+        "text": "Locations."
       },
       {
-        "top": 187,
-        "left": 896,
-        "text": "Wallet"
+        "top": 168,
+        "left": 0,
+        "text": "Home, office, preferred stations and other anchors — used when Khonsera plans your travel options."
       },
       {
-        "top": 244,
-        "left": 177,
-        "text": "That’s your travel day"
+        "top": 341,
+        "left": 19,
+        "text": "Pick a result to save it instantly — Khonsera stores the address, postcode and coordinates. Or type a fresh name and choose add as a new place."
       },
       {
-        "top": 263,
-        "left": 896,
-        "text": "+ Plan something"
+        "top": 415,
+        "left": 18,
+        "text": "NAME"
       },
       {
-        "top": 282,
-        "left": 177,
-        "text": "3 plans today"
+        "top": 415,
+        "left": 254,
+        "text": "TYPE"
+      },
+      {
+        "top": 415,
+        "left": 490,
+        "text": "ADDRESS"
+      },
+      {
+        "top": 415,
+        "left": 726,
+        "text": "POSTCODE"
+      },
+      {
+        "top": 415,
+        "left": 962,
+        "text": "NOTES"
+      },
+      {
+        "top": 483,
+        "left": 1198,
+        "text": "Add location"
       },
       {
         "top": 935,
-        "left": 407,
+        "left": 406,
         "text": "TODAY"
       },
       {
         "top": 935,
-        "left": 533,
+        "left": 532,
         "text": "PLAN"
       },
       {
@@ -73,7 +105,7 @@
       },
       {
         "top": 935,
-        "left": 911,
+        "left": 912,
         "text": "NAVIGATE"
       }
     ],
@@ -88,14 +120,14 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 77,
+          "x": 75,
           "y": 34
         },
         "box": {
           "x": 16,
-          "y": 27,
-          "width": 122,
-          "height": 14
+          "y": 28,
+          "width": 118,
+          "height": 13
         }
       },
       {
@@ -140,46 +172,146 @@
       },
       {
         "index": 3,
-        "tag": "a",
+        "tag": "input",
         "role": null,
-        "label": "Wallet",
-        "type": null,
-        "value": null,
+        "label": "Station, hotel, office or address…",
+        "type": "text",
+        "value": "",
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1052,
-          "y": 219
+          "x": 720,
+          "y": 310
         },
         "box": {
-          "x": 896,
-          "y": 187,
-          "width": 311,
-          "height": 64
+          "x": 19,
+          "y": 289,
+          "width": 1402,
+          "height": 42
         }
       },
       {
         "index": 4,
+        "tag": "input",
+        "role": null,
+        "label": "NAME",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 130,
+          "y": 458
+        },
+        "box": {
+          "x": 18,
+          "y": 436,
+          "width": 224,
+          "height": 42
+        }
+      },
+      {
+        "index": 5,
+        "tag": "select",
+        "role": null,
+        "label": "TYPE",
+        "type": null,
+        "value": "home",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 366,
+          "y": 457
+        },
+        "box": {
+          "x": 254,
+          "y": 436,
+          "width": 224,
+          "height": 41
+        }
+      },
+      {
+        "index": 6,
+        "tag": "input",
+        "role": null,
+        "label": "ADDRESS",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 602,
+          "y": 458
+        },
+        "box": {
+          "x": 490,
+          "y": 436,
+          "width": 224,
+          "height": 42
+        }
+      },
+      {
+        "index": 7,
+        "tag": "input",
+        "role": null,
+        "label": "POSTCODE",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 838,
+          "y": 458
+        },
+        "box": {
+          "x": 726,
+          "y": 436,
+          "width": 224,
+          "height": 42
+        }
+      },
+      {
+        "index": 8,
+        "tag": "textarea",
+        "role": null,
+        "label": "NOTES",
+        "type": null,
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1074,
+          "y": 476
+        },
+        "box": {
+          "x": 962,
+          "y": 436,
+          "width": 224,
+          "height": 80
+        }
+      },
+      {
+        "index": 9,
         "tag": "button",
         "role": null,
-        "label": "+ Plan something",
+        "label": "Add location",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1052,
-          "y": 274
+          "x": 1253,
+          "y": 500
         },
         "box": {
-          "x": 896,
-          "y": 263,
-          "width": 311,
-          "height": 21
+          "x": 1198,
+          "y": 483,
+          "width": 111,
+          "height": 33
         }
       },
       {
-        "index": 5,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -188,18 +320,18 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 468,
-          "y": 965
+          "x": 467,
+          "y": 964
         },
         "box": {
-          "x": 407,
+          "x": 406,
           "y": 935,
           "width": 122,
-          "height": 59
+          "height": 58
         }
       },
       {
-        "index": 6,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -209,17 +341,17 @@
         "checked": null,
         "center": {
           "x": 594,
-          "y": 965
+          "y": 964
         },
         "box": {
-          "x": 533,
+          "x": 532,
           "y": 935,
           "width": 122,
-          "height": 59
+          "height": 58
         }
       },
       {
-        "index": 7,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -229,17 +361,17 @@
         "checked": null,
         "center": {
           "x": 720,
-          "y": 965
+          "y": 964
         },
         "box": {
           "x": 659,
           "y": 935,
           "width": 122,
-          "height": 59
+          "height": 58
         }
       },
       {
-        "index": 8,
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -249,17 +381,17 @@
         "checked": null,
         "center": {
           "x": 846,
-          "y": 965
+          "y": 964
         },
         "box": {
           "x": 785,
           "y": 935,
           "width": 122,
-          "height": 59
+          "height": 58
         }
       },
       {
-        "index": 9,
+        "index": 14,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -268,14 +400,14 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 972,
-          "y": 965
+          "x": 973,
+          "y": 964
         },
         "box": {
-          "x": 911,
+          "x": 912,
           "y": 935,
           "width": 122,
-          "height": 59
+          "height": 58
         }
       }
     ],
