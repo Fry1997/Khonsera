@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 8,
+  "commandCount": 9,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:52:58.805Z",
-  "url": "https://www.khonsera.com/expenses",
+  "updatedAt": "2026-09-19T22:53:29.545Z",
+  "url": "https://www.khonsera.com/contacts",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 8,
-    "commandNumber": 8,
-    "at": "2026-09-19T22:52:58.683Z",
+    "sequence": 9,
+    "commandNumber": 9,
+    "at": "2026-09-19T22:53:29.404Z",
     "command": {
       "type": "goto",
-      "path": "/expenses"
+      "path": "/contacts"
     },
-    "beforeUrl": "https://www.khonsera.com/navigate",
-    "afterUrl": "https://www.khonsera.com/expenses",
-    "durationMs": 2588,
+    "beforeUrl": "https://www.khonsera.com/expenses",
+    "afterUrl": "https://www.khonsera.com/contacts",
+    "durationMs": 2438,
     "error": null
   },
   "screen": {
@@ -41,27 +41,27 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Expenses"
+        "text": "People"
       },
       {
-        "top": 244,
+        "top": 316,
         "left": 277,
-        "text": "Nothing to settle"
+        "text": "No people or clients yet"
       },
       {
-        "top": 285,
+        "top": 357,
         "left": 277,
-        "text": "Mileage, tickets, parking and receipts captured against a journey will collect here."
+        "text": "Add them once, then attach them to visits and meeting days in Plan."
       },
       {
-        "top": 319,
+        "top": 391,
         "left": 277,
-        "text": "Log mileage"
+        "text": "Add person"
       },
       {
-        "top": 319,
-        "left": 395,
-        "text": "Open plan"
+        "top": 391,
+        "left": 393,
+        "text": "Add client"
       },
       {
         "top": 935,
@@ -152,46 +152,66 @@
       },
       {
         "index": 3,
-        "tag": "a",
+        "tag": "input",
         "role": null,
-        "label": "Log mileage",
-        "type": null,
-        "value": null,
+        "label": "Add someone by name",
+        "type": "text",
+        "value": "",
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 332,
-          "y": 341
+          "x": 741,
+          "y": 233
         },
         "box": {
-          "x": 277,
-          "y": 319,
-          "width": 110,
-          "height": 44
+          "x": 295,
+          "y": 222,
+          "width": 891,
+          "height": 23
         }
       },
       {
         "index": 4,
-        "tag": "a",
+        "tag": "button",
         "role": null,
-        "label": "Open plan",
+        "label": "Add person",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 445,
-          "y": 341
+          "x": 331,
+          "y": 413
         },
         "box": {
-          "x": 395,
-          "y": 319,
-          "width": 101,
+          "x": 277,
+          "y": 391,
+          "width": 108,
           "height": 44
         }
       },
       {
         "index": 5,
+        "tag": "a",
+        "role": null,
+        "label": "Add client",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 441,
+          "y": 413
+        },
+        "box": {
+          "x": 393,
+          "y": 391,
+          "width": 98,
+          "height": 44
+        }
+      },
+      {
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -211,7 +231,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -231,7 +251,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -251,7 +271,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -271,7 +291,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -305,14 +325,14 @@
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan/38bd89ce-723f-4179-a3fc-a0bf500df982?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/today?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/today?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/plan?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/today?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
