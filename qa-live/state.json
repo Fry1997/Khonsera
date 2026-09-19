@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 26,
+  "commandCount": 27,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:38:57.250Z",
+  "updatedAt": "2026-09-19T06:39:13.227Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 26,
-    "commandNumber": 26,
-    "at": "2026-09-19T06:38:56.792Z",
+    "sequence": 27,
+    "commandNumber": 27,
+    "at": "2026-09-19T06:39:12.774Z",
     "command": {
-      "type": "click",
-      "x": 720,
-      "y": 408
+      "type": "type",
+      "text": "Project review — KQA-UX-001"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 464,
+    "durationMs": 461,
     "error": null
   },
   "screen": {
@@ -832,7 +831,7 @@
         "role": null,
         "label": "WHAT",
         "type": "text",
-        "value": "",
+        "value": "Project review — KQA-UX-001",
         "disabled": false,
         "checked": null,
         "center": {
