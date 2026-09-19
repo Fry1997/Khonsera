@@ -1,10 +1,10 @@
 {
   "runId": "35473609400",
   "viewport": "desktop-chromium",
-  "sequence": 10,
+  "sequence": 11,
   "command": {
-    "type": "keypress",
-    "key": "ENTER"
+    "type": "wait",
+    "ms": 2000
   },
-  "updatedAt": "2026-09-19T22:36:55.995Z"
+  "updatedAt": "2026-09-19T22:37:11.831Z"
 }
