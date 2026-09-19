@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 12,
+  "commandCount": 13,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:34:20.178Z",
+  "updatedAt": "2026-09-19T06:35:29.718Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,18 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 12,
-    "commandNumber": 12,
-    "at": "2026-09-19T06:34:19.939Z",
+    "sequence": 13,
+    "commandNumber": 13,
+    "at": "2026-09-19T06:35:29.419Z",
     "command": {
-      "type": "scroll",
-      "x": 1248,
-      "y": 650,
-      "deltaY": 1000
+      "type": "keypress",
+      "key": "Tab"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 469,
+    "durationMs": 464,
     "error": null
   },
   "screen": {
@@ -701,10 +699,10 @@
     "focused": {
       "tag": "input",
       "role": null,
-      "label": "Day tools Budget, sharing, constraints and additions +",
+      "label": "Set a cap",
       "center": {
-        "x": 963,
-        "y": 85
+        "x": 1026,
+        "y": 223
       }
     },
     "scroll": {
