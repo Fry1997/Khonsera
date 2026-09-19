@@ -1,10 +1,11 @@
 {
   "runId": "35474295967",
   "viewport": "desktop-chromium",
-  "sequence": 20,
+  "sequence": 21,
   "command": {
-    "type": "goto",
-    "path": "/contacts"
+    "type": "click",
+    "x": 331,
+    "y": 413
   },
-  "updatedAt": "2026-09-19T22:57:06.196Z"
+  "updatedAt": "2026-09-19T22:57:13.006Z"
 }
