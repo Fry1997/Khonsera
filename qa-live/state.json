@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 5,
+  "commandCount": 6,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:29:48.021Z",
+  "updatedAt": "2026-09-19T06:30:17.084Z",
   "url": "https://www.khonsera.com/plan",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 5,
-    "commandNumber": 5,
-    "at": "2026-09-19T06:29:47.689Z",
+    "sequence": 6,
+    "commandNumber": 6,
+    "at": "2026-09-19T06:30:16.658Z",
     "command": {
-      "type": "type",
-      "text": "KQA-UX-001 · Chat pilot · 31 · desktop"
+      "type": "click",
+      "x": 820,
+      "y": 623
     },
     "beforeUrl": "https://www.khonsera.com/plan",
     "afterUrl": "https://www.khonsera.com/plan",
-    "durationMs": 461,
+    "durationMs": 467,
     "error": null
   },
   "screen": {
@@ -140,13 +141,13 @@
       },
       {
         "top": 601,
-        "left": 701,
+        "left": 672,
         "text": "Cancel"
       },
       {
         "top": 601,
-        "left": 789,
-        "text": "Start"
+        "left": 759,
+        "text": "Starting…"
       },
       {
         "top": 632,
@@ -337,14 +338,14 @@
         "label": "Cancel",
         "type": null,
         "value": null,
-        "disabled": false,
+        "disabled": true,
         "checked": null,
         "center": {
-          "x": 741,
+          "x": 712,
           "y": 623
         },
         "box": {
-          "x": 701,
+          "x": 672,
           "y": 601,
           "width": 79,
           "height": 44
@@ -354,19 +355,19 @@
         "index": 7,
         "tag": "button",
         "role": null,
-        "label": "Start",
+        "label": "Starting…",
         "type": null,
         "value": null,
-        "disabled": false,
+        "disabled": true,
         "checked": null,
         "center": {
-          "x": 820,
+          "x": 805,
           "y": 623
         },
         "box": {
-          "x": 789,
+          "x": 759,
           "y": 601,
-          "width": 62,
+          "width": 92,
           "height": 44
         }
       },
@@ -871,15 +872,7 @@
         }
       }
     ],
-    "focused": {
-      "tag": "input",
-      "role": null,
-      "label": "NAME (OPTIONAL)",
-      "center": {
-        "x": 720,
-        "y": 538
-      }
-    },
+    "focused": null,
     "scroll": {
       "x": 0,
       "y": 0,
