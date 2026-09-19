@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 9,
+  "commandCount": 10,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:04:25.624Z",
+  "updatedAt": "2026-09-19T22:04:41.769Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,30 +19,50 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 9,
-    "commandNumber": 9,
-    "at": "2026-09-19T22:04:25.383Z",
+    "sequence": 10,
+    "commandNumber": 10,
+    "at": "2026-09-19T22:04:41.480Z",
     "command": {
       "type": "click",
-      "x": 1402,
+      "x": 1350,
       "y": 34
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 463,
+    "durationMs": 468,
     "error": null
   },
   "screen": {
     "viewportText": [
+      {
+        "top": -39,
+        "left": 589,
+        "text": "START DATE"
+      },
       {
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
       },
       {
+        "top": 45,
+        "left": 589,
+        "text": "NAME (OPTIONAL)"
+      },
+      {
         "top": 84,
         "left": 962,
         "text": "Day tools Budget, sharing, constraints and additions +"
+      },
+      {
+        "top": 150,
+        "left": 701,
+        "text": "Cancel"
+      },
+      {
+        "top": 150,
+        "left": 789,
+        "text": "Start"
       },
       {
         "top": 160,
@@ -198,6 +218,86 @@
       },
       {
         "index": 2,
+        "tag": "input",
+        "role": null,
+        "label": "START DATE",
+        "type": "date",
+        "value": "2026-09-19",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 5
+        },
+        "box": {
+          "x": 589,
+          "y": -19,
+          "width": 262,
+          "height": 48
+        }
+      },
+      {
+        "index": 3,
+        "tag": "input",
+        "role": null,
+        "label": "NAME (OPTIONAL)",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 87
+        },
+        "box": {
+          "x": 589,
+          "y": 64,
+          "width": 262,
+          "height": 46
+        }
+      },
+      {
+        "index": 4,
+        "tag": "button",
+        "role": null,
+        "label": "Cancel",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 741,
+          "y": 172
+        },
+        "box": {
+          "x": 701,
+          "y": 150,
+          "width": 79,
+          "height": 44
+        }
+      },
+      {
+        "index": 5,
+        "tag": "button",
+        "role": null,
+        "label": "Start",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 820,
+          "y": 172
+        },
+        "box": {
+          "x": 789,
+          "y": 150,
+          "width": 62,
+          "height": 44
+        }
+      },
+      {
+        "index": 6,
         "tag": "button",
         "role": null,
         "label": "Menu",
@@ -207,17 +307,17 @@
         "checked": null,
         "center": {
           "x": 1402,
-          "y": 33
+          "y": 34
         },
         "box": {
           "x": 1380,
-          "y": 11,
+          "y": 12,
           "width": 44,
           "height": 44
         }
       },
       {
-        "index": 3,
+        "index": 7,
         "tag": "button",
         "role": null,
         "label": "Rename this day",
@@ -237,7 +337,7 @@
         }
       },
       {
-        "index": 4,
+        "index": 8,
         "tag": "button",
         "role": null,
         "label": "Set your base — where the day starts & ends SET",
@@ -257,7 +357,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 9,
         "tag": "button",
         "role": null,
         "label": "+ What’s this day for?",
@@ -277,7 +377,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 10,
         "tag": "button",
         "role": null,
         "label": "Getting ready 1 to sort",
@@ -297,7 +397,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 11,
         "tag": "button",
         "role": null,
         "label": "DONE",
@@ -317,7 +417,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 12,
         "tag": "button",
         "role": null,
         "label": "DISMISS",
@@ -337,7 +437,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 13,
         "tag": "input",
         "role": null,
         "label": "Add a prep item — e.g. passport, charger",
@@ -357,7 +457,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 14,
         "tag": "button",
         "role": null,
         "label": "Add",
@@ -377,7 +477,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 15,
         "tag": "input",
         "role": null,
         "label": "Set a cap",
@@ -397,7 +497,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 16,
         "tag": "button",
         "role": null,
         "label": "Set cap",
@@ -417,7 +517,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 17,
         "tag": "button",
         "role": null,
         "label": "Add expense",
@@ -437,7 +537,7 @@
         }
       },
       {
-        "index": 14,
+        "index": 18,
         "tag": "button",
         "role": null,
         "label": "Running late",
@@ -457,7 +557,7 @@
         }
       },
       {
-        "index": 15,
+        "index": 19,
         "tag": "button",
         "role": null,
         "label": "Arrived safely",
@@ -477,7 +577,7 @@
         }
       },
       {
-        "index": 16,
+        "index": 20,
         "tag": "button",
         "role": null,
         "label": "On my way",
@@ -497,7 +597,7 @@
         }
       },
       {
-        "index": 17,
+        "index": 21,
         "tag": "input",
         "role": null,
         "label": "Share with (e.g. Mum)",
@@ -517,7 +617,7 @@
         }
       },
       {
-        "index": 18,
+        "index": 22,
         "tag": "button",
         "role": null,
         "label": "For today",
@@ -537,7 +637,7 @@
         }
       },
       {
-        "index": 19,
+        "index": 23,
         "tag": "button",
         "role": null,
         "label": "Set hours",
@@ -557,7 +657,7 @@
         }
       },
       {
-        "index": 20,
+        "index": 24,
         "tag": "button",
         "role": null,
         "label": "Share live location",
@@ -577,7 +677,7 @@
         }
       },
       {
-        "index": 21,
+        "index": 25,
         "tag": "button",
         "role": null,
         "label": "CONSTRAINTS No constraints set +",
@@ -597,7 +697,7 @@
         }
       },
       {
-        "index": 22,
+        "index": 26,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -617,7 +717,7 @@
         }
       },
       {
-        "index": 23,
+        "index": 27,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -637,7 +737,7 @@
         }
       },
       {
-        "index": 24,
+        "index": 28,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -657,7 +757,7 @@
         }
       },
       {
-        "index": 25,
+        "index": 29,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -677,7 +777,7 @@
         }
       },
       {
-        "index": 26,
+        "index": 30,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -697,7 +797,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "h3",
+      "role": null,
+      "label": "When does it start?",
+      "center": {
+        "x": 720,
+        "y": -73
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
