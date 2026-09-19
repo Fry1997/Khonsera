@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 22,
+  "commandCount": 23,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:08:49.906Z",
+  "updatedAt": "2026-09-19T22:08:58.319Z",
   "url": "https://www.khonsera.com/navigate",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 22,
-    "commandNumber": 22,
-    "at": "2026-09-19T22:08:49.741Z",
+    "sequence": 23,
+    "commandNumber": 23,
+    "at": "2026-09-19T22:08:58.091Z",
     "command": {
-      "type": "goto",
-      "path": "/navigate"
+      "type": "click",
+      "x": 720,
+      "y": 249
     },
-    "beforeUrl": "https://www.khonsera.com/expenses",
+    "beforeUrl": "https://www.khonsera.com/navigate",
     "afterUrl": "https://www.khonsera.com/navigate",
-    "durationMs": 1716,
+    "durationMs": 464,
     "error": null
   },
   "screen": {
@@ -42,6 +43,11 @@
         "top": 122,
         "left": 256,
         "text": "Point to point"
+      },
+      {
+        "top": 275,
+        "left": 241,
+        "text": "Current location Use GPS"
       },
       {
         "top": 357,
@@ -167,6 +173,26 @@
       },
       {
         "index": 4,
+        "tag": "button",
+        "role": null,
+        "label": "Current location Use GPS",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 305
+        },
+        "box": {
+          "x": 241,
+          "y": 275,
+          "width": 958,
+          "height": 60
+        }
+      },
+      {
+        "index": 5,
         "tag": "input",
         "role": null,
         "label": "Station, place, address…",
@@ -186,7 +212,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 6,
         "tag": "button",
         "role": null,
         "label": "Walk",
@@ -206,7 +232,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 7,
         "tag": "button",
         "role": null,
         "label": "Cycle",
@@ -226,7 +252,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 8,
         "tag": "button",
         "role": null,
         "label": "Drive",
@@ -246,7 +272,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -266,7 +292,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -286,7 +312,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -306,7 +332,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -326,7 +352,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -346,7 +372,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "input",
+      "role": null,
+      "label": "Station, place, address…",
+      "center": {
+        "x": 720,
+        "y": 249
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
