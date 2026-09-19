@@ -4,12 +4,12 @@
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 6,
+  "commandCount": 7,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:35:49.598Z",
+  "updatedAt": "2026-09-19T22:36:03.112Z",
   "url": "https://www.khonsera.com/tasks",
-  "title": "",
+  "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 6,
-    "commandNumber": 6,
-    "at": "2026-09-19T22:35:49.457Z",
+    "sequence": 7,
+    "commandNumber": 7,
+    "at": "2026-09-19T22:36:02.917Z",
     "command": {
-      "type": "click",
-      "x": 720,
-      "y": 964
+      "type": "wait",
+      "ms": 1500
     },
-    "beforeUrl": "https://www.khonsera.com/wallet",
+    "beforeUrl": "https://www.khonsera.com/tasks",
     "afterUrl": "https://www.khonsera.com/tasks",
-    "durationMs": 467,
+    "durationMs": 1505,
     "error": null
   },
   "screen": {
@@ -38,6 +37,21 @@
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
+      },
+      {
+        "top": 122,
+        "left": 256,
+        "text": "Things to do"
+      },
+      {
+        "top": 345,
+        "left": 277,
+        "text": "Nothing on your list"
+      },
+      {
+        "top": 386,
+        "left": 277,
+        "text": "Add a task and it lands on the right day."
       },
       {
         "top": 935,
@@ -128,6 +142,26 @@
       },
       {
         "index": 3,
+        "tag": "input",
+        "role": null,
+        "label": "Add a task — surfaces on the day",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 741,
+          "y": 233
+        },
+        "box": {
+          "x": 295,
+          "y": 222,
+          "width": 891,
+          "height": 23
+        }
+      },
+      {
+        "index": 4,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -147,7 +181,7 @@
         }
       },
       {
-        "index": 4,
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -167,7 +201,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -187,7 +221,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -207,7 +241,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -254,7 +288,8 @@
       "GET https://www.khonsera.com/tasks?_rsc=3bF9wz-5kWNlIWxW · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=FuWua6lJdtadaSNj · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/contacts?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/contacts?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/tasks?_rsc=D996TdvASHxxi-IH · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
