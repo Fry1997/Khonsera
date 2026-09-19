@@ -3,11 +3,11 @@
   "executionMode": "chat-piloted-relay",
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
-  "status": "ready",
-  "commandCount": 13,
+  "status": "finished",
+  "commandCount": 14,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:38:01.994Z",
+  "updatedAt": "2026-09-19T22:38:37.809Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,23 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 13,
-    "commandNumber": 13,
-    "at": "2026-09-19T22:38:01.828Z",
+    "sequence": 14,
+    "commandNumber": 14,
+    "at": "2026-09-19T22:38:37.661Z",
     "command": {
-      "type": "wait",
-      "ms": 1500
+      "type": "finish",
+      "outcome": "completed",
+      "summary": "Bounded desktop UI pass: Today/Tasks/Wallet primary navigation and task creation.",
+      "findings": [
+        "Desktop menu Sign out overlaps persistent bottom navigation (#121).",
+        "Tasks composer relies on undocumented Enter submit and weak pending feedback (#122).",
+        "Primary route transitions briefly show a blank shell with no loading feedback (#123).",
+        "Tasks adds additional undersized target evidence to existing accessibility issue #112."
+      ]
     },
     "beforeUrl": "https://www.khonsera.com/today",
     "afterUrl": "https://www.khonsera.com/today",
-    "durationMs": 1511,
+    "durationMs": 1,
     "error": null
   },
   "screen": {
