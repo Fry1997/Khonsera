@@ -4,7 +4,7 @@
   "sequence": 7,
   "command": {
     "type": "goto",
-    "path": "/navigate"
+    "path": "/contacts"
   },
-  "updatedAt": "2026-09-19T22:52:44.830Z"
+  "updatedAt": "2026-09-19T22:52:48.796Z"
 }
