@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 7,
+  "commandCount": 8,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:03:49.114Z",
+  "updatedAt": "2026-09-19T22:04:08.024Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,93 +19,92 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 7,
-    "commandNumber": 7,
-    "at": "2026-09-19T22:03:48.676Z",
+    "sequence": 8,
+    "commandNumber": 8,
+    "at": "2026-09-19T22:04:07.599Z",
     "command": {
-      "type": "click",
-      "x": 1402,
-      "y": 34
+      "type": "scroll",
+      "deltaY": -650
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 481,
+    "durationMs": 459,
     "error": null
   },
   "screen": {
     "viewportText": [
-      {
-        "top": -15,
-        "left": 962,
-        "text": "Day tools Budget, sharing, constraints and additions +"
-      },
       {
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
       },
       {
-        "top": 61,
+        "top": 84,
+        "left": 962,
+        "text": "Day tools Budget, sharing, constraints and additions +"
+      },
+      {
+        "top": 160,
         "left": 184,
         "text": "KQA-UX-001 · Chat pilot · 31 · desktop Rename"
       },
       {
-        "top": 100,
+        "top": 199,
         "left": 1081,
         "text": "Set cap"
       },
       {
-        "top": 100,
+        "top": 199,
         "left": 1158,
         "text": "Add expense"
       },
       {
-        "top": 113,
+        "top": 212,
         "left": 184,
         "text": "Set your base — where the day starts & ends SET"
       },
       {
-        "top": 150,
+        "top": 249,
         "left": 184,
         "text": "+ What’s this day for?"
       },
       {
-        "top": 229,
+        "top": 328,
         "left": 983,
         "text": "Running late"
       },
       {
-        "top": 229,
+        "top": 328,
         "left": 1099,
         "text": "Arrived safely"
       },
       {
-        "top": 257,
+        "top": 356,
         "left": 189,
         "text": "Getting ready 1 to sort"
       },
       {
-        "top": 277,
+        "top": 376,
         "left": 983,
         "text": "On my way"
       },
       {
-        "top": 332,
+        "top": 431,
         "left": 983,
         "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
       },
       {
-        "top": 339,
+        "top": 438,
         "left": 806,
         "text": "DONE"
       },
       {
-        "top": 339,
+        "top": 438,
         "left": 842,
         "text": "DISMISS"
       },
       {
-        "top": 391,
+        "top": 490,
         "left": 404,
         "text": "Add"
       },
@@ -113,16 +112,6 @@
         "top": 557,
         "left": 17,
         "text": "People"
-      },
-      {
-        "top": 625,
-        "left": 987,
-        "text": "For today"
-      },
-      {
-        "top": 625,
-        "left": 1067,
-        "text": "Set hours"
       },
       {
         "top": 638,
@@ -135,9 +124,14 @@
         "text": "Mileage"
       },
       {
-        "top": 727,
-        "left": 983,
-        "text": "Share live location"
+        "top": 724,
+        "left": 987,
+        "text": "For today"
+      },
+      {
+        "top": 724,
+        "left": 1067,
+        "text": "Set hours"
       },
       {
         "top": 763,
@@ -145,9 +139,9 @@
         "text": "Pastimes"
       },
       {
-        "top": 808,
-        "left": 962,
-        "text": "CONSTRAINTS No constraints set +"
+        "top": 826,
+        "left": 983,
+        "text": "Share live location"
       },
       {
         "top": 844,
@@ -160,14 +154,9 @@
         "text": "Demo & palette (staff)"
       },
       {
-        "top": 913,
-        "left": 979,
-        "text": "+ ADD"
-      },
-      {
-        "top": 913,
-        "left": 1120,
-        "text": "↧ SCAN EMAIL FOR TICKETS"
+        "top": 907,
+        "left": 962,
+        "text": "CONSTRAINTS No constraints set +"
       },
       {
         "top": 932,
@@ -198,16 +187,6 @@
         "top": 935,
         "left": 912,
         "text": "NAVIGATE"
-      },
-      {
-        "top": 988,
-        "left": 979,
-        "text": "+ FROM CALENDAR"
-      },
-      {
-        "top": 988,
-        "left": 1120,
-        "text": "Find a flight"
       }
     ],
     "interactives": [
@@ -422,11 +401,11 @@
         "checked": null,
         "center": {
           "x": 548,
-          "y": 86
+          "y": 185
         },
         "box": {
           "x": 184,
-          "y": 65,
+          "y": 164,
           "width": 728,
           "height": 42
         }
@@ -442,11 +421,11 @@
         "checked": null,
         "center": {
           "x": 337,
-          "y": 122
+          "y": 221
         },
         "box": {
           "x": 184,
-          "y": 113,
+          "y": 212,
           "width": 307,
           "height": 20
         }
@@ -462,11 +441,11 @@
         "checked": null,
         "center": {
           "x": 548,
-          "y": 166
+          "y": 265
         },
         "box": {
           "x": 184,
-          "y": 150,
+          "y": 249,
           "width": 728,
           "height": 33
         }
@@ -482,11 +461,11 @@
         "checked": null,
         "center": {
           "x": 275,
-          "y": 269
+          "y": 368
         },
         "box": {
           "x": 189,
-          "y": 257,
+          "y": 356,
           "width": 172,
           "height": 26
         }
@@ -502,11 +481,11 @@
         "checked": null,
         "center": {
           "x": 820,
-          "y": 348
+          "y": 447
         },
         "box": {
           "x": 806,
-          "y": 339,
+          "y": 438,
           "width": 28,
           "height": 18
         }
@@ -522,11 +501,11 @@
         "checked": null,
         "center": {
           "x": 867,
-          "y": 348
+          "y": 447
         },
         "box": {
           "x": 842,
-          "y": 339,
+          "y": 438,
           "width": 49,
           "height": 18
         }
@@ -542,11 +521,11 @@
         "checked": null,
         "center": {
           "x": 294,
-          "y": 401
+          "y": 500
         },
         "box": {
           "x": 189,
-          "y": 379,
+          "y": 478,
           "width": 209,
           "height": 44
         }
@@ -562,11 +541,11 @@
         "checked": null,
         "center": {
           "x": 432,
-          "y": 401
+          "y": 500
         },
         "box": {
           "x": 404,
-          "y": 391,
+          "y": 490,
           "width": 56,
           "height": 22
         }
@@ -582,11 +561,11 @@
         "checked": null,
         "center": {
           "x": 1026,
-          "y": 124
+          "y": 223
         },
         "box": {
           "x": 979,
-          "y": 102,
+          "y": 201,
           "width": 94,
           "height": 44
         }
@@ -602,11 +581,11 @@
         "checked": null,
         "center": {
           "x": 1115,
-          "y": 124
+          "y": 223
         },
         "box": {
           "x": 1081,
-          "y": 100,
+          "y": 199,
           "width": 69,
           "height": 48
         }
@@ -622,11 +601,11 @@
         "checked": null,
         "center": {
           "x": 1205,
-          "y": 124
+          "y": 223
         },
         "box": {
           "x": 1158,
-          "y": 100,
+          "y": 199,
           "width": 94,
           "height": 48
         }
@@ -642,11 +621,11 @@
         "checked": null,
         "center": {
           "x": 1037,
-          "y": 249
+          "y": 348
         },
         "box": {
           "x": 983,
-          "y": 229,
+          "y": 328,
           "width": 108,
           "height": 40
         }
@@ -662,11 +641,11 @@
         "checked": null,
         "center": {
           "x": 1157,
-          "y": 249
+          "y": 348
         },
         "box": {
           "x": 1099,
-          "y": 229,
+          "y": 328,
           "width": 116,
           "height": 40
         }
@@ -682,11 +661,11 @@
         "checked": null,
         "center": {
           "x": 1033,
-          "y": 296
+          "y": 395
         },
         "box": {
           "x": 983,
-          "y": 277,
+          "y": 376,
           "width": 99,
           "height": 40
         }
@@ -702,11 +681,11 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 587
+          "y": 686
         },
         "box": {
           "x": 983,
-          "y": 565,
+          "y": 664,
           "width": 265,
           "height": 44
         }
@@ -722,11 +701,11 @@
         "checked": null,
         "center": {
           "x": 1024,
-          "y": 641
+          "y": 740
         },
         "box": {
           "x": 987,
-          "y": 625,
+          "y": 724,
           "width": 74,
           "height": 32
         }
@@ -742,11 +721,11 @@
         "checked": null,
         "center": {
           "x": 1103,
-          "y": 641
+          "y": 740
         },
         "box": {
           "x": 1067,
-          "y": 625,
+          "y": 724,
           "width": 72,
           "height": 32
         }
@@ -762,11 +741,11 @@
         "checked": null,
         "center": {
           "x": 1063,
-          "y": 749
+          "y": 848
         },
         "box": {
           "x": 983,
-          "y": 727,
+          "y": 826,
           "width": 159,
           "height": 44
         }
@@ -782,97 +761,17 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 832
+          "y": 931
         },
         "box": {
           "x": 962,
-          "y": 808,
+          "y": 907,
           "width": 307,
           "height": 48
         }
       },
       {
         "index": 29,
-        "tag": "button",
-        "role": null,
-        "label": "+ ADD",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1045,
-          "y": 932
-        },
-        "box": {
-          "x": 979,
-          "y": 913,
-          "width": 133,
-          "height": 39
-        }
-      },
-      {
-        "index": 30,
-        "tag": "button",
-        "role": null,
-        "label": "↧ SCAN EMAIL FOR TICKETS",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1186,
-          "y": 946
-        },
-        "box": {
-          "x": 1120,
-          "y": 913,
-          "width": 133,
-          "height": 68
-        }
-      },
-      {
-        "index": 31,
-        "tag": "button",
-        "role": null,
-        "label": "+ FROM CALENDAR",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1045,
-          "y": 1014
-        },
-        "box": {
-          "x": 979,
-          "y": 988,
-          "width": 133,
-          "height": 51
-        }
-      },
-      {
-        "index": 32,
-        "tag": "button",
-        "role": null,
-        "label": "Find a flight",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1186,
-          "y": 1014
-        },
-        "box": {
-          "x": 1120,
-          "y": 988,
-          "width": 133,
-          "height": 51
-        }
-      },
-      {
-        "index": 33,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -892,7 +791,7 @@
         }
       },
       {
-        "index": 34,
+        "index": 30,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -912,7 +811,7 @@
         }
       },
       {
-        "index": 35,
+        "index": 31,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -932,7 +831,7 @@
         }
       },
       {
-        "index": 36,
+        "index": 32,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -952,7 +851,7 @@
         }
       },
       {
-        "index": 37,
+        "index": 33,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -983,7 +882,7 @@
     },
     "scroll": {
       "x": 0,
-      "y": 99,
+      "y": 0,
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
