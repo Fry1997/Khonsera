@@ -1,10 +1,10 @@
 {
   "runId": "35474833738",
   "viewport": "desktop-chromium",
-  "sequence": 3,
+  "sequence": 4,
   "command": {
     "type": "goto",
-    "path": "/wallet"
+    "path": "/pastimes"
   },
-  "updatedAt": "2026-09-19T23:00:57.811Z"
+  "updatedAt": "2026-09-19T23:01:13.356Z"
 }
