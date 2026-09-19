@@ -50,7 +50,7 @@ jobs:
         startsWith(github.event.comment.body, 'QA:UX KQA-UX-001')
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 130
 
     steps:
       - name: Checkout
@@ -110,7 +110,7 @@ jobs:
             KHONSERA_QA_MAGIC_LINK="$link" \
             KQA_VIEWPORT="$project" \
             KQA_EVIDENCE_DIR="test-results/relay/$project" \
-            KQA_RELAY_MAX_MINUTES="35" \
+            KQA_RELAY_MAX_MINUTES="60" \
             KQA_RELAY_MAX_COMMANDS="80" \
               npm run qa:relay
           }

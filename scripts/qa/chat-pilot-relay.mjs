@@ -318,6 +318,9 @@ async function observeScreen(page) {
       "[role='textbox']",
       "[role='spinbutton']",
       "[role='slider']",
+      "label[for]",
+      "summary",
+      "[tabindex]:not([tabindex='-1'])",
     ].join(",");
 
     const interactives = Array.from(
