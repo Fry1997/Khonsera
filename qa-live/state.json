@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 23,
+  "commandCount": 24,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:08:58.319Z",
+  "updatedAt": "2026-09-19T22:09:06.666Z",
   "url": "https://www.khonsera.com/navigate",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 23,
-    "commandNumber": 23,
-    "at": "2026-09-19T22:08:58.091Z",
+    "sequence": 24,
+    "commandNumber": 24,
+    "at": "2026-09-19T22:09:06.473Z",
     "command": {
-      "type": "click",
-      "x": 720,
-      "y": 249
+      "type": "type",
+      "text": "Wellingborough"
     },
     "beforeUrl": "https://www.khonsera.com/navigate",
     "afterUrl": "https://www.khonsera.com/navigate",
-    "durationMs": 464,
+    "durationMs": 463,
     "error": null
   },
   "screen": {
@@ -157,7 +156,7 @@
         "role": null,
         "label": "Station, place, address…",
         "type": "text",
-        "value": "",
+        "value": "Wellingborough",
         "disabled": false,
         "checked": null,
         "center": {
