@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 5,
+  "commandCount": 6,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:52:24.748Z",
-  "url": "https://www.khonsera.com/tasks",
+  "updatedAt": "2026-09-19T22:52:32.476Z",
+  "url": "https://www.khonsera.com/wallet",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 5,
-    "commandNumber": 5,
-    "at": "2026-09-19T22:52:24.596Z",
+    "sequence": 6,
+    "commandNumber": 6,
+    "at": "2026-09-19T22:52:32.358Z",
     "command": {
       "type": "goto",
-      "path": "/tasks"
+      "path": "/wallet"
     },
-    "beforeUrl": "https://www.khonsera.com/plan",
-    "afterUrl": "https://www.khonsera.com/tasks",
-    "durationMs": 2016,
+    "beforeUrl": "https://www.khonsera.com/tasks",
+    "afterUrl": "https://www.khonsera.com/wallet",
+    "durationMs": 2198,
     "error": null
   },
   "screen": {
@@ -41,7 +41,22 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Things to do"
+        "text": "Your tickets"
+      },
+      {
+        "top": 264,
+        "left": 353,
+        "text": "Your tickets will live here"
+      },
+      {
+        "top": 305,
+        "left": 353,
+        "text": "Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
+      },
+      {
+        "top": 357,
+        "left": 353,
+        "text": "Connect Gmail"
       },
       {
         "top": 935,
@@ -132,46 +147,26 @@
       },
       {
         "index": 3,
-        "tag": "input",
+        "tag": "a",
         "role": null,
-        "label": "Add a task — surfaces on the day",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 741,
-          "y": 233
-        },
-        "box": {
-          "x": 295,
-          "y": 222,
-          "width": 891,
-          "height": 23
-        }
-      },
-      {
-        "index": 4,
-        "tag": "button",
-        "role": null,
-        "label": "Mark done",
+        "label": "Connect Gmail",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 268,
-          "y": 363
+          "x": 417,
+          "y": 379
         },
         "box": {
-          "x": 257,
-          "y": 352,
-          "width": 22,
-          "height": 22
+          "x": 353,
+          "y": 357,
+          "width": 128,
+          "height": 44
         }
       },
       {
-        "index": 5,
+        "index": 4,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -191,7 +186,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -211,7 +206,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -231,7 +226,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -251,7 +246,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -289,7 +284,8 @@
       "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan/38bd89ce-723f-4179-a3fc-a0bf500df982?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
