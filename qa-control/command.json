@@ -1,11 +1,10 @@
 {
   "runId": "35472059188",
   "viewport": "desktop-chromium",
-  "sequence": 20,
+  "sequence": 21,
   "command": {
-    "type": "click",
-    "x": 331,
-    "y": 413
+    "type": "goto",
+    "path": "/expenses"
   },
-  "updatedAt": "2026-09-19T22:08:00.540Z"
+  "updatedAt": "2026-09-19T22:08:17.991Z"
 }
