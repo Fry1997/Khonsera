@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 7,
+  "commandCount": 8,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:30:41.348Z",
+  "updatedAt": "2026-09-19T06:31:09.515Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 7,
-    "commandNumber": 7,
-    "at": "2026-09-19T06:30:41.148Z",
+    "sequence": 8,
+    "commandNumber": 8,
+    "at": "2026-09-19T06:31:09.248Z",
     "command": {
-      "type": "wait",
-      "ms": 2000
+      "type": "click",
+      "x": 1112,
+      "y": 107
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 2008,
+    "durationMs": 464,
     "error": null
   },
   "screen": {
@@ -55,7 +56,7 @@
       },
       {
         "top": 199,
-        "left": 1158,
+        "left": 1152,
         "text": "Add expense"
       },
       {
@@ -69,13 +70,13 @@
         "text": "+ What’s this day for?"
       },
       {
-        "top": 328,
-        "left": 983,
+        "top": 322,
+        "left": 995,
         "text": "Running late"
       },
       {
-        "top": 328,
-        "left": 1099,
+        "top": 322,
+        "left": 1111,
         "text": "Arrived safely"
       },
       {
@@ -84,13 +85,13 @@
         "text": "Getting ready 1 to sort"
       },
       {
-        "top": 376,
-        "left": 983,
+        "top": 370,
+        "left": 995,
         "text": "On my way"
       },
       {
-        "top": 431,
-        "left": 983,
+        "top": 425,
+        "left": 995,
         "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
       },
       {
@@ -109,23 +110,23 @@
         "text": "Add"
       },
       {
-        "top": 724,
-        "left": 987,
+        "top": 739,
+        "left": 999,
         "text": "For today"
       },
       {
-        "top": 724,
-        "left": 1067,
+        "top": 739,
+        "left": 1079,
         "text": "Set hours"
       },
       {
-        "top": 826,
-        "left": 983,
+        "top": 841,
+        "left": 995,
         "text": "Share live location"
       },
       {
-        "top": 907,
-        "left": 962,
+        "top": 916,
+        "left": 974,
         "text": "CONSTRAINTS No constraints set +"
       },
       {
@@ -385,13 +386,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1026,
+          "x": 1032,
           "y": 223
         },
         "box": {
-          "x": 979,
+          "x": 991,
           "y": 201,
-          "width": 94,
+          "width": 82,
           "height": 44
         }
       },
@@ -405,13 +406,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1115,
+          "x": 1112,
           "y": 223
         },
         "box": {
           "x": 1081,
           "y": 199,
-          "width": 69,
+          "width": 63,
           "height": 48
         }
       },
@@ -425,13 +426,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1205,
+          "x": 1196,
           "y": 223
         },
         "box": {
-          "x": 1158,
+          "x": 1152,
           "y": 199,
-          "width": 94,
+          "width": 88,
           "height": 48
         }
       },
@@ -445,12 +446,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1037,
-          "y": 348
+          "x": 1049,
+          "y": 342
         },
         "box": {
-          "x": 983,
-          "y": 328,
+          "x": 995,
+          "y": 322,
           "width": 108,
           "height": 40
         }
@@ -465,12 +466,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1157,
-          "y": 348
+          "x": 1169,
+          "y": 342
         },
         "box": {
-          "x": 1099,
-          "y": 328,
+          "x": 1111,
+          "y": 322,
           "width": 116,
           "height": 40
         }
@@ -485,12 +486,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1033,
-          "y": 395
+          "x": 1045,
+          "y": 389
         },
         "box": {
-          "x": 983,
-          "y": 376,
+          "x": 995,
+          "y": 370,
           "width": 99,
           "height": 40
         }
@@ -506,12 +507,12 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 686
+          "y": 701
         },
         "box": {
-          "x": 983,
-          "y": 664,
-          "width": 265,
+          "x": 995,
+          "y": 679,
+          "width": 241,
           "height": 44
         }
       },
@@ -525,12 +526,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1024,
-          "y": 740
+          "x": 1036,
+          "y": 755
         },
         "box": {
-          "x": 987,
-          "y": 724,
+          "x": 999,
+          "y": 739,
           "width": 74,
           "height": 32
         }
@@ -545,12 +546,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1103,
-          "y": 740
+          "x": 1115,
+          "y": 755
         },
         "box": {
-          "x": 1067,
-          "y": 724,
+          "x": 1079,
+          "y": 739,
           "width": 72,
           "height": 32
         }
@@ -565,12 +566,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1063,
-          "y": 848
+          "x": 1075,
+          "y": 863
         },
         "box": {
-          "x": 983,
-          "y": 826,
+          "x": 995,
+          "y": 841,
           "width": 159,
           "height": 44
         }
@@ -586,12 +587,12 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 931
+          "y": 940
         },
         "box": {
-          "x": 962,
-          "y": 907,
-          "width": 307,
+          "x": 974,
+          "y": 916,
+          "width": 283,
           "height": 48
         }
       },
@@ -696,7 +697,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "input",
+      "role": null,
+      "label": "Day tools Budget, sharing, constraints and additions +",
+      "center": {
+        "x": 963,
+        "y": 85
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
