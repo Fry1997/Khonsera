@@ -614,6 +614,17 @@ async function executeCommand(command) {
     case "type":
       await page.keyboard.insertText(String(command.text ?? "").slice(0, 2000));
       break;
+    case "fill": {
+      if (Number.isFinite(Number(command.x)) && Number.isFinite(Number(command.y))) {
+        await page.mouse.click(Number(command.x), Number(command.y));
+      }
+      const active = page.locator(":focus");
+      if ((await active.count()) !== 1) {
+        throw new Error("fill requires exactly one focused form control.");
+      }
+      await active.fill(String(command.text ?? "").slice(0, 2000));
+      break;
+    }
     case "keypress": {
       const keys = Array.isArray(command.keys)
         ? command.keys.map(normaliseKey)
