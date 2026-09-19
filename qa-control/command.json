@@ -1,10 +1,10 @@
 {
   "runId": "35472059188",
   "viewport": "desktop-chromium",
-  "sequence": 15,
+  "sequence": 16,
   "command": {
     "type": "goto",
-    "path": "/people"
+    "path": "/plan/749554a4-5940-4abd-9de9-0d5de028f08b"
   },
-  "updatedAt": "2026-09-19T22:06:55.229Z"
+  "updatedAt": "2026-09-19T22:07:07.613Z"
 }
