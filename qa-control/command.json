@@ -1,10 +1,19 @@
 {
   "runId": "35472059188",
   "viewport": "desktop-chromium",
-  "sequence": 25,
+  "sequence": 26,
   "command": {
-    "type": "wait",
-    "ms": 2500
+    "type": "finish",
+    "outcome": "completed",
+    "summary": "Desktop UI audit complete; proceeding to mobile viewport.",
+    "findings": [
+      "Desktop bottom nav overlaps content/controls.",
+      "Plan-a-day creation sheet opens clipped above viewport.",
+      "Desktop menu expands as full-width rows over page.",
+      "Navigate origin/destination lack persistent labels and autocomplete overlaps destination/mode controls.",
+      "Several desktop routes are sparse/mobile-stretched rather than purpose-built.",
+      "Settings form is an excessively long single-column surface with weak action hierarchy."
+    ]
   },
-  "updatedAt": "2026-09-19T22:09:11.003Z"
+  "updatedAt": "2026-09-19T22:09:29.855Z"
 }
