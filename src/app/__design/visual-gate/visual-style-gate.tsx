@@ -288,20 +288,22 @@ function TravelPreview({ direction, scenario, viewport, compact = false }: Previ
         </main>
 
         <nav className={styles.tabbar} aria-label="Preview navigation">
-          {[
-            ["Today", CalendarDays],
-            ["Plan", MapPin],
-            ["Navigate", Navigation],
-            ["Wallet", Ticket],
-          ].map(([label, Icon], index) => {
-            const Component = Icon as typeof CalendarDays;
-            return (
-              <button type="button" key={label as string} data-active={index === 0 || undefined}>
-                <Component aria-hidden />
-                <span>{label as string}</span>
-              </button>
-            );
-          })}
+          <button type="button" data-active="true">
+            <CalendarDays aria-hidden />
+            <span>Today</span>
+          </button>
+          <button type="button">
+            <MapPin aria-hidden />
+            <span>Plan</span>
+          </button>
+          <button type="button">
+            <Navigation aria-hidden />
+            <span>Navigate</span>
+          </button>
+          <button type="button">
+            <Ticket aria-hidden />
+            <span>Wallet</span>
+          </button>
         </nav>
       </div>
     </div>
