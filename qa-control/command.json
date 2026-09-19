@@ -1,11 +1,10 @@
 {
   "runId": "35474295967",
   "viewport": "desktop-chromium",
-  "sequence": 15,
+  "sequence": 16,
   "command": {
-    "type": "click",
-    "x": 937,
-    "y": 444
+    "type": "goto",
+    "path": "/mileage"
   },
-  "updatedAt": "2026-09-19T22:54:29.177Z"
+  "updatedAt": "2026-09-19T22:56:21.243Z"
 }
