@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 15,
+  "commandCount": 16,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:36:02.749Z",
+  "updatedAt": "2026-09-19T06:36:09.065Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 15,
-    "commandNumber": 15,
-    "at": "2026-09-19T06:36:02.514Z",
+    "sequence": 16,
+    "commandNumber": 16,
+    "at": "2026-09-19T06:36:08.867Z",
     "command": {
       "type": "keypress",
       "key": "Tab"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 460,
+    "durationMs": 462,
     "error": null
   },
   "screen": {
@@ -699,10 +699,10 @@
     "focused": {
       "tag": "button",
       "role": null,
-      "label": "Add expense",
+      "label": "Running late",
       "center": {
-        "x": 1205,
-        "y": 223
+        "x": 1037,
+        "y": 348
       }
     },
     "scroll": {
