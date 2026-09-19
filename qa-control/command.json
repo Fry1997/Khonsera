@@ -1,9 +1,10 @@
 {
   "runId": "35474833738",
   "viewport": "desktop-chromium",
-  "sequence": 0,
+  "sequence": 1,
   "command": {
-    "type": "screenshot"
+    "type": "goto",
+    "path": "/locations"
   },
-  "updatedAt": "2026-09-19T23:00:05.667Z"
+  "updatedAt": "2026-09-19T23:00:30.336Z"
 }
