@@ -4,11 +4,11 @@
   "runId": "35474833738",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 2,
+  "commandCount": 3,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:59:57.059Z",
-  "updatedAt": "2026-09-19T23:00:49.948Z",
-  "url": "https://www.khonsera.com/expenses",
+  "updatedAt": "2026-09-19T23:01:02.644Z",
+  "url": "https://www.khonsera.com/wallet",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474833738",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 2,
-    "commandNumber": 2,
-    "at": "2026-09-19T23:00:49.794Z",
+    "sequence": 3,
+    "commandNumber": 3,
+    "at": "2026-09-19T23:01:02.480Z",
     "command": {
       "type": "goto",
-      "path": "/expenses"
+      "path": "/wallet"
     },
-    "beforeUrl": "https://www.khonsera.com/locations",
-    "afterUrl": "https://www.khonsera.com/expenses",
-    "durationMs": 1892,
+    "beforeUrl": "https://www.khonsera.com/expenses",
+    "afterUrl": "https://www.khonsera.com/wallet",
+    "durationMs": 2121,
     "error": null
   },
   "screen": {
@@ -41,27 +41,22 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Expenses"
+        "text": "Your tickets"
       },
       {
-        "top": 244,
-        "left": 277,
-        "text": "Nothing to settle"
+        "top": 264,
+        "left": 353,
+        "text": "Your tickets will live here"
       },
       {
-        "top": 285,
-        "left": 277,
-        "text": "Mileage, tickets, parking and receipts captured against a journey will collect here."
+        "top": 305,
+        "left": 353,
+        "text": "Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
       },
       {
-        "top": 319,
-        "left": 277,
-        "text": "Log mileage"
-      },
-      {
-        "top": 319,
-        "left": 395,
-        "text": "Open plan"
+        "top": 357,
+        "left": 353,
+        "text": "Connect Gmail"
       },
       {
         "top": 935,
@@ -154,44 +149,24 @@
         "index": 3,
         "tag": "a",
         "role": null,
-        "label": "Log mileage",
+        "label": "Connect Gmail",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 332,
-          "y": 341
+          "x": 417,
+          "y": 379
         },
         "box": {
-          "x": 277,
-          "y": 319,
-          "width": 110,
+          "x": 353,
+          "y": 357,
+          "width": 128,
           "height": 44
         }
       },
       {
         "index": 4,
-        "tag": "a",
-        "role": null,
-        "label": "Open plan",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 445,
-          "y": 341
-        },
-        "box": {
-          "x": 395,
-          "y": 319,
-          "width": 101,
-          "height": 44
-        }
-      },
-      {
-        "index": 5,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -211,7 +186,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -231,7 +206,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -251,7 +226,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -271,7 +246,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -306,7 +281,10 @@
     "pageErrors": [],
     "failedRequests": [
       "GET https://www.khonsera.com/tasks?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/today?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/plan?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
