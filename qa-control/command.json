@@ -1,10 +1,11 @@
 {
   "runId": "35426608061",
   "viewport": "desktop-chromium",
-  "sequence": 5,
+  "sequence": 6,
   "command": {
-    "type": "type",
-    "text": "KQA-UX-001 · Chat pilot · 31 · desktop"
+    "type": "click",
+    "x": 820,
+    "y": 623
   },
-  "updatedAt": "2026-09-19T06:29:44.288Z"
+  "updatedAt": "2026-09-19T06:30:13.182Z"
 }
