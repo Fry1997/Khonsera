@@ -1,11 +1,10 @@
 {
   "runId": "35473609400",
   "viewport": "desktop-chromium",
-  "sequence": 8,
+  "sequence": 9,
   "command": {
-    "type": "click",
-    "x": 741,
-    "y": 233
+    "type": "type",
+    "text": "Review hotel booking"
   },
-  "updatedAt": "2026-09-19T22:36:22.813Z"
+  "updatedAt": "2026-09-19T22:36:44.395Z"
 }
