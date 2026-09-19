@@ -1,0 +1,303 @@
+{
+  "scenario": "KQA-UX-001",
+  "executionMode": "chat-piloted-relay",
+  "runId": "35473609400",
+  "viewportName": "desktop-chromium",
+  "status": "ready",
+  "commandCount": 0,
+  "maxCommands": 80,
+  "startedAt": "2026-09-19T22:33:41.070Z",
+  "updatedAt": "2026-09-19T22:33:51.127Z",
+  "url": "https://www.khonsera.com/today",
+  "title": "Khonsera — travel days that run on time.",
+  "viewportSize": {
+    "width": 1440,
+    "height": 1000
+  },
+  "liveScreenshot": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35473609400/qa-live/current.png",
+  "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35473609400/qa-live/state.json",
+  "controlBranch": "qa-control-35473609400",
+  "controlPath": "qa-control/command.json",
+  "lastAction": null,
+  "screen": {
+    "viewportText": [
+      {
+        "top": 27,
+        "left": 16,
+        "text": "KHONSERA"
+      },
+      {
+        "top": 111,
+        "left": 176,
+        "text": "Project review — KQA-UX-001"
+      },
+      {
+        "top": 187,
+        "left": 896,
+        "text": "Wallet"
+      },
+      {
+        "top": 244,
+        "left": 177,
+        "text": "That’s your travel day"
+      },
+      {
+        "top": 263,
+        "left": 896,
+        "text": "+ Plan something"
+      },
+      {
+        "top": 282,
+        "left": 177,
+        "text": "3 plans today"
+      },
+      {
+        "top": 935,
+        "left": 407,
+        "text": "TODAY"
+      },
+      {
+        "top": 935,
+        "left": 533,
+        "text": "PLAN"
+      },
+      {
+        "top": 935,
+        "left": 659,
+        "text": "TASKS"
+      },
+      {
+        "top": 935,
+        "left": 785,
+        "text": "WALLET"
+      },
+      {
+        "top": 935,
+        "left": 911,
+        "text": "NAVIGATE"
+      }
+    ],
+    "interactives": [
+      {
+        "index": 0,
+        "tag": "a",
+        "role": null,
+        "label": "Khonsera",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 77,
+          "y": 34
+        },
+        "box": {
+          "x": 16,
+          "y": 27,
+          "width": 122,
+          "height": 14
+        }
+      },
+      {
+        "index": 1,
+        "tag": "button",
+        "role": null,
+        "label": "Plan a day",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1350,
+          "y": 34
+        },
+        "box": {
+          "x": 1328,
+          "y": 12,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "index": 2,
+        "tag": "button",
+        "role": null,
+        "label": "Menu",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1402,
+          "y": 34
+        },
+        "box": {
+          "x": 1380,
+          "y": 12,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "index": 3,
+        "tag": "a",
+        "role": null,
+        "label": "Wallet",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1052,
+          "y": 219
+        },
+        "box": {
+          "x": 896,
+          "y": 187,
+          "width": 311,
+          "height": 64
+        }
+      },
+      {
+        "index": 4,
+        "tag": "button",
+        "role": null,
+        "label": "+ Plan something",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1052,
+          "y": 274
+        },
+        "box": {
+          "x": 896,
+          "y": 263,
+          "width": 311,
+          "height": 21
+        }
+      },
+      {
+        "index": 5,
+        "tag": "a",
+        "role": null,
+        "label": "TODAY",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 468,
+          "y": 965
+        },
+        "box": {
+          "x": 407,
+          "y": 935,
+          "width": 122,
+          "height": 59
+        }
+      },
+      {
+        "index": 6,
+        "tag": "a",
+        "role": null,
+        "label": "PLAN",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 594,
+          "y": 965
+        },
+        "box": {
+          "x": 533,
+          "y": 935,
+          "width": 122,
+          "height": 59
+        }
+      },
+      {
+        "index": 7,
+        "tag": "a",
+        "role": null,
+        "label": "TASKS",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 965
+        },
+        "box": {
+          "x": 659,
+          "y": 935,
+          "width": 122,
+          "height": 59
+        }
+      },
+      {
+        "index": 8,
+        "tag": "a",
+        "role": null,
+        "label": "WALLET",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 846,
+          "y": 965
+        },
+        "box": {
+          "x": 785,
+          "y": 935,
+          "width": 122,
+          "height": 59
+        }
+      },
+      {
+        "index": 9,
+        "tag": "a",
+        "role": null,
+        "label": "NAVIGATE",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 972,
+          "y": 965
+        },
+        "box": {
+          "x": 911,
+          "y": 935,
+          "width": 122,
+          "height": 59
+        }
+      }
+    ],
+    "focused": null,
+    "scroll": {
+      "x": 0,
+      "y": 0,
+      "viewportWidth": 1440,
+      "viewportHeight": 1000,
+      "documentWidth": 1440,
+      "documentHeight": 1000
+    }
+  },
+  "signals": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
+      "POST https://www.khonsera.com/today · net::ERR_ABORTED"
+    ],
+    "serverErrors": [],
+    "slowRequests": [],
+    "blockedNavigations": []
+  }
+}
