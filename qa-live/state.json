@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 16,
+  "commandCount": 17,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:36:09.065Z",
+  "updatedAt": "2026-09-19T06:36:32.893Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 16,
-    "commandNumber": 16,
-    "at": "2026-09-19T06:36:08.867Z",
+    "sequence": 17,
+    "commandNumber": 17,
+    "at": "2026-09-19T06:36:32.695Z",
     "command": {
       "type": "keypress",
       "key": "Tab"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 462,
+    "durationMs": 461,
     "error": null
   },
   "screen": {
@@ -699,9 +699,9 @@
     "focused": {
       "tag": "button",
       "role": null,
-      "label": "Running late",
+      "label": "Arrived safely",
       "center": {
-        "x": 1037,
+        "x": 1157,
         "y": 348
       }
     },
