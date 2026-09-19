@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 10,
+  "commandCount": 11,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:32:06.889Z",
+  "updatedAt": "2026-09-19T06:32:58.819Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,18 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 10,
-    "commandNumber": 10,
-    "at": "2026-09-19T06:32:06.679Z",
+    "sequence": 11,
+    "commandNumber": 11,
+    "at": "2026-09-19T06:32:58.604Z",
     "command": {
-      "type": "scroll",
-      "x": 1110,
-      "y": 850,
-      "deltaY": 650
+      "type": "keypress",
+      "key": "End"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 470,
+    "durationMs": 462,
     "error": null
   },
   "screen": {
