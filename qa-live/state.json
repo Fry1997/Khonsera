@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 24,
+  "commandCount": 25,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:38:11.231Z",
+  "updatedAt": "2026-09-19T06:38:32.771Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 24,
-    "commandNumber": 24,
-    "at": "2026-09-19T06:38:10.961Z",
+    "sequence": 25,
+    "commandNumber": 25,
+    "at": "2026-09-19T06:38:32.285Z",
     "command": {
       "type": "keypress",
-      "key": "Tab"
+      "key": "Enter"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 465,
+    "durationMs": 472,
     "error": null
   },
   "screen": {
@@ -74,6 +74,11 @@
         "text": "Set your base — where the day starts & ends SET"
       },
       {
+        "top": 217,
+        "left": 531,
+        "text": "What would you like to add?"
+      },
+      {
         "top": 226,
         "left": 983,
         "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
@@ -84,9 +89,44 @@
         "text": "+ What’s this day for?"
       },
       {
+        "top": 269,
+        "left": 531,
+        "text": "Appointment"
+      },
+      {
+        "top": 269,
+        "left": 633,
+        "text": "Dinner"
+      },
+      {
+        "top": 269,
+        "left": 702,
+        "text": "Event"
+      },
+      {
+        "top": 269,
+        "left": 765,
+        "text": "Place"
+      },
+      {
+        "top": 269,
+        "left": 827,
+        "text": "Transport"
+      },
+      {
+        "top": 313,
+        "left": 531,
+        "text": "Stay"
+      },
+      {
         "top": 356,
         "left": 189,
         "text": "Getting ready 1 to sort"
+      },
+      {
+        "top": 365,
+        "left": 531,
+        "text": "WHAT"
       },
       {
         "top": 438,
@@ -114,14 +154,44 @@
         "text": "Set hours"
       },
       {
+        "top": 528,
+        "left": 531,
+        "text": "ARRIVE BY"
+      },
+      {
+        "top": 528,
+        "left": 685,
+        "text": "LEAVE BY"
+      },
+      {
         "top": 621,
         "left": 983,
         "text": "Share live location"
       },
       {
+        "top": 631,
+        "left": 531,
+        "text": "Search people, or add a new one ▾"
+      },
+      {
+        "top": 688,
+        "left": 531,
+        "text": "Set both for a window, e.g. 09:00 to 17:00. Leave blank if it’s flexible."
+      },
+      {
         "top": 702,
         "left": 962,
         "text": "CONSTRAINTS No constraints set +"
+      },
+      {
+        "top": 744,
+        "left": 753,
+        "text": "Cancel"
+      },
+      {
+        "top": 744,
+        "left": 841,
+        "text": "Add it"
       },
       {
         "top": 807,
@@ -639,6 +709,266 @@
         "index": 23,
         "tag": "button",
         "role": null,
+        "label": "Appointment",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 578,
+          "y": 287
+        },
+        "box": {
+          "x": 531,
+          "y": 269,
+          "width": 94,
+          "height": 36
+        }
+      },
+      {
+        "index": 24,
+        "tag": "button",
+        "role": null,
+        "label": "Dinner",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 664,
+          "y": 287
+        },
+        "box": {
+          "x": 633,
+          "y": 269,
+          "width": 61,
+          "height": 36
+        }
+      },
+      {
+        "index": 25,
+        "tag": "button",
+        "role": null,
+        "label": "Event",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 730,
+          "y": 287
+        },
+        "box": {
+          "x": 702,
+          "y": 269,
+          "width": 55,
+          "height": 36
+        }
+      },
+      {
+        "index": 26,
+        "tag": "button",
+        "role": null,
+        "label": "Place",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 792,
+          "y": 287
+        },
+        "box": {
+          "x": 765,
+          "y": 269,
+          "width": 54,
+          "height": 36
+        }
+      },
+      {
+        "index": 27,
+        "tag": "button",
+        "role": null,
+        "label": "Transport",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 864,
+          "y": 287
+        },
+        "box": {
+          "x": 827,
+          "y": 269,
+          "width": 73,
+          "height": 36
+        }
+      },
+      {
+        "index": 28,
+        "tag": "button",
+        "role": null,
+        "label": "Stay",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 555,
+          "y": 331
+        },
+        "box": {
+          "x": 531,
+          "y": 313,
+          "width": 47,
+          "height": 36
+        }
+      },
+      {
+        "index": 29,
+        "tag": "input",
+        "role": null,
+        "label": "WHAT",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 408
+        },
+        "box": {
+          "x": 531,
+          "y": 385,
+          "width": 378,
+          "height": 46
+        }
+      },
+      {
+        "index": 30,
+        "tag": "input",
+        "role": null,
+        "label": "Search where it happens",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 489
+        },
+        "box": {
+          "x": 531,
+          "y": 466,
+          "width": 378,
+          "height": 46
+        }
+      },
+      {
+        "index": 31,
+        "tag": "input",
+        "role": null,
+        "label": "ARRIVE BY",
+        "type": "time",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 600,
+          "y": 572
+        },
+        "box": {
+          "x": 531,
+          "y": 548,
+          "width": 138,
+          "height": 48
+        }
+      },
+      {
+        "index": 32,
+        "tag": "input",
+        "role": null,
+        "label": "LEAVE BY",
+        "type": "time",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 754,
+          "y": 572
+        },
+        "box": {
+          "x": 685,
+          "y": 548,
+          "width": 138,
+          "height": 48
+        }
+      },
+      {
+        "index": 33,
+        "tag": "button",
+        "role": null,
+        "label": "Search people, or add a new one ▾",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 654
+        },
+        "box": {
+          "x": 531,
+          "y": 631,
+          "width": 378,
+          "height": 45
+        }
+      },
+      {
+        "index": 34,
+        "tag": "button",
+        "role": null,
+        "label": "Cancel",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 793,
+          "y": 766
+        },
+        "box": {
+          "x": 753,
+          "y": 744,
+          "width": 79,
+          "height": 44
+        }
+      },
+      {
+        "index": 35,
+        "tag": "button",
+        "role": null,
+        "label": "Add it",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 875,
+          "y": 766
+        },
+        "box": {
+          "x": 841,
+          "y": 744,
+          "width": 68,
+          "height": 44
+        }
+      },
+      {
+        "index": 36,
+        "tag": "button",
+        "role": null,
         "label": "↧ SCAN EMAIL FOR TICKETS",
         "type": null,
         "value": null,
@@ -656,7 +986,7 @@
         }
       },
       {
-        "index": 24,
+        "index": 37,
         "tag": "button",
         "role": null,
         "label": "+ FROM CALENDAR",
@@ -676,7 +1006,7 @@
         }
       },
       {
-        "index": 25,
+        "index": 38,
         "tag": "button",
         "role": null,
         "label": "Find a flight",
@@ -696,7 +1026,7 @@
         }
       },
       {
-        "index": 26,
+        "index": 39,
         "tag": "button",
         "role": null,
         "label": "Find a stay",
@@ -716,7 +1046,7 @@
         }
       },
       {
-        "index": 27,
+        "index": 40,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -736,7 +1066,7 @@
         }
       },
       {
-        "index": 28,
+        "index": 41,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -756,7 +1086,7 @@
         }
       },
       {
-        "index": 29,
+        "index": 42,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -776,7 +1106,7 @@
         }
       },
       {
-        "index": 30,
+        "index": 43,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -796,7 +1126,7 @@
         }
       },
       {
-        "index": 31,
+        "index": 44,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -817,12 +1147,12 @@
       }
     ],
     "focused": {
-      "tag": "button",
+      "tag": "h3",
       "role": null,
-      "label": "+ ADD",
+      "label": "What would you like to add?",
       "center": {
-        "x": 1045,
-        "y": 826
+        "x": 720,
+        "y": 235
       }
     },
     "scroll": {
