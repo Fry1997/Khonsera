@@ -4,7 +4,7 @@
   "sequence": 8,
   "command": {
     "type": "goto",
-    "path": "/expenses"
+    "path": "/mileage"
   },
-  "updatedAt": "2026-09-19T22:52:52.739Z"
+  "updatedAt": "2026-09-19T22:52:57.190Z"
 }
