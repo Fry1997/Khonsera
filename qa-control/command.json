@@ -3,8 +3,8 @@
   "viewport": "desktop-chromium",
   "sequence": 4,
   "command": {
-    "type": "goto",
-    "path": "/plan"
+    "type": "wait",
+    "ms": 1400
   },
-  "updatedAt": "2026-09-19T22:51:57.399Z"
+  "updatedAt": "2026-09-19T22:52:01.256Z"
 }
