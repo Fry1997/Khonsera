@@ -4,10 +4,10 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 17,
+  "commandCount": 18,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:56:33.104Z",
+  "updatedAt": "2026-09-19T22:56:47.224Z",
   "url": "https://www.khonsera.com/mileage",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,17 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 17,
-    "commandNumber": 17,
-    "at": "2026-09-19T22:56:32.978Z",
+    "sequence": 18,
+    "commandNumber": 18,
+    "at": "2026-09-19T22:56:47.096Z",
     "command": {
       "type": "click",
-      "x": 1118,
+      "x": 875,
       "y": 242
     },
     "beforeUrl": "https://www.khonsera.com/mileage",
     "afterUrl": "https://www.khonsera.com/mileage",
-    "durationMs": 471,
+    "durationMs": 469,
     "error": null
   },
   "screen": {
@@ -46,8 +46,8 @@
       },
       {
         "top": 220,
-        "left": 820,
-        "text": "Stop & save"
+        "left": 899,
+        "text": "Record a drive"
       },
       {
         "top": 333,
@@ -175,19 +175,19 @@
         "index": 3,
         "tag": "button",
         "role": null,
-        "label": "Stop & save",
+        "label": "Record a drive",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 875,
+          "x": 965,
           "y": 242
         },
         "box": {
-          "x": 820,
+          "x": 899,
           "y": 220,
-          "width": 109,
+          "width": 131,
           "height": 44
         }
       },
@@ -375,9 +375,9 @@
     "focused": {
       "tag": "button",
       "role": null,
-      "label": "Stop & save",
+      "label": "Record a drive",
       "center": {
-        "x": 875,
+        "x": 965,
         "y": 242
       }
     },
