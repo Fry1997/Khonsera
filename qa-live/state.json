@@ -4,12 +4,12 @@
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 12,
+  "commandCount": 13,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:37:47.391Z",
+  "updatedAt": "2026-09-19T22:38:01.994Z",
   "url": "https://www.khonsera.com/today",
-  "title": "",
+  "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,34 +19,58 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 12,
-    "commandNumber": 12,
-    "at": "2026-09-19T22:37:47.214Z",
+    "sequence": 13,
+    "commandNumber": 13,
+    "at": "2026-09-19T22:38:01.828Z",
     "command": {
-      "type": "click",
-      "x": 467,
-      "y": 964
+      "type": "wait",
+      "ms": 1500
     },
-    "beforeUrl": "https://www.khonsera.com/tasks",
-    "afterUrl": "https://www.khonsera.com/tasks",
-    "durationMs": 462,
+    "beforeUrl": "https://www.khonsera.com/today",
+    "afterUrl": "https://www.khonsera.com/today",
+    "durationMs": 1511,
     "error": null
   },
   "screen": {
     "viewportText": [
       {
-        "top": 28,
+        "top": 27,
         "left": 16,
         "text": "KHONSERA"
       },
       {
+        "top": 111,
+        "left": 176,
+        "text": "Project review — KQA-UX-001"
+      },
+      {
+        "top": 187,
+        "left": 896,
+        "text": "Wallet"
+      },
+      {
+        "top": 244,
+        "left": 177,
+        "text": "That’s your travel day"
+      },
+      {
+        "top": 263,
+        "left": 896,
+        "text": "+ Plan something"
+      },
+      {
+        "top": 282,
+        "left": 177,
+        "text": "3 plans today"
+      },
+      {
         "top": 935,
-        "left": 406,
+        "left": 407,
         "text": "TODAY"
       },
       {
         "top": 935,
-        "left": 532,
+        "left": 533,
         "text": "PLAN"
       },
       {
@@ -61,7 +85,7 @@
       },
       {
         "top": 935,
-        "left": 912,
+        "left": 911,
         "text": "NAVIGATE"
       }
     ],
@@ -76,14 +100,14 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 75,
+          "x": 77,
           "y": 34
         },
         "box": {
           "x": 16,
-          "y": 28,
-          "width": 118,
-          "height": 13
+          "y": 27,
+          "width": 122,
+          "height": 14
         }
       },
       {
@@ -130,24 +154,64 @@
         "index": 3,
         "tag": "a",
         "role": null,
+        "label": "Wallet",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1052,
+          "y": 219
+        },
+        "box": {
+          "x": 896,
+          "y": 187,
+          "width": 311,
+          "height": 64
+        }
+      },
+      {
+        "index": 4,
+        "tag": "button",
+        "role": null,
+        "label": "+ Plan something",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1052,
+          "y": 274
+        },
+        "box": {
+          "x": 896,
+          "y": 263,
+          "width": 311,
+          "height": 21
+        }
+      },
+      {
+        "index": 5,
+        "tag": "a",
+        "role": null,
         "label": "TODAY",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 467,
-          "y": 964
+          "x": 468,
+          "y": 965
         },
         "box": {
-          "x": 406,
+          "x": 407,
           "y": 935,
           "width": 122,
-          "height": 58
+          "height": 59
         }
       },
       {
-        "index": 4,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -157,17 +221,17 @@
         "checked": null,
         "center": {
           "x": 594,
-          "y": 964
+          "y": 965
         },
         "box": {
-          "x": 532,
+          "x": 533,
           "y": 935,
           "width": 122,
-          "height": 58
+          "height": 59
         }
       },
       {
-        "index": 5,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -177,17 +241,17 @@
         "checked": null,
         "center": {
           "x": 720,
-          "y": 964
+          "y": 965
         },
         "box": {
           "x": 659,
           "y": 935,
           "width": 122,
-          "height": 58
+          "height": 59
         }
       },
       {
-        "index": 6,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -197,17 +261,17 @@
         "checked": null,
         "center": {
           "x": 846,
-          "y": 964
+          "y": 965
         },
         "box": {
           "x": 785,
           "y": 935,
           "width": 122,
-          "height": 58
+          "height": 59
         }
       },
       {
-        "index": 7,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -216,14 +280,14 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 973,
-          "y": 964
+          "x": 972,
+          "y": 965
         },
         "box": {
-          "x": 912,
+          "x": 911,
           "y": 935,
           "width": 122,
-          "height": 58
+          "height": 59
         }
       }
     ],
@@ -232,8 +296,8 @@
       "role": null,
       "label": "TODAY",
       "center": {
-        "x": 467,
-        "y": 964
+        "x": 468,
+        "y": 965
       }
     },
     "scroll": {
@@ -249,14 +313,14 @@
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
-      "POST https://www.khonsera.com/today · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=3bF9wz-5kWNlIWxW · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=FuWua6lJdtadaSNj · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/contacts?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=D996TdvASHxxi-IH · net::ERR_ABORTED",
-      "POST https://www.khonsera.com/tasks · net::ERR_ABORTED"
+      "POST https://www.khonsera.com/tasks · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/today?_rsc=MFjaoYTp5DKZ1L7N · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
