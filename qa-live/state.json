@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 6,
+  "commandCount": 7,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:52:32.476Z",
-  "url": "https://www.khonsera.com/wallet",
+  "updatedAt": "2026-09-19T22:52:49.043Z",
+  "url": "https://www.khonsera.com/navigate",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 6,
-    "commandNumber": 6,
-    "at": "2026-09-19T22:52:32.358Z",
+    "sequence": 7,
+    "commandNumber": 7,
+    "at": "2026-09-19T22:52:48.855Z",
     "command": {
       "type": "goto",
-      "path": "/wallet"
+      "path": "/navigate"
     },
-    "beforeUrl": "https://www.khonsera.com/tasks",
-    "afterUrl": "https://www.khonsera.com/wallet",
-    "durationMs": 2198,
+    "beforeUrl": "https://www.khonsera.com/wallet",
+    "afterUrl": "https://www.khonsera.com/navigate",
+    "durationMs": 1600,
     "error": null
   },
   "screen": {
@@ -41,22 +41,22 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Your tickets"
-      },
-      {
-        "top": 264,
-        "left": 353,
-        "text": "Your tickets will live here"
-      },
-      {
-        "top": 305,
-        "left": 353,
-        "text": "Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
+        "text": "Point to point"
       },
       {
         "top": 357,
-        "left": 353,
-        "text": "Connect Gmail"
+        "left": 240,
+        "text": "Walk"
+      },
+      {
+        "top": 357,
+        "left": 310,
+        "text": "Cycle"
+      },
+      {
+        "top": 357,
+        "left": 387,
+        "text": "Drive"
       },
       {
         "top": 935,
@@ -147,26 +147,106 @@
       },
       {
         "index": 3,
-        "tag": "a",
+        "tag": "input",
         "role": null,
-        "label": "Connect Gmail",
+        "label": "Station, place, address…",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 249
+        },
+        "box": {
+          "x": 240,
+          "y": 227,
+          "width": 960,
+          "height": 43
+        }
+      },
+      {
+        "index": 4,
+        "tag": "input",
+        "role": null,
+        "label": "Station, place, address…",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 319
+        },
+        "box": {
+          "x": 240,
+          "y": 298,
+          "width": 960,
+          "height": 43
+        }
+      },
+      {
+        "index": 5,
+        "tag": "button",
+        "role": null,
+        "label": "Walk",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 417,
+          "x": 271,
           "y": 379
         },
         "box": {
-          "x": 353,
+          "x": 240,
           "y": 357,
-          "width": 128,
+          "width": 62,
           "height": 44
         }
       },
       {
-        "index": 4,
+        "index": 6,
+        "tag": "button",
+        "role": null,
+        "label": "Cycle",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 344,
+          "y": 379
+        },
+        "box": {
+          "x": 310,
+          "y": 357,
+          "width": 68,
+          "height": 44
+        }
+      },
+      {
+        "index": 7,
+        "tag": "button",
+        "role": null,
+        "label": "Drive",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 420,
+          "y": 379
+        },
+        "box": {
+          "x": 387,
+          "y": 357,
+          "width": 66,
+          "height": 44
+        }
+      },
+      {
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -186,7 +266,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -206,7 +286,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -226,7 +306,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -246,7 +326,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -285,7 +365,8 @@
       "GET https://www.khonsera.com/plan/38bd89ce-723f-4179-a3fc-a0bf500df982?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
