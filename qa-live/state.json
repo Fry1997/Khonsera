@@ -4,11 +4,11 @@
   "runId": "35474833738",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 1,
+  "commandCount": 2,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:59:57.059Z",
-  "updatedAt": "2026-09-19T23:00:34.906Z",
-  "url": "https://www.khonsera.com/locations",
+  "updatedAt": "2026-09-19T23:00:49.948Z",
+  "url": "https://www.khonsera.com/expenses",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474833738",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 1,
-    "commandNumber": 1,
-    "at": "2026-09-19T23:00:34.739Z",
+    "sequence": 2,
+    "commandNumber": 2,
+    "at": "2026-09-19T23:00:49.794Z",
     "command": {
       "type": "goto",
-      "path": "/locations"
+      "path": "/expenses"
     },
-    "beforeUrl": "https://www.khonsera.com/today",
-    "afterUrl": "https://www.khonsera.com/locations",
-    "durationMs": 2787,
+    "beforeUrl": "https://www.khonsera.com/locations",
+    "afterUrl": "https://www.khonsera.com/expenses",
+    "durationMs": 1892,
     "error": null
   },
   "screen": {
@@ -39,49 +39,29 @@
         "text": "KHONSERA"
       },
       {
-        "top": 120,
-        "left": 0,
-        "text": "Locations."
+        "top": 122,
+        "left": 256,
+        "text": "Expenses"
       },
       {
-        "top": 168,
-        "left": 0,
-        "text": "Home, office, preferred stations and other anchors — used when Khonsera plans your travel options."
+        "top": 244,
+        "left": 277,
+        "text": "Nothing to settle"
       },
       {
-        "top": 341,
-        "left": 19,
-        "text": "Pick a result to save it instantly — Khonsera stores the address, postcode and coordinates. Or type a fresh name and choose add as a new place."
+        "top": 285,
+        "left": 277,
+        "text": "Mileage, tickets, parking and receipts captured against a journey will collect here."
       },
       {
-        "top": 415,
-        "left": 18,
-        "text": "NAME"
+        "top": 319,
+        "left": 277,
+        "text": "Log mileage"
       },
       {
-        "top": 415,
-        "left": 254,
-        "text": "TYPE"
-      },
-      {
-        "top": 415,
-        "left": 490,
-        "text": "ADDRESS"
-      },
-      {
-        "top": 415,
-        "left": 726,
-        "text": "POSTCODE"
-      },
-      {
-        "top": 415,
-        "left": 962,
-        "text": "NOTES"
-      },
-      {
-        "top": 483,
-        "left": 1198,
-        "text": "Add location"
+        "top": 319,
+        "left": 395,
+        "text": "Open plan"
       },
       {
         "top": 935,
@@ -172,146 +152,46 @@
       },
       {
         "index": 3,
-        "tag": "input",
+        "tag": "a",
         "role": null,
-        "label": "Station, hotel, office or address…",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 310
-        },
-        "box": {
-          "x": 19,
-          "y": 289,
-          "width": 1402,
-          "height": 42
-        }
-      },
-      {
-        "index": 4,
-        "tag": "input",
-        "role": null,
-        "label": "NAME",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 130,
-          "y": 458
-        },
-        "box": {
-          "x": 18,
-          "y": 436,
-          "width": 224,
-          "height": 42
-        }
-      },
-      {
-        "index": 5,
-        "tag": "select",
-        "role": null,
-        "label": "TYPE",
-        "type": null,
-        "value": "home",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 366,
-          "y": 457
-        },
-        "box": {
-          "x": 254,
-          "y": 436,
-          "width": 224,
-          "height": 41
-        }
-      },
-      {
-        "index": 6,
-        "tag": "input",
-        "role": null,
-        "label": "ADDRESS",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 602,
-          "y": 458
-        },
-        "box": {
-          "x": 490,
-          "y": 436,
-          "width": 224,
-          "height": 42
-        }
-      },
-      {
-        "index": 7,
-        "tag": "input",
-        "role": null,
-        "label": "POSTCODE",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 838,
-          "y": 458
-        },
-        "box": {
-          "x": 726,
-          "y": 436,
-          "width": 224,
-          "height": 42
-        }
-      },
-      {
-        "index": 8,
-        "tag": "textarea",
-        "role": null,
-        "label": "NOTES",
-        "type": null,
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1074,
-          "y": 476
-        },
-        "box": {
-          "x": 962,
-          "y": 436,
-          "width": 224,
-          "height": 80
-        }
-      },
-      {
-        "index": 9,
-        "tag": "button",
-        "role": null,
-        "label": "Add location",
+        "label": "Log mileage",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1253,
-          "y": 500
+          "x": 332,
+          "y": 341
         },
         "box": {
-          "x": 1198,
-          "y": 483,
-          "width": 111,
-          "height": 33
+          "x": 277,
+          "y": 319,
+          "width": 110,
+          "height": 44
         }
       },
       {
-        "index": 10,
+        "index": 4,
+        "tag": "a",
+        "role": null,
+        "label": "Open plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 445,
+          "y": 341
+        },
+        "box": {
+          "x": 395,
+          "y": 319,
+          "width": 101,
+          "height": 44
+        }
+      },
+      {
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -331,7 +211,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -351,7 +231,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -371,7 +251,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -391,7 +271,7 @@
         }
       },
       {
-        "index": 14,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -425,7 +305,8 @@
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/tasks?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/tasks?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/plan?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
