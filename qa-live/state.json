@@ -3,11 +3,11 @@
   "executionMode": "chat-piloted-relay",
   "runId": "35474859674",
   "viewportName": "desktop-chromium",
-  "status": "ready",
+  "status": "error",
   "commandCount": 0,
   "maxCommands": 120,
   "startedAt": "2026-09-19T23:00:43.585Z",
-  "updatedAt": "2026-09-19T23:00:53.335Z",
+  "updatedAt": "2026-09-19T23:55:44.689Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -299,5 +299,6 @@
     "serverErrors": [],
     "slowRequests": [],
     "blockedNavigations": []
-  }
+  },
+  "relayError": "QA relay exceeded 55 minutes for desktop-chromium."
 }
