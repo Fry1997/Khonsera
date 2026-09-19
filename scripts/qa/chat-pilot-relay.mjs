@@ -236,11 +236,214 @@ async function capture(page, filePath) {
   return buffer;
 }
 
+async function observeScreen(page) {
+  return page.evaluate(() => {
+    const inViewport = (element) => {
+      const style = window.getComputedStyle(element);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity) === 0
+      ) {
+        return false;
+      }
+      const rect = element.getBoundingClientRect();
+      return (
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom > 0 &&
+        rect.right > 0 &&
+        rect.top < window.innerHeight &&
+        rect.left < window.innerWidth
+      );
+    };
+
+    const labelFor = (element) => {
+      const aria = element.getAttribute("aria-label");
+      if (aria) return aria.trim();
+
+      const labelledBy = element.getAttribute("aria-labelledby");
+      if (labelledBy) {
+        const text = labelledBy
+          .split(/\s+/)
+          .map((id) => document.getElementById(id)?.innerText || "")
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (text) return text;
+      }
+
+      if (
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement ||
+        element instanceof HTMLSelectElement
+      ) {
+        if (element.labels?.length) {
+          const text = Array.from(element.labels)
+            .map((label) => label.innerText)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (text) return text;
+        }
+        if (element.placeholder) return element.placeholder.trim();
+      }
+
+      return (
+        element.getAttribute("title") ||
+        element.innerText ||
+        element.textContent ||
+        ""
+      )
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+
+    const interactiveSelector = [
+      "button",
+      "a[href]",
+      "input",
+      "textarea",
+      "select",
+      "[contenteditable='true']",
+      "[role='button']",
+      "[role='link']",
+      "[role='checkbox']",
+      "[role='radio']",
+      "[role='switch']",
+      "[role='tab']",
+      "[role='option']",
+      "[role='menuitem']",
+      "[role='combobox']",
+      "[role='textbox']",
+      "[role='spinbutton']",
+      "[role='slider']",
+    ].join(",");
+
+    const interactives = Array.from(
+      document.querySelectorAll(interactiveSelector),
+    )
+      .filter((element) => element instanceof HTMLElement && inViewport(element))
+      .map((element, index) => {
+        const rect = element.getBoundingClientRect();
+        const input = element instanceof HTMLInputElement ? element : null;
+        const textarea = element instanceof HTMLTextAreaElement ? element : null;
+        const select = element instanceof HTMLSelectElement ? element : null;
+        const rawValue =
+          input?.type === "password"
+            ? "[redacted]"
+            : input?.value ?? textarea?.value ?? select?.value ?? null;
+
+        return {
+          index,
+          tag: element.tagName.toLowerCase(),
+          role: element.getAttribute("role"),
+          label: labelFor(element).slice(0, 220),
+          type: input?.type ?? null,
+          value: rawValue == null ? null : String(rawValue).slice(0, 220),
+          disabled:
+            ("disabled" in element && Boolean(element.disabled)) ||
+            element.getAttribute("aria-disabled") === "true",
+          checked:
+            input &&
+            ["checkbox", "radio"].includes(input.type)
+              ? input.checked
+              : element.getAttribute("aria-checked"),
+          center: {
+            x: Math.round(rect.left + rect.width / 2),
+            y: Math.round(rect.top + rect.height / 2),
+          },
+          box: {
+            x: Math.round(rect.left),
+            y: Math.round(rect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          },
+        };
+      })
+      .slice(0, 120);
+
+    const textSelector = [
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "p",
+      "li",
+      "label",
+      "button",
+      "a",
+      "[role='status']",
+      "[role='alert']",
+      "[role='heading']",
+    ].join(",");
+
+    const seen = new Set();
+    const viewportText = Array.from(document.querySelectorAll(textSelector))
+      .filter((element) => element instanceof HTMLElement && inViewport(element))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        const text = (element.innerText || element.textContent || "")
+          .replace(/\s+/g, " ")
+          .trim();
+        return {
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+          text: text.slice(0, 320),
+        };
+      })
+      .filter((row) => {
+        if (!row.text || seen.has(row.text)) return false;
+        seen.add(row.text);
+        return true;
+      })
+      .sort((a, b) => a.top - b.top || a.left - b.left)
+      .slice(0, 120);
+
+    const active = document.activeElement;
+    let focused = null;
+    if (active instanceof HTMLElement && active !== document.body) {
+      const rect = active.getBoundingClientRect();
+      focused = {
+        tag: active.tagName.toLowerCase(),
+        role: active.getAttribute("role"),
+        label: labelFor(active).slice(0, 220),
+        center: {
+          x: Math.round(rect.left + rect.width / 2),
+          y: Math.round(rect.top + rect.height / 2),
+        },
+      };
+    }
+
+    return {
+      viewportText,
+      interactives,
+      focused,
+      scroll: {
+        x: Math.round(window.scrollX),
+        y: Math.round(window.scrollY),
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentWidth: Math.max(
+          document.documentElement.scrollWidth,
+          document.body?.scrollWidth || 0,
+        ),
+        documentHeight: Math.max(
+          document.documentElement.scrollHeight,
+          document.body?.scrollHeight || 0,
+        ),
+      },
+    };
+  });
+}
+
 async function publishState(status, extra = {}) {
   const step = String(commandCount).padStart(3, "0");
   const stepPath = path.join(stepsDir, `step-${step}.png`);
   await capture(page, stepPath);
   await writeFile(liveShotPath, await capture(page), "binary");
+
+  const screen = await observeScreen(page);
 
   const state = {
     scenario: "KQA-UX-001",
@@ -260,6 +463,7 @@ async function publishState(status, extra = {}) {
     controlBranch,
     controlPath,
     lastAction: actions.at(-1) ?? null,
+    screen,
     signals: {
       consoleErrors: signals.consoleErrors.slice(-8),
       pageErrors: signals.pageErrors.slice(-8),
