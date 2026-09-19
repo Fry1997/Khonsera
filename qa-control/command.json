@@ -3,8 +3,7 @@
   "viewport": "desktop-chromium",
   "sequence": 6,
   "command": {
-    "type": "goto",
-    "path": "/wallet"
+    "type": "screenshot"
   },
-  "updatedAt": "2026-09-19T22:52:28.008Z"
+  "updatedAt": "2026-09-19T22:52:31.913Z"
 }
