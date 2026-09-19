@@ -4,11 +4,11 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 2,
+  "commandCount": 3,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:02:14.448Z",
-  "url": "https://www.khonsera.com/tasks",
+  "updatedAt": "2026-09-19T22:02:45.793Z",
+  "url": "https://www.khonsera.com/wallet",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 2,
-    "commandNumber": 2,
-    "at": "2026-09-19T22:02:14.260Z",
+    "sequence": 3,
+    "commandNumber": 3,
+    "at": "2026-09-19T22:02:45.616Z",
     "command": {
       "type": "goto",
-      "path": "/tasks"
+      "path": "/wallet"
     },
-    "beforeUrl": "https://www.khonsera.com/plan",
-    "afterUrl": "https://www.khonsera.com/tasks",
-    "durationMs": 2190,
+    "beforeUrl": "https://www.khonsera.com/tasks",
+    "afterUrl": "https://www.khonsera.com/wallet",
+    "durationMs": 3257,
     "error": null
   },
   "screen": {
@@ -41,17 +41,22 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Things to do"
+        "text": "Your tickets"
       },
       {
-        "top": 345,
-        "left": 277,
-        "text": "Nothing on your list"
+        "top": 264,
+        "left": 353,
+        "text": "Your tickets will live here"
       },
       {
-        "top": 386,
-        "left": 277,
-        "text": "Add a task and it lands on the right day."
+        "top": 305,
+        "left": 353,
+        "text": "Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
+      },
+      {
+        "top": 357,
+        "left": 353,
+        "text": "Connect Gmail"
       },
       {
         "top": 935,
@@ -142,22 +147,22 @@
       },
       {
         "index": 3,
-        "tag": "input",
+        "tag": "a",
         "role": null,
-        "label": "Add a task — surfaces on the day",
-        "type": "text",
-        "value": "",
+        "label": "Connect Gmail",
+        "type": null,
+        "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 741,
-          "y": 233
+          "x": 417,
+          "y": 379
         },
         "box": {
-          "x": 295,
-          "y": 222,
-          "width": 891,
-          "height": 23
+          "x": 353,
+          "y": 357,
+          "width": 128,
+          "height": 44
         }
       },
       {
@@ -278,7 +283,8 @@
       "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan/10c38221-4a35-4264-9b56-1f4fcbaec909?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan/10c38221-4a35-4264-9b56-1f4fcbaec909?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
