@@ -1,9 +1,10 @@
 {
   "runId": "35474295967",
   "viewport": "desktop-chromium",
-  "sequence": 0,
+  "sequence": 1,
   "command": {
-    "type": "screenshot"
+    "type": "goto",
+    "path": "/today"
   },
-  "updatedAt": "2026-09-19T22:48:13.329Z"
+  "updatedAt": "2026-09-19T22:51:29.092Z"
 }
