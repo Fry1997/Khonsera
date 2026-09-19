@@ -88,6 +88,7 @@ Supported command types are:
 - `double_click`
 - `move`
 - `type`
+- `fill` — set the value of the focused standard form control (including native date/time inputs)
 - `keypress`
 - `scroll`
 - `wait`
