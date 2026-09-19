@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 8,
+  "commandCount": 9,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:31:09.515Z",
+  "updatedAt": "2026-09-19T06:31:37.547Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,17 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 8,
-    "commandNumber": 8,
-    "at": "2026-09-19T06:31:09.248Z",
+    "sequence": 9,
+    "commandNumber": 9,
+    "at": "2026-09-19T06:31:37.283Z",
     "command": {
       "type": "click",
-      "x": 1112,
+      "x": 1245,
       "y": 107
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 464,
+    "durationMs": 462,
     "error": null
   },
   "screen": {
@@ -56,7 +56,7 @@
       },
       {
         "top": 199,
-        "left": 1152,
+        "left": 1158,
         "text": "Add expense"
       },
       {
@@ -70,13 +70,13 @@
         "text": "+ What’s this day for?"
       },
       {
-        "top": 322,
-        "left": 995,
+        "top": 328,
+        "left": 983,
         "text": "Running late"
       },
       {
-        "top": 322,
-        "left": 1111,
+        "top": 328,
+        "left": 1099,
         "text": "Arrived safely"
       },
       {
@@ -85,13 +85,13 @@
         "text": "Getting ready 1 to sort"
       },
       {
-        "top": 370,
-        "left": 995,
+        "top": 376,
+        "left": 983,
         "text": "On my way"
       },
       {
-        "top": 425,
-        "left": 995,
+        "top": 431,
+        "left": 983,
         "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
       },
       {
@@ -110,23 +110,23 @@
         "text": "Add"
       },
       {
-        "top": 739,
-        "left": 999,
+        "top": 724,
+        "left": 987,
         "text": "For today"
       },
       {
-        "top": 739,
-        "left": 1079,
+        "top": 724,
+        "left": 1067,
         "text": "Set hours"
       },
       {
-        "top": 841,
-        "left": 995,
+        "top": 826,
+        "left": 983,
         "text": "Share live location"
       },
       {
-        "top": 916,
-        "left": 974,
+        "top": 907,
+        "left": 962,
         "text": "CONSTRAINTS No constraints set +"
       },
       {
@@ -386,13 +386,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1032,
+          "x": 1026,
           "y": 223
         },
         "box": {
-          "x": 991,
+          "x": 979,
           "y": 201,
-          "width": 82,
+          "width": 94,
           "height": 44
         }
       },
@@ -406,13 +406,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1112,
+          "x": 1115,
           "y": 223
         },
         "box": {
           "x": 1081,
           "y": 199,
-          "width": 63,
+          "width": 69,
           "height": 48
         }
       },
@@ -426,13 +426,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1196,
+          "x": 1205,
           "y": 223
         },
         "box": {
-          "x": 1152,
+          "x": 1158,
           "y": 199,
-          "width": 88,
+          "width": 94,
           "height": 48
         }
       },
@@ -446,12 +446,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1049,
-          "y": 342
+          "x": 1037,
+          "y": 348
         },
         "box": {
-          "x": 995,
-          "y": 322,
+          "x": 983,
+          "y": 328,
           "width": 108,
           "height": 40
         }
@@ -466,12 +466,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1169,
-          "y": 342
+          "x": 1157,
+          "y": 348
         },
         "box": {
-          "x": 1111,
-          "y": 322,
+          "x": 1099,
+          "y": 328,
           "width": 116,
           "height": 40
         }
@@ -486,12 +486,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1045,
-          "y": 389
+          "x": 1033,
+          "y": 395
         },
         "box": {
-          "x": 995,
-          "y": 370,
+          "x": 983,
+          "y": 376,
           "width": 99,
           "height": 40
         }
@@ -507,12 +507,12 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 701
+          "y": 686
         },
         "box": {
-          "x": 995,
-          "y": 679,
-          "width": 241,
+          "x": 983,
+          "y": 664,
+          "width": 265,
           "height": 44
         }
       },
@@ -526,12 +526,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1036,
-          "y": 755
+          "x": 1024,
+          "y": 740
         },
         "box": {
-          "x": 999,
-          "y": 739,
+          "x": 987,
+          "y": 724,
           "width": 74,
           "height": 32
         }
@@ -546,12 +546,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1115,
-          "y": 755
+          "x": 1103,
+          "y": 740
         },
         "box": {
-          "x": 1079,
-          "y": 739,
+          "x": 1067,
+          "y": 724,
           "width": 72,
           "height": 32
         }
@@ -566,12 +566,12 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1075,
-          "y": 863
+          "x": 1063,
+          "y": 848
         },
         "box": {
-          "x": 995,
-          "y": 841,
+          "x": 983,
+          "y": 826,
           "width": 159,
           "height": 44
         }
@@ -587,12 +587,12 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 940
+          "y": 931
         },
         "box": {
-          "x": 974,
-          "y": 916,
-          "width": 283,
+          "x": 962,
+          "y": 907,
+          "width": 307,
           "height": 48
         }
       },
