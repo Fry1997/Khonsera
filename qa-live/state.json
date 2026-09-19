@@ -4,10 +4,10 @@
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 9,
+  "commandCount": 10,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:36:47.781Z",
+  "updatedAt": "2026-09-19T22:36:58.880Z",
   "url": "https://www.khonsera.com/tasks",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 9,
-    "commandNumber": 9,
-    "at": "2026-09-19T22:36:47.617Z",
+    "sequence": 10,
+    "commandNumber": 10,
+    "at": "2026-09-19T22:36:58.723Z",
     "command": {
-      "type": "type",
-      "text": "Review hotel booking"
+      "type": "keypress",
+      "key": "ENTER"
     },
     "beforeUrl": "https://www.khonsera.com/tasks",
     "afterUrl": "https://www.khonsera.com/tasks",
-    "durationMs": 459,
+    "durationMs": 463,
     "error": null
   },
   "screen": {
@@ -147,7 +147,7 @@
         "label": "Add a task — surfaces on the day",
         "type": "text",
         "value": "Review hotel booking",
-        "disabled": false,
+        "disabled": true,
         "checked": null,
         "center": {
           "x": 741,
@@ -261,15 +261,7 @@
         }
       }
     ],
-    "focused": {
-      "tag": "input",
-      "role": null,
-      "label": "Add a task — surfaces on the day",
-      "center": {
-        "x": 741,
-        "y": 233
-      }
-    },
+    "focused": null,
     "scroll": {
       "x": 0,
       "y": 0,
