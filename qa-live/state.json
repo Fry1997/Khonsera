@@ -4,12 +4,12 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 10,
+  "commandCount": 11,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:53:35.910Z",
-  "url": "https://www.khonsera.com/mileage",
-  "title": "Khonsera — travel days that run on time.",
+  "updatedAt": "2026-09-19T22:53:43.247Z",
+  "url": "https://www.khonsera.com/pastimes",
+  "title": "Pastimes",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 10,
-    "commandNumber": 10,
-    "at": "2026-09-19T22:53:35.789Z",
+    "sequence": 11,
+    "commandNumber": 11,
+    "at": "2026-09-19T22:53:43.117Z",
     "command": {
       "type": "goto",
-      "path": "/mileage"
+      "path": "/pastimes"
     },
-    "beforeUrl": "https://www.khonsera.com/contacts",
-    "afterUrl": "https://www.khonsera.com/mileage",
-    "durationMs": 2136,
+    "beforeUrl": "https://www.khonsera.com/mileage",
+    "afterUrl": "https://www.khonsera.com/pastimes",
+    "durationMs": 1589,
     "error": null
   },
   "screen": {
@@ -39,49 +39,44 @@
         "text": "KHONSERA"
       },
       {
-        "top": 122,
-        "left": 256,
-        "text": "Mileage"
-      },
-      {
-        "top": 220,
-        "left": 1052,
-        "text": "Record a drive"
-      },
-      {
-        "top": 333,
-        "left": 277,
-        "text": "No trips yet"
-      },
-      {
-        "top": 374,
-        "left": 277,
-        "text": "Drive legs from a plan or trips you record here become your mileage ledger."
-      },
-      {
-        "top": 399,
-        "left": 277,
-        "text": "Open plan"
-      },
-      {
-        "top": 399,
-        "left": 384,
-        "text": "Navigate"
-      },
-      {
-        "top": 521,
-        "left": 959,
-        "text": "Export CSV"
-      },
-      {
-        "top": 521,
-        "left": 1082,
-        "text": "Add a trip"
-      },
-      {
-        "top": 598,
+        "top": 115,
         "left": 240,
-        "text": "No trips yet. Record a drive or add one manually."
+        "text": "The table"
+      },
+      {
+        "top": 181,
+        "left": 240,
+        "text": "Something for the gate, the platform, the seat. A quiet hand to play while the miles pass."
+      },
+      {
+        "top": 247,
+        "left": 242,
+        "text": "GAMES"
+      },
+      {
+        "top": 274,
+        "left": 240,
+        "text": "Solitaire A quiet hand of Klondike."
+      },
+      {
+        "top": 274,
+        "left": 726,
+        "text": "Sudoku Numbers to settle into."
+      },
+      {
+        "top": 372,
+        "left": 240,
+        "text": "Gin Rummy Melds, knocks, and gins."
+      },
+      {
+        "top": 372,
+        "left": 726,
+        "text": "Crosswords A grid of small clues. SOON"
+      },
+      {
+        "top": 476,
+        "left": 240,
+        "text": "Each game plays offline. Nothing here needs signal."
       },
       {
         "top": 935,
@@ -172,106 +167,66 @@
       },
       {
         "index": 3,
-        "tag": "button",
+        "tag": "a",
         "role": null,
-        "label": "Record a drive",
+        "label": "Solitaire A quiet hand of Klondike.",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1118,
-          "y": 242
+          "x": 477,
+          "y": 317
         },
         "box": {
-          "x": 1052,
-          "y": 220,
-          "width": 131,
-          "height": 44
+          "x": 240,
+          "y": 274,
+          "width": 474,
+          "height": 86
         }
       },
       {
         "index": 4,
         "tag": "a",
         "role": null,
-        "label": "Open plan",
+        "label": "Sudoku Numbers to settle into.",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 326,
-          "y": 421
+          "x": 963,
+          "y": 317
         },
         "box": {
-          "x": 277,
-          "y": 399,
-          "width": 99,
-          "height": 44
+          "x": 726,
+          "y": 274,
+          "width": 474,
+          "height": 86
         }
       },
       {
         "index": 5,
         "tag": "a",
         "role": null,
-        "label": "Navigate",
+        "label": "Gin Rummy Melds, knocks, and gins.",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 429,
-          "y": 421
+          "x": 477,
+          "y": 415
         },
         "box": {
-          "x": 384,
-          "y": 399,
-          "width": 91,
-          "height": 44
+          "x": 240,
+          "y": 372,
+          "width": 474,
+          "height": 86
         }
       },
       {
         "index": 6,
-        "tag": "button",
-        "role": null,
-        "label": "Export CSV",
-        "type": null,
-        "value": null,
-        "disabled": true,
-        "checked": null,
-        "center": {
-          "x": 1013,
-          "y": 543
-        },
-        "box": {
-          "x": 959,
-          "y": 521,
-          "width": 108,
-          "height": 44
-        }
-      },
-      {
-        "index": 7,
-        "tag": "button",
-        "role": null,
-        "label": "Add a trip",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1131,
-          "y": 543
-        },
-        "box": {
-          "x": 1082,
-          "y": 521,
-          "width": 97,
-          "height": 44
-        }
-      },
-      {
-        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -291,7 +246,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -311,7 +266,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -331,7 +286,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -351,7 +306,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -385,14 +340,14 @@
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/wallet?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=syvW-SEvGKfjZilJ · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/today?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/today?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/today?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/navigate?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/plan?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
