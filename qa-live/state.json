@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 9,
+  "commandCount": 10,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:53:29.545Z",
-  "url": "https://www.khonsera.com/contacts",
+  "updatedAt": "2026-09-19T22:53:35.910Z",
+  "url": "https://www.khonsera.com/mileage",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 9,
-    "commandNumber": 9,
-    "at": "2026-09-19T22:53:29.404Z",
+    "sequence": 10,
+    "commandNumber": 10,
+    "at": "2026-09-19T22:53:35.789Z",
     "command": {
       "type": "goto",
-      "path": "/contacts"
+      "path": "/mileage"
     },
-    "beforeUrl": "https://www.khonsera.com/expenses",
-    "afterUrl": "https://www.khonsera.com/contacts",
-    "durationMs": 2438,
+    "beforeUrl": "https://www.khonsera.com/contacts",
+    "afterUrl": "https://www.khonsera.com/mileage",
+    "durationMs": 2136,
     "error": null
   },
   "screen": {
@@ -41,27 +41,47 @@
       {
         "top": 122,
         "left": 256,
-        "text": "People"
+        "text": "Mileage"
       },
       {
-        "top": 316,
+        "top": 220,
+        "left": 1052,
+        "text": "Record a drive"
+      },
+      {
+        "top": 333,
         "left": 277,
-        "text": "No people or clients yet"
+        "text": "No trips yet"
       },
       {
-        "top": 357,
+        "top": 374,
         "left": 277,
-        "text": "Add them once, then attach them to visits and meeting days in Plan."
+        "text": "Drive legs from a plan or trips you record here become your mileage ledger."
       },
       {
-        "top": 391,
+        "top": 399,
         "left": 277,
-        "text": "Add person"
+        "text": "Open plan"
       },
       {
-        "top": 391,
-        "left": 393,
-        "text": "Add client"
+        "top": 399,
+        "left": 384,
+        "text": "Navigate"
+      },
+      {
+        "top": 521,
+        "left": 959,
+        "text": "Export CSV"
+      },
+      {
+        "top": 521,
+        "left": 1082,
+        "text": "Add a trip"
+      },
+      {
+        "top": 598,
+        "left": 240,
+        "text": "No trips yet. Record a drive or add one manually."
       },
       {
         "top": 935,
@@ -152,41 +172,41 @@
       },
       {
         "index": 3,
-        "tag": "input",
-        "role": null,
-        "label": "Add someone by name",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 741,
-          "y": 233
-        },
-        "box": {
-          "x": 295,
-          "y": 222,
-          "width": 891,
-          "height": 23
-        }
-      },
-      {
-        "index": 4,
         "tag": "button",
         "role": null,
-        "label": "Add person",
+        "label": "Record a drive",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 331,
-          "y": 413
+          "x": 1118,
+          "y": 242
+        },
+        "box": {
+          "x": 1052,
+          "y": 220,
+          "width": 131,
+          "height": 44
+        }
+      },
+      {
+        "index": 4,
+        "tag": "a",
+        "role": null,
+        "label": "Open plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 326,
+          "y": 421
         },
         "box": {
           "x": 277,
-          "y": 391,
-          "width": 108,
+          "y": 399,
+          "width": 99,
           "height": 44
         }
       },
@@ -194,24 +214,64 @@
         "index": 5,
         "tag": "a",
         "role": null,
-        "label": "Add client",
+        "label": "Navigate",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 441,
-          "y": 413
+          "x": 429,
+          "y": 421
         },
         "box": {
-          "x": 393,
-          "y": 391,
-          "width": 98,
+          "x": 384,
+          "y": 399,
+          "width": 91,
           "height": 44
         }
       },
       {
         "index": 6,
+        "tag": "button",
+        "role": null,
+        "label": "Export CSV",
+        "type": null,
+        "value": null,
+        "disabled": true,
+        "checked": null,
+        "center": {
+          "x": 1013,
+          "y": 543
+        },
+        "box": {
+          "x": 959,
+          "y": 521,
+          "width": 108,
+          "height": 44
+        }
+      },
+      {
+        "index": 7,
+        "tag": "button",
+        "role": null,
+        "label": "Add a trip",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1131,
+          "y": 543
+        },
+        "box": {
+          "x": 1082,
+          "y": 521,
+          "width": 97,
+          "height": 44
+        }
+      },
+      {
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -231,7 +291,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -251,7 +311,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -271,7 +331,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -291,7 +351,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
