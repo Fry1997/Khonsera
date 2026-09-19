@@ -4,12 +4,12 @@
   "runId": "35474833738",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 5,
+  "commandCount": 6,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:59:57.059Z",
-  "updatedAt": "2026-09-19T23:01:26.437Z",
-  "url": "https://www.khonsera.com/pastimes",
-  "title": "Pastimes",
+  "updatedAt": "2026-09-19T23:01:40.388Z",
+  "url": "https://www.khonsera.com/pastimes/solitaire",
+  "title": "Solitaire",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,65 +19,70 @@
   "controlBranch": "qa-control-35474833738",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 5,
-    "commandNumber": 5,
-    "at": "2026-09-19T23:01:26.265Z",
+    "sequence": 6,
+    "commandNumber": 6,
+    "at": "2026-09-19T23:01:39.734Z",
     "command": {
       "type": "click",
-      "x": 477,
+      "x": 963,
       "y": 317
     },
-    "beforeUrl": "https://www.khonsera.com/pastimes",
-    "afterUrl": "https://www.khonsera.com/pastimes",
-    "durationMs": 470,
+    "beforeUrl": "https://www.khonsera.com/pastimes/solitaire",
+    "afterUrl": "https://www.khonsera.com/pastimes/solitaire",
+    "durationMs": 467,
     "error": null
   },
   "screen": {
     "viewportText": [
+      {
+        "top": 12,
+        "left": 1142,
+        "text": "1 3"
+      },
+      {
+        "top": 12,
+        "left": 1265,
+        "text": "Forfeit"
+      },
+      {
+        "top": 12,
+        "left": 1355,
+        "text": "New"
+      },
       {
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
       },
       {
-        "top": 115,
-        "left": 240,
-        "text": "The table"
+        "top": 440,
+        "left": 584,
+        "text": "Day complete."
       },
       {
-        "top": 181,
-        "left": 240,
-        "text": "Something for the gate, the platform, the seat. A quiet hand to play while the miles pass."
+        "top": 447,
+        "left": 587,
+        "text": "Forfeit this game?"
       },
       {
-        "top": 247,
-        "left": 242,
-        "text": "GAMES"
+        "top": 480,
+        "left": 584,
+        "text": "Every card home, in order."
       },
       {
-        "top": 274,
-        "left": 240,
-        "text": "Solitaire A quiet hand of Klondike."
+        "top": 481,
+        "left": 587,
+        "text": "This deal is conceded and a fresh one begins. There is no undo."
       },
       {
-        "top": 274,
-        "left": 726,
-        "text": "Sudoku Numbers to settle into."
+        "top": 534,
+        "left": 621,
+        "text": "Keep playing"
       },
       {
-        "top": 372,
-        "left": 240,
-        "text": "Gin Rummy Melds, knocks, and gins."
-      },
-      {
-        "top": 372,
-        "left": 726,
-        "text": "Crosswords A grid of small clues. SOON"
-      },
-      {
-        "top": 476,
-        "left": 240,
-        "text": "Each game plays offline. Nothing here needs signal."
+        "top": 579,
+        "left": 666,
+        "text": "New game"
       },
       {
         "top": 935,
@@ -170,64 +175,164 @@
         "index": 3,
         "tag": "a",
         "role": null,
-        "label": "Solitaire A quiet hand of Klondike.",
+        "label": "Back to Pastimes",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 477,
-          "y": 315
+          "x": 31,
+          "y": 29
         },
         "box": {
-          "x": 240,
-          "y": 272,
-          "width": 474,
-          "height": 86
+          "x": 14,
+          "y": 12,
+          "width": 34,
+          "height": 34
         }
       },
       {
         "index": 4,
-        "tag": "a",
+        "tag": "button",
         "role": null,
-        "label": "Sudoku Numbers to settle into.",
+        "label": "Draw mode",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 963,
-          "y": 317
+          "x": 1177,
+          "y": 29
         },
         "box": {
-          "x": 726,
-          "y": 274,
-          "width": 474,
-          "height": 86
+          "x": 1142,
+          "y": 12,
+          "width": 69,
+          "height": 34
         }
       },
       {
         "index": 5,
-        "tag": "a",
+        "tag": "button",
         "role": null,
-        "label": "Gin Rummy Melds, knocks, and gins.",
+        "label": "Undo",
+        "type": null,
+        "value": null,
+        "disabled": true,
+        "checked": null,
+        "center": {
+          "x": 1238,
+          "y": 29
+        },
+        "box": {
+          "x": 1219,
+          "y": 12,
+          "width": 39,
+          "height": 34
+        }
+      },
+      {
+        "index": 6,
+        "tag": "button",
+        "role": null,
+        "label": "Forfeit this game",
+        "type": null,
+        "value": null,
+        "disabled": true,
+        "checked": null,
+        "center": {
+          "x": 1306,
+          "y": 29
+        },
+        "box": {
+          "x": 1265,
+          "y": 12,
+          "width": 83,
+          "height": 34
+        }
+      },
+      {
+        "index": 7,
+        "tag": "button",
+        "role": null,
+        "label": "New game",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 477,
-          "y": 415
+          "x": 1390,
+          "y": 29
         },
         "box": {
-          "x": 240,
-          "y": 372,
-          "width": 474,
-          "height": 86
+          "x": 1355,
+          "y": 12,
+          "width": 71,
+          "height": 34
         }
       },
       {
-        "index": 6,
+        "index": 8,
+        "tag": "button",
+        "role": null,
+        "label": "New game",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 600
+        },
+        "box": {
+          "x": 666,
+          "y": 579,
+          "width": 109,
+          "height": 41
+        }
+      },
+      {
+        "index": 9,
+        "tag": "button",
+        "role": null,
+        "label": "Keep playing",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 678,
+          "y": 554
+        },
+        "box": {
+          "x": 621,
+          "y": 534,
+          "width": 114,
+          "height": 39
+        }
+      },
+      {
+        "index": 10,
+        "tag": "button",
+        "role": null,
+        "label": "Forfeit",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 782,
+          "y": 554
+        },
+        "box": {
+          "x": 745,
+          "y": 534,
+          "width": 74,
+          "height": 39
+        }
+      },
+      {
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -247,7 +352,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -267,7 +372,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -287,7 +392,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 14,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -307,7 +412,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 15,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -327,15 +432,7 @@
         }
       }
     ],
-    "focused": {
-      "tag": "a",
-      "role": null,
-      "label": "Solitaire A quiet hand of Klondike.",
-      "center": {
-        "x": 477,
-        "y": 315
-      }
-    },
+    "focused": null,
     "scroll": {
       "x": 0,
       "y": 0,
@@ -349,14 +446,14 @@
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/tasks?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/today?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes/solitaire?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes/sudoku?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/pastimes/gin-rummy?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/pastimes/gin-rummy?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/pastimes/solitaire?_rsc=IWVk8GLIAvv4-oEg · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
