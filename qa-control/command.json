@@ -3,8 +3,7 @@
   "viewport": "desktop-chromium",
   "sequence": 5,
   "command": {
-    "type": "goto",
-    "path": "/tasks"
+    "type": "screenshot"
   },
-  "updatedAt": "2026-09-19T22:52:20.338Z"
+  "updatedAt": "2026-09-19T22:52:24.386Z"
 }
