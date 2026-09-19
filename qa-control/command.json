@@ -1,10 +1,10 @@
 {
   "runId": "35474295967",
   "viewport": "desktop-chromium",
-  "sequence": 4,
+  "sequence": 5,
   "command": {
-    "type": "wait",
-    "ms": 1400
+    "type": "goto",
+    "path": "/tasks"
   },
-  "updatedAt": "2026-09-19T22:52:01.256Z"
+  "updatedAt": "2026-09-19T22:52:20.338Z"
 }
