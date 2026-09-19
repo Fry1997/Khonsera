@@ -4,12 +4,12 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 1,
+  "commandCount": 2,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:28:08.522Z",
+  "updatedAt": "2026-09-19T06:28:33.296Z",
   "url": "https://www.khonsera.com/plan",
-  "title": "",
+  "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 1,
-    "commandNumber": 1,
-    "at": "2026-09-19T06:28:08.407Z",
+    "sequence": 2,
+    "commandNumber": 2,
+    "at": "2026-09-19T06:28:33.133Z",
     "command": {
-      "type": "click",
-      "x": 594,
-      "y": 965
+      "type": "wait",
+      "ms": 1500
     },
-    "beforeUrl": "https://www.khonsera.com/today",
+    "beforeUrl": "https://www.khonsera.com/plan",
     "afterUrl": "https://www.khonsera.com/plan",
-    "durationMs": 506,
+    "durationMs": 1513,
     "error": null
   },
   "screen": {
@@ -38,6 +37,126 @@
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
+      },
+      {
+        "top": 122,
+        "left": 256,
+        "text": "What are you planning?"
+      },
+      {
+        "top": 207,
+        "left": 240,
+        "text": "+ Plan something"
+      },
+      {
+        "top": 335,
+        "left": 599,
+        "text": "What repeats"
+      },
+      {
+        "top": 392,
+        "left": 241,
+        "text": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium 1 stop"
+      },
+      {
+        "top": 392,
+        "left": 669,
+        "text": "×"
+      },
+      {
+        "top": 392,
+        "left": 726,
+        "text": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · mobile-390 1 stop"
+      },
+      {
+        "top": 454,
+        "left": 261,
+        "text": "KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium"
+      },
+      {
+        "top": 454,
+        "left": 746,
+        "text": "KQA-UX-001 · Harpenden tight connection · 23 · mobile-390"
+      },
+      {
+        "top": 465,
+        "left": 613,
+        "text": "1 stop"
+      },
+      {
+        "top": 475,
+        "left": 555,
+        "text": "EverySunMonTueWedThuFriSat"
+      },
+      {
+        "top": 475,
+        "left": 644,
+        "text": "From"
+      },
+      {
+        "top": 475,
+        "left": 790,
+        "text": "Hours"
+      },
+      {
+        "top": 551,
+        "left": 656,
+        "text": "Work"
+      },
+      {
+        "top": 551,
+        "left": 715,
+        "text": "Personal"
+      },
+      {
+        "top": 570,
+        "left": 241,
+        "text": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 21 · mobile-390 0 stops"
+      },
+      {
+        "top": 570,
+        "left": 726,
+        "text": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 21 · desktop-chromium 0 stops"
+      },
+      {
+        "top": 593,
+        "left": 639,
+        "text": "Add repeating event"
+      },
+      {
+        "top": 632,
+        "left": 261,
+        "text": "KQA-UX-001 · Harpenden tight connection · 21 · mobile-390"
+      },
+      {
+        "top": 632,
+        "left": 746,
+        "text": "KQA-UX-001 · Harpenden tight connection · 21 · desktop-chromium"
+      },
+      {
+        "top": 643,
+        "left": 607,
+        "text": "0 stops"
+      },
+      {
+        "top": 687,
+        "left": 241,
+        "text": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 18 · mobile-390 0 stops"
+      },
+      {
+        "top": 687,
+        "left": 726,
+        "text": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 18 · desktop-chromium 0 stops"
+      },
+      {
+        "top": 749,
+        "left": 261,
+        "text": "KQA-UX-001 · Harpenden tight connection · 18 · mobile-390"
+      },
+      {
+        "top": 749,
+        "left": 746,
+        "text": "KQA-UX-001 · Harpenden tight connection · 18 · desktop-chromium"
       },
       {
         "top": 935,
@@ -128,6 +247,426 @@
       },
       {
         "index": 3,
+        "tag": "button",
+        "role": null,
+        "label": "+ Plan something",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 314,
+          "y": 229
+        },
+        "box": {
+          "x": 240,
+          "y": 207,
+          "width": 148,
+          "height": 44
+        }
+      },
+      {
+        "index": 4,
+        "tag": "input",
+        "role": null,
+        "label": "e.g. The office",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 377
+        },
+        "box": {
+          "x": 599,
+          "y": 354,
+          "width": 242,
+          "height": 45
+        }
+      },
+      {
+        "index": 5,
+        "tag": "input",
+        "role": null,
+        "label": "Search a place",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 447
+        },
+        "box": {
+          "x": 599,
+          "y": 424,
+          "width": 242,
+          "height": 45
+        }
+      },
+      {
+        "index": 6,
+        "tag": "select",
+        "role": null,
+        "label": "SunMonTueWedThuFriSat",
+        "type": null,
+        "value": "1",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 592,
+          "y": 516
+        },
+        "box": {
+          "x": 555,
+          "y": 494,
+          "width": 73,
+          "height": 44
+        }
+      },
+      {
+        "index": 7,
+        "tag": "input",
+        "role": null,
+        "label": "",
+        "type": "time",
+        "value": "09:00",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 709,
+          "y": 518
+        },
+        "box": {
+          "x": 644,
+          "y": 494,
+          "width": 130,
+          "height": 47
+        }
+      },
+      {
+        "index": 8,
+        "tag": "input",
+        "role": null,
+        "label": "",
+        "type": "number",
+        "value": "8",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 837,
+          "y": 517
+        },
+        "box": {
+          "x": 790,
+          "y": 494,
+          "width": 95,
+          "height": 45
+        }
+      },
+      {
+        "index": 9,
+        "tag": "button",
+        "role": null,
+        "label": "Work",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 683,
+          "y": 567
+        },
+        "box": {
+          "x": 656,
+          "y": 551,
+          "width": 53,
+          "height": 32
+        }
+      },
+      {
+        "index": 10,
+        "tag": "button",
+        "role": null,
+        "label": "Personal",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 750,
+          "y": 567
+        },
+        "box": {
+          "x": 715,
+          "y": 551,
+          "width": 69,
+          "height": 32
+        }
+      },
+      {
+        "index": 11,
+        "tag": "button",
+        "role": null,
+        "label": "Add repeating event",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 615
+        },
+        "box": {
+          "x": 639,
+          "y": 593,
+          "width": 162,
+          "height": 44
+        }
+      },
+      {
+        "index": 12,
+        "tag": "a",
+        "role": null,
+        "label": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium 1 stop",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 451,
+          "y": 444
+        },
+        "box": {
+          "x": 241,
+          "y": 392,
+          "width": 420,
+          "height": 104
+        }
+      },
+      {
+        "index": 13,
+        "tag": "button",
+        "role": null,
+        "label": "Delete plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 691,
+          "y": 444
+        },
+        "box": {
+          "x": 669,
+          "y": 392,
+          "width": 44,
+          "height": 104
+        }
+      },
+      {
+        "index": 14,
+        "tag": "a",
+        "role": null,
+        "label": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · mobile-390 1 stop",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 937,
+          "y": 444
+        },
+        "box": {
+          "x": 726,
+          "y": 392,
+          "width": 421,
+          "height": 104
+        }
+      },
+      {
+        "index": 15,
+        "tag": "button",
+        "role": null,
+        "label": "Delete plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1177,
+          "y": 444
+        },
+        "box": {
+          "x": 1155,
+          "y": 392,
+          "width": 44,
+          "height": 104
+        }
+      },
+      {
+        "index": 16,
+        "tag": "a",
+        "role": null,
+        "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 21 · mobile-390 0 stops",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 451,
+          "y": 622
+        },
+        "box": {
+          "x": 241,
+          "y": 570,
+          "width": 420,
+          "height": 104
+        }
+      },
+      {
+        "index": 17,
+        "tag": "button",
+        "role": null,
+        "label": "Delete plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 691,
+          "y": 622
+        },
+        "box": {
+          "x": 669,
+          "y": 570,
+          "width": 44,
+          "height": 104
+        }
+      },
+      {
+        "index": 18,
+        "tag": "a",
+        "role": null,
+        "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 21 · desktop-chromium 0 stops",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 937,
+          "y": 622
+        },
+        "box": {
+          "x": 726,
+          "y": 570,
+          "width": 421,
+          "height": 104
+        }
+      },
+      {
+        "index": 19,
+        "tag": "button",
+        "role": null,
+        "label": "Delete plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1177,
+          "y": 622
+        },
+        "box": {
+          "x": 1155,
+          "y": 570,
+          "width": 44,
+          "height": 104
+        }
+      },
+      {
+        "index": 20,
+        "tag": "a",
+        "role": null,
+        "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 18 · mobile-390 0 stops",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 451,
+          "y": 739
+        },
+        "box": {
+          "x": 241,
+          "y": 687,
+          "width": 420,
+          "height": 104
+        }
+      },
+      {
+        "index": 21,
+        "tag": "button",
+        "role": null,
+        "label": "Delete plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 691,
+          "y": 739
+        },
+        "box": {
+          "x": 669,
+          "y": 687,
+          "width": 44,
+          "height": 104
+        }
+      },
+      {
+        "index": 22,
+        "tag": "a",
+        "role": null,
+        "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 18 · desktop-chromium 0 stops",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 937,
+          "y": 739
+        },
+        "box": {
+          "x": 726,
+          "y": 687,
+          "width": 421,
+          "height": 104
+        }
+      },
+      {
+        "index": 23,
+        "tag": "button",
+        "role": null,
+        "label": "Delete plan",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1177,
+          "y": 739
+        },
+        "box": {
+          "x": 1155,
+          "y": 687,
+          "width": 44,
+          "height": 104
+        }
+      },
+      {
+        "index": 24,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -147,7 +686,7 @@
         }
       },
       {
-        "index": 4,
+        "index": 25,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -167,7 +706,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 26,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -187,7 +726,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 27,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -207,7 +746,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 28,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -251,7 +790,8 @@
     "failedRequests": [
       "GET https://www.khonsera.com/navigate?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED",
       "POST https://www.khonsera.com/today · net::ERR_ABORTED",
-      "POST https://www.khonsera.com/today · net::ERR_ABORTED"
+      "POST https://www.khonsera.com/today · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/plan?_rsc=Qch2AKRwCINMr7Hc · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
