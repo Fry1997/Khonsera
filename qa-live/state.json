@@ -4,10 +4,10 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 0,
+  "commandCount": 1,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:48:14.388Z",
+  "updatedAt": "2026-09-19T22:51:36.147Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -18,7 +18,19 @@
   "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35474295967/qa-live/state.json",
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
-  "lastAction": null,
+  "lastAction": {
+    "sequence": 1,
+    "commandNumber": 1,
+    "at": "2026-09-19T22:51:35.767Z",
+    "command": {
+      "type": "goto",
+      "path": "/today"
+    },
+    "beforeUrl": "https://www.khonsera.com/today",
+    "afterUrl": "https://www.khonsera.com/today",
+    "durationMs": 4524,
+    "error": null
+  },
   "screen": {
     "viewportText": [
       {
