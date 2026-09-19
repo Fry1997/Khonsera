@@ -4,10 +4,10 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 13,
+  "commandCount": 14,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:54:12.544Z",
+  "updatedAt": "2026-09-19T22:54:17.389Z",
   "url": "https://www.khonsera.com/plan",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 13,
-    "commandNumber": 13,
-    "at": "2026-09-19T22:54:12.179Z",
+    "sequence": 14,
+    "commandNumber": 14,
+    "at": "2026-09-19T22:54:17.258Z",
     "command": {
-      "type": "goto",
-      "path": "/plan"
+      "type": "click",
+      "x": 451,
+      "y": 444
     },
-    "beforeUrl": "https://www.khonsera.com/settings",
+    "beforeUrl": "https://www.khonsera.com/plan",
     "afterUrl": "https://www.khonsera.com/plan",
-    "durationMs": 2494,
+    "durationMs": 469,
     "error": null
   },
   "screen": {
@@ -816,7 +817,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "a",
+      "role": null,
+      "label": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium 1 stop",
+      "center": {
+        "x": 451,
+        "y": 444
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
