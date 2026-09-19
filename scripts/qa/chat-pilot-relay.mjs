@@ -8,7 +8,11 @@ import path from "node:path";
 const execFile = promisify(execFileCb);
 
 const targetUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://www.khonsera.com";
-const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
+const targetOrigin = new URL(targetUrl).origin;
+const startPath = process.env.KQA_START_PATH ?? "/today";
+const skipAuth = process.env.KQA_SKIP_AUTH === "1";
+const scenario = process.env.OBSERVATORY_SCENARIO ?? "KQA-UX-001";
+const magicLink = process.env.KHONsera_QA_MAGIC_LINK ?? process.env.KHONSERA_QA_MAGIC_LINK;
 const supabaseUrl = process.env.KQA_SUPABASE_URL;
 const supabasePublishableKey = process.env.KQA_SUPABASE_PUBLISHABLE_KEY;
 const githubToken = process.env.GITHUB_TOKEN;
@@ -21,14 +25,21 @@ const maxMinutes = Number(process.env.KQA_RELAY_MAX_MINUTES ?? "35");
 const maxCommands = Number(process.env.KQA_RELAY_MAX_COMMANDS ?? "80");
 
 for (const [name, value] of Object.entries({
-  KHONSERA_QA_MAGIC_LINK: magicLink,
-  KQA_SUPABASE_URL: supabaseUrl,
-  KQA_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey,
   GITHUB_TOKEN: githubToken,
   GITHUB_REPOSITORY: repository,
   GITHUB_RUN_ID: runId,
 })) {
   if (!value) throw new Error(`${name} is required for the QA relay.`);
+}
+
+if (!skipAuth) {
+  for (const [name, value] of Object.entries({
+    KHONSERA_QA_MAGIC_LINK: magicLink,
+    KQA_SUPABASE_URL: supabaseUrl,
+    KQA_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey,
+  })) {
+    if (!value) throw new Error(`${name} is required when QA auth is enabled.`);
+  }
 }
 
 const [owner, repo] = repository.split("/");
@@ -86,7 +97,7 @@ function clean(value, max = 1000) {
 function allowedHostname(urlString) {
   try {
     const url = new URL(urlString);
-    return ["www.khonsera.com", "khonsera.com"].includes(url.hostname);
+    return url.origin === targetOrigin;
   } catch {
     return false;
   }
@@ -446,7 +457,7 @@ async function publishState(status, extra = {}) {
   const screen = await observeScreen(page);
 
   const state = {
-    scenario: "KQA-UX-001",
+    scenario,
     executionMode: "chat-piloted-relay",
     runId,
     viewportName,
@@ -639,7 +650,7 @@ async function executeCommand(command) {
     case "goto": {
       const requested = new URL(String(command.url ?? command.path ?? ""), targetUrl);
       if (!allowedHostname(requested.toString())) {
-        throw new Error("goto is restricted to khonsera.com.");
+        throw new Error(`goto is restricted to ${targetOrigin}.`);
       }
       await page.goto(requested.toString(), {
         waitUntil: "domcontentloaded",
@@ -748,16 +759,19 @@ try {
     }
   });
 
-  await bootstrapSession(browser, context);
+  if (!skipAuth) {
+    await bootstrapSession(browser, context);
+  }
 
-  await page.goto(`${targetUrl}/today`, {
+  const startUrl = new URL(startPath, targetUrl).toString();
+  await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
   });
   await page.waitForTimeout(700);
 
   if (!allowedHostname(page.url())) {
-    throw new Error(`QA relay landed outside Khonsera: ${page.url()}`);
+    throw new Error(`QA relay landed outside the configured target: ${page.url()}`);
   }
 
   await seedControlFile();
