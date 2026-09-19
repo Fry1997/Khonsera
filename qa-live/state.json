@@ -4,12 +4,12 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 11,
+  "commandCount": 12,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:53:43.247Z",
-  "url": "https://www.khonsera.com/pastimes",
-  "title": "Pastimes",
+  "updatedAt": "2026-09-19T22:53:50.898Z",
+  "url": "https://www.khonsera.com/settings",
+  "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 11,
-    "commandNumber": 11,
-    "at": "2026-09-19T22:53:43.117Z",
+    "sequence": 12,
+    "commandNumber": 12,
+    "at": "2026-09-19T22:53:50.722Z",
     "command": {
       "type": "goto",
-      "path": "/pastimes"
+      "path": "/settings"
     },
-    "beforeUrl": "https://www.khonsera.com/mileage",
-    "afterUrl": "https://www.khonsera.com/pastimes",
-    "durationMs": 1589,
+    "beforeUrl": "https://www.khonsera.com/pastimes",
+    "afterUrl": "https://www.khonsera.com/settings",
+    "durationMs": 2126,
     "error": null
   },
   "screen": {
@@ -39,44 +39,99 @@
         "text": "KHONSERA"
       },
       {
-        "top": 115,
-        "left": 240,
-        "text": "The table"
+        "top": 101,
+        "left": 256,
+        "text": "Settings"
       },
       {
-        "top": 181,
-        "left": 240,
-        "text": "Something for the gate, the platform, the seat. A quiet hand to play while the miles pass."
+        "top": 159,
+        "left": 256,
+        "text": "Your defaults — used when generating travel options."
       },
       {
-        "top": 247,
-        "left": 242,
-        "text": "GAMES"
+        "top": 239,
+        "left": 261,
+        "text": "Account"
       },
       {
-        "top": 274,
-        "left": 240,
-        "text": "Solitaire A quiet hand of Klondike."
+        "top": 239,
+        "left": 751,
+        "text": "Google Calendar"
       },
       {
-        "top": 274,
-        "left": 726,
-        "text": "Sudoku Numbers to settle into."
+        "top": 239,
+        "left": 1067,
+        "text": "Connect Google Calendar"
       },
       {
-        "top": 372,
-        "left": 240,
-        "text": "Gin Rummy Melds, knocks, and gins."
+        "top": 258,
+        "left": 261,
+        "text": "cjfry97+khonsera-qa@gmail.com"
       },
       {
-        "top": 372,
-        "left": 726,
-        "text": "Crosswords A grid of small clues. SOON"
+        "top": 258,
+        "left": 751,
+        "text": "Connect to check calendar conflicts when planning visits and auto-create travel + meeting blocks when you confirm."
       },
       {
-        "top": 476,
-        "left": 240,
-        "text": "Each game plays offline. Nothing here needs signal."
+        "top": 280,
+        "left": 261,
+        "text": "Staff account"
+      },
+      {
+        "top": 308,
+        "left": 261,
+        "text": "Switch Today between your real itinerary and an isolated staff scenario. The demo uses the same production components and live services, but never reads from or writes to your plan."
+      },
+      {
+        "top": 368,
+        "left": 261,
+        "text": "Demo scenario Showing your real Today OFF"
+      },
+      {
+        "top": 437,
+        "left": 261,
+        "text": "When on, Today uses isolated staff scenario data. When off, Today reads your actual itinerary. Both use the same production components; the demo cannot write to your plan."
+      },
+      {
+        "top": 529,
+        "left": 261,
+        "text": "Gmail Import"
+      },
+      {
+        "top": 529,
+        "left": 606,
+        "text": "Connect Gmail"
+      },
+      {
+        "top": 548,
+        "left": 261,
+        "text": "Connect your Gmail to automatically find booking confirmations from Trainline, LNER, Avanti, airlines, Booking.com, and other providers. Read-only access — Khonsera never sends or modifies your email."
+      },
+      {
+        "top": 680,
+        "left": 261,
+        "text": "International"
+      },
+      {
+        "top": 716,
+        "left": 1095,
+        "text": "Save"
+      },
+      {
+        "top": 839,
+        "left": 261,
+        "text": "Travel preferences"
+      },
+      {
+        "top": 840,
+        "left": 1090,
+        "text": "Manage locations"
+      },
+      {
+        "top": 875,
+        "left": 261,
+        "text": "PREFERRED TRAVEL MODE"
       },
       {
         "top": 935,
@@ -102,6 +157,16 @@
         "top": 935,
         "left": 912,
         "text": "NAVIGATE"
+      },
+      {
+        "top": 944,
+        "left": 261,
+        "text": "Scoring nudge: a +15% tiebreaker toward this mode when it's a close call. Legacy options ('rail', 'mixed', 'compare') are kept for older accounts and treated as 'no preference' by the scorer."
+      },
+      {
+        "top": 990,
+        "left": 261,
+        "text": "WALKING THRESHOLD (MIN)"
       }
     ],
     "interactives": [
@@ -167,66 +232,146 @@
       },
       {
         "index": 3,
-        "tag": "a",
-        "role": null,
-        "label": "Solitaire A quiet hand of Klondike.",
+        "tag": "button",
+        "role": "switch",
+        "label": "Staff only. Switches Today between your account data and an isolated scenario.",
         "type": null,
         "value": null,
         "disabled": false,
-        "checked": null,
+        "checked": "false",
         "center": {
-          "x": 477,
-          "y": 317
+          "x": 475,
+          "y": 398
         },
         "box": {
-          "x": 240,
-          "y": 274,
-          "width": 474,
-          "height": 86
+          "x": 261,
+          "y": 368,
+          "width": 428,
+          "height": 60
         }
       },
       {
         "index": 4,
         "tag": "a",
         "role": null,
-        "label": "Sudoku Numbers to settle into.",
+        "label": "Connect Google Calendar",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 963,
-          "y": 317
+          "x": 1123,
+          "y": 268
         },
         "box": {
-          "x": 726,
-          "y": 274,
-          "width": 474,
-          "height": 86
+          "x": 1067,
+          "y": 239,
+          "width": 112,
+          "height": 59
         }
       },
       {
         "index": 5,
         "tag": "a",
         "role": null,
-        "label": "Gin Rummy Melds, knocks, and gins.",
+        "label": "Connect Gmail",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 477,
-          "y": 415
+          "x": 648,
+          "y": 552
         },
         "box": {
-          "x": 240,
-          "y": 372,
-          "width": 474,
-          "height": 86
+          "x": 606,
+          "y": 529,
+          "width": 83,
+          "height": 46
         }
       },
       {
         "index": 6,
+        "tag": "select",
+        "role": null,
+        "label": "GBP EUR USD CHF JPY AUD CAD",
+        "type": null,
+        "value": "GBP",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1052,
+          "y": 738
+        },
+        "box": {
+          "x": 1017,
+          "y": 716,
+          "width": 70,
+          "height": 44
+        }
+      },
+      {
+        "index": 7,
+        "tag": "button",
+        "role": null,
+        "label": "Save",
+        "type": null,
+        "value": null,
+        "disabled": true,
+        "checked": null,
+        "center": {
+          "x": 1127,
+          "y": 738
+        },
+        "box": {
+          "x": 1095,
+          "y": 716,
+          "width": 65,
+          "height": 44
+        }
+      },
+      {
+        "index": 8,
+        "tag": "a",
+        "role": null,
+        "label": "Manage locations",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1135,
+          "y": 849
+        },
+        "box": {
+          "x": 1090,
+          "y": 840,
+          "width": 89,
+          "height": 17
+        }
+      },
+      {
+        "index": 9,
+        "tag": "select",
+        "role": null,
+        "label": "PREFERRED TRAVEL MODE",
+        "type": null,
+        "value": "no_preference",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 917
+        },
+        "box": {
+          "x": 261,
+          "y": 897,
+          "width": 918,
+          "height": 41
+        }
+      },
+      {
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -246,7 +391,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -266,7 +411,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -286,7 +431,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -306,7 +451,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 14,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -333,21 +478,21 @@
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 1000
+      "documentHeight": 2638
     }
   },
   "signals": {
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/wallet?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/today?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED",
       "GET https://www.khonsera.com/today?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/navigate?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
