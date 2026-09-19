@@ -4,11 +4,11 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 14,
+  "commandCount": 15,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:06:47.032Z",
-  "url": "https://www.khonsera.com/settings",
+  "updatedAt": "2026-09-19T22:07:01.060Z",
+  "url": "https://www.khonsera.com/people",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,545 +19,47 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 14,
-    "commandNumber": 14,
-    "at": "2026-09-19T22:06:46.830Z",
+    "sequence": 15,
+    "commandNumber": 15,
+    "at": "2026-09-19T22:07:00.887Z",
     "command": {
-      "type": "scroll",
-      "deltaY": 850
+      "type": "goto",
+      "path": "/people"
     },
     "beforeUrl": "https://www.khonsera.com/settings",
-    "afterUrl": "https://www.khonsera.com/settings",
-    "durationMs": 467,
+    "afterUrl": "https://www.khonsera.com/people",
+    "durationMs": 766,
     "error": null
   },
   "screen": {
     "viewportText": [
       {
-        "top": -11,
-        "left": 261,
-        "text": "Travel preferences"
+        "top": 476,
+        "left": 571,
+        "text": "404"
       },
       {
-        "top": -10,
-        "left": 1090,
-        "text": "Manage locations"
-      },
-      {
-        "top": 25,
-        "left": 261,
-        "text": "PREFERRED TRAVEL MODE"
-      },
-      {
-        "top": 28,
-        "left": 16,
-        "text": "KHONSERA"
-      },
-      {
-        "top": 94,
-        "left": 261,
-        "text": "Scoring nudge: a +15% tiebreaker toward this mode when it's a close call. Legacy options ('rail', 'mixed', 'compare') are kept for older accounts and treated as 'no preference' by the scorer."
-      },
-      {
-        "top": 140,
-        "left": 261,
-        "text": "WALKING THRESHOLD (MIN)"
-      },
-      {
-        "top": 210,
-        "left": 261,
-        "text": "Above this length, the scorer drops walk from the candidates entirely."
-      },
-      {
-        "top": 240,
-        "left": 261,
-        "text": "TAXI SPEND (£)"
-      },
-      {
-        "top": 310,
-        "left": 261,
-        "text": "When would a taxi feel like good value vs. a bit much? We'll suggest taxis under this amount, mention it when they're a bit over, and only push more expensive ones when they save significant time."
-      },
-      {
-        "top": 357,
-        "left": 261,
-        "text": "DEFAULT LUGGAGE"
-      },
-      {
-        "top": 425,
-        "left": 261,
-        "text": "Affects how much walk is penalised. Light = -10, heavy = -25."
-      },
-      {
-        "top": 455,
-        "left": 261,
-        "text": "DEFAULT DRIVING ORIGIN"
-      },
-      {
-        "top": 523,
-        "left": 261,
-        "text": "Where the planner assumes you'll be driving from."
-      },
-      {
-        "top": 553,
-        "left": 261,
-        "text": "DEFAULT RAIL ORIGIN"
-      },
-      {
-        "top": 622,
-        "left": 261,
-        "text": "Your nearest/preferred station."
-      },
-      {
-        "top": 651,
-        "left": 261,
-        "text": "DEFAULT RETURN LOCATION"
-      },
-      {
-        "top": 720,
-        "left": 261,
-        "text": "Where you need to get back to (home, office, hotel)."
-      },
-      {
-        "top": 749,
-        "left": 261,
-        "text": "DEFAULT RAIL STATION"
-      },
-      {
-        "top": 771,
-        "left": 261,
-        "text": "Search a rail station… ▾"
-      },
-      {
-        "top": 822,
-        "left": 261,
-        "text": "The station Khonsera assumes when a leg is by train or tube. Brief auto-inserts a transit_departure stop here."
-      },
-      {
-        "top": 851,
-        "left": 261,
-        "text": "DEFAULT AIRPORT"
-      },
-      {
-        "top": 873,
-        "left": 261,
-        "text": "Search an airport… ▾"
-      },
-      {
-        "top": 924,
-        "left": 261,
-        "text": "Used the same way for flight legs."
-      },
-      {
-        "top": 935,
-        "left": 406,
-        "text": "TODAY"
-      },
-      {
-        "top": 935,
-        "left": 532,
-        "text": "PLAN"
-      },
-      {
-        "top": 935,
-        "left": 659,
-        "text": "TASKS"
-      },
-      {
-        "top": 935,
-        "left": 785,
-        "text": "WALLET"
-      },
-      {
-        "top": 935,
-        "left": 912,
-        "text": "NAVIGATE"
-      },
-      {
-        "top": 957,
-        "left": 261,
-        "text": "COMFORT BUFFERS"
-      },
-      {
-        "top": 981,
-        "left": 261,
-        "text": "How early you like to be, by what you’re catching. Khonsera plans your departures so you arrive this much ahead — and never warns about the slack it built you. Tube and bus changes use a quick 5 min."
+        "top": 476,
+        "left": 661,
+        "text": "This page could not be found."
       }
     ],
-    "interactives": [
-      {
-        "index": 0,
-        "tag": "a",
-        "role": null,
-        "label": "Khonsera",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 75,
-          "y": 34
-        },
-        "box": {
-          "x": 16,
-          "y": 28,
-          "width": 118,
-          "height": 13
-        }
-      },
-      {
-        "index": 1,
-        "tag": "button",
-        "role": null,
-        "label": "Plan a day",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1350,
-          "y": 34
-        },
-        "box": {
-          "x": 1328,
-          "y": 12,
-          "width": 44,
-          "height": 44
-        }
-      },
-      {
-        "index": 2,
-        "tag": "button",
-        "role": null,
-        "label": "Menu",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1402,
-          "y": 34
-        },
-        "box": {
-          "x": 1380,
-          "y": 12,
-          "width": 44,
-          "height": 44
-        }
-      },
-      {
-        "index": 3,
-        "tag": "a",
-        "role": null,
-        "label": "Manage locations",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1135,
-          "y": -1
-        },
-        "box": {
-          "x": 1090,
-          "y": -10,
-          "width": 89,
-          "height": 17
-        }
-      },
-      {
-        "index": 4,
-        "tag": "select",
-        "role": null,
-        "label": "PREFERRED TRAVEL MODE",
-        "type": null,
-        "value": "no_preference",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 67
-        },
-        "box": {
-          "x": 261,
-          "y": 47,
-          "width": 918,
-          "height": 41
-        }
-      },
-      {
-        "index": 5,
-        "tag": "input",
-        "role": null,
-        "label": "WALKING THRESHOLD (MIN)",
-        "type": "number",
-        "value": "15",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 183
-        },
-        "box": {
-          "x": 261,
-          "y": 162,
-          "width": 918,
-          "height": 42
-        }
-      },
-      {
-        "index": 6,
-        "tag": "input",
-        "role": null,
-        "label": "TAXI SPEND (£)",
-        "type": "number",
-        "value": "15",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 283
-        },
-        "box": {
-          "x": 261,
-          "y": 261,
-          "width": 918,
-          "height": 42
-        }
-      },
-      {
-        "index": 7,
-        "tag": "select",
-        "role": null,
-        "label": "DEFAULT LUGGAGE",
-        "type": null,
-        "value": "none",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 399
-        },
-        "box": {
-          "x": 261,
-          "y": 378,
-          "width": 918,
-          "height": 41
-        }
-      },
-      {
-        "index": 8,
-        "tag": "select",
-        "role": null,
-        "label": "DEFAULT DRIVING ORIGIN",
-        "type": null,
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 497
-        },
-        "box": {
-          "x": 261,
-          "y": 476,
-          "width": 918,
-          "height": 41
-        }
-      },
-      {
-        "index": 9,
-        "tag": "select",
-        "role": null,
-        "label": "DEFAULT RAIL ORIGIN",
-        "type": null,
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 595
-        },
-        "box": {
-          "x": 261,
-          "y": 575,
-          "width": 918,
-          "height": 41
-        }
-      },
-      {
-        "index": 10,
-        "tag": "select",
-        "role": null,
-        "label": "DEFAULT RETURN LOCATION",
-        "type": null,
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 693
-        },
-        "box": {
-          "x": 261,
-          "y": 673,
-          "width": 918,
-          "height": 41
-        }
-      },
-      {
-        "index": 11,
-        "tag": "button",
-        "role": null,
-        "label": "Search a rail station… ▾",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 793
-        },
-        "box": {
-          "x": 261,
-          "y": 771,
-          "width": 918,
-          "height": 45
-        }
-      },
-      {
-        "index": 12,
-        "tag": "button",
-        "role": null,
-        "label": "Search an airport… ▾",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 895
-        },
-        "box": {
-          "x": 261,
-          "y": 873,
-          "width": 918,
-          "height": 45
-        }
-      },
-      {
-        "index": 13,
-        "tag": "a",
-        "role": null,
-        "label": "TODAY",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 467,
-          "y": 964
-        },
-        "box": {
-          "x": 406,
-          "y": 935,
-          "width": 122,
-          "height": 58
-        }
-      },
-      {
-        "index": 14,
-        "tag": "a",
-        "role": null,
-        "label": "PLAN",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 594,
-          "y": 964
-        },
-        "box": {
-          "x": 532,
-          "y": 935,
-          "width": 122,
-          "height": 58
-        }
-      },
-      {
-        "index": 15,
-        "tag": "a",
-        "role": null,
-        "label": "TASKS",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 964
-        },
-        "box": {
-          "x": 659,
-          "y": 935,
-          "width": 122,
-          "height": 58
-        }
-      },
-      {
-        "index": 16,
-        "tag": "a",
-        "role": null,
-        "label": "WALLET",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 846,
-          "y": 964
-        },
-        "box": {
-          "x": 785,
-          "y": 935,
-          "width": 122,
-          "height": 58
-        }
-      },
-      {
-        "index": 17,
-        "tag": "a",
-        "role": null,
-        "label": "NAVIGATE",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 973,
-          "y": 964
-        },
-        "box": {
-          "x": 912,
-          "y": 935,
-          "width": 122,
-          "height": 58
-        }
-      }
-    ],
+    "interactives": [],
     "focused": null,
     "scroll": {
       "x": 0,
-      "y": 850,
+      "y": 0,
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 2638
+      "documentHeight": 1000
     }
   },
   "signals": {
-    "consoleErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 ()",
+      "Failed to load resource: the server responded with a status of 404 ()"
+    ],
     "pageErrors": [],
     "failedRequests": [
       "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
