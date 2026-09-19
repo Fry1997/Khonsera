@@ -4,10 +4,10 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 1,
+  "commandCount": 2,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:51:36.147Z",
+  "updatedAt": "2026-09-19T22:51:41.970Z",
   "url": "https://www.khonsera.com/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 1,
-    "commandNumber": 1,
-    "at": "2026-09-19T22:51:35.767Z",
+    "sequence": 2,
+    "commandNumber": 2,
+    "at": "2026-09-19T22:51:41.813Z",
     "command": {
-      "type": "goto",
-      "path": "/today"
+      "type": "wait",
+      "ms": 1400
     },
     "beforeUrl": "https://www.khonsera.com/today",
     "afterUrl": "https://www.khonsera.com/today",
-    "durationMs": 4524,
+    "durationMs": 1409,
     "error": null
   },
   "screen": {
@@ -304,7 +304,9 @@
   "signals": {
     "consoleErrors": [],
     "pageErrors": [],
-    "failedRequests": [],
+    "failedRequests": [
+      "GET https://www.khonsera.com/wallet?_rsc=3wzelP97OILkGuS4 · net::ERR_ABORTED"
+    ],
     "serverErrors": [],
     "slowRequests": [],
     "blockedNavigations": []
