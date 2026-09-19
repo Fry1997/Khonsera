@@ -4,10 +4,10 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 18,
+  "commandCount": 19,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:56:47.224Z",
+  "updatedAt": "2026-09-19T22:56:51.976Z",
   "url": "https://www.khonsera.com/mileage",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,17 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 18,
-    "commandNumber": 18,
-    "at": "2026-09-19T22:56:47.096Z",
+    "sequence": 19,
+    "commandNumber": 19,
+    "at": "2026-09-19T22:56:51.804Z",
     "command": {
       "type": "click",
-      "x": 875,
-      "y": 242
+      "x": 1131,
+      "y": 543
     },
     "beforeUrl": "https://www.khonsera.com/mileage",
     "afterUrl": "https://www.khonsera.com/mileage",
-    "durationMs": 469,
+    "durationMs": 471,
     "error": null
   },
   "screen": {
@@ -70,19 +70,14 @@
         "text": "Navigate"
       },
       {
+        "top": 520,
+        "left": 1100,
+        "text": "Cancel"
+      },
+      {
         "top": 521,
-        "left": 959,
+        "left": 976,
         "text": "Export CSV"
-      },
-      {
-        "top": 521,
-        "left": 1082,
-        "text": "Add a trip"
-      },
-      {
-        "top": 598,
-        "left": 240,
-        "text": "No trips yet. Record a drive or add one manually."
       },
       {
         "top": 935,
@@ -241,11 +236,11 @@
         "disabled": true,
         "checked": null,
         "center": {
-          "x": 1013,
+          "x": 1030,
           "y": 543
         },
         "box": {
-          "x": 959,
+          "x": 976,
           "y": 521,
           "width": 108,
           "height": 44
@@ -255,24 +250,184 @@
         "index": 7,
         "tag": "button",
         "role": null,
-        "label": "Add a trip",
+        "label": "Cancel",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1131,
-          "y": 543
+          "x": 1139,
+          "y": 542
         },
         "box": {
-          "x": 1082,
-          "y": 521,
-          "width": 97,
+          "x": 1100,
+          "y": 520,
+          "width": 79,
           "height": 44
         }
       },
       {
         "index": 8,
+        "tag": "input",
+        "role": null,
+        "label": "From",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 637
+        },
+        "box": {
+          "x": 257,
+          "y": 615,
+          "width": 926,
+          "height": 44
+        }
+      },
+      {
+        "index": 9,
+        "tag": "input",
+        "role": null,
+        "label": "To",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 689
+        },
+        "box": {
+          "x": 257,
+          "y": 667,
+          "width": 926,
+          "height": 44
+        }
+      },
+      {
+        "index": 10,
+        "tag": "input",
+        "role": null,
+        "label": "",
+        "type": "date",
+        "value": "2026-09-19",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 741
+        },
+        "box": {
+          "x": 257,
+          "y": 719,
+          "width": 926,
+          "height": 45
+        }
+      },
+      {
+        "index": 11,
+        "tag": "input",
+        "role": null,
+        "label": "Miles",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 302,
+          "y": 794
+        },
+        "box": {
+          "x": 257,
+          "y": 772,
+          "width": 90,
+          "height": 44
+        }
+      },
+      {
+        "index": 12,
+        "tag": "select",
+        "role": null,
+        "label": "Car Motorcycle Bicycle",
+        "type": null,
+        "value": "car",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 846
+        },
+        "box": {
+          "x": 257,
+          "y": 824,
+          "width": 926,
+          "height": 44
+        }
+      },
+      {
+        "index": 13,
+        "tag": "select",
+        "role": null,
+        "label": "Business Personal",
+        "type": null,
+        "value": "business",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 898
+        },
+        "box": {
+          "x": 257,
+          "y": 876,
+          "width": 926,
+          "height": 44
+        }
+      },
+      {
+        "index": 14,
+        "tag": "select",
+        "role": null,
+        "label": "Fellow employees carried (5p/mile each)",
+        "type": null,
+        "value": "0",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 950
+        },
+        "box": {
+          "x": 257,
+          "y": 928,
+          "width": 926,
+          "height": 44
+        }
+      },
+      {
+        "index": 15,
+        "tag": "input",
+        "role": null,
+        "label": "Purpose (HMRC needs this)",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 1002
+        },
+        "box": {
+          "x": 257,
+          "y": 980,
+          "width": 926,
+          "height": 44
+        }
+      },
+      {
+        "index": 16,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -292,7 +447,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 17,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -312,7 +467,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 18,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -332,7 +487,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 19,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -352,7 +507,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 20,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -375,10 +530,10 @@
     "focused": {
       "tag": "button",
       "role": null,
-      "label": "Record a drive",
+      "label": "Cancel",
       "center": {
-        "x": 965,
-        "y": 242
+        "x": 1139,
+        "y": 542
       }
     },
     "scroll": {
@@ -387,7 +542,7 @@
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 1000
+      "documentHeight": 1191
     }
   },
   "signals": {
