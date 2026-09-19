@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 11,
+  "commandCount": 12,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:05:54.849Z",
+  "updatedAt": "2026-09-19T22:06:05.865Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,17 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 11,
-    "commandNumber": 11,
-    "at": "2026-09-19T22:05:54.638Z",
+    "sequence": 12,
+    "commandNumber": 12,
+    "at": "2026-09-19T22:06:05.646Z",
     "command": {
       "type": "click",
-      "x": 741,
-      "y": 172
+      "x": 548,
+      "y": 265
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 463,
+    "durationMs": 468,
     "error": null
   },
   "screen": {
@@ -45,7 +45,7 @@
         "text": "Day tools Budget, sharing, constraints and additions +"
       },
       {
-        "top": 160,
+        "top": 157,
         "left": 184,
         "text": "KQA-UX-001 · Chat pilot · 31 · desktop Rename"
       },
@@ -60,14 +60,9 @@
         "text": "Add expense"
       },
       {
-        "top": 212,
+        "top": 209,
         "left": 184,
         "text": "Set your base — where the day starts & ends SET"
-      },
-      {
-        "top": 249,
-        "left": 184,
-        "text": "+ What’s this day for?"
       },
       {
         "top": 328,
@@ -80,7 +75,7 @@
         "text": "Arrived safely"
       },
       {
-        "top": 356,
+        "top": 358,
         "left": 189,
         "text": "Getting ready 1 to sort"
       },
@@ -95,17 +90,17 @@
         "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
       },
       {
-        "top": 438,
+        "top": 441,
         "left": 806,
         "text": "DONE"
       },
       {
-        "top": 438,
+        "top": 441,
         "left": 842,
         "text": "DISMISS"
       },
       {
-        "top": 490,
+        "top": 492,
         "left": 404,
         "text": "Add"
       },
@@ -227,11 +222,11 @@
         "checked": null,
         "center": {
           "x": 548,
-          "y": 185
+          "y": 182
         },
         "box": {
           "x": 184,
-          "y": 164,
+          "y": 161,
           "width": 728,
           "height": 42
         }
@@ -247,22 +242,22 @@
         "checked": null,
         "center": {
           "x": 337,
-          "y": 221
+          "y": 219
         },
         "box": {
           "x": 184,
-          "y": 212,
+          "y": 209,
           "width": 307,
           "height": 20
         }
       },
       {
         "index": 5,
-        "tag": "button",
+        "tag": "input",
         "role": null,
-        "label": "+ What’s this day for?",
-        "type": null,
-        "value": null,
+        "label": "The day's intention",
+        "type": "text",
+        "value": "",
         "disabled": false,
         "checked": null,
         "center": {
@@ -271,9 +266,9 @@
         },
         "box": {
           "x": 184,
-          "y": 249,
+          "y": 246,
           "width": 728,
-          "height": 33
+          "height": 38
         }
       },
       {
@@ -287,11 +282,11 @@
         "checked": null,
         "center": {
           "x": 275,
-          "y": 368
+          "y": 371
         },
         "box": {
           "x": 189,
-          "y": 356,
+          "y": 358,
           "width": 172,
           "height": 26
         }
@@ -307,11 +302,11 @@
         "checked": null,
         "center": {
           "x": 820,
-          "y": 447
+          "y": 450
         },
         "box": {
           "x": 806,
-          "y": 438,
+          "y": 441,
           "width": 28,
           "height": 18
         }
@@ -327,11 +322,11 @@
         "checked": null,
         "center": {
           "x": 867,
-          "y": 447
+          "y": 450
         },
         "box": {
           "x": 842,
-          "y": 438,
+          "y": 441,
           "width": 49,
           "height": 18
         }
@@ -347,11 +342,11 @@
         "checked": null,
         "center": {
           "x": 294,
-          "y": 500
+          "y": 503
         },
         "box": {
           "x": 189,
-          "y": 478,
+          "y": 481,
           "width": 209,
           "height": 44
         }
@@ -367,11 +362,11 @@
         "checked": null,
         "center": {
           "x": 432,
-          "y": 500
+          "y": 503
         },
         "box": {
           "x": 404,
-          "y": 490,
+          "y": 492,
           "width": 56,
           "height": 22
         }
@@ -698,12 +693,12 @@
       }
     ],
     "focused": {
-      "tag": "button",
+      "tag": "input",
       "role": null,
-      "label": "Plan a day",
+      "label": "The day's intention",
       "center": {
-        "x": 1350,
-        "y": 34
+        "x": 548,
+        "y": 265
       }
     },
     "scroll": {
