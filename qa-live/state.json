@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 5,
+  "commandCount": 6,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:03:17.860Z",
+  "updatedAt": "2026-09-19T22:03:31.433Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,114 +19,124 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 5,
-    "commandNumber": 5,
-    "at": "2026-09-19T22:03:17.621Z",
+    "sequence": 6,
+    "commandNumber": 6,
+    "at": "2026-09-19T22:03:31.234Z",
     "command": {
-      "type": "goto",
-      "path": "/plan/749554a4-5940-4abd-9de9-0d5de028f08b"
+      "type": "scroll",
+      "deltaY": 650
     },
-    "beforeUrl": "https://www.khonsera.com/navigate",
+    "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 3277,
+    "durationMs": 463,
     "error": null
   },
   "screen": {
     "viewportText": [
+      {
+        "top": -15,
+        "left": 962,
+        "text": "Day tools Budget, sharing, constraints and additions +"
+      },
       {
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
       },
       {
-        "top": 84,
-        "left": 962,
-        "text": "Day tools Budget, sharing, constraints and additions +"
-      },
-      {
-        "top": 160,
+        "top": 61,
         "left": 184,
         "text": "KQA-UX-001 · Chat pilot · 31 · desktop Rename"
       },
       {
-        "top": 199,
+        "top": 100,
         "left": 1081,
         "text": "Set cap"
       },
       {
-        "top": 199,
+        "top": 100,
         "left": 1158,
         "text": "Add expense"
       },
       {
-        "top": 212,
+        "top": 113,
         "left": 184,
         "text": "Set your base — where the day starts & ends SET"
       },
       {
-        "top": 249,
+        "top": 150,
         "left": 184,
         "text": "+ What’s this day for?"
       },
       {
-        "top": 328,
+        "top": 229,
         "left": 983,
         "text": "Running late"
       },
       {
-        "top": 328,
+        "top": 229,
         "left": 1099,
         "text": "Arrived safely"
       },
       {
-        "top": 356,
+        "top": 257,
         "left": 189,
         "text": "Getting ready 1 to sort"
       },
       {
-        "top": 376,
+        "top": 277,
         "left": 983,
         "text": "On my way"
       },
       {
-        "top": 431,
+        "top": 332,
         "left": 983,
         "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
       },
       {
-        "top": 438,
+        "top": 339,
         "left": 806,
         "text": "DONE"
       },
       {
-        "top": 438,
+        "top": 339,
         "left": 842,
         "text": "DISMISS"
       },
       {
-        "top": 490,
+        "top": 391,
         "left": 404,
         "text": "Add"
       },
       {
-        "top": 724,
+        "top": 625,
         "left": 987,
         "text": "For today"
       },
       {
-        "top": 724,
+        "top": 625,
         "left": 1067,
         "text": "Set hours"
       },
       {
-        "top": 826,
+        "top": 727,
         "left": 983,
         "text": "Share live location"
       },
       {
-        "top": 907,
+        "top": 808,
         "left": 962,
         "text": "CONSTRAINTS No constraints set +"
+      },
+      {
+        "top": 913,
+        "left": 979,
+        "text": "+ ADD"
+      },
+      {
+        "top": 913,
+        "left": 1120,
+        "text": "↧ SCAN EMAIL FOR TICKETS"
       },
       {
         "top": 935,
@@ -152,6 +162,16 @@
         "top": 935,
         "left": 912,
         "text": "NAVIGATE"
+      },
+      {
+        "top": 988,
+        "left": 979,
+        "text": "+ FROM CALENDAR"
+      },
+      {
+        "top": 988,
+        "left": 1120,
+        "text": "Find a flight"
       }
     ],
     "interactives": [
@@ -226,11 +246,11 @@
         "checked": null,
         "center": {
           "x": 548,
-          "y": 185
+          "y": 86
         },
         "box": {
           "x": 184,
-          "y": 164,
+          "y": 65,
           "width": 728,
           "height": 42
         }
@@ -246,11 +266,11 @@
         "checked": null,
         "center": {
           "x": 337,
-          "y": 221
+          "y": 122
         },
         "box": {
           "x": 184,
-          "y": 212,
+          "y": 113,
           "width": 307,
           "height": 20
         }
@@ -266,11 +286,11 @@
         "checked": null,
         "center": {
           "x": 548,
-          "y": 265
+          "y": 166
         },
         "box": {
           "x": 184,
-          "y": 249,
+          "y": 150,
           "width": 728,
           "height": 33
         }
@@ -286,11 +306,11 @@
         "checked": null,
         "center": {
           "x": 275,
-          "y": 368
+          "y": 269
         },
         "box": {
           "x": 189,
-          "y": 356,
+          "y": 257,
           "width": 172,
           "height": 26
         }
@@ -306,11 +326,11 @@
         "checked": null,
         "center": {
           "x": 820,
-          "y": 447
+          "y": 348
         },
         "box": {
           "x": 806,
-          "y": 438,
+          "y": 339,
           "width": 28,
           "height": 18
         }
@@ -326,11 +346,11 @@
         "checked": null,
         "center": {
           "x": 867,
-          "y": 447
+          "y": 348
         },
         "box": {
           "x": 842,
-          "y": 438,
+          "y": 339,
           "width": 49,
           "height": 18
         }
@@ -346,11 +366,11 @@
         "checked": null,
         "center": {
           "x": 294,
-          "y": 500
+          "y": 401
         },
         "box": {
           "x": 189,
-          "y": 478,
+          "y": 379,
           "width": 209,
           "height": 44
         }
@@ -366,11 +386,11 @@
         "checked": null,
         "center": {
           "x": 432,
-          "y": 500
+          "y": 401
         },
         "box": {
           "x": 404,
-          "y": 490,
+          "y": 391,
           "width": 56,
           "height": 22
         }
@@ -386,11 +406,11 @@
         "checked": null,
         "center": {
           "x": 1026,
-          "y": 223
+          "y": 124
         },
         "box": {
           "x": 979,
-          "y": 201,
+          "y": 102,
           "width": 94,
           "height": 44
         }
@@ -406,11 +426,11 @@
         "checked": null,
         "center": {
           "x": 1115,
-          "y": 223
+          "y": 124
         },
         "box": {
           "x": 1081,
-          "y": 199,
+          "y": 100,
           "width": 69,
           "height": 48
         }
@@ -426,11 +446,11 @@
         "checked": null,
         "center": {
           "x": 1205,
-          "y": 223
+          "y": 124
         },
         "box": {
           "x": 1158,
-          "y": 199,
+          "y": 100,
           "width": 94,
           "height": 48
         }
@@ -446,11 +466,11 @@
         "checked": null,
         "center": {
           "x": 1037,
-          "y": 348
+          "y": 249
         },
         "box": {
           "x": 983,
-          "y": 328,
+          "y": 229,
           "width": 108,
           "height": 40
         }
@@ -466,11 +486,11 @@
         "checked": null,
         "center": {
           "x": 1157,
-          "y": 348
+          "y": 249
         },
         "box": {
           "x": 1099,
-          "y": 328,
+          "y": 229,
           "width": 116,
           "height": 40
         }
@@ -486,11 +506,11 @@
         "checked": null,
         "center": {
           "x": 1033,
-          "y": 395
+          "y": 296
         },
         "box": {
           "x": 983,
-          "y": 376,
+          "y": 277,
           "width": 99,
           "height": 40
         }
@@ -506,11 +526,11 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 686
+          "y": 587
         },
         "box": {
           "x": 983,
-          "y": 664,
+          "y": 565,
           "width": 265,
           "height": 44
         }
@@ -526,11 +546,11 @@
         "checked": null,
         "center": {
           "x": 1024,
-          "y": 740
+          "y": 641
         },
         "box": {
           "x": 987,
-          "y": 724,
+          "y": 625,
           "width": 74,
           "height": 32
         }
@@ -546,11 +566,11 @@
         "checked": null,
         "center": {
           "x": 1103,
-          "y": 740
+          "y": 641
         },
         "box": {
           "x": 1067,
-          "y": 724,
+          "y": 625,
           "width": 72,
           "height": 32
         }
@@ -566,11 +586,11 @@
         "checked": null,
         "center": {
           "x": 1063,
-          "y": 848
+          "y": 749
         },
         "box": {
           "x": 983,
-          "y": 826,
+          "y": 727,
           "width": 159,
           "height": 44
         }
@@ -586,17 +606,97 @@
         "checked": null,
         "center": {
           "x": 1116,
-          "y": 931
+          "y": 832
         },
         "box": {
           "x": 962,
-          "y": 907,
+          "y": 808,
           "width": 307,
           "height": 48
         }
       },
       {
         "index": 22,
+        "tag": "button",
+        "role": null,
+        "label": "+ ADD",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1045,
+          "y": 932
+        },
+        "box": {
+          "x": 979,
+          "y": 913,
+          "width": 133,
+          "height": 39
+        }
+      },
+      {
+        "index": 23,
+        "tag": "button",
+        "role": null,
+        "label": "↧ SCAN EMAIL FOR TICKETS",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1186,
+          "y": 946
+        },
+        "box": {
+          "x": 1120,
+          "y": 913,
+          "width": 133,
+          "height": 68
+        }
+      },
+      {
+        "index": 24,
+        "tag": "button",
+        "role": null,
+        "label": "+ FROM CALENDAR",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1045,
+          "y": 1014
+        },
+        "box": {
+          "x": 979,
+          "y": 988,
+          "width": 133,
+          "height": 51
+        }
+      },
+      {
+        "index": 25,
+        "tag": "button",
+        "role": null,
+        "label": "Find a flight",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1186,
+          "y": 1014
+        },
+        "box": {
+          "x": 1120,
+          "y": 988,
+          "width": 133,
+          "height": 51
+        }
+      },
+      {
+        "index": 26,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -616,7 +716,7 @@
         }
       },
       {
-        "index": 23,
+        "index": 27,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -636,7 +736,7 @@
         }
       },
       {
-        "index": 24,
+        "index": 28,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -656,7 +756,7 @@
         }
       },
       {
-        "index": 25,
+        "index": 29,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -676,7 +776,7 @@
         }
       },
       {
-        "index": 26,
+        "index": 30,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -699,7 +799,7 @@
     "focused": null,
     "scroll": {
       "x": 0,
-      "y": 0,
+      "y": 99,
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
