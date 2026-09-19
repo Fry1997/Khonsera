@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 15,
+  "commandCount": 16,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:54:32.752Z",
-  "url": "https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5",
+  "updatedAt": "2026-09-19T22:56:25.786Z",
+  "url": "https://www.khonsera.com/mileage",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 15,
-    "commandNumber": 15,
-    "at": "2026-09-19T22:54:32.534Z",
+    "sequence": 16,
+    "commandNumber": 16,
+    "at": "2026-09-19T22:56:25.649Z",
     "command": {
-      "type": "click",
-      "x": 937,
-      "y": 444
+      "type": "goto",
+      "path": "/mileage"
     },
     "beforeUrl": "https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5",
-    "afterUrl": "https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5",
-    "durationMs": 469,
+    "afterUrl": "https://www.khonsera.com/mileage",
+    "durationMs": 2346,
     "error": null
   },
   "screen": {
@@ -40,119 +39,49 @@
         "text": "KHONSERA"
       },
       {
-        "top": 84,
-        "left": 962,
-        "text": "Day tools Budget, sharing, constraints and additions +"
+        "top": 122,
+        "left": 256,
+        "text": "Mileage"
       },
       {
-        "top": 104,
-        "left": 184,
-        "text": "KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium Rename"
+        "top": 220,
+        "left": 1052,
+        "text": "Record a drive"
       },
       {
-        "top": 198,
-        "left": 184,
-        "text": "Set your base — where the day starts & ends SET"
+        "top": 333,
+        "left": 277,
+        "text": "No trips yet"
       },
       {
-        "top": 199,
-        "left": 1081,
-        "text": "Set cap"
+        "top": 374,
+        "left": 277,
+        "text": "Drive legs from a plan or trips you record here become your mileage ledger."
       },
       {
-        "top": 199,
-        "left": 1158,
-        "text": "Add expense"
+        "top": 399,
+        "left": 277,
+        "text": "Open plan"
       },
       {
-        "top": 235,
-        "left": 184,
-        "text": "+ What’s this day for?"
+        "top": 399,
+        "left": 384,
+        "text": "Navigate"
       },
       {
-        "top": 328,
-        "left": 983,
-        "text": "Running late"
+        "top": 521,
+        "left": 959,
+        "text": "Export CSV"
       },
       {
-        "top": 328,
-        "left": 1099,
-        "text": "Arrived safely"
+        "top": 521,
+        "left": 1082,
+        "text": "Add a trip"
       },
       {
-        "top": 376,
-        "left": 983,
-        "text": "On my way"
-      },
-      {
-        "top": 431,
-        "left": 983,
-        "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
-      },
-      {
-        "top": 440,
-        "left": 790,
-        "text": "PERSONAL"
-      },
-      {
-        "top": 480,
-        "left": 231,
-        "text": "Project review — KQA-UX-001 Rename"
-      },
-      {
-        "top": 557,
-        "left": 231,
-        "text": "ARRIVE BY 08:33"
-      },
-      {
-        "top": 557,
-        "left": 453,
-        "text": "FOR 57m"
-      },
-      {
-        "top": 647,
-        "left": 209,
-        "text": "Notes Add ›"
-      },
-      {
-        "top": 724,
-        "left": 987,
-        "text": "For today"
-      },
-      {
-        "top": 724,
-        "left": 1067,
-        "text": "Set hours"
-      },
-      {
-        "top": 741,
-        "left": 189,
-        "text": "Getting ready 1 to sort"
-      },
-      {
-        "top": 824,
-        "left": 806,
-        "text": "DONE"
-      },
-      {
-        "top": 824,
-        "left": 842,
-        "text": "DISMISS"
-      },
-      {
-        "top": 826,
-        "left": 983,
-        "text": "Share live location"
-      },
-      {
-        "top": 875,
-        "left": 404,
-        "text": "Add"
-      },
-      {
-        "top": 907,
-        "left": 962,
-        "text": "CONSTRAINTS No constraints set +"
+        "top": 598,
+        "left": 240,
+        "text": "No trips yet. Record a drive or add one manually."
       },
       {
         "top": 935,
@@ -245,484 +174,104 @@
         "index": 3,
         "tag": "button",
         "role": null,
-        "label": "Rename this day",
+        "label": "Record a drive",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 548,
-          "y": 150
+          "x": 1118,
+          "y": 242
         },
         "box": {
-          "x": 184,
-          "y": 108,
-          "width": 728,
-          "height": 84
+          "x": 1052,
+          "y": 220,
+          "width": 131,
+          "height": 44
         }
       },
       {
         "index": 4,
-        "tag": "button",
+        "tag": "a",
         "role": null,
-        "label": "Set your base — where the day starts & ends SET",
+        "label": "Open plan",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 337,
-          "y": 208
+          "x": 326,
+          "y": 421
         },
         "box": {
-          "x": 184,
-          "y": 198,
-          "width": 307,
-          "height": 20
+          "x": 277,
+          "y": 399,
+          "width": 99,
+          "height": 44
         }
       },
       {
         "index": 5,
-        "tag": "button",
+        "tag": "a",
         "role": null,
-        "label": "+ What’s this day for?",
+        "label": "Navigate",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 548,
-          "y": 252
+          "x": 429,
+          "y": 421
         },
         "box": {
-          "x": 184,
-          "y": 235,
-          "width": 728,
-          "height": 33
+          "x": 384,
+          "y": 399,
+          "width": 91,
+          "height": 44
         }
       },
       {
         "index": 6,
         "tag": "button",
         "role": null,
-        "label": "This event is personal — tap to make it work",
+        "label": "Export CSV",
         "type": null,
         "value": null,
-        "disabled": false,
+        "disabled": true,
         "checked": null,
         "center": {
-          "x": 839,
-          "y": 454
+          "x": 1013,
+          "y": 543
         },
         "box": {
-          "x": 790,
-          "y": 440,
-          "width": 99,
-          "height": 28
+          "x": 959,
+          "y": 521,
+          "width": 108,
+          "height": 44
         }
       },
       {
         "index": 7,
         "tag": "button",
         "role": null,
-        "label": "Rename",
+        "label": "Add a trip",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 560,
-          "y": 502
+          "x": 1131,
+          "y": 543
         },
         "box": {
-          "x": 231,
-          "y": 480,
-          "width": 658,
+          "x": 1082,
+          "y": 521,
+          "width": 97,
           "height": 44
         }
       },
       {
         "index": 8,
-        "tag": "button",
-        "role": null,
-        "label": "ARRIVE BY 08:33",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 338,
-          "y": 590
-        },
-        "box": {
-          "x": 231,
-          "y": 557,
-          "width": 214,
-          "height": 66
-        }
-      },
-      {
-        "index": 9,
-        "tag": "button",
-        "role": null,
-        "label": "FOR 57m",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 560,
-          "y": 590
-        },
-        "box": {
-          "x": 453,
-          "y": 557,
-          "width": 214,
-          "height": 66
-        }
-      },
-      {
-        "index": 10,
-        "tag": "button",
-        "role": null,
-        "label": "Notes Add ›",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 560,
-          "y": 674
-        },
-        "box": {
-          "x": 209,
-          "y": 647,
-          "width": 702,
-          "height": 55
-        }
-      },
-      {
-        "index": 11,
-        "tag": "button",
-        "role": null,
-        "label": "Getting ready 1 to sort",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 275,
-          "y": 754
-        },
-        "box": {
-          "x": 189,
-          "y": 741,
-          "width": 172,
-          "height": 26
-        }
-      },
-      {
-        "index": 12,
-        "tag": "button",
-        "role": null,
-        "label": "DONE",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 820,
-          "y": 833
-        },
-        "box": {
-          "x": 806,
-          "y": 824,
-          "width": 28,
-          "height": 18
-        }
-      },
-      {
-        "index": 13,
-        "tag": "button",
-        "role": null,
-        "label": "DISMISS",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 867,
-          "y": 833
-        },
-        "box": {
-          "x": 842,
-          "y": 824,
-          "width": 49,
-          "height": 18
-        }
-      },
-      {
-        "index": 14,
-        "tag": "input",
-        "role": null,
-        "label": "Add a prep item — e.g. passport, charger",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 294,
-          "y": 886
-        },
-        "box": {
-          "x": 189,
-          "y": 864,
-          "width": 209,
-          "height": 44
-        }
-      },
-      {
-        "index": 15,
-        "tag": "button",
-        "role": null,
-        "label": "Add",
-        "type": null,
-        "value": null,
-        "disabled": true,
-        "checked": null,
-        "center": {
-          "x": 432,
-          "y": 886
-        },
-        "box": {
-          "x": 404,
-          "y": 875,
-          "width": 56,
-          "height": 22
-        }
-      },
-      {
-        "index": 16,
-        "tag": "input",
-        "role": null,
-        "label": "Set a cap",
-        "type": "number",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1026,
-          "y": 223
-        },
-        "box": {
-          "x": 979,
-          "y": 201,
-          "width": 94,
-          "height": 44
-        }
-      },
-      {
-        "index": 17,
-        "tag": "button",
-        "role": null,
-        "label": "Set cap",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1115,
-          "y": 223
-        },
-        "box": {
-          "x": 1081,
-          "y": 199,
-          "width": 69,
-          "height": 48
-        }
-      },
-      {
-        "index": 18,
-        "tag": "button",
-        "role": null,
-        "label": "Add expense",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1205,
-          "y": 223
-        },
-        "box": {
-          "x": 1158,
-          "y": 199,
-          "width": 94,
-          "height": 48
-        }
-      },
-      {
-        "index": 19,
-        "tag": "button",
-        "role": null,
-        "label": "Running late",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1037,
-          "y": 348
-        },
-        "box": {
-          "x": 983,
-          "y": 328,
-          "width": 108,
-          "height": 40
-        }
-      },
-      {
-        "index": 20,
-        "tag": "button",
-        "role": null,
-        "label": "Arrived safely",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1157,
-          "y": 348
-        },
-        "box": {
-          "x": 1099,
-          "y": 328,
-          "width": 116,
-          "height": 40
-        }
-      },
-      {
-        "index": 21,
-        "tag": "button",
-        "role": null,
-        "label": "On my way",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1033,
-          "y": 395
-        },
-        "box": {
-          "x": 983,
-          "y": 376,
-          "width": 99,
-          "height": 40
-        }
-      },
-      {
-        "index": 22,
-        "tag": "input",
-        "role": null,
-        "label": "Share with (e.g. Mum)",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1116,
-          "y": 686
-        },
-        "box": {
-          "x": 983,
-          "y": 664,
-          "width": 265,
-          "height": 44
-        }
-      },
-      {
-        "index": 23,
-        "tag": "button",
-        "role": null,
-        "label": "For today",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1024,
-          "y": 740
-        },
-        "box": {
-          "x": 987,
-          "y": 724,
-          "width": 74,
-          "height": 32
-        }
-      },
-      {
-        "index": 24,
-        "tag": "button",
-        "role": null,
-        "label": "Set hours",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1103,
-          "y": 740
-        },
-        "box": {
-          "x": 1067,
-          "y": 724,
-          "width": 72,
-          "height": 32
-        }
-      },
-      {
-        "index": 25,
-        "tag": "button",
-        "role": null,
-        "label": "Share live location",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1063,
-          "y": 848
-        },
-        "box": {
-          "x": 983,
-          "y": 826,
-          "width": 159,
-          "height": 44
-        }
-      },
-      {
-        "index": 26,
-        "tag": "button",
-        "role": null,
-        "label": "CONSTRAINTS No constraints set +",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1116,
-          "y": 931
-        },
-        "box": {
-          "x": 962,
-          "y": 907,
-          "width": 307,
-          "height": 48
-        }
-      },
-      {
-        "index": 27,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -742,7 +291,7 @@
         }
       },
       {
-        "index": 28,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -762,7 +311,7 @@
         }
       },
       {
-        "index": 29,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -782,7 +331,7 @@
         }
       },
       {
-        "index": 30,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -802,7 +351,7 @@
         }
       },
       {
-        "index": 31,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -829,21 +378,21 @@
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 1099
+      "documentHeight": 1000
     }
   },
   "signals": {
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/today?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED",
       "GET https://www.khonsera.com/locations?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan/aa8e68a3-5231-4c73-8ef5-273459d01600?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5?_rsc=0hsAL4s2liL-lni5 · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5?_rsc=0hsAL4s2liL-lni5 · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/navigate?_rsc=xwwdWv7nnfpNoOTL · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
