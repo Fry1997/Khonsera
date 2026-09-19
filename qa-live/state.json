@@ -4,12 +4,12 @@
   "runId": "35474833738",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 3,
+  "commandCount": 4,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:59:57.059Z",
-  "updatedAt": "2026-09-19T23:01:02.644Z",
-  "url": "https://www.khonsera.com/wallet",
-  "title": "Khonsera — travel days that run on time.",
+  "updatedAt": "2026-09-19T23:01:17.953Z",
+  "url": "https://www.khonsera.com/pastimes",
+  "title": "Pastimes",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,16 +19,16 @@
   "controlBranch": "qa-control-35474833738",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 3,
-    "commandNumber": 3,
-    "at": "2026-09-19T23:01:02.480Z",
+    "sequence": 4,
+    "commandNumber": 4,
+    "at": "2026-09-19T23:01:17.780Z",
     "command": {
       "type": "goto",
-      "path": "/wallet"
+      "path": "/pastimes"
     },
-    "beforeUrl": "https://www.khonsera.com/expenses",
-    "afterUrl": "https://www.khonsera.com/wallet",
-    "durationMs": 2121,
+    "beforeUrl": "https://www.khonsera.com/wallet",
+    "afterUrl": "https://www.khonsera.com/pastimes",
+    "durationMs": 2255,
     "error": null
   },
   "screen": {
@@ -39,24 +39,44 @@
         "text": "KHONSERA"
       },
       {
-        "top": 122,
-        "left": 256,
-        "text": "Your tickets"
+        "top": 115,
+        "left": 240,
+        "text": "The table"
       },
       {
-        "top": 264,
-        "left": 353,
-        "text": "Your tickets will live here"
+        "top": 181,
+        "left": 240,
+        "text": "Something for the gate, the platform, the seat. A quiet hand to play while the miles pass."
       },
       {
-        "top": 305,
-        "left": 353,
-        "text": "Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
+        "top": 247,
+        "left": 242,
+        "text": "GAMES"
       },
       {
-        "top": 357,
-        "left": 353,
-        "text": "Connect Gmail"
+        "top": 274,
+        "left": 240,
+        "text": "Solitaire A quiet hand of Klondike."
+      },
+      {
+        "top": 274,
+        "left": 726,
+        "text": "Sudoku Numbers to settle into."
+      },
+      {
+        "top": 372,
+        "left": 240,
+        "text": "Gin Rummy Melds, knocks, and gins."
+      },
+      {
+        "top": 372,
+        "left": 726,
+        "text": "Crosswords A grid of small clues. SOON"
+      },
+      {
+        "top": 476,
+        "left": 240,
+        "text": "Each game plays offline. Nothing here needs signal."
       },
       {
         "top": 935,
@@ -149,24 +169,64 @@
         "index": 3,
         "tag": "a",
         "role": null,
-        "label": "Connect Gmail",
+        "label": "Solitaire A quiet hand of Klondike.",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 417,
-          "y": 379
+          "x": 477,
+          "y": 317
         },
         "box": {
-          "x": 353,
-          "y": 357,
-          "width": 128,
-          "height": 44
+          "x": 240,
+          "y": 274,
+          "width": 474,
+          "height": 86
         }
       },
       {
         "index": 4,
+        "tag": "a",
+        "role": null,
+        "label": "Sudoku Numbers to settle into.",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 963,
+          "y": 317
+        },
+        "box": {
+          "x": 726,
+          "y": 274,
+          "width": 474,
+          "height": 86
+        }
+      },
+      {
+        "index": 5,
+        "tag": "a",
+        "role": null,
+        "label": "Gin Rummy Melds, knocks, and gins.",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 477,
+          "y": 415
+        },
+        "box": {
+          "x": 240,
+          "y": 372,
+          "width": 474,
+          "height": 86
+        }
+      },
+      {
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -186,7 +246,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -206,7 +266,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -226,7 +286,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -246,7 +306,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -284,7 +344,9 @@
       "GET https://www.khonsera.com/plan?_rsc=vsQ1n3xvNKlPffJ5 · net::ERR_ABORTED",
       "GET https://www.khonsera.com/today?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/pastimes/solitaire?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/pastimes/sudoku?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
