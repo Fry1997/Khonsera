@@ -4,11 +4,11 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 12,
+  "commandCount": 13,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:06:05.865Z",
-  "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
+  "updatedAt": "2026-09-19T22:06:17.739Z",
+  "url": "https://www.khonsera.com/settings",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 12,
-    "commandNumber": 12,
-    "at": "2026-09-19T22:06:05.646Z",
+    "sequence": 13,
+    "commandNumber": 13,
+    "at": "2026-09-19T22:06:17.553Z",
     "command": {
-      "type": "click",
-      "x": 548,
-      "y": 265
+      "type": "goto",
+      "path": "/settings"
     },
     "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 468,
+    "afterUrl": "https://www.khonsera.com/settings",
+    "durationMs": 3302,
     "error": null
   },
   "screen": {
@@ -40,89 +39,99 @@
         "text": "KHONSERA"
       },
       {
-        "top": 84,
-        "left": 962,
-        "text": "Day tools Budget, sharing, constraints and additions +"
+        "top": 101,
+        "left": 256,
+        "text": "Settings"
       },
       {
-        "top": 157,
-        "left": 184,
-        "text": "KQA-UX-001 · Chat pilot · 31 · desktop Rename"
+        "top": 159,
+        "left": 256,
+        "text": "Your defaults — used when generating travel options."
       },
       {
-        "top": 199,
-        "left": 1081,
-        "text": "Set cap"
+        "top": 239,
+        "left": 261,
+        "text": "Account"
       },
       {
-        "top": 199,
-        "left": 1158,
-        "text": "Add expense"
+        "top": 239,
+        "left": 751,
+        "text": "Google Calendar"
       },
       {
-        "top": 209,
-        "left": 184,
-        "text": "Set your base — where the day starts & ends SET"
-      },
-      {
-        "top": 328,
-        "left": 983,
-        "text": "Running late"
-      },
-      {
-        "top": 328,
-        "left": 1099,
-        "text": "Arrived safely"
-      },
-      {
-        "top": 358,
-        "left": 189,
-        "text": "Getting ready 1 to sort"
-      },
-      {
-        "top": 376,
-        "left": 983,
-        "text": "On my way"
-      },
-      {
-        "top": 431,
-        "left": 983,
-        "text": "Your live location is yours — shared only with whom you choose, never a workspace ."
-      },
-      {
-        "top": 441,
-        "left": 806,
-        "text": "DONE"
-      },
-      {
-        "top": 441,
-        "left": 842,
-        "text": "DISMISS"
-      },
-      {
-        "top": 492,
-        "left": 404,
-        "text": "Add"
-      },
-      {
-        "top": 724,
-        "left": 987,
-        "text": "For today"
-      },
-      {
-        "top": 724,
+        "top": 239,
         "left": 1067,
-        "text": "Set hours"
+        "text": "Connect Google Calendar"
       },
       {
-        "top": 826,
-        "left": 983,
-        "text": "Share live location"
+        "top": 258,
+        "left": 261,
+        "text": "cjfry97+khonsera-qa@gmail.com"
       },
       {
-        "top": 907,
-        "left": 962,
-        "text": "CONSTRAINTS No constraints set +"
+        "top": 258,
+        "left": 751,
+        "text": "Connect to check calendar conflicts when planning visits and auto-create travel + meeting blocks when you confirm."
+      },
+      {
+        "top": 280,
+        "left": 261,
+        "text": "Staff account"
+      },
+      {
+        "top": 308,
+        "left": 261,
+        "text": "Switch Today between your real itinerary and an isolated staff scenario. The demo uses the same production components and live services, but never reads from or writes to your plan."
+      },
+      {
+        "top": 368,
+        "left": 261,
+        "text": "Demo scenario Showing your real Today OFF"
+      },
+      {
+        "top": 437,
+        "left": 261,
+        "text": "When on, Today uses isolated staff scenario data. When off, Today reads your actual itinerary. Both use the same production components; the demo cannot write to your plan."
+      },
+      {
+        "top": 529,
+        "left": 261,
+        "text": "Gmail Import"
+      },
+      {
+        "top": 529,
+        "left": 606,
+        "text": "Connect Gmail"
+      },
+      {
+        "top": 548,
+        "left": 261,
+        "text": "Connect your Gmail to automatically find booking confirmations from Trainline, LNER, Avanti, airlines, Booking.com, and other providers. Read-only access — Khonsera never sends or modifies your email."
+      },
+      {
+        "top": 680,
+        "left": 261,
+        "text": "International"
+      },
+      {
+        "top": 716,
+        "left": 1095,
+        "text": "Save"
+      },
+      {
+        "top": 839,
+        "left": 261,
+        "text": "Travel preferences"
+      },
+      {
+        "top": 840,
+        "left": 1090,
+        "text": "Manage locations"
+      },
+      {
+        "top": 875,
+        "left": 261,
+        "text": "PREFERRED TRAVEL MODE"
       },
       {
         "top": 935,
@@ -148,6 +157,16 @@
         "top": 935,
         "left": 912,
         "text": "NAVIGATE"
+      },
+      {
+        "top": 944,
+        "left": 261,
+        "text": "Scoring nudge: a +15% tiebreaker toward this mode when it's a close call. Legacy options ('rail', 'mixed', 'compare') are kept for older accounts and treated as 'no preference' by the scorer."
+      },
+      {
+        "top": 990,
+        "left": 261,
+        "text": "WALKING THRESHOLD (MIN)"
       }
     ],
     "interactives": [
@@ -214,385 +233,145 @@
       {
         "index": 3,
         "tag": "button",
-        "role": null,
-        "label": "Rename this day",
+        "role": "switch",
+        "label": "Staff only. Switches Today between your account data and an isolated scenario.",
         "type": null,
         "value": null,
         "disabled": false,
-        "checked": null,
+        "checked": "false",
         "center": {
-          "x": 548,
-          "y": 182
+          "x": 475,
+          "y": 398
         },
         "box": {
-          "x": 184,
-          "y": 161,
-          "width": 728,
-          "height": 42
+          "x": 261,
+          "y": 368,
+          "width": 428,
+          "height": 60
         }
       },
       {
         "index": 4,
-        "tag": "button",
+        "tag": "a",
         "role": null,
-        "label": "Set your base — where the day starts & ends SET",
+        "label": "Connect Google Calendar",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 337,
-          "y": 219
+          "x": 1123,
+          "y": 268
         },
         "box": {
-          "x": 184,
-          "y": 209,
-          "width": 307,
-          "height": 20
+          "x": 1067,
+          "y": 239,
+          "width": 112,
+          "height": 59
         }
       },
       {
         "index": 5,
-        "tag": "input",
+        "tag": "a",
         "role": null,
-        "label": "The day's intention",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 548,
-          "y": 265
-        },
-        "box": {
-          "x": 184,
-          "y": 246,
-          "width": 728,
-          "height": 38
-        }
-      },
-      {
-        "index": 6,
-        "tag": "button",
-        "role": null,
-        "label": "Getting ready 1 to sort",
+        "label": "Connect Gmail",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 275,
-          "y": 371
+          "x": 648,
+          "y": 552
         },
         "box": {
-          "x": 189,
-          "y": 358,
-          "width": 172,
-          "height": 26
+          "x": 606,
+          "y": 529,
+          "width": 83,
+          "height": 46
+        }
+      },
+      {
+        "index": 6,
+        "tag": "select",
+        "role": null,
+        "label": "GBP EUR USD CHF JPY AUD CAD",
+        "type": null,
+        "value": "GBP",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 1052,
+          "y": 738
+        },
+        "box": {
+          "x": 1017,
+          "y": 716,
+          "width": 70,
+          "height": 44
         }
       },
       {
         "index": 7,
         "tag": "button",
         "role": null,
-        "label": "DONE",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 820,
-          "y": 450
-        },
-        "box": {
-          "x": 806,
-          "y": 441,
-          "width": 28,
-          "height": 18
-        }
-      },
-      {
-        "index": 8,
-        "tag": "button",
-        "role": null,
-        "label": "DISMISS",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 867,
-          "y": 450
-        },
-        "box": {
-          "x": 842,
-          "y": 441,
-          "width": 49,
-          "height": 18
-        }
-      },
-      {
-        "index": 9,
-        "tag": "input",
-        "role": null,
-        "label": "Add a prep item — e.g. passport, charger",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 294,
-          "y": 503
-        },
-        "box": {
-          "x": 189,
-          "y": 481,
-          "width": 209,
-          "height": 44
-        }
-      },
-      {
-        "index": 10,
-        "tag": "button",
-        "role": null,
-        "label": "Add",
+        "label": "Save",
         "type": null,
         "value": null,
         "disabled": true,
         "checked": null,
         "center": {
-          "x": 432,
-          "y": 503
+          "x": 1127,
+          "y": 738
         },
         "box": {
-          "x": 404,
-          "y": 492,
-          "width": 56,
-          "height": 22
-        }
-      },
-      {
-        "index": 11,
-        "tag": "input",
-        "role": null,
-        "label": "Set a cap",
-        "type": "number",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1026,
-          "y": 223
-        },
-        "box": {
-          "x": 979,
-          "y": 201,
-          "width": 94,
+          "x": 1095,
+          "y": 716,
+          "width": 65,
           "height": 44
         }
       },
       {
-        "index": 12,
-        "tag": "button",
+        "index": 8,
+        "tag": "a",
         "role": null,
-        "label": "Set cap",
+        "label": "Manage locations",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1115,
-          "y": 223
+          "x": 1135,
+          "y": 849
         },
         "box": {
-          "x": 1081,
-          "y": 199,
-          "width": 69,
-          "height": 48
+          "x": 1090,
+          "y": 840,
+          "width": 89,
+          "height": 17
         }
       },
       {
-        "index": 13,
-        "tag": "button",
+        "index": 9,
+        "tag": "select",
         "role": null,
-        "label": "Add expense",
+        "label": "PREFERRED TRAVEL MODE",
         "type": null,
-        "value": null,
+        "value": "no_preference",
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1205,
-          "y": 223
+          "x": 720,
+          "y": 917
         },
         "box": {
-          "x": 1158,
-          "y": 199,
-          "width": 94,
-          "height": 48
+          "x": 261,
+          "y": 897,
+          "width": 918,
+          "height": 41
         }
       },
       {
-        "index": 14,
-        "tag": "button",
-        "role": null,
-        "label": "Running late",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1037,
-          "y": 348
-        },
-        "box": {
-          "x": 983,
-          "y": 328,
-          "width": 108,
-          "height": 40
-        }
-      },
-      {
-        "index": 15,
-        "tag": "button",
-        "role": null,
-        "label": "Arrived safely",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1157,
-          "y": 348
-        },
-        "box": {
-          "x": 1099,
-          "y": 328,
-          "width": 116,
-          "height": 40
-        }
-      },
-      {
-        "index": 16,
-        "tag": "button",
-        "role": null,
-        "label": "On my way",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1033,
-          "y": 395
-        },
-        "box": {
-          "x": 983,
-          "y": 376,
-          "width": 99,
-          "height": 40
-        }
-      },
-      {
-        "index": 17,
-        "tag": "input",
-        "role": null,
-        "label": "Share with (e.g. Mum)",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1116,
-          "y": 686
-        },
-        "box": {
-          "x": 983,
-          "y": 664,
-          "width": 265,
-          "height": 44
-        }
-      },
-      {
-        "index": 18,
-        "tag": "button",
-        "role": null,
-        "label": "For today",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1024,
-          "y": 740
-        },
-        "box": {
-          "x": 987,
-          "y": 724,
-          "width": 74,
-          "height": 32
-        }
-      },
-      {
-        "index": 19,
-        "tag": "button",
-        "role": null,
-        "label": "Set hours",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1103,
-          "y": 740
-        },
-        "box": {
-          "x": 1067,
-          "y": 724,
-          "width": 72,
-          "height": 32
-        }
-      },
-      {
-        "index": 20,
-        "tag": "button",
-        "role": null,
-        "label": "Share live location",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1063,
-          "y": 848
-        },
-        "box": {
-          "x": 983,
-          "y": 826,
-          "width": 159,
-          "height": 44
-        }
-      },
-      {
-        "index": 21,
-        "tag": "button",
-        "role": null,
-        "label": "CONSTRAINTS No constraints set +",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1116,
-          "y": 931
-        },
-        "box": {
-          "x": 962,
-          "y": 907,
-          "width": 307,
-          "height": 48
-        }
-      },
-      {
-        "index": 22,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -612,7 +391,7 @@
         }
       },
       {
-        "index": 23,
+        "index": 11,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -632,7 +411,7 @@
         }
       },
       {
-        "index": 24,
+        "index": 12,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -652,7 +431,7 @@
         }
       },
       {
-        "index": 25,
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -672,7 +451,7 @@
         }
       },
       {
-        "index": 26,
+        "index": 14,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -692,22 +471,14 @@
         }
       }
     ],
-    "focused": {
-      "tag": "input",
-      "role": null,
-      "label": "The day's intention",
-      "center": {
-        "x": 548,
-        "y": 265
-      }
-    },
+    "focused": null,
     "scroll": {
       "x": 0,
       "y": 0,
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 1099
+      "documentHeight": 2638
     }
   },
   "signals": {
@@ -720,7 +491,8 @@
       "GET https://www.khonsera.com/plan/10c38221-4a35-4264-9b56-1f4fcbaec909?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/expenses?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/expenses?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/tasks?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
