@@ -50,7 +50,7 @@ jobs:
         startsWith(github.event.comment.body, 'QA:UX KQA-UX-001')
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 125
 
     steps:
       - name: Checkout
@@ -79,14 +79,16 @@ jobs:
         run: |
           set -u -o pipefail
 
-          oidc_json="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=khonsera-qa-observer")"
-
-          oidc_token="$(jq -r '.value // empty' <<<"$oidc_json")"
-          test -n "$oidc_token"
-
           mint_link() {
+            local oidc_json oidc_token
+
+            oidc_json="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=khonsera-qa-observer")" || return 1
+
+            oidc_token="$(jq -r '.value // empty' <<<"$oidc_json")"
+            test -n "$oidc_token" || return 1
+
             curl --fail --silent --show-error \
               -X POST \
               -H "Authorization: Bearer $oidc_token" \
@@ -110,8 +112,8 @@ jobs:
             KHONSERA_QA_MAGIC_LINK="$link" \
             KQA_VIEWPORT="$project" \
             KQA_EVIDENCE_DIR="test-results/relay/$project" \
-            KQA_RELAY_MAX_MINUTES="35" \
-            KQA_RELAY_MAX_COMMANDS="80" \
+            KQA_RELAY_MAX_MINUTES="55" \
+            KQA_RELAY_MAX_COMMANDS="120" \
               npm run qa:relay
           }
 
