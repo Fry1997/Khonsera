@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 2,
+  "commandCount": 3,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:28:33.296Z",
+  "updatedAt": "2026-09-19T06:28:50.742Z",
   "url": "https://www.khonsera.com/plan",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 2,
-    "commandNumber": 2,
-    "at": "2026-09-19T06:28:33.133Z",
+    "sequence": 3,
+    "commandNumber": 3,
+    "at": "2026-09-19T06:28:50.290Z",
     "command": {
-      "type": "wait",
-      "ms": 1500
+      "type": "click",
+      "x": 314,
+      "y": 229
     },
     "beforeUrl": "https://www.khonsera.com/plan",
     "afterUrl": "https://www.khonsera.com/plan",
-    "durationMs": 1513,
+    "durationMs": 473,
     "error": null
   },
   "screen": {
@@ -54,6 +55,11 @@
         "text": "What repeats"
       },
       {
+        "top": 360,
+        "left": 589,
+        "text": "When does it start?"
+      },
+      {
         "top": 392,
         "left": 241,
         "text": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium 1 stop"
@@ -67,6 +73,11 @@
         "top": 392,
         "left": 726,
         "text": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · mobile-390 1 stop"
+      },
+      {
+        "top": 412,
+        "left": 589,
+        "text": "START DATE"
       },
       {
         "top": 454,
@@ -99,6 +110,11 @@
         "text": "Hours"
       },
       {
+        "top": 496,
+        "left": 589,
+        "text": "NAME (OPTIONAL)"
+      },
+      {
         "top": 551,
         "left": 656,
         "text": "Work"
@@ -122,6 +138,16 @@
         "top": 593,
         "left": 639,
         "text": "Add repeating event"
+      },
+      {
+        "top": 601,
+        "left": 701,
+        "text": "Cancel"
+      },
+      {
+        "top": 601,
+        "left": 789,
+        "text": "Start"
       },
       {
         "top": 632,
@@ -269,6 +295,86 @@
         "index": 4,
         "tag": "input",
         "role": null,
+        "label": "START DATE",
+        "type": "date",
+        "value": "2026-09-19",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 456
+        },
+        "box": {
+          "x": 589,
+          "y": 432,
+          "width": 262,
+          "height": 48
+        }
+      },
+      {
+        "index": 5,
+        "tag": "input",
+        "role": null,
+        "label": "NAME (OPTIONAL)",
+        "type": "text",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 538
+        },
+        "box": {
+          "x": 589,
+          "y": 515,
+          "width": 262,
+          "height": 46
+        }
+      },
+      {
+        "index": 6,
+        "tag": "button",
+        "role": null,
+        "label": "Cancel",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 741,
+          "y": 623
+        },
+        "box": {
+          "x": 701,
+          "y": 601,
+          "width": 79,
+          "height": 44
+        }
+      },
+      {
+        "index": 7,
+        "tag": "button",
+        "role": null,
+        "label": "Start",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 820,
+          "y": 623
+        },
+        "box": {
+          "x": 789,
+          "y": 601,
+          "width": 62,
+          "height": 44
+        }
+      },
+      {
+        "index": 8,
+        "tag": "input",
+        "role": null,
         "label": "e.g. The office",
         "type": "text",
         "value": "",
@@ -286,7 +392,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 9,
         "tag": "input",
         "role": null,
         "label": "Search a place",
@@ -306,7 +412,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 10,
         "tag": "select",
         "role": null,
         "label": "SunMonTueWedThuFriSat",
@@ -326,7 +432,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 11,
         "tag": "input",
         "role": null,
         "label": "",
@@ -346,7 +452,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 12,
         "tag": "input",
         "role": null,
         "label": "",
@@ -366,7 +472,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 13,
         "tag": "button",
         "role": null,
         "label": "Work",
@@ -386,7 +492,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 14,
         "tag": "button",
         "role": null,
         "label": "Personal",
@@ -406,7 +512,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 15,
         "tag": "button",
         "role": null,
         "label": "Add repeating event",
@@ -426,7 +532,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 16,
         "tag": "a",
         "role": null,
         "label": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · desktop-chromium 1 stop",
@@ -446,7 +552,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 17,
         "tag": "button",
         "role": null,
         "label": "Delete plan",
@@ -466,7 +572,7 @@
         }
       },
       {
-        "index": 14,
+        "index": 18,
         "tag": "a",
         "role": null,
         "label": "Sat 19 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 23 · mobile-390 1 stop",
@@ -486,7 +592,7 @@
         }
       },
       {
-        "index": 15,
+        "index": 19,
         "tag": "button",
         "role": null,
         "label": "Delete plan",
@@ -506,7 +612,7 @@
         }
       },
       {
-        "index": 16,
+        "index": 20,
         "tag": "a",
         "role": null,
         "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 21 · mobile-390 0 stops",
@@ -526,7 +632,7 @@
         }
       },
       {
-        "index": 17,
+        "index": 21,
         "tag": "button",
         "role": null,
         "label": "Delete plan",
@@ -546,7 +652,7 @@
         }
       },
       {
-        "index": 18,
+        "index": 22,
         "tag": "a",
         "role": null,
         "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 21 · desktop-chromium 0 stops",
@@ -566,7 +672,7 @@
         }
       },
       {
-        "index": 19,
+        "index": 23,
         "tag": "button",
         "role": null,
         "label": "Delete plan",
@@ -586,7 +692,7 @@
         }
       },
       {
-        "index": 20,
+        "index": 24,
         "tag": "a",
         "role": null,
         "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 18 · mobile-390 0 stops",
@@ -606,7 +712,7 @@
         }
       },
       {
-        "index": 21,
+        "index": 25,
         "tag": "button",
         "role": null,
         "label": "Delete plan",
@@ -626,7 +732,7 @@
         }
       },
       {
-        "index": 22,
+        "index": 26,
         "tag": "a",
         "role": null,
         "label": "Fri 18 Sept PERSONAL KQA-UX-001 · Harpenden tight connection · 18 · desktop-chromium 0 stops",
@@ -646,7 +752,7 @@
         }
       },
       {
-        "index": 23,
+        "index": 27,
         "tag": "button",
         "role": null,
         "label": "Delete plan",
@@ -666,7 +772,7 @@
         }
       },
       {
-        "index": 24,
+        "index": 28,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -686,7 +792,7 @@
         }
       },
       {
-        "index": 25,
+        "index": 29,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -706,7 +812,7 @@
         }
       },
       {
-        "index": 26,
+        "index": 30,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -726,7 +832,7 @@
         }
       },
       {
-        "index": 27,
+        "index": 31,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -746,7 +852,7 @@
         }
       },
       {
-        "index": 28,
+        "index": 32,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -767,12 +873,12 @@
       }
     ],
     "focused": {
-      "tag": "a",
+      "tag": "h3",
       "role": null,
-      "label": "PLAN",
+      "label": "When does it start?",
       "center": {
-        "x": 594,
-        "y": 964
+        "x": 720,
+        "y": 378
       }
     },
     "scroll": {
