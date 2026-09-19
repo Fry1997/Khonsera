@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 13,
+  "commandCount": 14,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:06:17.739Z",
+  "updatedAt": "2026-09-19T22:06:47.032Z",
   "url": "https://www.khonsera.com/settings",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,119 +19,134 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 13,
-    "commandNumber": 13,
-    "at": "2026-09-19T22:06:17.553Z",
+    "sequence": 14,
+    "commandNumber": 14,
+    "at": "2026-09-19T22:06:46.830Z",
     "command": {
-      "type": "goto",
-      "path": "/settings"
+      "type": "scroll",
+      "deltaY": 850
     },
-    "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
+    "beforeUrl": "https://www.khonsera.com/settings",
     "afterUrl": "https://www.khonsera.com/settings",
-    "durationMs": 3302,
+    "durationMs": 467,
     "error": null
   },
   "screen": {
     "viewportText": [
+      {
+        "top": -11,
+        "left": 261,
+        "text": "Travel preferences"
+      },
+      {
+        "top": -10,
+        "left": 1090,
+        "text": "Manage locations"
+      },
+      {
+        "top": 25,
+        "left": 261,
+        "text": "PREFERRED TRAVEL MODE"
+      },
       {
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
       },
       {
-        "top": 101,
-        "left": 256,
-        "text": "Settings"
-      },
-      {
-        "top": 159,
-        "left": 256,
-        "text": "Your defaults — used when generating travel options."
-      },
-      {
-        "top": 239,
+        "top": 94,
         "left": 261,
-        "text": "Account"
+        "text": "Scoring nudge: a +15% tiebreaker toward this mode when it's a close call. Legacy options ('rail', 'mixed', 'compare') are kept for older accounts and treated as 'no preference' by the scorer."
       },
       {
-        "top": 239,
-        "left": 751,
-        "text": "Google Calendar"
-      },
-      {
-        "top": 239,
-        "left": 1067,
-        "text": "Connect Google Calendar"
-      },
-      {
-        "top": 258,
+        "top": 140,
         "left": 261,
-        "text": "cjfry97+khonsera-qa@gmail.com"
+        "text": "WALKING THRESHOLD (MIN)"
       },
       {
-        "top": 258,
-        "left": 751,
-        "text": "Connect to check calendar conflicts when planning visits and auto-create travel + meeting blocks when you confirm."
-      },
-      {
-        "top": 280,
+        "top": 210,
         "left": 261,
-        "text": "Staff account"
+        "text": "Above this length, the scorer drops walk from the candidates entirely."
       },
       {
-        "top": 308,
+        "top": 240,
         "left": 261,
-        "text": "Switch Today between your real itinerary and an isolated staff scenario. The demo uses the same production components and live services, but never reads from or writes to your plan."
+        "text": "TAXI SPEND (£)"
       },
       {
-        "top": 368,
+        "top": 310,
         "left": 261,
-        "text": "Demo scenario Showing your real Today OFF"
+        "text": "When would a taxi feel like good value vs. a bit much? We'll suggest taxis under this amount, mention it when they're a bit over, and only push more expensive ones when they save significant time."
       },
       {
-        "top": 437,
+        "top": 357,
         "left": 261,
-        "text": "When on, Today uses isolated staff scenario data. When off, Today reads your actual itinerary. Both use the same production components; the demo cannot write to your plan."
+        "text": "DEFAULT LUGGAGE"
       },
       {
-        "top": 529,
+        "top": 425,
         "left": 261,
-        "text": "Gmail Import"
+        "text": "Affects how much walk is penalised. Light = -10, heavy = -25."
       },
       {
-        "top": 529,
-        "left": 606,
-        "text": "Connect Gmail"
-      },
-      {
-        "top": 548,
+        "top": 455,
         "left": 261,
-        "text": "Connect your Gmail to automatically find booking confirmations from Trainline, LNER, Avanti, airlines, Booking.com, and other providers. Read-only access — Khonsera never sends or modifies your email."
+        "text": "DEFAULT DRIVING ORIGIN"
       },
       {
-        "top": 680,
+        "top": 523,
         "left": 261,
-        "text": "International"
+        "text": "Where the planner assumes you'll be driving from."
       },
       {
-        "top": 716,
-        "left": 1095,
-        "text": "Save"
-      },
-      {
-        "top": 839,
+        "top": 553,
         "left": 261,
-        "text": "Travel preferences"
+        "text": "DEFAULT RAIL ORIGIN"
       },
       {
-        "top": 840,
-        "left": 1090,
-        "text": "Manage locations"
-      },
-      {
-        "top": 875,
+        "top": 622,
         "left": 261,
-        "text": "PREFERRED TRAVEL MODE"
+        "text": "Your nearest/preferred station."
+      },
+      {
+        "top": 651,
+        "left": 261,
+        "text": "DEFAULT RETURN LOCATION"
+      },
+      {
+        "top": 720,
+        "left": 261,
+        "text": "Where you need to get back to (home, office, hotel)."
+      },
+      {
+        "top": 749,
+        "left": 261,
+        "text": "DEFAULT RAIL STATION"
+      },
+      {
+        "top": 771,
+        "left": 261,
+        "text": "Search a rail station… ▾"
+      },
+      {
+        "top": 822,
+        "left": 261,
+        "text": "The station Khonsera assumes when a leg is by train or tube. Brief auto-inserts a transit_departure stop here."
+      },
+      {
+        "top": 851,
+        "left": 261,
+        "text": "DEFAULT AIRPORT"
+      },
+      {
+        "top": 873,
+        "left": 261,
+        "text": "Search an airport… ▾"
+      },
+      {
+        "top": 924,
+        "left": 261,
+        "text": "Used the same way for flight legs."
       },
       {
         "top": 935,
@@ -159,14 +174,14 @@
         "text": "NAVIGATE"
       },
       {
-        "top": 944,
+        "top": 957,
         "left": 261,
-        "text": "Scoring nudge: a +15% tiebreaker toward this mode when it's a close call. Legacy options ('rail', 'mixed', 'compare') are kept for older accounts and treated as 'no preference' by the scorer."
+        "text": "COMFORT BUFFERS"
       },
       {
-        "top": 990,
+        "top": 981,
         "left": 261,
-        "text": "WALKING THRESHOLD (MIN)"
+        "text": "How early you like to be, by what you’re catching. Khonsera plans your departures so you arrive this much ahead — and never warns about the slack it built you. Tube and bus changes use a quick 5 min."
       }
     ],
     "interactives": [
@@ -232,106 +247,6 @@
       },
       {
         "index": 3,
-        "tag": "button",
-        "role": "switch",
-        "label": "Staff only. Switches Today between your account data and an isolated scenario.",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": "false",
-        "center": {
-          "x": 475,
-          "y": 398
-        },
-        "box": {
-          "x": 261,
-          "y": 368,
-          "width": 428,
-          "height": 60
-        }
-      },
-      {
-        "index": 4,
-        "tag": "a",
-        "role": null,
-        "label": "Connect Google Calendar",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1123,
-          "y": 268
-        },
-        "box": {
-          "x": 1067,
-          "y": 239,
-          "width": 112,
-          "height": 59
-        }
-      },
-      {
-        "index": 5,
-        "tag": "a",
-        "role": null,
-        "label": "Connect Gmail",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 648,
-          "y": 552
-        },
-        "box": {
-          "x": 606,
-          "y": 529,
-          "width": 83,
-          "height": 46
-        }
-      },
-      {
-        "index": 6,
-        "tag": "select",
-        "role": null,
-        "label": "GBP EUR USD CHF JPY AUD CAD",
-        "type": null,
-        "value": "GBP",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1052,
-          "y": 738
-        },
-        "box": {
-          "x": 1017,
-          "y": 716,
-          "width": 70,
-          "height": 44
-        }
-      },
-      {
-        "index": 7,
-        "tag": "button",
-        "role": null,
-        "label": "Save",
-        "type": null,
-        "value": null,
-        "disabled": true,
-        "checked": null,
-        "center": {
-          "x": 1127,
-          "y": 738
-        },
-        "box": {
-          "x": 1095,
-          "y": 716,
-          "width": 65,
-          "height": 44
-        }
-      },
-      {
-        "index": 8,
         "tag": "a",
         "role": null,
         "label": "Manage locations",
@@ -341,17 +256,17 @@
         "checked": null,
         "center": {
           "x": 1135,
-          "y": 849
+          "y": -1
         },
         "box": {
           "x": 1090,
-          "y": 840,
+          "y": -10,
           "width": 89,
           "height": 17
         }
       },
       {
-        "index": 9,
+        "index": 4,
         "tag": "select",
         "role": null,
         "label": "PREFERRED TRAVEL MODE",
@@ -361,17 +276,177 @@
         "checked": null,
         "center": {
           "x": 720,
-          "y": 917
+          "y": 67
         },
         "box": {
           "x": 261,
-          "y": 897,
+          "y": 47,
+          "width": 918,
+          "height": 41
+        }
+      },
+      {
+        "index": 5,
+        "tag": "input",
+        "role": null,
+        "label": "WALKING THRESHOLD (MIN)",
+        "type": "number",
+        "value": "15",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 183
+        },
+        "box": {
+          "x": 261,
+          "y": 162,
+          "width": 918,
+          "height": 42
+        }
+      },
+      {
+        "index": 6,
+        "tag": "input",
+        "role": null,
+        "label": "TAXI SPEND (£)",
+        "type": "number",
+        "value": "15",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 283
+        },
+        "box": {
+          "x": 261,
+          "y": 261,
+          "width": 918,
+          "height": 42
+        }
+      },
+      {
+        "index": 7,
+        "tag": "select",
+        "role": null,
+        "label": "DEFAULT LUGGAGE",
+        "type": null,
+        "value": "none",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 399
+        },
+        "box": {
+          "x": 261,
+          "y": 378,
+          "width": 918,
+          "height": 41
+        }
+      },
+      {
+        "index": 8,
+        "tag": "select",
+        "role": null,
+        "label": "DEFAULT DRIVING ORIGIN",
+        "type": null,
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 497
+        },
+        "box": {
+          "x": 261,
+          "y": 476,
+          "width": 918,
+          "height": 41
+        }
+      },
+      {
+        "index": 9,
+        "tag": "select",
+        "role": null,
+        "label": "DEFAULT RAIL ORIGIN",
+        "type": null,
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 595
+        },
+        "box": {
+          "x": 261,
+          "y": 575,
           "width": 918,
           "height": 41
         }
       },
       {
         "index": 10,
+        "tag": "select",
+        "role": null,
+        "label": "DEFAULT RETURN LOCATION",
+        "type": null,
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 693
+        },
+        "box": {
+          "x": 261,
+          "y": 673,
+          "width": 918,
+          "height": 41
+        }
+      },
+      {
+        "index": 11,
+        "tag": "button",
+        "role": null,
+        "label": "Search a rail station… ▾",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 793
+        },
+        "box": {
+          "x": 261,
+          "y": 771,
+          "width": 918,
+          "height": 45
+        }
+      },
+      {
+        "index": 12,
+        "tag": "button",
+        "role": null,
+        "label": "Search an airport… ▾",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 895
+        },
+        "box": {
+          "x": 261,
+          "y": 873,
+          "width": 918,
+          "height": 45
+        }
+      },
+      {
+        "index": 13,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -391,7 +466,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 14,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -411,7 +486,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 15,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -431,7 +506,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 16,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -451,7 +526,7 @@
         }
       },
       {
-        "index": 14,
+        "index": 17,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -474,7 +549,7 @@
     "focused": null,
     "scroll": {
       "x": 0,
-      "y": 0,
+      "y": 850,
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
