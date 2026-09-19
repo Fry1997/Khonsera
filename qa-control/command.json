@@ -1,11 +1,10 @@
 {
   "runId": "35474833738",
   "viewport": "desktop-chromium",
-  "sequence": 6,
+  "sequence": 7,
   "command": {
-    "type": "click",
-    "x": 963,
-    "y": 317
+    "type": "goto",
+    "path": "/navigate"
   },
-  "updatedAt": "2026-09-19T23:01:36.525Z"
+  "updatedAt": "2026-09-19T23:02:56.099Z"
 }
