@@ -1,10 +1,11 @@
 {
   "runId": "35474833738",
   "viewport": "desktop-chromium",
-  "sequence": 4,
+  "sequence": 5,
   "command": {
-    "type": "goto",
-    "path": "/pastimes"
+    "type": "click",
+    "x": 477,
+    "y": 317
   },
-  "updatedAt": "2026-09-19T23:01:13.356Z"
+  "updatedAt": "2026-09-19T23:01:24.121Z"
 }
