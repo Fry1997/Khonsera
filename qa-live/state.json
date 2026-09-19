@@ -3,11 +3,11 @@
   "executionMode": "chat-piloted-relay",
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
-  "status": "ready",
-  "commandCount": 25,
+  "status": "finished",
+  "commandCount": 26,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:09:18.266Z",
+  "updatedAt": "2026-09-19T22:09:33.840Z",
   "url": "https://www.khonsera.com/navigate",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,25 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 25,
-    "commandNumber": 25,
-    "at": "2026-09-19T22:09:18.127Z",
+    "sequence": 26,
+    "commandNumber": 26,
+    "at": "2026-09-19T22:09:33.663Z",
     "command": {
-      "type": "wait",
-      "ms": 2500
+      "type": "finish",
+      "outcome": "completed",
+      "summary": "Desktop UI audit complete; proceeding to mobile viewport.",
+      "findings": [
+        "Desktop bottom nav overlaps content/controls.",
+        "Plan-a-day creation sheet opens clipped above viewport.",
+        "Desktop menu expands as full-width rows over page.",
+        "Navigate origin/destination lack persistent labels and autocomplete overlaps destination/mode controls.",
+        "Several desktop routes are sparse/mobile-stretched rather than purpose-built.",
+        "Settings form is an excessively long single-column surface with weak action hierarchy."
+      ]
     },
     "beforeUrl": "https://www.khonsera.com/navigate",
     "afterUrl": "https://www.khonsera.com/navigate",
-    "durationMs": 2504,
+    "durationMs": 0,
     "error": null
   },
   "screen": {
