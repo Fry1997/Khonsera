@@ -4,10 +4,10 @@
   "runId": "35472059188",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 16,
+  "commandCount": 17,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:01:21.408Z",
-  "updatedAt": "2026-09-19T22:07:18.043Z",
+  "updatedAt": "2026-09-19T22:07:28.286Z",
   "url": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35472059188",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 16,
-    "commandNumber": 16,
-    "at": "2026-09-19T22:07:14.500Z",
+    "sequence": 17,
+    "commandNumber": 17,
+    "at": "2026-09-19T22:07:27.719Z",
     "command": {
-      "type": "goto",
-      "path": "/plan/749554a4-5940-4abd-9de9-0d5de028f08b"
+      "type": "click",
+      "x": 1402,
+      "y": 34
     },
-    "beforeUrl": "https://www.khonsera.com/people",
+    "beforeUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
     "afterUrl": "https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b",
-    "durationMs": 3025,
+    "durationMs": 475,
     "error": null
   },
   "screen": {
@@ -109,6 +110,21 @@
         "text": "Add"
       },
       {
+        "top": 557,
+        "left": 17,
+        "text": "People"
+      },
+      {
+        "top": 638,
+        "left": 17,
+        "text": "Expenses"
+      },
+      {
+        "top": 682,
+        "left": 17,
+        "text": "Mileage"
+      },
+      {
         "top": 724,
         "left": 987,
         "text": "For today"
@@ -119,14 +135,34 @@
         "text": "Set hours"
       },
       {
+        "top": 763,
+        "left": 17,
+        "text": "Pastimes"
+      },
+      {
         "top": 826,
         "left": 983,
         "text": "Share live location"
       },
       {
+        "top": 844,
+        "left": 17,
+        "text": "Settings"
+      },
+      {
+        "top": 888,
+        "left": 17,
+        "text": "Demo & palette (staff)"
+      },
+      {
         "top": 907,
         "left": 962,
         "text": "CONSTRAINTS No constraints set +"
+      },
+      {
+        "top": 932,
+        "left": 17,
+        "text": "Sign out"
       },
       {
         "top": 935,
@@ -217,6 +253,146 @@
       },
       {
         "index": 3,
+        "tag": "a",
+        "role": null,
+        "label": "People",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 579
+        },
+        "box": {
+          "x": 17,
+          "y": 557,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 4,
+        "tag": "a",
+        "role": null,
+        "label": "Expenses",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 660
+        },
+        "box": {
+          "x": 17,
+          "y": 638,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 5,
+        "tag": "a",
+        "role": null,
+        "label": "Mileage",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 704
+        },
+        "box": {
+          "x": 17,
+          "y": 682,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 6,
+        "tag": "a",
+        "role": null,
+        "label": "Pastimes",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 785
+        },
+        "box": {
+          "x": 17,
+          "y": 763,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 7,
+        "tag": "a",
+        "role": null,
+        "label": "Settings",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 866
+        },
+        "box": {
+          "x": 17,
+          "y": 844,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 8,
+        "tag": "a",
+        "role": null,
+        "label": "Demo & palette (staff)",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 910
+        },
+        "box": {
+          "x": 17,
+          "y": 888,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 9,
+        "tag": "button",
+        "role": null,
+        "label": "Sign out",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 954
+        },
+        "box": {
+          "x": 17,
+          "y": 932,
+          "width": 1406,
+          "height": 44
+        }
+      },
+      {
+        "index": 10,
         "tag": "button",
         "role": null,
         "label": "Rename this day",
@@ -236,7 +412,7 @@
         }
       },
       {
-        "index": 4,
+        "index": 11,
         "tag": "button",
         "role": null,
         "label": "Set your base — where the day starts & ends SET",
@@ -256,7 +432,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 12,
         "tag": "button",
         "role": null,
         "label": "+ What’s this day for?",
@@ -276,7 +452,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 13,
         "tag": "button",
         "role": null,
         "label": "Getting ready 1 to sort",
@@ -296,7 +472,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 14,
         "tag": "button",
         "role": null,
         "label": "DONE",
@@ -316,7 +492,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 15,
         "tag": "button",
         "role": null,
         "label": "DISMISS",
@@ -336,7 +512,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 16,
         "tag": "input",
         "role": null,
         "label": "Add a prep item — e.g. passport, charger",
@@ -356,7 +532,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 17,
         "tag": "button",
         "role": null,
         "label": "Add",
@@ -376,7 +552,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 18,
         "tag": "input",
         "role": null,
         "label": "Set a cap",
@@ -396,7 +572,7 @@
         }
       },
       {
-        "index": 12,
+        "index": 19,
         "tag": "button",
         "role": null,
         "label": "Set cap",
@@ -416,7 +592,7 @@
         }
       },
       {
-        "index": 13,
+        "index": 20,
         "tag": "button",
         "role": null,
         "label": "Add expense",
@@ -436,7 +612,7 @@
         }
       },
       {
-        "index": 14,
+        "index": 21,
         "tag": "button",
         "role": null,
         "label": "Running late",
@@ -456,7 +632,7 @@
         }
       },
       {
-        "index": 15,
+        "index": 22,
         "tag": "button",
         "role": null,
         "label": "Arrived safely",
@@ -476,7 +652,7 @@
         }
       },
       {
-        "index": 16,
+        "index": 23,
         "tag": "button",
         "role": null,
         "label": "On my way",
@@ -496,7 +672,7 @@
         }
       },
       {
-        "index": 17,
+        "index": 24,
         "tag": "input",
         "role": null,
         "label": "Share with (e.g. Mum)",
@@ -516,7 +692,7 @@
         }
       },
       {
-        "index": 18,
+        "index": 25,
         "tag": "button",
         "role": null,
         "label": "For today",
@@ -536,7 +712,7 @@
         }
       },
       {
-        "index": 19,
+        "index": 26,
         "tag": "button",
         "role": null,
         "label": "Set hours",
@@ -556,7 +732,7 @@
         }
       },
       {
-        "index": 20,
+        "index": 27,
         "tag": "button",
         "role": null,
         "label": "Share live location",
@@ -576,7 +752,7 @@
         }
       },
       {
-        "index": 21,
+        "index": 28,
         "tag": "button",
         "role": null,
         "label": "CONSTRAINTS No constraints set +",
@@ -596,7 +772,7 @@
         }
       },
       {
-        "index": 22,
+        "index": 29,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -616,7 +792,7 @@
         }
       },
       {
-        "index": 23,
+        "index": 30,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -636,7 +812,7 @@
         }
       },
       {
-        "index": 24,
+        "index": 31,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -656,7 +832,7 @@
         }
       },
       {
-        "index": 25,
+        "index": 32,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -676,7 +852,7 @@
         }
       },
       {
-        "index": 26,
+        "index": 33,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -696,7 +872,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "button",
+      "role": null,
+      "label": "Menu",
+      "center": {
+        "x": 1402,
+        "y": 34
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
@@ -713,14 +897,14 @@
     ],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/plan/749554a4-5940-4abd-9de9-0d5de028f08b?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan/10c38221-4a35-4264-9b56-1f4fcbaec909?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
       "GET https://www.khonsera.com/expenses?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
       "GET https://www.khonsera.com/tasks?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/plan?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/plan?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/tasks?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/today?_rsc=YUAg_yixbkoGwIKq · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [
