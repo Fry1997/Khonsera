@@ -3,11 +3,11 @@
   "executionMode": "chat-piloted-relay",
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
-  "status": "ready",
-  "commandCount": 21,
+  "status": "finished",
+  "commandCount": 22,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:57:15.797Z",
+  "updatedAt": "2026-09-19T22:58:32.079Z",
   "url": "https://www.khonsera.com/contacts",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,21 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 21,
-    "commandNumber": 21,
-    "at": "2026-09-19T22:57:15.658Z",
+    "sequence": 22,
+    "commandNumber": 22,
+    "at": "2026-09-19T22:58:31.949Z",
     "command": {
-      "type": "click",
-      "x": 331,
-      "y": 413
+      "type": "finish",
+      "outcome": "completed",
+      "summary": "Screenshot-harvest desktop UI audit completed. Captured primary and secondary routes plus populated Plan, Plan detail, mileage recording/manual form, and People add flow.",
+      "findings": [
+        "Queued UI/UX issues #136-#150 from this run.",
+        "Master UI/UX queue #135 now tracks 47 open product UI/UX issues."
+      ]
     },
     "beforeUrl": "https://www.khonsera.com/contacts",
     "afterUrl": "https://www.khonsera.com/contacts",
-    "durationMs": 464,
+    "durationMs": 0,
     "error": null
   },
   "screen": {
