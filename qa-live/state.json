@@ -4,12 +4,12 @@
   "runId": "35473609400",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 5,
+  "commandCount": 6,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:33:41.070Z",
-  "updatedAt": "2026-09-19T22:35:38.470Z",
-  "url": "https://www.khonsera.com/wallet",
-  "title": "Khonsera — travel days that run on time.",
+  "updatedAt": "2026-09-19T22:35:49.598Z",
+  "url": "https://www.khonsera.com/tasks",
+  "title": "",
   "viewportSize": {
     "width": 1440,
     "height": 1000
@@ -19,17 +19,17 @@
   "controlBranch": "qa-control-35473609400",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 5,
-    "commandNumber": 5,
-    "at": "2026-09-19T22:35:38.309Z",
+    "sequence": 6,
+    "commandNumber": 6,
+    "at": "2026-09-19T22:35:49.457Z",
     "command": {
       "type": "click",
-      "x": 1402,
-      "y": 34
+      "x": 720,
+      "y": 964
     },
     "beforeUrl": "https://www.khonsera.com/wallet",
-    "afterUrl": "https://www.khonsera.com/wallet",
-    "durationMs": 461,
+    "afterUrl": "https://www.khonsera.com/tasks",
+    "durationMs": 467,
     "error": null
   },
   "screen": {
@@ -38,26 +38,6 @@
         "top": 28,
         "left": 16,
         "text": "KHONSERA"
-      },
-      {
-        "top": 122,
-        "left": 256,
-        "text": "Your tickets"
-      },
-      {
-        "top": 264,
-        "left": 353,
-        "text": "Your tickets will live here"
-      },
-      {
-        "top": 305,
-        "left": 353,
-        "text": "Connect Gmail and travel bookings become tickets, grouped by the day you need them and ready when signal drops."
-      },
-      {
-        "top": 357,
-        "left": 353,
-        "text": "Connect Gmail"
       },
       {
         "top": 935,
@@ -137,37 +117,17 @@
         "checked": null,
         "center": {
           "x": 1402,
-          "y": 33
+          "y": 34
         },
         "box": {
           "x": 1380,
-          "y": 11,
+          "y": 12,
           "width": 44,
           "height": 44
         }
       },
       {
         "index": 3,
-        "tag": "a",
-        "role": null,
-        "label": "Connect Gmail",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 417,
-          "y": 379
-        },
-        "box": {
-          "x": 353,
-          "y": 357,
-          "width": 128,
-          "height": 44
-        }
-      },
-      {
-        "index": 4,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -187,7 +147,7 @@
         }
       },
       {
-        "index": 5,
+        "index": 4,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -207,7 +167,7 @@
         }
       },
       {
-        "index": 6,
+        "index": 5,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -227,7 +187,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 6,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -247,7 +207,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -267,7 +227,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "a",
+      "role": null,
+      "label": "TASKS",
+      "center": {
+        "x": 720,
+        "y": 964
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
