@@ -12,7 +12,7 @@ const targetOrigin = new URL(targetUrl).origin;
 const startPath = process.env.KQA_START_PATH ?? "/today";
 const skipAuth = process.env.KQA_SKIP_AUTH === "1";
 const scenario = process.env.OBSERVATORY_SCENARIO ?? "KQA-UX-001";
-const magicLink = process.env.KHONsera_QA_MAGIC_LINK ?? process.env.KHONSERA_QA_MAGIC_LINK;
+const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
 const supabaseUrl = process.env.KQA_SUPABASE_URL;
 const supabasePublishableKey = process.env.KQA_SUPABASE_PUBLISHABLE_KEY;
 const githubToken = process.env.GITHUB_TOKEN;
