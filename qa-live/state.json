@@ -4,11 +4,11 @@
   "runId": "35474295967",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 19,
+  "commandCount": 20,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:48:00.631Z",
-  "updatedAt": "2026-09-19T22:56:51.976Z",
-  "url": "https://www.khonsera.com/mileage",
+  "updatedAt": "2026-09-19T22:57:11.056Z",
+  "url": "https://www.khonsera.com/contacts",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35474295967",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 19,
-    "commandNumber": 19,
-    "at": "2026-09-19T22:56:51.804Z",
+    "sequence": 20,
+    "commandNumber": 20,
+    "at": "2026-09-19T22:57:10.900Z",
     "command": {
-      "type": "click",
-      "x": 1131,
-      "y": 543
+      "type": "goto",
+      "path": "/contacts"
     },
     "beforeUrl": "https://www.khonsera.com/mileage",
-    "afterUrl": "https://www.khonsera.com/mileage",
-    "durationMs": 471,
+    "afterUrl": "https://www.khonsera.com/contacts",
+    "durationMs": 1597,
     "error": null
   },
   "screen": {
@@ -42,42 +41,27 @@
       {
         "top": 122,
         "left": 256,
-        "text": "Mileage"
+        "text": "People"
       },
       {
-        "top": 220,
-        "left": 899,
-        "text": "Record a drive"
-      },
-      {
-        "top": 333,
+        "top": 316,
         "left": 277,
-        "text": "No trips yet"
+        "text": "No people or clients yet"
       },
       {
-        "top": 374,
+        "top": 357,
         "left": 277,
-        "text": "Drive legs from a plan or trips you record here become your mileage ledger."
+        "text": "Add them once, then attach them to visits and meeting days in Plan."
       },
       {
-        "top": 399,
+        "top": 391,
         "left": 277,
-        "text": "Open plan"
+        "text": "Add person"
       },
       {
-        "top": 399,
-        "left": 384,
-        "text": "Navigate"
-      },
-      {
-        "top": 520,
-        "left": 1100,
-        "text": "Cancel"
-      },
-      {
-        "top": 521,
-        "left": 976,
-        "text": "Export CSV"
+        "top": 391,
+        "left": 393,
+        "text": "Add client"
       },
       {
         "top": 935,
@@ -168,41 +152,41 @@
       },
       {
         "index": 3,
-        "tag": "button",
+        "tag": "input",
         "role": null,
-        "label": "Record a drive",
-        "type": null,
-        "value": null,
+        "label": "Add someone by name",
+        "type": "text",
+        "value": "",
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 965,
-          "y": 242
+          "x": 741,
+          "y": 233
         },
         "box": {
-          "x": 899,
-          "y": 220,
-          "width": 131,
-          "height": 44
+          "x": 295,
+          "y": 222,
+          "width": 891,
+          "height": 23
         }
       },
       {
         "index": 4,
-        "tag": "a",
+        "tag": "button",
         "role": null,
-        "label": "Open plan",
+        "label": "Add person",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 326,
-          "y": 421
+          "x": 331,
+          "y": 413
         },
         "box": {
           "x": 277,
-          "y": 399,
-          "width": 99,
+          "y": 391,
+          "width": 108,
           "height": 44
         }
       },
@@ -210,224 +194,24 @@
         "index": 5,
         "tag": "a",
         "role": null,
-        "label": "Navigate",
+        "label": "Add client",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 429,
-          "y": 421
+          "x": 441,
+          "y": 413
         },
         "box": {
-          "x": 384,
-          "y": 399,
-          "width": 91,
+          "x": 393,
+          "y": 391,
+          "width": 98,
           "height": 44
         }
       },
       {
         "index": 6,
-        "tag": "button",
-        "role": null,
-        "label": "Export CSV",
-        "type": null,
-        "value": null,
-        "disabled": true,
-        "checked": null,
-        "center": {
-          "x": 1030,
-          "y": 543
-        },
-        "box": {
-          "x": 976,
-          "y": 521,
-          "width": 108,
-          "height": 44
-        }
-      },
-      {
-        "index": 7,
-        "tag": "button",
-        "role": null,
-        "label": "Cancel",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 1139,
-          "y": 542
-        },
-        "box": {
-          "x": 1100,
-          "y": 520,
-          "width": 79,
-          "height": 44
-        }
-      },
-      {
-        "index": 8,
-        "tag": "input",
-        "role": null,
-        "label": "From",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 637
-        },
-        "box": {
-          "x": 257,
-          "y": 615,
-          "width": 926,
-          "height": 44
-        }
-      },
-      {
-        "index": 9,
-        "tag": "input",
-        "role": null,
-        "label": "To",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 689
-        },
-        "box": {
-          "x": 257,
-          "y": 667,
-          "width": 926,
-          "height": 44
-        }
-      },
-      {
-        "index": 10,
-        "tag": "input",
-        "role": null,
-        "label": "",
-        "type": "date",
-        "value": "2026-09-19",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 741
-        },
-        "box": {
-          "x": 257,
-          "y": 719,
-          "width": 926,
-          "height": 45
-        }
-      },
-      {
-        "index": 11,
-        "tag": "input",
-        "role": null,
-        "label": "Miles",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 302,
-          "y": 794
-        },
-        "box": {
-          "x": 257,
-          "y": 772,
-          "width": 90,
-          "height": 44
-        }
-      },
-      {
-        "index": 12,
-        "tag": "select",
-        "role": null,
-        "label": "Car Motorcycle Bicycle",
-        "type": null,
-        "value": "car",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 846
-        },
-        "box": {
-          "x": 257,
-          "y": 824,
-          "width": 926,
-          "height": 44
-        }
-      },
-      {
-        "index": 13,
-        "tag": "select",
-        "role": null,
-        "label": "Business Personal",
-        "type": null,
-        "value": "business",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 898
-        },
-        "box": {
-          "x": 257,
-          "y": 876,
-          "width": 926,
-          "height": 44
-        }
-      },
-      {
-        "index": 14,
-        "tag": "select",
-        "role": null,
-        "label": "Fellow employees carried (5p/mile each)",
-        "type": null,
-        "value": "0",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 950
-        },
-        "box": {
-          "x": 257,
-          "y": 928,
-          "width": 926,
-          "height": 44
-        }
-      },
-      {
-        "index": 15,
-        "tag": "input",
-        "role": null,
-        "label": "Purpose (HMRC needs this)",
-        "type": "text",
-        "value": "",
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 720,
-          "y": 1002
-        },
-        "box": {
-          "x": 257,
-          "y": 980,
-          "width": 926,
-          "height": 44
-        }
-      },
-      {
-        "index": 16,
         "tag": "a",
         "role": null,
         "label": "TODAY",
@@ -447,7 +231,7 @@
         }
       },
       {
-        "index": 17,
+        "index": 7,
         "tag": "a",
         "role": null,
         "label": "PLAN",
@@ -467,7 +251,7 @@
         }
       },
       {
-        "index": 18,
+        "index": 8,
         "tag": "a",
         "role": null,
         "label": "TASKS",
@@ -487,7 +271,7 @@
         }
       },
       {
-        "index": 19,
+        "index": 9,
         "tag": "a",
         "role": null,
         "label": "WALLET",
@@ -507,7 +291,7 @@
         }
       },
       {
-        "index": 20,
+        "index": 10,
         "tag": "a",
         "role": null,
         "label": "NAVIGATE",
@@ -527,36 +311,28 @@
         }
       }
     ],
-    "focused": {
-      "tag": "button",
-      "role": null,
-      "label": "Cancel",
-      "center": {
-        "x": 1139,
-        "y": 542
-      }
-    },
+    "focused": null,
     "scroll": {
       "x": 0,
       "y": 0,
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 1191
+      "documentHeight": 1000
     }
   },
   "signals": {
     "consoleErrors": [],
     "pageErrors": [],
     "failedRequests": [
-      "GET https://www.khonsera.com/navigate?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED",
       "GET https://www.khonsera.com/locations?_rsc=b2bxedLQ7kHqn9lG · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan/aa8e68a3-5231-4c73-8ef5-273459d01600?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/navigate?_rsc=qAI3rIPCQh17SqeM · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan/176ba13b-27d6-434c-814d-7b66857b45d5?_rsc=0hsAL4s2liL-lni5 · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/navigate?_rsc=xwwdWv7nnfpNoOTL · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/navigate?_rsc=xwwdWv7nnfpNoOTL · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/navigate?_rsc=0c9aQHFlogw48YUv · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
