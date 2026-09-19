@@ -4,10 +4,10 @@
   "runId": "35426608061",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 4,
+  "commandCount": 5,
   "maxCommands": 80,
   "startedAt": "2026-09-19T06:27:33.473Z",
-  "updatedAt": "2026-09-19T06:29:26.621Z",
+  "updatedAt": "2026-09-19T06:29:48.021Z",
   "url": "https://www.khonsera.com/plan",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,17 +19,16 @@
   "controlBranch": "qa-control-35426608061",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 4,
-    "commandNumber": 4,
-    "at": "2026-09-19T06:29:26.186Z",
+    "sequence": 5,
+    "commandNumber": 5,
+    "at": "2026-09-19T06:29:47.689Z",
     "command": {
-      "type": "click",
-      "x": 720,
-      "y": 538
+      "type": "type",
+      "text": "KQA-UX-001 · Chat pilot · 31 · desktop"
     },
     "beforeUrl": "https://www.khonsera.com/plan",
     "afterUrl": "https://www.khonsera.com/plan",
-    "durationMs": 462,
+    "durationMs": 461,
     "error": null
   },
   "screen": {
@@ -317,7 +316,7 @@
         "role": null,
         "label": "NAME (OPTIONAL)",
         "type": "text",
-        "value": "",
+        "value": "KQA-UX-001 · Chat pilot · 31 · desktop",
         "disabled": false,
         "checked": null,
         "center": {
