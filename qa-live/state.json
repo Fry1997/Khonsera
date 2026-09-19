@@ -4,10 +4,10 @@
   "runId": "35474833738",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 4,
+  "commandCount": 5,
   "maxCommands": 80,
   "startedAt": "2026-09-19T22:59:57.059Z",
-  "updatedAt": "2026-09-19T23:01:17.953Z",
+  "updatedAt": "2026-09-19T23:01:26.437Z",
   "url": "https://www.khonsera.com/pastimes",
   "title": "Pastimes",
   "viewportSize": {
@@ -19,16 +19,17 @@
   "controlBranch": "qa-control-35474833738",
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 4,
-    "commandNumber": 4,
-    "at": "2026-09-19T23:01:17.780Z",
+    "sequence": 5,
+    "commandNumber": 5,
+    "at": "2026-09-19T23:01:26.265Z",
     "command": {
-      "type": "goto",
-      "path": "/pastimes"
+      "type": "click",
+      "x": 477,
+      "y": 317
     },
-    "beforeUrl": "https://www.khonsera.com/wallet",
+    "beforeUrl": "https://www.khonsera.com/pastimes",
     "afterUrl": "https://www.khonsera.com/pastimes",
-    "durationMs": 2255,
+    "durationMs": 470,
     "error": null
   },
   "screen": {
@@ -176,11 +177,11 @@
         "checked": null,
         "center": {
           "x": 477,
-          "y": 317
+          "y": 315
         },
         "box": {
           "x": 240,
-          "y": 274,
+          "y": 272,
           "width": 474,
           "height": 86
         }
@@ -326,7 +327,15 @@
         }
       }
     ],
-    "focused": null,
+    "focused": {
+      "tag": "a",
+      "role": null,
+      "label": "Solitaire A quiet hand of Klondike.",
+      "center": {
+        "x": 477,
+        "y": 315
+      }
+    },
     "scroll": {
       "x": 0,
       "y": 0,
@@ -346,7 +355,8 @@
       "GET https://www.khonsera.com/navigate?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/plan?_rsc=ist0k6rN4EjCyM-P · net::ERR_ABORTED",
       "GET https://www.khonsera.com/pastimes/solitaire?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
-      "GET https://www.khonsera.com/pastimes/sudoku?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED"
+      "GET https://www.khonsera.com/pastimes/sudoku?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED",
+      "GET https://www.khonsera.com/pastimes/gin-rummy?_rsc=FsJtCC7W4yoeaO4A · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
