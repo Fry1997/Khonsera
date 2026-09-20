@@ -3,11 +3,11 @@
   "executionMode": "chat-piloted-relay",
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
-  "status": "ready",
+  "status": "error",
   "commandCount": 9,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:36:58.926Z",
+  "updatedAt": "2026-09-20T13:52:05.894Z",
   "url": "http://127.0.0.1:3000/design-preview/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -53,27 +53,27 @@
         "text": "From 20 Wilce Avenue"
       },
       {
-        "top": 405,
+        "top": 366,
         "left": 38,
-        "text": "Leave in 2 min"
+        "text": "14:54 arrival · 10 min to change"
       },
       {
-        "top": 432,
+        "top": 393,
         "left": 38,
         "text": "View best route"
       },
       {
-        "top": 485,
+        "top": 446,
         "left": 38,
         "text": "Share trip"
       },
       {
-        "top": 485,
+        "top": 446,
         "left": 145,
         "text": "Re-route"
       },
       {
-        "top": 485,
+        "top": 446,
         "left": 252,
         "text": "Tickets"
       }
@@ -150,11 +150,11 @@
         "checked": null,
         "center": {
           "x": 195,
-          "y": 455
+          "y": 416
         },
         "box": {
           "x": 38,
-          "y": 432,
+          "y": 393,
           "width": 314,
           "height": 46
         }
@@ -170,11 +170,11 @@
         "checked": null,
         "center": {
           "x": 88,
-          "y": 506
+          "y": 467
         },
         "box": {
           "x": 38,
-          "y": 485,
+          "y": 446,
           "width": 100,
           "height": 42
         }
@@ -190,11 +190,11 @@
         "checked": null,
         "center": {
           "x": 195,
-          "y": 506
+          "y": 467
         },
         "box": {
           "x": 145,
-          "y": 485,
+          "y": 446,
           "width": 100,
           "height": 42
         }
@@ -210,11 +210,11 @@
         "checked": null,
         "center": {
           "x": 302,
-          "y": 506
+          "y": 467
         },
         "box": {
           "x": 252,
-          "y": 485,
+          "y": 446,
           "width": 100,
           "height": 42
         }
@@ -227,7 +227,7 @@
       "viewportWidth": 390,
       "viewportHeight": 844,
       "documentWidth": 390,
-      "documentHeight": 1996
+      "documentHeight": 1957
     }
   },
   "signals": {
@@ -255,5 +255,6 @@
     "serverErrors": [],
     "slowRequests": [],
     "blockedNavigations": []
-  }
+  },
+  "relayError": "QA relay exceeded 110 minutes for desktop-chromium."
 }
