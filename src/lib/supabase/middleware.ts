@@ -22,10 +22,15 @@ const PUBLIC_PATHS = [
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some(
-    (publicPath) =>
-      path === publicPath || path.startsWith(`${publicPath}/`),
-  );
+  const isDesignPreview =
+    process.env.NEXT_PUBLIC_APP_ENV === "design" &&
+    (path.startsWith("/__design/") || path.startsWith("/design-preview/"));
+  const isPublic =
+    isDesignPreview ||
+    PUBLIC_PATHS.some(
+      (publicPath) =>
+        path === publicPath || path.startsWith(`${publicPath}/`),
+    );
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
