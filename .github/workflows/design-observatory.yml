@@ -91,7 +91,299 @@ jobs:
             exit 2
           fi
 
-          if ! [[ "$route" =~ ^/[A-Za-z0-9_./?=&-]+$ ]]; then
+          if [[ "$route" != /* ]] || [[ "$route" == *
+
+          git fetch origin "$ref"
+          git rev-parse --verify FETCH_HEAD >/dev/null
+
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "route=$route" >> "$GITHUB_OUTPUT"
+          echo "viewport=$viewport" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install relay dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Create live runtime worktree
+        id: runtime
+        shell: bash
+        env:
+          DESIGN_REF: ${{ steps.target.outputs.ref }}
+        run: |
+          set -euo pipefail
+          runtime="$RUNNER_TEMP/khonsera-live-design"
+          rm -rf "$runtime"
+          git fetch origin "$DESIGN_REF"
+          git worktree add --detach "$runtime" FETCH_HEAD
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$runtime/node_modules"
+          echo "path=$runtime" >> "$GITHUB_OUTPUT"
+
+      - name: Start branch sync
+        shell: bash
+        env:
+          DESIGN_REF: ${{ steps.target.outputs.ref }}
+          RUNTIME: ${{ steps.runtime.outputs.path }}
+        run: |
+          set -euo pipefail
+
+          cat > "$RUNNER_TEMP/design-sync.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -u
+          cd "$RUNTIME"
+
+          while true; do
+            if git fetch --quiet origin "$DESIGN_REF"; then
+              latest="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
+              current="$(git rev-parse HEAD 2>/dev/null || true)"
+
+              if [ -n "$latest" ] && [ "$latest" != "$current" ]; then
+                echo "[design-sync] applying $latest"
+                git reset --hard "$latest"
+              fi
+            fi
+            sleep 2
+          done
+          SCRIPT
+
+          chmod +x "$RUNNER_TEMP/design-sync.sh"
+          RUNTIME="$RUNTIME" DESIGN_REF="$DESIGN_REF" \
+            "$RUNNER_TEMP/design-sync.sh" > "$RUNNER_TEMP/design-sync.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/design-sync.pid"
+
+      - name: Start live Khonsera dev server
+        shell: bash
+        env:
+          RUNTIME: ${{ steps.runtime.outputs.path }}
+          DESIGN_ROUTE: ${{ steps.target.outputs.route }}
+        run: |
+          set -euo pipefail
+          cd "$RUNTIME"
+          npm run dev -- --hostname 127.0.0.1 > "$RUNNER_TEMP/khonsera-design.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/khonsera-design.pid"
+
+          for attempt in {1..90}; do
+            if curl --fail --silent "http://127.0.0.1:3000$DESIGN_ROUTE" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat "$RUNNER_TEMP/khonsera-design.log" >&2
+          exit 1
+
+      - name: Record chat-piloted live design
+        id: design
+        continue-on-error: true
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          KQA_SKIP_AUTH: "1"
+          KQA_START_PATH: ${{ steps.target.outputs.route }}
+          INITIAL_VIEWPORT: ${{ steps.target.outputs.viewport }}
+          KQA_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -u -o pipefail
+
+          if [ "$INITIAL_VIEWPORT" = "mobile" ]; then
+            project="mobile-390"
+          else
+            project="desktop-chromium"
+          fi
+
+          KQA_VIEWPORT="$project" \
+          KQA_EVIDENCE_DIR="test-results/design-relay/$project" \
+          KQA_RELAY_MAX_MINUTES="110" \
+          KQA_RELAY_MAX_COMMANDS="500" \
+            npm run qa:relay
+
+      - name: Upload design evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-observer-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            test-results/design-relay/
+
+      - name: Upload runtime logs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p design-logs
+          cp "$RUNNER_TEMP/khonsera-design.log" design-logs/dev-server.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/design-sync.log" design-logs/sync.log 2>/dev/null || true
+
+      - name: Upload runtime log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-runtime-logs-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: design-logs/
+
+      - name: Preserve relay infrastructure failure
+        if: steps.design.outcome == 'failure'
+        run: |
+          echo "Live design relay evidence was preserved where possible, but the browser relay failed." >&2
+          exit 1
+\n'* ]] || [[ "$route" == *
+
+          git fetch origin "$ref"
+          git rev-parse --verify FETCH_HEAD >/dev/null
+
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "route=$route" >> "$GITHUB_OUTPUT"
+          echo "viewport=$viewport" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install relay dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Create live runtime worktree
+        id: runtime
+        shell: bash
+        env:
+          DESIGN_REF: ${{ steps.target.outputs.ref }}
+        run: |
+          set -euo pipefail
+          runtime="$RUNNER_TEMP/khonsera-live-design"
+          rm -rf "$runtime"
+          git fetch origin "$DESIGN_REF"
+          git worktree add --detach "$runtime" FETCH_HEAD
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$runtime/node_modules"
+          echo "path=$runtime" >> "$GITHUB_OUTPUT"
+
+      - name: Start branch sync
+        shell: bash
+        env:
+          DESIGN_REF: ${{ steps.target.outputs.ref }}
+          RUNTIME: ${{ steps.runtime.outputs.path }}
+        run: |
+          set -euo pipefail
+
+          cat > "$RUNNER_TEMP/design-sync.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -u
+          cd "$RUNTIME"
+
+          while true; do
+            if git fetch --quiet origin "$DESIGN_REF"; then
+              latest="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
+              current="$(git rev-parse HEAD 2>/dev/null || true)"
+
+              if [ -n "$latest" ] && [ "$latest" != "$current" ]; then
+                echo "[design-sync] applying $latest"
+                git reset --hard "$latest"
+              fi
+            fi
+            sleep 2
+          done
+          SCRIPT
+
+          chmod +x "$RUNNER_TEMP/design-sync.sh"
+          RUNTIME="$RUNTIME" DESIGN_REF="$DESIGN_REF" \
+            "$RUNNER_TEMP/design-sync.sh" > "$RUNNER_TEMP/design-sync.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/design-sync.pid"
+
+      - name: Start live Khonsera dev server
+        shell: bash
+        env:
+          RUNTIME: ${{ steps.runtime.outputs.path }}
+          DESIGN_ROUTE: ${{ steps.target.outputs.route }}
+        run: |
+          set -euo pipefail
+          cd "$RUNTIME"
+          npm run dev -- --hostname 127.0.0.1 > "$RUNNER_TEMP/khonsera-design.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/khonsera-design.pid"
+
+          for attempt in {1..90}; do
+            if curl --fail --silent "http://127.0.0.1:3000$DESIGN_ROUTE" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat "$RUNNER_TEMP/khonsera-design.log" >&2
+          exit 1
+
+      - name: Record chat-piloted live design
+        id: design
+        continue-on-error: true
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          KQA_SKIP_AUTH: "1"
+          KQA_START_PATH: ${{ steps.target.outputs.route }}
+          INITIAL_VIEWPORT: ${{ steps.target.outputs.viewport }}
+          KQA_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -u -o pipefail
+
+          if [ "$INITIAL_VIEWPORT" = "mobile" ]; then
+            project="mobile-390"
+          else
+            project="desktop-chromium"
+          fi
+
+          KQA_VIEWPORT="$project" \
+          KQA_EVIDENCE_DIR="test-results/design-relay/$project" \
+          KQA_RELAY_MAX_MINUTES="110" \
+          KQA_RELAY_MAX_COMMANDS="500" \
+            npm run qa:relay
+
+      - name: Upload design evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-observer-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            test-results/design-relay/
+
+      - name: Upload runtime logs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p design-logs
+          cp "$RUNNER_TEMP/khonsera-design.log" design-logs/dev-server.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/design-sync.log" design-logs/sync.log 2>/dev/null || true
+
+      - name: Upload runtime log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-runtime-logs-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: design-logs/
+
+      - name: Preserve relay infrastructure failure
+        if: steps.design.outcome == 'failure'
+        run: |
+          echo "Live design relay evidence was preserved where possible, but the browser relay failed." >&2
+          exit 1
+\r'* ]]; then
             echo "Unsafe design route: $route" >&2
             exit 2
           fi
