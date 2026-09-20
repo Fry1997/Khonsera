@@ -4,10 +4,10 @@
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 7,
+  "commandCount": 8,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:06:18.332Z",
+  "updatedAt": "2026-09-20T12:35:57.870Z",
   "url": "http://127.0.0.1:3000/design-preview/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -23,15 +23,17 @@
   },
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 7,
-    "commandNumber": 7,
-    "at": "2026-09-20T12:06:18.093Z",
+    "sequence": 8,
+    "commandNumber": 8,
+    "at": "2026-09-20T12:35:57.759Z",
     "command": {
-      "type": "screenshot"
+      "type": "resize",
+      "width": 390,
+      "height": 844
     },
     "beforeUrl": "http://127.0.0.1:3000/design-preview/today",
     "afterUrl": "http://127.0.0.1:3000/design-preview/today",
-    "durationMs": 0,
+    "durationMs": 511,
     "error": null
   },
   "screen": {
@@ -43,58 +45,38 @@
       },
       {
         "top": 111,
-        "left": 176,
+        "left": 14,
         "text": "Work"
       },
       {
-        "top": 161,
-        "left": 176,
+        "top": 158,
+        "left": 14,
         "text": "From 20 Wilce Avenue"
       },
       {
-        "top": 217,
-        "left": 553,
-        "text": "Tickets today You have 1 active ticket"
+        "top": 416,
+        "left": 17,
+        "text": "Leave in 3 min"
       },
       {
-        "top": 293,
-        "left": 553,
-        "text": "Wallet"
-      },
-      {
-        "top": 369,
-        "left": 553,
-        "text": "+ Plan something"
-      },
-      {
-        "top": 439,
-        "left": 177,
-        "text": "Leave in 33 min"
-      },
-      {
-        "top": 467,
-        "left": 177,
+        "top": 444,
+        "left": 17,
         "text": "View best route"
       },
       {
-        "top": 520,
-        "left": 177,
+        "top": 497,
+        "left": 17,
         "text": "Share trip"
       },
       {
-        "top": 520,
-        "left": 283,
+        "top": 497,
+        "left": 138,
         "text": "Re-route"
       },
       {
-        "top": 520,
-        "left": 388,
+        "top": 497,
+        "left": 259,
         "text": "Tickets"
-      },
-      {
-        "top": 977,
-        "left": 356,
-        "text": "On time"
       }
     ],
     "interactives": [
@@ -128,11 +110,11 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1350,
+          "x": 300,
           "y": 34
         },
         "box": {
-          "x": 1328,
+          "x": 278,
           "y": 12,
           "width": 44,
           "height": 44
@@ -148,11 +130,11 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1402,
+          "x": 352,
           "y": 34
         },
         "box": {
-          "x": 1380,
+          "x": 330,
           "y": 12,
           "width": 44,
           "height": 44
@@ -168,13 +150,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 332,
-          "y": 490
+          "x": 195,
+          "y": 467
         },
         "box": {
-          "x": 177,
-          "y": 467,
-          "width": 310,
+          "x": 17,
+          "y": 444,
+          "width": 356,
           "height": 46
         }
       },
@@ -188,13 +170,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 226,
-          "y": 541
+          "x": 74,
+          "y": 518
         },
         "box": {
-          "x": 177,
-          "y": 520,
-          "width": 99,
+          "x": 17,
+          "y": 497,
+          "width": 114,
           "height": 42
         }
       },
@@ -208,13 +190,13 @@
         "disabled": true,
         "checked": null,
         "center": {
-          "x": 332,
-          "y": 541
+          "x": 195,
+          "y": 518
         },
         "box": {
-          "x": 283,
-          "y": 520,
-          "width": 99,
+          "x": 138,
+          "y": 497,
+          "width": 114,
           "height": 42
         }
       },
@@ -228,74 +210,14 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 437,
-          "y": 541
+          "x": 316,
+          "y": 518
         },
         "box": {
-          "x": 388,
-          "y": 520,
-          "width": 99,
+          "x": 259,
+          "y": 497,
+          "width": 114,
           "height": 42
-        }
-      },
-      {
-        "index": 7,
-        "tag": "a",
-        "role": null,
-        "label": "Tickets today You have 1 active ticket",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 708,
-          "y": 249
-        },
-        "box": {
-          "x": 553,
-          "y": 217,
-          "width": 311,
-          "height": 64
-        }
-      },
-      {
-        "index": 8,
-        "tag": "a",
-        "role": null,
-        "label": "Wallet",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 708,
-          "y": 325
-        },
-        "box": {
-          "x": 553,
-          "y": 293,
-          "width": 311,
-          "height": 64
-        }
-      },
-      {
-        "index": 9,
-        "tag": "button",
-        "role": null,
-        "label": "+ Plan something",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 627,
-          "y": 391
-        },
-        "box": {
-          "x": 553,
-          "y": 369,
-          "width": 148,
-          "height": 44
         }
       }
     ],
@@ -303,10 +225,10 @@
     "scroll": {
       "x": 0,
       "y": 0,
-      "viewportWidth": 1440,
-      "viewportHeight": 1000,
-      "documentWidth": 1440,
-      "documentHeight": 2035
+      "viewportWidth": 390,
+      "viewportHeight": 844,
+      "documentWidth": 390,
+      "documentHeight": 1978
     }
   },
   "signals": {
