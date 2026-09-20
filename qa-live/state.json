@@ -4,10 +4,10 @@
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 3,
+  "commandCount": 4,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:03:33.576Z",
+  "updatedAt": "2026-09-20T12:04:23.361Z",
   "url": "http://127.0.0.1:3000/login",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -23,15 +23,16 @@
   },
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 3,
-    "commandNumber": 3,
-    "at": "2026-09-20T12:03:33.119Z",
+    "sequence": 4,
+    "commandNumber": 4,
+    "at": "2026-09-20T12:04:22.832Z",
     "command": {
-      "type": "screenshot"
+      "type": "goto",
+      "path": "/design-preview/today"
     },
     "beforeUrl": "http://127.0.0.1:3000/login",
-    "afterUrl": "http://127.0.0.1:3000/login",
-    "durationMs": 0,
+    "afterUrl": "http://127.0.0.1:3000/design-preview/today",
+    "durationMs": 2067,
     "error": null
   },
   "screen": {
@@ -191,25 +192,25 @@
   },
   "signals": {
     "consoleErrors": [
-      "Failed to load resource: net::ERR_FAILED",
       "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used: - A server/client branch `if (typeof window !== 'undefined')`. - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called. - Date formatting in a user's locale which doesn't match the server. - External changing data without sending a snapshot of it along with the HTML. - Invalid HTML tag nesting. It can also happen if the client has a browser extension installed which messes with the HTML before React loaded. %s%s https://react.dev/link/hydration-mismatch ... <HotReload assetPrefix=\"\" globalError={[...]}> <AppDevOverlayErrorBoundary globalError={[...]}> <ReplaySsrOnlyErrors> <DevRo",
       "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff2') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
       "Failed to load resource: net::ERR_FAILED",
       "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff2') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
       "Failed to load resource: net::ERR_FAILED",
       "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
-      "Failed to load resource: net::ERR_FAILED"
+      "Failed to load resource: net::ERR_FAILED",
+      "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used: - A server/client branch `if (typeof window !== 'undefined')`. - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called. - Date formatting in a user's locale which doesn't match the server. - External changing data without sending a snapshot of it along with the HTML. - Invalid HTML tag nesting. It can also happen if the client has a browser extension installed which messes with the HTML before React loaded. %s%s https://react.dev/link/hydration-mismatch ... <HotReload assetPrefix=\"\" globalError={[...]}> <AppDevOverlayErrorBoundary globalError={[...]}> <ReplaySsrOnlyErrors> <DevRo"
     ],
     "pageErrors": [],
     "failedRequests": [
-      "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff · net::ERR_FAILED",
       "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2 · net::ERR_FAILED",
       "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff · net::ERR_FAILED",
       "POST http://127.0.0.1:3000/design-preview/today · net::ERR_ABORTED",
       "GET http://127.0.0.1:3000/login?_rsc=MLNHUyfyxyoGX6IY · net::ERR_ABORTED",
       "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2 · net::ERR_FAILED",
       "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2 · net::ERR_FAILED",
-      "GET http://127.0.0.1:3000/fonts/Satoshi-Variable.woff · net::ERR_FAILED"
+      "GET http://127.0.0.1:3000/fonts/Satoshi-Variable.woff · net::ERR_FAILED",
+      "GET http://127.0.0.1:3000/login?_rsc=VxH1VnAWuxNTOZoI · net::ERR_ABORTED"
     ],
     "serverErrors": [],
     "slowRequests": [],
