@@ -23,10 +23,12 @@ export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const path = request.nextUrl.pathname;
   const isDesignPreview =
-    process.env.NEXT_PUBLIC_APP_ENV === "design" &&
-    (path.startsWith("/__design/") || path.startsWith("/design-preview/"));
+    path.startsWith("/__design/") || path.startsWith("/design-preview/");
+  const isDesignAsset =
+    path.startsWith("/fonts/") || path.startsWith("/brand/");
   const isPublic =
     isDesignPreview ||
+    isDesignAsset ||
     PUBLIC_PATHS.some(
       (publicPath) =>
         path === publicPath || path.startsWith(`${publicPath}/`),
