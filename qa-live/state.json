@@ -4,10 +4,10 @@
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 6,
+  "commandCount": 7,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:06:05.326Z",
+  "updatedAt": "2026-09-20T12:06:18.332Z",
   "url": "http://127.0.0.1:3000/design-preview/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -23,16 +23,15 @@
   },
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 6,
-    "commandNumber": 6,
-    "at": "2026-09-20T12:06:03.789Z",
+    "sequence": 7,
+    "commandNumber": 7,
+    "at": "2026-09-20T12:06:18.093Z",
     "command": {
-      "type": "goto",
-      "path": "/design-preview/today"
+      "type": "screenshot"
     },
-    "beforeUrl": "http://127.0.0.1:3000/login",
+    "beforeUrl": "http://127.0.0.1:3000/design-preview/today",
     "afterUrl": "http://127.0.0.1:3000/design-preview/today",
-    "durationMs": 6464,
+    "durationMs": 0,
     "error": null
   },
   "screen": {
