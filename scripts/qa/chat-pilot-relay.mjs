@@ -89,6 +89,32 @@ let relayError = null;
 let video = null;
 let context = null;
 let page = null;
+let liveTheme = {};
+let liveCss = "";
+
+async function applyLiveDesignOverrides() {
+  if (!page) return;
+
+  await page.evaluate(
+    ({ theme, css }) => {
+      document.documentElement.dataset.liveDesign = "true";
+
+      for (const [name, value] of Object.entries(theme || {})) {
+        if (!String(name).startsWith("--")) continue;
+        document.documentElement.style.setProperty(String(name), String(value));
+      }
+
+      let style = document.getElementById("khonsera-live-design-style");
+      if (!style) {
+        style = document.createElement("style");
+        style.id = "khonsera-live-design-style";
+        document.head.appendChild(style);
+      }
+      style.textContent = String(css || "");
+    },
+    { theme: liveTheme, css: liveCss },
+  );
+}
 
 function clean(value, max = 1000) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -472,6 +498,10 @@ async function publishState(status, extra = {}) {
     liveScreenshot: `${rawBase}/current.png`,
     liveState: `${rawBase}/state.json`,
     controlBranch,
+    liveDesign: {
+      theme: liveTheme,
+      cssBytes: Buffer.byteLength(liveCss, "utf8"),
+    },
     controlPath,
     lastAction: actions.at(-1) ?? null,
     screen,
@@ -658,6 +688,42 @@ async function executeCommand(command) {
       });
       break;
     }
+    case "resize": {
+      const width = Math.min(Math.max(Number(command.width ?? 390), 320), 1920);
+      const height = Math.min(Math.max(Number(command.height ?? 844), 568), 1400);
+      await page.setViewportSize({ width, height });
+      break;
+    }
+    case "theme": {
+      const vars = command.vars && typeof command.vars === "object" ? command.vars : {};
+      const next = {};
+
+      for (const [name, value] of Object.entries(vars).slice(0, 100)) {
+        if (!String(name).startsWith("--")) continue;
+        next[String(name)] = clean(value, 240);
+      }
+
+      liveTheme = command.replace === true ? next : { ...liveTheme, ...next };
+      await applyLiveDesignOverrides();
+      break;
+    }
+    case "style":
+      liveCss = clean(command.css ?? "", 24000);
+      await applyLiveDesignOverrides();
+      break;
+    case "clear_design":
+      liveTheme = {};
+      liveCss = "";
+      await page.evaluate(() => {
+        document.documentElement.removeAttribute("data-live-design");
+        document.documentElement.removeAttribute("style");
+        document.getElementById("khonsera-live-design-style")?.remove();
+      });
+      break;
+    case "reload":
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
+      await applyLiveDesignOverrides();
+      break;
     case "screenshot":
       break;
     case "finish":
@@ -719,6 +785,14 @@ try {
 
   page = await context.newPage();
   video = page.video();
+
+  page.on("domcontentloaded", () => {
+    void applyLiveDesignOverrides().catch((error) => {
+      signals.consoleWarnings.push(
+        `Could not reapply live design overrides: ${clean(error?.message ?? error, 500)}`,
+      );
+    });
+  });
 
   page.on("console", (message) => {
     if (message.type() === "error") {
