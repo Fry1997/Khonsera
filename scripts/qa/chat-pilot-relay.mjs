@@ -8,6 +8,10 @@ import path from "node:path";
 const execFile = promisify(execFileCb);
 
 const targetUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://www.khonsera.com";
+const targetOrigin = new URL(targetUrl).origin;
+const startPath = process.env.KQA_START_PATH ?? "/today";
+const skipAuth = process.env.KQA_SKIP_AUTH === "1";
+const scenario = process.env.OBSERVATORY_SCENARIO ?? "KQA-UX-001";
 const magicLink = process.env.KHONSERA_QA_MAGIC_LINK;
 const supabaseUrl = process.env.KQA_SUPABASE_URL;
 const supabasePublishableKey = process.env.KQA_SUPABASE_PUBLISHABLE_KEY;
@@ -21,14 +25,21 @@ const maxMinutes = Number(process.env.KQA_RELAY_MAX_MINUTES ?? "35");
 const maxCommands = Number(process.env.KQA_RELAY_MAX_COMMANDS ?? "80");
 
 for (const [name, value] of Object.entries({
-  KHONSERA_QA_MAGIC_LINK: magicLink,
-  KQA_SUPABASE_URL: supabaseUrl,
-  KQA_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey,
   GITHUB_TOKEN: githubToken,
   GITHUB_REPOSITORY: repository,
   GITHUB_RUN_ID: runId,
 })) {
   if (!value) throw new Error(`${name} is required for the QA relay.`);
+}
+
+if (!skipAuth) {
+  for (const [name, value] of Object.entries({
+    KHONSERA_QA_MAGIC_LINK: magicLink,
+    KQA_SUPABASE_URL: supabaseUrl,
+    KQA_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey,
+  })) {
+    if (!value) throw new Error(`${name} is required when QA auth is enabled.`);
+  }
 }
 
 const [owner, repo] = repository.split("/");
@@ -78,6 +89,32 @@ let relayError = null;
 let video = null;
 let context = null;
 let page = null;
+let liveTheme = {};
+let liveCss = "";
+
+async function applyLiveDesignOverrides() {
+  if (!page) return;
+
+  await page.evaluate(
+    ({ theme, css }) => {
+      document.documentElement.dataset.liveDesign = "true";
+
+      for (const [name, value] of Object.entries(theme || {})) {
+        if (!String(name).startsWith("--")) continue;
+        document.documentElement.style.setProperty(String(name), String(value));
+      }
+
+      let style = document.getElementById("khonsera-live-design-style");
+      if (!style) {
+        style = document.createElement("style");
+        style.id = "khonsera-live-design-style";
+        document.head.appendChild(style);
+      }
+      style.textContent = String(css || "");
+    },
+    { theme: liveTheme, css: liveCss },
+  );
+}
 
 function clean(value, max = 1000) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -86,7 +123,7 @@ function clean(value, max = 1000) {
 function allowedHostname(urlString) {
   try {
     const url = new URL(urlString);
-    return ["www.khonsera.com", "khonsera.com"].includes(url.hostname);
+    return url.origin === targetOrigin;
   } catch {
     return false;
   }
@@ -446,7 +483,7 @@ async function publishState(status, extra = {}) {
   const screen = await observeScreen(page);
 
   const state = {
-    scenario: "KQA-UX-001",
+    scenario,
     executionMode: "chat-piloted-relay",
     runId,
     viewportName,
@@ -461,6 +498,10 @@ async function publishState(status, extra = {}) {
     liveScreenshot: `${rawBase}/current.png`,
     liveState: `${rawBase}/state.json`,
     controlBranch,
+    liveDesign: {
+      theme: liveTheme,
+      cssBytes: Buffer.byteLength(liveCss, "utf8"),
+    },
     controlPath,
     lastAction: actions.at(-1) ?? null,
     screen,
@@ -639,7 +680,7 @@ async function executeCommand(command) {
     case "goto": {
       const requested = new URL(String(command.url ?? command.path ?? ""), targetUrl);
       if (!allowedHostname(requested.toString())) {
-        throw new Error("goto is restricted to khonsera.com.");
+        throw new Error(`goto is restricted to ${targetOrigin}.`);
       }
       await page.goto(requested.toString(), {
         waitUntil: "domcontentloaded",
@@ -647,6 +688,42 @@ async function executeCommand(command) {
       });
       break;
     }
+    case "resize": {
+      const width = Math.min(Math.max(Number(command.width ?? 390), 320), 1920);
+      const height = Math.min(Math.max(Number(command.height ?? 844), 568), 1400);
+      await page.setViewportSize({ width, height });
+      break;
+    }
+    case "theme": {
+      const vars = command.vars && typeof command.vars === "object" ? command.vars : {};
+      const next = {};
+
+      for (const [name, value] of Object.entries(vars).slice(0, 100)) {
+        if (!String(name).startsWith("--")) continue;
+        next[String(name)] = clean(value, 240);
+      }
+
+      liveTheme = command.replace === true ? next : { ...liveTheme, ...next };
+      await applyLiveDesignOverrides();
+      break;
+    }
+    case "style":
+      liveCss = clean(command.css ?? "", 24000);
+      await applyLiveDesignOverrides();
+      break;
+    case "clear_design":
+      liveTheme = {};
+      liveCss = "";
+      await page.evaluate(() => {
+        document.documentElement.removeAttribute("data-live-design");
+        document.documentElement.removeAttribute("style");
+        document.getElementById("khonsera-live-design-style")?.remove();
+      });
+      break;
+    case "reload":
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
+      await applyLiveDesignOverrides();
+      break;
     case "screenshot":
       break;
     case "finish":
@@ -709,6 +786,14 @@ try {
   page = await context.newPage();
   video = page.video();
 
+  page.on("domcontentloaded", () => {
+    void applyLiveDesignOverrides().catch((error) => {
+      signals.consoleWarnings.push(
+        `Could not reapply live design overrides: ${clean(error?.message ?? error, 500)}`,
+      );
+    });
+  });
+
   page.on("console", (message) => {
     if (message.type() === "error") {
       signals.consoleErrors.push(clean(message.text(), 800));
@@ -748,16 +833,19 @@ try {
     }
   });
 
-  await bootstrapSession(browser, context);
+  if (!skipAuth) {
+    await bootstrapSession(browser, context);
+  }
 
-  await page.goto(`${targetUrl}/today`, {
+  const startUrl = new URL(startPath, targetUrl).toString();
+  await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
   });
   await page.waitForTimeout(700);
 
   if (!allowedHostname(page.url())) {
-    throw new Error(`QA relay landed outside Khonsera: ${page.url()}`);
+    throw new Error(`QA relay landed outside the configured target: ${page.url()}`);
   }
 
   await seedControlFile();

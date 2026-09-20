@@ -63,12 +63,14 @@
   <main class="shell">
     <header>
       <div>
-        <div class="eyebrow">Khonsera · Production traveller QA</div>
-        <h1>QA Observatory</h1>
-        <p class="sub">Watch this ChatGPT conversation pilot the real deployed Khonsera product screen by screen through a dumb Playwright browser relay.</p>
+        <div id="product-eyebrow" class="eyebrow">Khonsera · Production traveller QA</div>
+        <h1 id="main-title">QA Observatory</h1>
+        <p id="main-sub" class="sub">Watch this ChatGPT conversation pilot the real deployed Khonsera product screen by screen through a dumb Playwright browser relay.</p>
       </div>
       <div class="stack">
-        <a class="button primary" href="https://github.com/Fry1997/Khonsera/actions/workflows/qa-observatory.yml" target="_blank" rel="noreferrer">Start traveller run ↗</a>
+        <a id="mode-qa" class="button" href="?mode=qa">QA</a>
+        <a id="mode-design" class="button" href="?mode=design">Live design</a>
+        <a id="start-run" class="button primary" href="https://github.com/Fry1997/Khonsera/actions/workflows/qa-observatory.yml" target="_blank" rel="noreferrer">Start traveller run ↗</a>
         <a class="button" href="https://github.com/Fry1997/Khonsera" target="_blank" rel="noreferrer">Repository ↗</a>
       </div>
     </header>
@@ -100,7 +102,7 @@
       <div id="live-detail" class="live-meta"></div>
     </section>
 
-    <div class="grid">
+    <div id="evidence-grid" class="grid">
       <section class="panel">
         <div class="section-head">
           <div>
@@ -110,7 +112,7 @@
           <div id="view-switch" class="view-switch"></div>
         </div>
         <div id="evidence"><div class="skeleton">Loading recording and trace links…</div></div>
-        <div class="footer-note">QA:UX is piloted by the active ChatGPT conversation: screenshot → reason here → mechanical command → new screenshot. Playwright is only the remote browser and recorder. No OpenAI API key or separate model API billing is used. Evidence uses a dedicated persistent QA traveller; real passenger or personal data must never be introduced while Observatory releases are public.</div>
+        <div id="footer-note" class="footer-note">QA:UX is piloted by the active ChatGPT conversation: screenshot → reason here → mechanical command → new screenshot. Playwright is only the remote browser and recorder. No OpenAI API key or separate model API billing is used. Evidence uses a dedicated persistent QA traveller; real passenger or personal data must never be introduced while Observatory releases are public.</div>
       </section>
 
       <aside class="panel">
@@ -124,8 +126,32 @@
     const REPO = "Fry1997/Khonsera";
     const API = "https://api.github.com/repos/" + REPO;
     const RELEASES_API = API + "/releases?per_page=12";
-    const RUNS_API = API + "/actions/workflows/qa-observatory.yml/runs?per_page=1";
+    const MODE = new URLSearchParams(location.search).get("mode") === "design" ? "design" : "qa";
+    const WORKFLOW = MODE === "design" ? "design-observatory.yml" : "qa-observatory.yml";
+    const RUNS_API = API + "/actions/workflows/" + WORKFLOW + "/runs?per_page=1";
     const $ = (id) => document.getElementById(id);
+
+    function configureMode() {
+      const design = MODE === "design";
+      document.title = design ? "Khonsera Live Design" : "Khonsera QA Observatory";
+      $("product-eyebrow").textContent = design
+        ? "Khonsera · Live interface iteration"
+        : "Khonsera · Production traveller QA";
+      $("main-title").textContent = design ? "Live Design" : "QA Observatory";
+      $("main-sub").textContent = design
+        ? "Keep Khonsera on screen while this ChatGPT conversation edits the live design branch, injects temporary visual treatments, resizes the viewport and watches Next.js hot-reload the result."
+        : "Watch this ChatGPT conversation pilot the real deployed Khonsera product screen by screen through a dumb Playwright browser relay.";
+      $("start-run").href = design
+        ? "https://github.com/Fry1997/Khonsera/actions/workflows/design-observatory.yml"
+        : "https://github.com/Fry1997/Khonsera/actions/workflows/qa-observatory.yml";
+      $("start-run").textContent = design ? "Start live design ↗" : "Start traveller run ↗";
+      $("mode-design").classList.toggle("primary", design);
+      $("mode-qa").classList.toggle("primary", !design);
+      $("evidence-grid").style.display = design ? "none" : "grid";
+      $("footer-note").textContent = design
+        ? "Live Design keeps one branch-local Next.js dev server and browser session alive. Source commits on design/live-ui are pulled into the running worktree every few seconds; lightweight CSS/theme experiments can be injected directly into the browser before we persist them."
+        : $("footer-note").textContent;
+    }
 
     let releases = [];
     let selectedRelease = null;
@@ -259,12 +285,22 @@
         const dot = $("run-dot");
         dot.className = "dot";
         let title = "Latest run";
-        if (run.status !== "completed") { dot.classList.add("warn"); title = run.status === "queued" ? "Traveller run queued" : "Traveller run in progress"; }
-        else if (run.conclusion === "success") { dot.classList.add("good"); title = "Latest traveller run passed"; }
-        else { dot.classList.add("bad"); title = "Latest traveller run: " + (run.conclusion || "completed"); }
+        const noun = MODE === "design" ? "Design session" : "Traveller run";
+        if (run.status !== "completed") {
+          dot.classList.add("warn");
+          title = run.status === "queued" ? noun + " queued" : noun + " in progress";
+        }
+        else if (run.conclusion === "success") {
+          dot.classList.add("good");
+          title = MODE === "design" ? "Latest design session completed" : "Latest traveller run passed";
+        }
+        else {
+          dot.classList.add("bad");
+          title = noun + ": " + (run.conclusion || "completed");
+        }
 
         $("run-title").textContent = title;
-        $("run-meta").innerHTML = '<a href="' + escapeHtml(run.html_url) + '" target="_blank" rel="noreferrer">Observer #' + escapeHtml(run.run_number) + '</a> · ' + escapeHtml(fmtDate(run.updated_at));
+        $("run-meta").innerHTML = '<a href="' + escapeHtml(run.html_url) + '" target="_blank" rel="noreferrer">' + (MODE === "design" ? "Design" : "Observer") + ' #' + escapeHtml(run.run_number) + '</a> · ' + escapeHtml(fmtDate(run.updated_at));
         await loadLiveRelay(run);
       } catch (error) {
         $("run-dot").className = "dot bad";
@@ -341,6 +377,7 @@
     }
 
     $("refresh").addEventListener("click",refresh);
+    configureMode();
     refresh();
     setInterval(loadRunStatus,60000);
     setInterval(() => {
