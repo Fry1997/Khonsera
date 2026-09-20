@@ -11,7 +11,7 @@ on:
       path:
         description: Design route to open
         required: true
-        default: /__design/today
+        default: /design-preview/today
         type: string
       viewport:
         description: Initial browser viewport
@@ -71,7 +71,7 @@ jobs:
           set -euo pipefail
 
           ref="design/live-ui"
-          route="/__design/today"
+          route="/design-preview/today"
           viewport="desktop"
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
