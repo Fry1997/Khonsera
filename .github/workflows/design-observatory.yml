@@ -91,10 +91,13 @@ jobs:
             exit 2
           fi
 
-          if ! [[ "$route" =~ ^/[A-Za-z0-9_./?=&-]+$ ]]; then
-            echo "Unsafe design route: $route" >&2
-            exit 2
-          fi
+          case "$route" in
+            /*) ;;
+            *)
+              echo "Unsafe design route: $route" >&2
+              exit 2
+              ;;
+          esac
 
           git fetch origin "$ref"
           git rev-parse --verify FETCH_HEAD >/dev/null
