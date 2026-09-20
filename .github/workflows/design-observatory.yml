@@ -165,6 +165,7 @@ jobs:
         shell: bash
         env:
           RUNTIME: ${{ steps.runtime.outputs.path }}
+          DESIGN_ROUTE: ${{ steps.target.outputs.route }}
         run: |
           set -euo pipefail
           cd "$RUNTIME"
@@ -172,7 +173,7 @@ jobs:
           echo $! > "$RUNNER_TEMP/khonsera-design.pid"
 
           for attempt in {1..90}; do
-            if curl --fail --silent http://127.0.0.1:3000 >/dev/null; then
+            if curl --fail --silent "http://127.0.0.1:3000$DESIGN_ROUTE" >/dev/null; then
               exit 0
             fi
             sleep 1
