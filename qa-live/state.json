@@ -4,10 +4,10 @@
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 8,
+  "commandCount": 9,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:35:57.870Z",
+  "updatedAt": "2026-09-20T12:36:58.926Z",
   "url": "http://127.0.0.1:3000/design-preview/today",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -19,21 +19,20 @@
   "controlBranch": "qa-control-35509399998",
   "liveDesign": {
     "theme": {},
-    "cssBytes": 0
+    "cssBytes": 8600
   },
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 8,
-    "commandNumber": 8,
-    "at": "2026-09-20T12:35:57.759Z",
+    "sequence": 9,
+    "commandNumber": 9,
+    "at": "2026-09-20T12:36:58.826Z",
     "command": {
-      "type": "resize",
-      "width": 390,
-      "height": 844
+      "type": "style",
+      "css": "\nhtml, body, .khonsera-app, .khonsera-app--unified {\n  background:#050505 !important;\n  color:#f7f7f4 !important;\n}\n.khonsera-app:has(.cc-today-direction) {\n  --today-ground:#050505 !important;\n  --today-chrome:#050505 !important;\n  --today-surface:#111111 !important;\n  --today-surface-muted:#1a1a1a !important;\n  --today-paper:#f4f4f0 !important;\n  --today-ink:#f7f7f4 !important;\n  --today-ink-2:#deded8 !important;\n  --today-muted:#969690 !important;\n  --today-faint:#666662 !important;\n  --today-border:#2b2b2b !important;\n  --today-border-strong:#3b3b3b !important;\n  --today-green:#f4f4f0 !important;\n  --today-green-strong:#ffffff !important;\n  --today-green-soft:#202020 !important;\n  --today-orange:#ffffff !important;\n  --today-orange-strong:#ffffff !important;\n  --today-orange-soft:#202020 !important;\n  --today-danger:#ffffff !important;\n  --today-danger-soft:#252525 !important;\n  --today-radius-card:14px !important;\n  --today-radius-compact:12px !important;\n  --today-radius-control:9px !important;\n  --today-shadow-card:none !important;\n  background:#050505 !important;\n}\n.khonsera-app:has(.cc-today-direction) .cc-app-main {\n  background:#050505 !important;\n  padding:8px 8px 88px !important;\n}\n.khonsera-app:has(.cc-today-direction) .cc-appbar {\n  min-height:62px !important;\n  border-bottom:1px solid #1d1d1d !important;\n  background:#050505 !important;\n  backdrop-filter:none !important;\n}\n.khonsera-app:has(.cc-today-direction) .cc-lockup,\n.khonsera-app:has(.cc-today-direction) .cc-iconbtn {\n  color:#f7f7f4 !important;\n}\n.khonsera-app:has(.cc-today-direction) .cc-brand-dot {\n  width:5px !important;\n  height:5px !important;\n  background:#f7f7f4 !important;\n  box-shadow:none !important;\n}\n.khonsera-app:has(.cc-today-direction) .cc-iconbtn {\n  border:1px solid #292929 !important;\n  border-radius:12px !important;\n  background:#101010 !important;\n  box-shadow:none !important;\n}\n.khonsera-app .cc-today-direction {\n  width:100% !important;\n  margin:0 !important;\n  padding:14px !important;\n  gap:12px !important;\n  border:1px solid #d8d8d2 !important;\n  border-radius:24px !important;\n  background:#f4f4f0 !important;\n  color:#111111 !important;\n}\n.khonsera-app .cc-today-direction > .cc-screen-content {\n  gap:10px !important;\n}\n.khonsera-app .cc-today-head {\n  grid-template-columns:minmax(0,1fr) 96px !important;\n  gap:10px !important;\n  padding:2px 0 12px !important;\n  border-bottom:1px solid #cfcfc9 !important;\n}\n.khonsera-app .cc-today-head::before {\n  display:none !important;\n}\n.khonsera-app .cc-today-head .cc-eyebrow {\n  color:#777773 !important;\n  font-size:7px !important;\n  letter-spacing:.17em !important;\n}\n.khonsera-app .cc-today-head .cc-screen-title {\n  margin-top:4px !important;\n  color:#0b0b0b !important;\n  font-size:38px !important;\n  font-weight:650 !important;\n  letter-spacing:-.055em !important;\n}\n.khonsera-app .cc-today-head .cc-screen-description,\n.khonsera-app .cc-today-destination {\n  color:#5d5d59 !important;\n  font-size:10px !important;\n}\n.khonsera-app .cc-today-direction .cc-weather {\n  width:96px !important;\n  min-width:96px !important;\n  min-height:54px !important;\n  padding:9px 10px !important;\n  border:0 !important;\n  border-radius:13px !important;\n  background:#101010 !important;\n  color:#fff !important;\n  box-shadow:none !important;\n}\n.khonsera-app .cc-today-direction .cc-weather-glyph,\n.khonsera-app .cc-today-direction .cc-weather-temp,\n.khonsera-app .cc-today-direction .cc-weather-headline {\n  color:#f7f7f4 !important;\n}\n.khonsera-app .cc-day-forecast {\n  overflow:hidden !important;\n  border:1px solid #d4d4ce !important;\n  border-radius:13px !important;\n  background:#e7e7e2 !important;\n}\n.khonsera-app .cc-weather-hours {\n  gap:1px !important;\n  background:#cfcfca !important;\n}\n.khonsera-app .cc-weather-hour {\n  min-width:58px !important;\n  padding:8px 6px !important;\n  background:#f4f4f0 !important;\n}\n.khonsera-app .cc-weather-hour-time,\n.khonsera-app .cc-weather-hour-temp,\n.khonsera-app .cc-weather-hour-glyph {\n  color:#111 !important;\n}\n.khonsera-app .cc-today-command .cc-active-tile {\n  gap:11px !important;\n  padding:15px !important;\n  border:0 !important;\n  border-radius:16px !important;\n  background:#101010 !important;\n  color:#f7f7f4 !important;\n  box-shadow:none !important;\n}\n.khonsera-app .cc-today-command .cc-active-tile::before {\n  display:none !important;\n}\n.khonsera-app .cc-today-command .cc-at-status,\n.khonsera-app .cc-today-command .cc-setoff-kicker,\n.khonsera-app .cc-today-command .cc-setoff-for,\n.khonsera-app .cc-today-command .cc-setoff-move {\n  color:#a5a5a0 !important;\n}\n.khonsera-app .cc-today-command .cc-at-dot {\n  width:5px !important;\n  height:5px !important;\n  border-radius:50% !important;\n  background:#f7f7f4 !important;\n}\n.khonsera-app .cc-today-command .cc-next-priority {\n  border:1px solid #3a3a3a !important;\n  border-radius:8px !important;\n  background:#1c1c1c !important;\n  color:#d8d8d2 !important;\n}\n.khonsera-app .cc-today-command :is(.cc-setoff-figure,.cc-setoff-figure--word) {\n  color:#ffffff !important;\n  font-family:var(--mono) !important;\n  font-size:54px !important;\n  font-weight:540 !important;\n  letter-spacing:-.075em !important;\n}\n.khonsera-app .cc-today-command .cc-setoff-colon {\n  color:#777 !important;\n}\n.khonsera-app .cc-today-command .cc-leave-ring {\n  border:1px solid #333 !important;\n  border-radius:10px !important;\n  background:#1a1a1a !important;\n}\n.khonsera-app .cc-today-command .cc-leave-ring > span {\n  color:#8d8d88 !important;\n}\n.khonsera-app .cc-today-command .cc-leave-ring strong {\n  color:#fff !important;\n}\n.khonsera-app .cc-today-command .cc-next-facts > span {\n  border:1px solid #333 !important;\n  border-radius:8px !important;\n  background:#181818 !important;\n  color:#d7d7d2 !important;\n}\n.khonsera-app .cc-today-command .cc-next-facts svg {\n  color:#f7f7f4 !important;\n}\n.khonsera-app .cc-today-command .cc-next-action {\n  border:1px solid #333 !important;\n  border-radius:10px !important;\n  background:#181818 !important;\n  color:#dcdcd7 !important;\n}\n.khonsera-app .cc-today-command .cc-next-action--primary {\n  border-color:#f4f4f0 !important;\n  background:#f4f4f0 !important;\n  color:#0b0b0b !important;\n  box-shadow:none !important;\n}\n.khonsera-app .kh-itinerary-head {\n  min-height:40px !important;\n  margin-bottom:8px !important;\n  padding-bottom:8px !important;\n  border-bottom:1px solid #cfcfc9 !important;\n}\n.khonsera-app .kh-itinerary-title,\n.khonsera-app .kh-itinerary-count {\n  color:#111 !important;\n}\n.khonsera-app .kh-itinerary-title {\n  font-size:15px !important;\n  text-transform:uppercase !important;\n  letter-spacing:.02em !important;\n}\n.khonsera-app .kh-spine-rail {\n  left:13px !important;\n  background:#b7b7b2 !important;\n}\n.khonsera-app .kh-spine-marker {\n  width:26px !important;\n  height:26px !important;\n  min-width:26px !important;\n  border:1px solid #1e1e1e !important;\n  border-radius:7px !important;\n  background:#111 !important;\n  color:#fff !important;\n  box-shadow:none !important;\n}\n.khonsera-app .kh-spine-marker[data-kind],\n.khonsera-app .kh-spine-marker[data-active=\"true\"] {\n  border-color:#111 !important;\n  background:#111 !important;\n  color:#fff !important;\n}\n.khonsera-app :is(.kh-movement-card,.kh-hub-card,.kh-station-card,.kh-change-card,.kh-appointment-card) {\n  border:0 !important;\n  border-radius:14px !important;\n  background:#111 !important;\n  color:#f7f7f4 !important;\n  box-shadow:none !important;\n}\n.khonsera-app :is(.kh-movement-card,.kh-hub-card,.kh-station-card,.kh-change-card,.kh-appointment-card)::before {\n  display:none !important;\n}\n.khonsera-app :is(.kh-card-eyebrow,.kh-movement-duration,.kh-movement-times time,.kh-movement-destination,.kh-station-card header time,.kh-station-title,.kh-station-dwell,.kh-hub-copy strong,.kh-hub-times strong,.kh-change-main strong,.kh-change-duration strong) {\n  color:#f4f4ef !important;\n}\n.khonsera-app :is(.kh-mode-tag,.kh-buffer-chip) {\n  border:1px solid #343434 !important;\n  border-radius:7px !important;\n  background:#1d1d1d !important;\n  color:#d8d8d2 !important;\n}\n.khonsera-app :is(.kh-movement-rule,.kh-spine-toggle) {\n  border-color:#343434 !important;\n  background:#202020 !important;\n  color:#b0b0ab !important;\n}\n.khonsera-app .kh-movement-rule {\n  background:#343434 !important;\n}\n.khonsera-app :is(.kh-hub-times,.kh-change-times) small,\n.khonsera-app .kh-change-duration span {\n  color:#777772 !important;\n}\n.khonsera-app .kh-time-arrow {\n  color:#9b9b96 !important;\n}\n.khonsera-app .cc-tabbar-wrap {\n  border-top:1px solid #1d1d1d !important;\n  background:#050505 !important;\n  box-shadow:none !important;\n  backdrop-filter:none !important;\n}\n.khonsera-app .cc-tab {\n  color:#747474 !important;\n  border-radius:10px !important;\n}\n.khonsera-app .cc-tab[data-active=\"true\"] {\n  background:#f4f4f0 !important;\n  color:#0b0b0b !important;\n}\n.khonsera-app .cc-tab[data-active=\"true\"] :is(.cc-tab-ico,.cc-tab-label) {\n  color:#0b0b0b !important;\n}\n"
     },
     "beforeUrl": "http://127.0.0.1:3000/design-preview/today",
     "afterUrl": "http://127.0.0.1:3000/design-preview/today",
-    "durationMs": 511,
+    "durationMs": 487,
     "error": null
   },
   "screen": {
@@ -44,38 +43,38 @@
         "text": "KHONSERA"
       },
       {
-        "top": 111,
-        "left": 14,
+        "top": 119,
+        "left": 23,
         "text": "Work"
       },
       {
-        "top": 158,
-        "left": 14,
+        "top": 162,
+        "left": 23,
         "text": "From 20 Wilce Avenue"
       },
       {
-        "top": 416,
-        "left": 17,
-        "text": "Leave in 3 min"
+        "top": 405,
+        "left": 38,
+        "text": "Leave in 2 min"
       },
       {
-        "top": 444,
-        "left": 17,
+        "top": 432,
+        "left": 38,
         "text": "View best route"
       },
       {
-        "top": 497,
-        "left": 17,
+        "top": 485,
+        "left": 38,
         "text": "Share trip"
       },
       {
-        "top": 497,
-        "left": 138,
+        "top": 485,
+        "left": 145,
         "text": "Re-route"
       },
       {
-        "top": 497,
-        "left": 259,
+        "top": 485,
+        "left": 252,
         "text": "Tickets"
       }
     ],
@@ -90,13 +89,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 77,
+          "x": 76,
           "y": 34
         },
         "box": {
           "x": 16,
           "y": 27,
-          "width": 122,
+          "width": 120,
           "height": 14
         }
       },
@@ -151,12 +150,12 @@
         "checked": null,
         "center": {
           "x": 195,
-          "y": 467
+          "y": 455
         },
         "box": {
-          "x": 17,
-          "y": 444,
-          "width": 356,
+          "x": 38,
+          "y": 432,
+          "width": 314,
           "height": 46
         }
       },
@@ -170,13 +169,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 74,
-          "y": 518
+          "x": 88,
+          "y": 506
         },
         "box": {
-          "x": 17,
-          "y": 497,
-          "width": 114,
+          "x": 38,
+          "y": 485,
+          "width": 100,
           "height": 42
         }
       },
@@ -191,12 +190,12 @@
         "checked": null,
         "center": {
           "x": 195,
-          "y": 518
+          "y": 506
         },
         "box": {
-          "x": 138,
-          "y": 497,
-          "width": 114,
+          "x": 145,
+          "y": 485,
+          "width": 100,
           "height": 42
         }
       },
@@ -210,13 +209,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 316,
-          "y": 518
+          "x": 302,
+          "y": 506
         },
         "box": {
-          "x": 259,
-          "y": 497,
-          "width": 114,
+          "x": 252,
+          "y": 485,
+          "width": 100,
           "height": 42
         }
       }
@@ -228,7 +227,7 @@
       "viewportWidth": 390,
       "viewportHeight": 844,
       "documentWidth": 390,
-      "documentHeight": 1978
+      "documentHeight": 1996
     }
   },
   "signals": {
