@@ -4,11 +4,11 @@
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 0,
+  "commandCount": 1,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:02:10.147Z",
-  "url": "http://127.0.0.1:3000/design-preview/today",
+  "updatedAt": "2026-09-20T12:02:24.310Z",
+  "url": "http://127.0.0.1:3000/login",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
     "width": 1440,
@@ -22,103 +22,99 @@
     "cssBytes": 0
   },
   "controlPath": "qa-control/command.json",
-  "lastAction": null,
+  "lastAction": {
+    "sequence": 1,
+    "commandNumber": 1,
+    "at": "2026-09-20T12:02:23.897Z",
+    "command": {
+      "type": "screenshot"
+    },
+    "beforeUrl": "http://127.0.0.1:3000/login",
+    "afterUrl": "http://127.0.0.1:3000/login",
+    "durationMs": 0,
+    "error": null
+  },
   "screen": {
     "viewportText": [
       {
-        "top": 27,
-        "left": 16,
-        "text": "KHONSERA"
+        "top": 535,
+        "left": 530,
+        "text": "Welcome back."
       },
       {
-        "top": 111,
-        "left": 176,
-        "text": "Work"
+        "top": 591,
+        "left": 530,
+        "text": "The evening, kept."
       },
       {
-        "top": 161,
-        "left": 176,
-        "text": "From 20 Wilce Avenue"
+        "top": 645,
+        "left": 530,
+        "text": "EMAIL"
       },
       {
-        "top": 217,
-        "left": 553,
-        "text": "Tickets today You have 1 active ticket"
+        "top": 730,
+        "left": 530,
+        "text": "PASSWORD"
       },
       {
-        "top": 293,
-        "left": 553,
-        "text": "Wallet"
+        "top": 831,
+        "left": 530,
+        "text": "Sign in"
       },
       {
-        "top": 369,
-        "left": 553,
-        "text": "+ Plan something"
+        "top": 900,
+        "left": 530,
+        "text": "Forgot password?"
       },
       {
-        "top": 474,
-        "left": 177,
-        "text": "Leave in 33 min"
+        "top": 900,
+        "left": 799,
+        "text": "Create account"
       },
       {
-        "top": 502,
-        "left": 177,
-        "text": "View best route"
-      },
-      {
-        "top": 555,
-        "left": 177,
-        "text": "Share trip"
-      },
-      {
-        "top": 555,
-        "left": 283,
-        "text": "Re-route"
-      },
-      {
-        "top": 555,
-        "left": 388,
-        "text": "Tickets"
+        "top": 953,
+        "left": 530,
+        "text": "CALM · CONSIDERED · PRECISE"
       }
     ],
     "interactives": [
       {
         "index": 0,
-        "tag": "a",
+        "tag": "input",
         "role": null,
-        "label": "Khonsera",
-        "type": null,
-        "value": null,
+        "label": "EMAIL",
+        "type": "email",
+        "value": "",
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 83,
-          "y": 34
+          "x": 720,
+          "y": 692
         },
         "box": {
-          "x": 16,
-          "y": 27,
-          "width": 133,
-          "height": 14
+          "x": 530,
+          "y": 670,
+          "width": 380,
+          "height": 44
         }
       },
       {
         "index": 1,
-        "tag": "button",
+        "tag": "input",
         "role": null,
-        "label": "Plan a day",
-        "type": null,
-        "value": null,
+        "label": "PASSWORD",
+        "type": "password",
+        "value": "[redacted]",
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1350,
-          "y": 34
+          "x": 720,
+          "y": 777
         },
         "box": {
-          "x": 1328,
-          "y": 12,
-          "width": 44,
+          "x": 530,
+          "y": 755,
+          "width": 380,
           "height": 44
         }
       },
@@ -126,160 +122,60 @@
         "index": 2,
         "tag": "button",
         "role": null,
-        "label": "Menu",
+        "label": "Sign in",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 1402,
-          "y": 34
+          "x": 720,
+          "y": 853
         },
         "box": {
-          "x": 1380,
-          "y": 12,
-          "width": 44,
-          "height": 44
+          "x": 530,
+          "y": 831,
+          "width": 380,
+          "height": 45
         }
       },
       {
         "index": 3,
-        "tag": "button",
+        "tag": "a",
         "role": null,
-        "label": "View best route",
+        "label": "Forgot password?",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 332,
-          "y": 525
+          "x": 587,
+          "y": 910
         },
         "box": {
-          "x": 177,
-          "y": 502,
-          "width": 310,
-          "height": 46
+          "x": 530,
+          "y": 900,
+          "width": 114,
+          "height": 22
         }
       },
       {
         "index": 4,
-        "tag": "button",
-        "role": null,
-        "label": "Share trip",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 226,
-          "y": 576
-        },
-        "box": {
-          "x": 177,
-          "y": 555,
-          "width": 99,
-          "height": 42
-        }
-      },
-      {
-        "index": 5,
-        "tag": "button",
-        "role": null,
-        "label": "Re-route",
-        "type": null,
-        "value": null,
-        "disabled": true,
-        "checked": null,
-        "center": {
-          "x": 332,
-          "y": 576
-        },
-        "box": {
-          "x": 283,
-          "y": 555,
-          "width": 99,
-          "height": 42
-        }
-      },
-      {
-        "index": 6,
-        "tag": "button",
-        "role": null,
-        "label": "Tickets",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 437,
-          "y": 576
-        },
-        "box": {
-          "x": 388,
-          "y": 555,
-          "width": 99,
-          "height": 42
-        }
-      },
-      {
-        "index": 7,
         "tag": "a",
         "role": null,
-        "label": "Tickets today You have 1 active ticket",
+        "label": "Create account",
         "type": null,
         "value": null,
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 708,
-          "y": 249
+          "x": 855,
+          "y": 910
         },
         "box": {
-          "x": 553,
-          "y": 217,
-          "width": 311,
-          "height": 64
-        }
-      },
-      {
-        "index": 8,
-        "tag": "a",
-        "role": null,
-        "label": "Wallet",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 708,
-          "y": 325
-        },
-        "box": {
-          "x": 553,
-          "y": 293,
-          "width": 311,
-          "height": 64
-        }
-      },
-      {
-        "index": 9,
-        "tag": "button",
-        "role": null,
-        "label": "+ Plan something",
-        "type": null,
-        "value": null,
-        "disabled": false,
-        "checked": null,
-        "center": {
-          "x": 635,
-          "y": 391
-        },
-        "box": {
-          "x": 553,
-          "y": 369,
-          "width": 166,
-          "height": 44
+          "x": 799,
+          "y": 900,
+          "width": 111,
+          "height": 22
         }
       }
     ],
@@ -290,12 +186,15 @@
       "viewportWidth": 1440,
       "viewportHeight": 1000,
       "documentWidth": 1440,
-      "documentHeight": 2100
+      "documentHeight": 1000
     }
   },
   "signals": {
     "consoleErrors": [
-      "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used: - A server/client branch `if (typeof window !== 'undefined')`. - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called. - Date formatting in a user's locale which doesn't match the server. - External changing data without sending a snapshot of it along with the HTML. - Invalid HTML tag nesting. It can also happen if the client has a browser extension installed which messes with the HTML before React loaded. %s%s https://react.dev/link/hydration-mismatch ... <HotReload assetPrefix=\"\" globalError={[...]}> <AppDevOverlayErrorBoundary globalError={[...]}> <ReplaySsrOnlyErrors> <DevRo",
+      "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff2') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
       "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff2') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
       "Failed to load resource: net::ERR_FAILED",
       "Access to font at 'http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff' (redirected from 'http://127.0.0.1:3000/fonts/Satoshi-Variable.woff') from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
@@ -305,7 +204,10 @@
     "failedRequests": [
       "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2 · net::ERR_FAILED",
       "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff · net::ERR_FAILED",
-      "POST http://127.0.0.1:3000/design-preview/today · net::ERR_ABORTED"
+      "POST http://127.0.0.1:3000/design-preview/today · net::ERR_ABORTED",
+      "GET http://127.0.0.1:3000/fonts/Satoshi-Variable.woff2 · net::ERR_FAILED",
+      "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff2 · net::ERR_FAILED",
+      "GET http://localhost:3000/login?next=%2Ffonts%2FSatoshi-Variable.woff · net::ERR_FAILED"
     ],
     "serverErrors": [],
     "slowRequests": [],
