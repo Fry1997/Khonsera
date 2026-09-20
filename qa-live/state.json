@@ -1,0 +1,194 @@
+{
+  "scenario": "KDESIGN-LIVE-001",
+  "executionMode": "chat-piloted-relay",
+  "runId": "35478439196",
+  "viewportName": "desktop-chromium",
+  "status": "error",
+  "commandCount": 0,
+  "maxCommands": 500,
+  "startedAt": "2026-09-20T00:19:50.995Z",
+  "updatedAt": "2026-09-20T00:20:10.872Z",
+  "url": "http://localhost:3000/login?next=%2F__design%2Ftoday",
+  "title": "Khonsera — travel days that run on time.",
+  "viewportSize": {
+    "width": 1440,
+    "height": 1000
+  },
+  "liveScreenshot": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35478439196/qa-live/current.png",
+  "liveState": "https://raw.githubusercontent.com/Fry1997/Khonsera/qa-live-35478439196/qa-live/state.json",
+  "controlBranch": "qa-control-35478439196",
+  "liveDesign": {
+    "theme": {},
+    "cssBytes": 0
+  },
+  "controlPath": "qa-control/command.json",
+  "lastAction": null,
+  "screen": {
+    "viewportText": [
+      {
+        "top": 535,
+        "left": 530,
+        "text": "Welcome back."
+      },
+      {
+        "top": 591,
+        "left": 530,
+        "text": "The evening, kept."
+      },
+      {
+        "top": 645,
+        "left": 530,
+        "text": "EMAIL"
+      },
+      {
+        "top": 730,
+        "left": 530,
+        "text": "PASSWORD"
+      },
+      {
+        "top": 831,
+        "left": 530,
+        "text": "Sign in"
+      },
+      {
+        "top": 900,
+        "left": 530,
+        "text": "Forgot password?"
+      },
+      {
+        "top": 900,
+        "left": 799,
+        "text": "Create account"
+      },
+      {
+        "top": 953,
+        "left": 530,
+        "text": "CALM · CONSIDERED · PRECISE"
+      }
+    ],
+    "interactives": [
+      {
+        "index": 0,
+        "tag": "input",
+        "role": null,
+        "label": "EMAIL",
+        "type": "email",
+        "value": "",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 692
+        },
+        "box": {
+          "x": 530,
+          "y": 670,
+          "width": 380,
+          "height": 44
+        }
+      },
+      {
+        "index": 1,
+        "tag": "input",
+        "role": null,
+        "label": "PASSWORD",
+        "type": "password",
+        "value": "[redacted]",
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 777
+        },
+        "box": {
+          "x": 530,
+          "y": 755,
+          "width": 380,
+          "height": 44
+        }
+      },
+      {
+        "index": 2,
+        "tag": "button",
+        "role": null,
+        "label": "Sign in",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 720,
+          "y": 853
+        },
+        "box": {
+          "x": 530,
+          "y": 831,
+          "width": 380,
+          "height": 45
+        }
+      },
+      {
+        "index": 3,
+        "tag": "a",
+        "role": null,
+        "label": "Forgot password?",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 587,
+          "y": 910
+        },
+        "box": {
+          "x": 530,
+          "y": 900,
+          "width": 114,
+          "height": 22
+        }
+      },
+      {
+        "index": 4,
+        "tag": "a",
+        "role": null,
+        "label": "Create account",
+        "type": null,
+        "value": null,
+        "disabled": false,
+        "checked": null,
+        "center": {
+          "x": 855,
+          "y": 910
+        },
+        "box": {
+          "x": 799,
+          "y": 900,
+          "width": 111,
+          "height": 22
+        }
+      }
+    ],
+    "focused": null,
+    "scroll": {
+      "x": 0,
+      "y": 0,
+      "viewportWidth": 1440,
+      "viewportHeight": 1000,
+      "documentWidth": 1440,
+      "documentHeight": 1000
+    }
+  },
+  "signals": {
+    "consoleErrors": [
+      "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used: - A server/client branch `if (typeof window !== 'undefined')`. - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called. - Date formatting in a user's locale which doesn't match the server. - External changing data without sending a snapshot of it along with the HTML. - Invalid HTML tag nesting. It can also happen if the client has a browser extension installed which messes with the HTML before React loaded. %s%s https://react.dev/link/hydration-mismatch ... <HotReload assetPrefix=\"\" globalError={[...]}> <AppDevOverlayErrorBoundary globalError={[...]}> <ReplaySsrOnlyErrors> <DevRo"
+    ],
+    "pageErrors": [],
+    "failedRequests": [],
+    "serverErrors": [],
+    "slowRequests": [
+      "16938ms 200 GET http://localhost:3000/login?next=%2F__design%2Ftoday"
+    ],
+    "blockedNavigations": []
+  },
+  "relayError": "QA relay landed outside the configured target: http://localhost:3000/login?next=%2F__design%2Ftoday"
+}
