@@ -1,9 +1,11 @@
 {
   "runId": "35509399998",
   "viewport": "desktop-chromium",
-  "sequence": 7,
+  "sequence": 8,
   "command": {
-    "type": "screenshot"
+    "type": "resize",
+    "width": 390,
+    "height": 844
   },
-  "updatedAt": "2026-09-20T12:06:14.623Z"
+  "updatedAt": "2026-09-20T12:35:50.176Z"
 }
