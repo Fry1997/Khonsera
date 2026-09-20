@@ -1,6 +1,6 @@
 import { chromium } from "@playwright/test";
 import { createServerClient } from "@supabase/ssr";
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
@@ -23,6 +23,8 @@ const controlBranch = `qa-control-${runId}`;
 const controlPath = "qa-control/command.json";
 const maxMinutes = Number(process.env.KQA_RELAY_MAX_MINUTES ?? "35");
 const maxCommands = Number(process.env.KQA_RELAY_MAX_COMMANDS ?? "80");
+const liveStateMode = process.env.KQA_LIVE_STATE_MODE ?? "git";
+const sourceShaFile = process.env.KQA_SOURCE_SHA_FILE ?? null;
 
 for (const [name, value] of Object.entries({
   GITHUB_TOKEN: githubToken,
@@ -89,6 +91,8 @@ let relayError = null;
 let video = null;
 let context = null;
 let page = null;
+let liveCss = "";
+let lastSourceSha = null;
 let liveTheme = {};
 let liveCss = "";
 
@@ -234,6 +238,23 @@ async function fetchControlCommand() {
 }
 
 async function ensureLiveBranch() {
+  if (liveStateMode === "api") {
+    const refPath = `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(liveBranch)}`;
+    const existing = await githubResponse("GET", refPath);
+
+    if (existing.status === 404) {
+      await github("POST", `/repos/${owner}/${repo}/git/refs`, {
+        ref: `refs/heads/${liveBranch}`,
+        sha: process.env.GITHUB_SHA,
+      });
+    } else if (!existing.ok) {
+      throw new Error(
+        `Could not inspect live branch: ${existing.status} ${(await existing.text()).slice(0, 800)}`,
+      );
+    }
+    return;
+  }
+
   await execFile("git", ["config", "user.name", "github-actions[bot]"]);
   await execFile("git", [
     "config",
@@ -247,7 +268,69 @@ async function ensureLiveBranch() {
   await execFile("git", ["switch", "-C", liveBranch, process.env.GITHUB_SHA]);
 }
 
+async function pushLiveStateWithApi(stepLabel) {
+  await ensureLiveBranch();
+
+  const refPath = `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(liveBranch)}`;
+  const ref = await github("GET", refPath);
+  const parentSha = ref.object.sha;
+  const parentCommit = await github(
+    "GET",
+    `/repos/${owner}/${repo}/git/commits/${encodeURIComponent(parentSha)}`,
+  );
+
+  const [stateText, imageBytes] = await Promise.all([
+    readFile(liveStatePath, "utf8"),
+    readFile(liveShotPath),
+  ]);
+
+  const [stateBlob, imageBlob] = await Promise.all([
+    github("POST", `/repos/${owner}/${repo}/git/blobs`, {
+      content: stateText,
+      encoding: "utf-8",
+    }),
+    github("POST", `/repos/${owner}/${repo}/git/blobs`, {
+      content: imageBytes.toString("base64"),
+      encoding: "base64",
+    }),
+  ]);
+
+  const tree = await github("POST", `/repos/${owner}/${repo}/git/trees`, {
+    base_tree: parentCommit.tree.sha,
+    tree: [
+      {
+        path: "qa-live/state.json",
+        mode: "100644",
+        type: "blob",
+        sha: stateBlob.sha,
+      },
+      {
+        path: "qa-live/current.png",
+        mode: "100644",
+        type: "blob",
+        sha: imageBlob.sha,
+      },
+    ],
+  });
+
+  const commit = await github("POST", `/repos/${owner}/${repo}/git/commits`, {
+    message: `qa-live: ${viewportName} ${stepLabel}`,
+    tree: tree.sha,
+    parents: [parentSha],
+  });
+
+  await github("PATCH", refPath, {
+    sha: commit.sha,
+    force: true,
+  });
+}
+
 async function pushLiveState(stepLabel) {
+  if (liveStateMode === "api") {
+    await pushLiveStateWithApi(stepLabel);
+    return;
+  }
+
   await ensureLiveBranch();
   await execFile("git", ["add", "-f", "qa-live/current.png", "qa-live/state.json"]);
   await execFile("git", [
@@ -474,6 +557,29 @@ async function observeScreen(page) {
   });
 }
 
+async function applyLiveCss() {
+  if (!page || !liveCss) return;
+  await page.evaluate((css) => {
+    const id = "khonsera-live-design-css";
+    let style = document.getElementById(id);
+    if (!(style instanceof HTMLStyleElement)) {
+      style = document.createElement("style");
+      style.id = id;
+      document.head.appendChild(style);
+    }
+    style.textContent = css;
+  }, liveCss);
+}
+
+async function readSourceSha() {
+  if (!sourceShaFile) return null;
+  try {
+    return (await readFile(sourceShaFile, "utf8")).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 async function publishState(status, extra = {}) {
   const step = String(commandCount).padStart(3, "0");
   const stepPath = path.join(stepsDir, `step-${step}.png`);
@@ -494,7 +600,9 @@ async function publishState(status, extra = {}) {
     updatedAt: new Date().toISOString(),
     url: page.url(),
     title: await page.title().catch(() => ""),
-    viewportSize: viewport.viewport,
+    viewportSize: page.viewportSize() ?? viewport.viewport,
+    sourceSha: lastSourceSha,
+    liveCssBytes: Buffer.byteLength(liveCss, "utf8"),
     liveScreenshot: `${rawBase}/current.png`,
     liveState: `${rawBase}/state.json`,
     controlBranch,
@@ -677,6 +785,22 @@ async function executeCommand(command) {
         Math.min(Math.max(Number(command.ms ?? 1000), 100), 10_000),
       );
       break;
+    case "resize": {
+      const width = Math.min(Math.max(Number(command.width ?? 390), 320), 1800);
+      const height = Math.min(Math.max(Number(command.height ?? 844), 568), 1400);
+      await page.setViewportSize({ width, height });
+      break;
+    }
+    case "set_css":
+      liveCss = String(command.css ?? "").slice(0, 30_000);
+      await applyLiveCss();
+      break;
+    case "clear_css":
+      liveCss = "";
+      await page.evaluate(() => {
+        document.getElementById("khonsera-live-design-css")?.remove();
+      });
+      break;
     case "goto": {
       const requested = new URL(String(command.url ?? command.path ?? ""), targetUrl);
       if (!allowedHostname(requested.toString())) {
@@ -686,6 +810,7 @@ async function executeCommand(command) {
         waitUntil: "domcontentloaded",
         timeout: 30_000,
       });
+      await applyLiveCss();
       break;
     }
     case "resize": {
@@ -744,7 +869,7 @@ async function executeCommand(command) {
       throw new Error(`Unsupported relay command type: ${command.type}`);
   }
 
-  if (!["wait", "screenshot", "finish", "abort"].includes(command.type)) {
+  if (!["wait", "screenshot", "finish", "abort", "set_css", "clear_css", "resize"].includes(command.type)) {
     await page.waitForTimeout(450);
   }
 }
@@ -843,6 +968,8 @@ try {
     timeout: 30_000,
   });
   await page.waitForTimeout(700);
+  await applyLiveCss();
+  lastSourceSha = await readSourceSha();
 
   if (!allowedHostname(page.url())) {
     throw new Error(`QA relay landed outside the configured target: ${page.url()}`);
@@ -859,10 +986,19 @@ try {
       throw new Error(`QA relay exceeded ${maxCommands} commands for ${viewportName}.`);
     }
 
+    const sourceSha = await readSourceSha();
+    if (sourceSha && sourceSha !== lastSourceSha) {
+      lastSourceSha = sourceSha;
+      await page.waitForTimeout(900);
+      await applyLiveCss();
+      await publishState("source-updated", { sourceSha });
+      continue;
+    }
+
     const pending = await fetchControlCommand();
 
     if (!pending) {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await new Promise((resolve) => setTimeout(resolve, 900));
       continue;
     }
 
