@@ -4,10 +4,10 @@
   "runId": "35509399998",
   "viewportName": "desktop-chromium",
   "status": "ready",
-  "commandCount": 4,
+  "commandCount": 5,
   "maxCommands": 500,
   "startedAt": "2026-09-20T12:02:04.869Z",
-  "updatedAt": "2026-09-20T12:04:23.361Z",
+  "updatedAt": "2026-09-20T12:04:41.152Z",
   "url": "http://127.0.0.1:3000/login",
   "title": "Khonsera — travel days that run on time.",
   "viewportSize": {
@@ -23,16 +23,15 @@
   },
   "controlPath": "qa-control/command.json",
   "lastAction": {
-    "sequence": 4,
-    "commandNumber": 4,
-    "at": "2026-09-20T12:04:22.832Z",
+    "sequence": 5,
+    "commandNumber": 5,
+    "at": "2026-09-20T12:04:40.727Z",
     "command": {
-      "type": "goto",
-      "path": "/design-preview/today"
+      "type": "screenshot"
     },
     "beforeUrl": "http://127.0.0.1:3000/login",
-    "afterUrl": "http://127.0.0.1:3000/design-preview/today",
-    "durationMs": 2067,
+    "afterUrl": "http://127.0.0.1:3000/login",
+    "durationMs": 0,
     "error": null
   },
   "screen": {
@@ -69,7 +68,7 @@
       },
       {
         "top": 900,
-        "left": 799,
+        "left": 814,
         "text": "Create account"
       },
       {
@@ -149,13 +148,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 587,
+          "x": 579,
           "y": 910
         },
         "box": {
           "x": 530,
           "y": 900,
-          "width": 114,
+          "width": 98,
           "height": 22
         }
       },
@@ -169,13 +168,13 @@
         "disabled": false,
         "checked": null,
         "center": {
-          "x": 855,
+          "x": 862,
           "y": 910
         },
         "box": {
-          "x": 799,
+          "x": 814,
           "y": 900,
-          "width": 111,
+          "width": 96,
           "height": 22
         }
       }
