@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, CloudSun, Ticket, WalletCards } from "lucide-react";
 import { MobileAppbar } from "@/components/shell/mobile-appbar";
-import { LiveDay } from "@/components/today/live-day";
+import { LiveDay } from "../../../components/today/live-day";
 import { TodaySpine } from "@/components/today/today-spine";
 import { TodayBufferControl } from "@/components/today/today-buffer-control";
 import { AppScreen } from "@/components/ui/page-shell";
